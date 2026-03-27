@@ -724,6 +724,17 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (!d.active) continue;
     d.wobble += dt;
 
+    // Emit damage smoke if health < maxHealth
+    if (d.health < d.maxHealth && d.health > 0) {
+      if (Math.random() < 0.4) {
+        addSmokeTrail(g, { x: d.pos.x + (Math.random() - 0.5) * d.size, y: d.pos.y + (Math.random() - 0.5) * d.size * 0.5 }, d.size * 0.4);
+      }
+      // Fire sparks
+      if (Math.random() < 0.15) {
+        spawnParticles(g, { x: d.pos.x + (Math.random() - 0.5) * d.size, y: d.pos.y }, 1, '#f97316', 40, false);
+      }
+    }
+
     if (d.state === 'entering') {
       const dx = d.entryTarget.x - d.pos.x;
       const dy = d.entryTarget.y - d.pos.y;
@@ -901,16 +912,21 @@ export function update(g: GameData, input: InputState, dt: number) {
       if (!d.active) continue;
       if (dist(b.pos, d.pos) < d.size + b.size + 4) {
         d.health--;
-        spawnParticles(g, b.pos, 4, '#f97316', 80);
+        spawnParticles(g, b.pos, 6, '#f97316', 100);
+        addExplosion(g, b.pos, 8); // small hit flash
         if (d.health <= 0) {
           d.active = false;
           addExplosion(g, d.pos, 20);
           sfxExplosion();
-          spawnParticles(g, d.pos, 12, '#f97316', 150);
+          spawnParticles(g, d.pos, 15, '#f97316', 180);
+          spawnParticles(g, d.pos, 8, '#555', 100);
           const bonus = d.tier === 'bomber' ? 80 : d.tier === 'tracker' ? 50 : 30;
           addFloatingText(g, `Shot Down! +${bonus}`, d.pos, '#a855f7');
           g.score += bonus;
           g.stats.dronesDestroyed++;
+        } else {
+          // Damaged but not destroyed — visual feedback
+          addFloatingText(g, `HIT!`, b.pos, '#ff6b35');
         }
         hit = true;
         break;
