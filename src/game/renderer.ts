@@ -1061,6 +1061,51 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.textAlign = 'left';
     ctx.fillText(`SHOT LV.${g.bulletLevel}`, 14, 62);
   }
+
+  // Active effect indicators (left side, below wave)
+  let effectY = 72;
+  if (g.slowMoTimer > 0) {
+    const blink = g.slowMoTimer < 1.5 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
+    ctx.globalAlpha = blink;
+    ctx.fillStyle = '#06b6d4';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`⏳ SLOW ${g.slowMoTimer.toFixed(1)}s`, 14, effectY);
+    // Progress bar
+    ctx.fillStyle = 'rgba(6, 182, 212, 0.2)';
+    ctx.fillRect(14, effectY + 2, 60, 3);
+    ctx.fillStyle = '#06b6d4';
+    ctx.fillRect(14, effectY + 2, 60 * (g.slowMoTimer / 5), 3);
+    ctx.globalAlpha = 1;
+    effectY += 18;
+  }
+  if (g.magnetTimer > 0) {
+    const blink = g.magnetTimer < 2 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
+    ctx.globalAlpha = blink;
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`🧲 MAGNET ${g.magnetTimer.toFixed(1)}s`, 14, effectY);
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.2)';
+    ctx.fillRect(14, effectY + 2, 60, 3);
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(14, effectY + 2, 60 * (g.magnetTimer / 8), 3);
+    ctx.globalAlpha = 1;
+    effectY += 18;
+  }
+  if (p.shielded) {
+    const blink = p.shieldTimer < 2 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
+    ctx.globalAlpha = blink;
+    ctx.fillStyle = '#60a5fa';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`◆ SHIELD ${p.shieldTimer.toFixed(1)}s`, 14, effectY);
+    ctx.fillStyle = 'rgba(96, 165, 250, 0.2)';
+    ctx.fillRect(14, effectY + 2, 60, 3);
+    ctx.fillStyle = '#60a5fa';
+    ctx.fillRect(14, effectY + 2, 60 * (p.shieldTimer / 8), 3);
+    ctx.globalAlpha = 1;
+  }
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
