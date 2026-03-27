@@ -132,8 +132,8 @@ const SkyfallGame: React.FC = () => {
     const preventContext = (e: Event) => e.preventDefault();
     document.addEventListener('selectstart', preventSelect);
     document.addEventListener('contextmenu', preventContext);
-    // Block touch callout on canvas
-    const preventTouch = (e: TouchEvent) => { e.preventDefault(); };
+    // Block touch callout on canvas — resume audio first so gesture is recognized
+    const preventTouch = (e: TouchEvent) => { resumeAudio(); e.preventDefault(); };
     canvas.addEventListener('touchstart', preventTouch, { passive: false });
 
     window.addEventListener('keydown', onKeyDown);
