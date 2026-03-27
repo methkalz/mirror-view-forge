@@ -155,6 +155,29 @@ export interface GameStats {
   powerUpsCollected: number;
   dronesDestroyed: number;
   timeSurvived: number;
+  bossesDefeated: number;
+}
+
+export type BossPhase = 1 | 2 | 3;
+export type BossAttack = 'missiles' | 'carpet' | 'drones';
+
+export interface Boss {
+  pos: Vec2;
+  vel: Vec2;
+  health: number;
+  maxHealth: number;
+  size: number;
+  phase: BossPhase;
+  attackTimer: number;
+  attackCooldown: number;
+  attackPattern: BossAttack;
+  entered: boolean;
+  defeated: boolean;
+  entryTarget: Vec2;
+  carpetX: number;
+  carpetDir: number;
+  spawnedDrones: number;
+  damageFlash: number;
 }
 
 export interface Bullet {
@@ -199,6 +222,13 @@ export interface GameData {
   slowMoTimer: number;
   magnetTimer: number;
   slowMoFactor: number;
+  boss: Boss | null;
+  bossCount: number;
+  bossTimer: number;
+  rainDrops: { x: number; y: number; speed: number; len: number }[];
+  lightningTimer: number;
+  lightningFlash: number;
+  weatherIntensity: number;
 }
 
 export interface InputState {
