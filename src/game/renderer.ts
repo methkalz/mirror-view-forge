@@ -969,8 +969,9 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.font = 'bold 10px monospace';
   ctx.textAlign = 'left';
   // Wave progress bar
-  const waveProgress = (g.elapsed % 30) / 30;
-  ctx.fillText(`WAVE ${g.difficulty}`, 14, 42);
+  const waveNum = Math.floor(g.difficulty);
+  const waveProgress = g.difficulty - waveNum;
+  ctx.fillText(`WAVE ${waveNum}`, 14, 42);
   ctx.fillStyle = 'rgba(251, 191, 36, 0.2)';
   ctx.fillRect(14, 46, 60, 3);
   ctx.fillStyle = '#fbbf24';
@@ -997,12 +998,21 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillText(`SHIELD ${p.shieldTimer.toFixed(1)}s`, 14, h - 14);
   }
 
-  // Ammo indicator
+  // Ammo indicator with bullet level
   if (p.ammo > 0) {
     ctx.fillStyle = '#a855f7';
     ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(`⊕ ${p.ammo}`, w / 2, h - 14);
+    const lvlText = g.bulletLevel > 1 ? ` ×${g.bulletLevel}` : '';
+    ctx.fillText(`⊕ ${p.ammo}${lvlText}`, w / 2, h - 14);
+  }
+
+  // Bullet level indicator
+  if (g.bulletLevel > 1) {
+    ctx.fillStyle = g.bulletLevel >= 3 ? '#fbbf24' : '#22c55e';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`SHOT LV.${g.bulletLevel}`, 14, 62);
   }
 }
 
