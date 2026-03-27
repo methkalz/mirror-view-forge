@@ -1,6 +1,6 @@
 import {
   GameData, InputState, Hazard, PowerUp, Particle, Vec2, Crater, FloatingText, Drone, Bullet,
-  HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle
+  HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning
 } from './types';
 import { getFromPool } from './pool';
 import { sfxExplosion, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning } from './audio';
@@ -381,6 +381,30 @@ export function update(g: GameData, input: InputState, dt: number) {
   g.difficulty = 1 + g.elapsed / 60; // gradual: takes 60s per difficulty level instead of 30
   g.score = Math.floor(g.elapsed);
   g.windOffset = Math.sin(g.elapsed * 0.3) * 0.5;
+
+  // === Wave warnings ===
+  const waveEvents: { time: number; id: string; text: string; sub: string; color: string }[] = [
+    { time: 45, id: 'missiles', text: '⚠ تحذير: صواريخ', sub: 'MISSILES DETECTED', color: '#f97316' },
+    { time: 85, id: 'clusters', text: '⚠ تحذير: قنابل عنقودية', sub: 'CLUSTER BOMBS INCOMING', color: '#ef4444' },
+    { time: 85, id: 'drones_scout', text: '⚠ رصد طائرات استطلاع', sub: 'SCOUT DRONES APPROACHING', color: '#60a5fa' },
+    { time: 145, id: 'drones_tracker', text: '⚠ طائرات تتبع معادية', sub: 'TRACKER DRONES INBOUND', color: '#a855f7' },
+    { time: 205, id: 'drones_bomber', text: '⚠ قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444' },
+    { time: 120, id: 'bullet_2', text: '⬆ تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e' },
+    { time: 200, id: 'bullet_3', text: '⬆ تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#fbbf24' },
+  ];
+  for (const we of waveEvents) {
+    if (g.elapsed >= we.time - 5 && !g.waveTriggered.has(we.id)) {
+      g.waveTriggered.add(we.id);
+      g.waveWarnings.push({ text: we.text, subText: we.sub, life: 4, maxLife: 4, color: we.color });
+      if (we.id === 'bullet_2') g.bulletLevel = 2;
+      if (we.id === 'bullet_3') g.bulletLevel = 3;
+    }
+  }
+  // Update wave warnings
+  for (let i = g.waveWarnings.length - 1; i >= 0; i--) {
+    g.waveWarnings[i].life -= dt;
+    if (g.waveWarnings[i].life <= 0) g.waveWarnings.splice(i, 1);
+  }
 
   const p = g.player;
   const groundY = g.height * GROUND_RATIO;
