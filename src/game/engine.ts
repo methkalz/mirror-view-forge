@@ -1,6 +1,6 @@
 import {
   GameData, InputState, Hazard, PowerUp, Particle, Vec2, Crater, FloatingText, Drone, Bullet,
-  HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle
+  HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning
 } from './types';
 import { getFromPool } from './pool';
 import { sfxExplosion, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning } from './audio';
@@ -64,6 +64,9 @@ export function createGame(w: number, h: number): GameData {
     camera: { x: 0, y: 0 },
     stats: { closeCalls: 0, powerUpsCollected: 0, dronesDestroyed: 0, timeSurvived: 0 },
     windOffset: 0,
+    waveWarnings: [],
+    waveTriggered: new Set(),
+    bulletLevel: 1,
   };
 }
 
@@ -122,6 +125,9 @@ export function resetGame(g: GameData) {
   g.camera = { x: 0, y: 0 };
   g.stats = { closeCalls: 0, powerUpsCollected: 0, dronesDestroyed: 0, timeSurvived: 0 };
   g.windOffset = 0;
+  g.waveWarnings = [];
+  g.waveTriggered = new Set();
+  g.bulletLevel = 1;
 }
 
 function dist(a: Vec2, b: Vec2): number {
@@ -376,6 +382,30 @@ export function update(g: GameData, input: InputState, dt: number) {
   g.score = Math.floor(g.elapsed);
   g.windOffset = Math.sin(g.elapsed * 0.3) * 0.5;
 
+  // === Wave warnings ===
+  const waveEvents: { time: number; id: string; text: string; sub: string; color: string }[] = [
+    { time: 45, id: 'missiles', text: '⚠ تحذير: صواريخ', sub: 'MISSILES DETECTED', color: '#f97316' },
+    { time: 85, id: 'clusters', text: '⚠ تحذير: قنابل عنقودية', sub: 'CLUSTER BOMBS INCOMING', color: '#ef4444' },
+    { time: 85, id: 'drones_scout', text: '⚠ رصد طائرات استطلاع', sub: 'SCOUT DRONES APPROACHING', color: '#60a5fa' },
+    { time: 145, id: 'drones_tracker', text: '⚠ طائرات تتبع معادية', sub: 'TRACKER DRONES INBOUND', color: '#a855f7' },
+    { time: 205, id: 'drones_bomber', text: '⚠ قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444' },
+    { time: 120, id: 'bullet_2', text: '⬆ تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e' },
+    { time: 200, id: 'bullet_3', text: '⬆ تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#fbbf24' },
+  ];
+  for (const we of waveEvents) {
+    if (g.elapsed >= we.time - 5 && !g.waveTriggered.has(we.id)) {
+      g.waveTriggered.add(we.id);
+      g.waveWarnings.push({ text: we.text, subText: we.sub, life: 4, maxLife: 4, color: we.color });
+      if (we.id === 'bullet_2') g.bulletLevel = 2;
+      if (we.id === 'bullet_3') g.bulletLevel = 3;
+    }
+  }
+  // Update wave warnings
+  for (let i = g.waveWarnings.length - 1; i >= 0; i--) {
+    g.waveWarnings[i].life -= dt;
+    if (g.waveWarnings[i].life <= 0) g.waveWarnings.splice(i, 1);
+  }
+
   const p = g.player;
   const groundY = g.height * GROUND_RATIO;
   p.groundY = groundY;
@@ -415,20 +445,24 @@ export function update(g: GameData, input: InputState, dt: number) {
     input.touchDash = false;
   }
 
-  // === Shooting ===
+  // === Shooting (multi-shot based on bulletLevel) ===
   if (input.shoot && p.ammo > 0 && !p.isDashing) {
     input.shoot = false;
     p.ammo--;
-    const bullet: Bullet = {
-      active: true,
-      pos: { x: p.pos.x + (p.facingRight ? 10 : -10), y: p.pos.y - 20 },
-      vel: { x: 0, y: -600 },
-      size: 3,
-      damage: 1,
-    };
-    g.bullets.push(bullet);
-    // muzzle flash particles
-    spawnParticles(g, { x: bullet.pos.x, y: bullet.pos.y }, 3, '#fbbf24', 60, false);
+    const baseX = p.pos.x + (p.facingRight ? 10 : -10);
+    const baseY = p.pos.y - 20;
+    const angles = g.bulletLevel === 1 ? [0] : g.bulletLevel === 2 ? [-0.1, 0.1] : [-0.15, 0, 0.15];
+    for (const angle of angles) {
+      const bullet: Bullet = {
+        active: true,
+        pos: { x: baseX, y: baseY },
+        vel: { x: Math.sin(angle) * 600, y: -Math.cos(angle) * 600 },
+        size: 3,
+        damage: 1,
+      };
+      g.bullets.push(bullet);
+    }
+    spawnParticles(g, { x: baseX, y: baseY }, 4, '#fbbf24', 80, false);
   }
   if (input.shoot) input.shoot = false;
 

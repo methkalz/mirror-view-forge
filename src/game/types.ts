@@ -139,6 +139,14 @@ export interface AmbientParticle {
   opacity: number;
 }
 
+export interface WaveWarning {
+  text: string;
+  subText: string;
+  life: number;
+  maxLife: number;
+  color: string;
+}
+
 export interface GameStats {
   closeCalls: number;
   powerUpsCollected: number;
@@ -182,6 +190,9 @@ export interface GameData {
   camera: Vec2;
   stats: GameStats;
   windOffset: number;
+  waveWarnings: WaveWarning[];
+  waveTriggered: Set<string>;
+  bulletLevel: number;
 }
 
 export interface InputState {
