@@ -216,7 +216,7 @@ const SkyfallGame: React.FC = () => {
                 fontFamily: 'monospace',
                 fontWeight: 'bold',
               })}
-            >{`FIRE\n${ammoCount}`}</button>
+            >{`FIRE\n${playerAmmo}`}</button>
           )}
         </>
       )}
