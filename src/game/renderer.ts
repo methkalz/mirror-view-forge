@@ -507,8 +507,11 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
 
     const groundY = g.height * 0.78;
     const facingRight = d.vel.x >= 0;
-    const tilt = Math.sin(d.wobble * 2) * 0.05; // subtle tilt
-    ctx.rotate(tilt);
+    const tilt = Math.sin(d.wobble * 2) * 0.05;
+    const damaged = d.health < d.maxHealth;
+    // Extra wobble when damaged
+    const damageTilt = damaged ? Math.sin(d.wobble * 8) * 0.08 : 0;
+    ctx.rotate(tilt + damageTilt);
 
     // Searchlight beam (stronger for trackers/bombers)
     const beamAlpha = d.tier === 'scout' ? 0.03 : d.tier === 'tracker' ? 0.06 : 0.08;
