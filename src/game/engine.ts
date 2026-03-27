@@ -230,17 +230,84 @@ function spawnPowerUp(g: GameData) {
 function spawnDrone(g: GameData) {
   const d = getFromPool<Drone>(g.drones, () => ({
     active: false, pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
-    speed: 0, size: 0, health: 0, state: 'entering', entryTarget: { x: 0, y: 0 }
+    speed: 0, size: 0, health: 0, state: 'entering' as const, entryTarget: { x: 0, y: 0 },
+    tier: 'scout' as const, bombTimer: 0, bombCooldown: 0, hoverTimer: 0,
+    aggroDelay: 0, trackingAccuracy: 0, wobble: 0
   }), 10);
   const side = Math.random() < 0.5 ? 0 : 1;
   const w = g.width, h = g.height;
-  d.pos = { x: side === 0 ? -20 : w + 20, y: h * 0.2 + Math.random() * h * 0.3 };
-  d.entryTarget = { x: w * 0.2 + Math.random() * w * 0.6, y: h * 0.3 + Math.random() * h * 0.2 };
-  d.speed = 70 + g.difficulty * 5;
-  d.size = 14;
-  d.health = 1;
+  d.pos = { x: side === 0 ? -20 : w + 20, y: h * 0.15 + Math.random() * h * 0.25 };
+  d.entryTarget = { x: w * 0.2 + Math.random() * w * 0.6, y: h * 0.25 + Math.random() * h * 0.15 };
   d.state = 'entering';
   d.vel = { x: 0, y: 0 };
+  d.wobble = 0;
+
+  // Determine tier based on elapsed time (gradual difficulty)
+  const elapsed = g.elapsed;
+  if (elapsed < 90) {
+    // First 60-90s: scouts only — slow, inaccurate, just patrol
+    d.tier = 'scout';
+    d.speed = 30 + Math.min(20, (elapsed - 60) * 0.7);
+    d.size = 14;
+    d.health = 1;
+    d.aggroDelay = 3 + Math.random() * 2; // wait 3-5s before tracking
+    d.trackingAccuracy = 0.15 + Math.random() * 0.15; // very inaccurate
+    d.bombTimer = 0;
+    d.bombCooldown = 0;
+  } else if (elapsed < 150) {
+    // 90-150s: mix of scouts and trackers
+    const roll = Math.random();
+    if (roll < 0.5) {
+      d.tier = 'scout';
+      d.speed = 40 + Math.random() * 15;
+      d.size = 14;
+      d.health = 1;
+      d.aggroDelay = 2 + Math.random() * 1.5;
+      d.trackingAccuracy = 0.25 + Math.random() * 0.2;
+      d.bombTimer = 0;
+      d.bombCooldown = 0;
+    } else {
+      d.tier = 'tracker';
+      d.speed = 50 + Math.random() * 20;
+      d.size = 16;
+      d.health = 2;
+      d.aggroDelay = 1.5 + Math.random() * 1;
+      d.trackingAccuracy = 0.4 + Math.random() * 0.2;
+      d.bombTimer = 0;
+      d.bombCooldown = 0;
+    }
+  } else {
+    // 150s+: all tiers including bombers
+    const roll = Math.random();
+    if (roll < 0.2) {
+      d.tier = 'scout';
+      d.speed = 50;
+      d.size = 14;
+      d.health = 1;
+      d.aggroDelay = 1;
+      d.trackingAccuracy = 0.35;
+      d.bombTimer = 0;
+      d.bombCooldown = 0;
+    } else if (roll < 0.6) {
+      d.tier = 'tracker';
+      d.speed = 60 + Math.min(30, (elapsed - 150) * 0.2);
+      d.size = 16;
+      d.health = 2;
+      d.aggroDelay = 0.5 + Math.random() * 0.5;
+      d.trackingAccuracy = 0.5 + Math.min(0.35, (elapsed - 150) * 0.002);
+      d.bombTimer = 0;
+      d.bombCooldown = 0;
+    } else {
+      d.tier = 'bomber';
+      d.speed = 45 + Math.random() * 15;
+      d.size = 20;
+      d.health = 3;
+      d.aggroDelay = 1;
+      d.trackingAccuracy = 0.3; // bombers don't need to be fast — they drop bombs
+      d.bombTimer = 0;
+      d.bombCooldown = 4 + Math.random() * 2;
+    }
+  }
 }
 
 function damagePlayer(g: GameData, dmg: number, sourcePos: Vec2) {
@@ -575,56 +642,126 @@ export function update(g: GameData, input: InputState, dt: number) {
   if (g.elapsed >= 60) {
     g.droneTimer -= dt;
     if (g.droneTimer <= 0) {
-      g.droneTimer = Math.max(8, 20 - g.difficulty * 1.5);
+      // Spawn rate: starts slow, gradually increases
+      const timeSinceDrones = g.elapsed - 60;
+      const baseInterval = 25; // first drone at 60s, next after 25s
+      const minInterval = 8;
+      const interval = Math.max(minInterval, baseInterval - timeSinceDrones * 0.08);
+      g.droneTimer = interval + Math.random() * 5;
       spawnDrone(g);
     }
   }
 
   for (const d of g.drones) {
     if (!d.active) continue;
+    d.wobble += dt;
+
     if (d.state === 'entering') {
       const dx = d.entryTarget.x - d.pos.x;
       const dy = d.entryTarget.y - d.pos.y;
       const dd = Math.sqrt(dx * dx + dy * dy);
       if (dd < 5) {
+        // After entering, start aggro delay before tracking
         d.state = 'tracking';
+        d.hoverTimer = d.aggroDelay;
       } else {
         d.pos.x += (dx / dd) * d.speed * 2 * dt;
         d.pos.y += (dy / dd) * d.speed * 2 * dt;
       }
-    } else {
-      const dx = p.pos.x - d.pos.x;
-      const dy = p.pos.y - 30 - d.pos.y;
-      const dd = Math.sqrt(dx * dx + dy * dy);
-      if (dd > 0) {
-        d.vel.x += (dx / dd) * 100 * dt;
-        d.vel.y += (dy / dd) * 100 * dt;
-        const vLen = Math.sqrt(d.vel.x * d.vel.x + d.vel.y * d.vel.y);
-        if (vLen > d.speed) {
-          d.vel.x = (d.vel.x / vLen) * d.speed;
-          d.vel.y = (d.vel.y / vLen) * d.speed;
+    } else if (d.state === 'tracking') {
+      // Aggro delay — drone hovers/patrols before actively tracking
+      if (d.hoverTimer > 0) {
+        d.hoverTimer -= dt;
+        // Gentle idle movement (patrol)
+        d.pos.x += Math.sin(d.wobble * 1.5) * 20 * dt;
+        d.pos.y += Math.cos(d.wobble * 1.2) * 8 * dt;
+      } else {
+        // Active tracking with accuracy-based steering
+        const dx = p.pos.x - d.pos.x;
+        const targetY = d.tier === 'bomber' ? p.pos.y - 80 : p.pos.y - 30;
+        const dy = targetY - d.pos.y;
+        const dd = Math.sqrt(dx * dx + dy * dy);
+        
+        if (dd > 0) {
+          // trackingAccuracy controls how much force is applied toward player
+          const steerForce = 100 * d.trackingAccuracy;
+          d.vel.x += (dx / dd) * steerForce * dt;
+          d.vel.y += (dy / dd) * steerForce * dt;
+          
+          // Add random jitter for scouts (they're erratic)
+          if (d.tier === 'scout') {
+            d.vel.x += (Math.random() - 0.5) * 60 * dt;
+            d.vel.y += (Math.random() - 0.5) * 30 * dt;
+          }
+          
+          const vLen = Math.sqrt(d.vel.x * d.vel.x + d.vel.y * d.vel.y);
+          if (vLen > d.speed) {
+            d.vel.x = (d.vel.x / vLen) * d.speed;
+            d.vel.y = (d.vel.y / vLen) * d.speed;
+          }
+        }
+        d.pos.x += d.vel.x * dt;
+        d.pos.y += d.vel.y * dt;
+
+        // Keep drones in upper portion of screen
+        const minY = g.height * 0.1;
+        const maxY = g.height * 0.55;
+        d.pos.y = Math.max(minY, Math.min(maxY, d.pos.y));
+        d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
+
+        // Bomber: drop bombs when above player
+        if (d.tier === 'bomber') {
+          d.bombTimer += dt;
+          if (d.bombTimer >= d.bombCooldown && Math.abs(d.pos.x - p.pos.x) < 40) {
+            d.bombTimer = 0;
+            // Spawn a hazard directly below drone
+            const bomb = getFromPool<Hazard>(g.hazards, () => ({
+              active: false, type: 'shrapnel', pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
+              speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
+              rotation: 0, trailTimer: 0
+            }));
+            bomb.type = 'cluster';
+            bomb.pos = { x: d.pos.x, y: d.pos.y + d.size };
+            bomb.targetPos = { x: d.pos.x + (Math.random() - 0.5) * 30, y: g.height * GROUND_RATIO };
+            bomb.speed = 200;
+            bomb.size = 10;
+            bomb.damage = 18;
+            bomb.warningDuration = 0;
+            bomb.warningTimer = 0;
+            bomb.falling = true;
+            bomb.splitDone = false;
+            bomb.rotation = 0;
+            bomb.trailTimer = 0;
+            sfxWarning();
+            addFloatingText(g, '💣', { x: d.pos.x, y: d.pos.y + 15 }, '#ef4444');
+          }
+        }
+
+        // Collision with player (scouts/trackers only do kamikaze)
+        if (d.tier !== 'bomber' && dist(d.pos, p.pos) < d.size + p.size) {
+          const dmg = d.tier === 'scout' ? 8 : 15;
+          damagePlayer(g, dmg, d.pos);
+          spawnParticles(g, d.pos, 12, '#ef4444', 120);
+          addExplosion(g, d.pos, 20);
+          sfxExplosion();
+          d.active = false;
         }
       }
-      d.pos.x += d.vel.x * dt;
-      d.pos.y += d.vel.y * dt;
 
-      if (dist(d.pos, p.pos) < d.size + p.size) {
-        damagePlayer(g, 15, d.pos);
-        spawnParticles(g, d.pos, 12, '#ef4444', 120);
-        addExplosion(g, d.pos, 20);
-        sfxExplosion();
-        d.active = false;
-      }
-
+      // Destroy by fresh craters
       for (const c of g.craters) {
         if (c.life > c.maxLife - 0.15 && dist(d.pos, c.pos) < c.size + d.size) {
-          d.active = false;
-          spawnParticles(g, d.pos, 12, '#f97316', 150);
-          addExplosion(g, d.pos, 18);
-          sfxExplosion();
-          addFloatingText(g, 'Drone Down! +25', d.pos, '#f97316');
-          g.score += 25;
-          g.stats.dronesDestroyed++;
+          d.health--;
+          if (d.health <= 0) {
+            d.active = false;
+            spawnParticles(g, d.pos, 12, '#f97316', 150);
+            addExplosion(g, d.pos, 18);
+            sfxExplosion();
+            const bonus = d.tier === 'bomber' ? 50 : d.tier === 'tracker' ? 35 : 25;
+            addFloatingText(g, `Drone Down! +${bonus}`, d.pos, '#f97316');
+            g.score += bonus;
+            g.stats.dronesDestroyed++;
+          }
           break;
         }
       }

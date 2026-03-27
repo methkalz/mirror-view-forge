@@ -504,39 +504,213 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.save();
     ctx.translate(d.pos.x, d.pos.y);
 
-    // Searchlight beam
-    ctx.fillStyle = 'rgba(239, 68, 68, 0.05)';
+    const groundY = g.height * 0.78;
+    const facingRight = d.vel.x >= 0;
+    const tilt = Math.sin(d.wobble * 2) * 0.05; // subtle tilt
+    ctx.rotate(tilt);
+
+    // Searchlight beam (stronger for trackers/bombers)
+    const beamAlpha = d.tier === 'scout' ? 0.03 : d.tier === 'tracker' ? 0.06 : 0.08;
+    const beamColor = d.tier === 'bomber' ? '255, 150, 0' : '239, 68, 68';
+    ctx.fillStyle = `rgba(${beamColor}, ${beamAlpha})`;
     ctx.beginPath();
+    const beamW = d.tier === 'bomber' ? 30 : 20;
     ctx.moveTo(-3, d.size);
-    ctx.lineTo(-20, g.height * 0.78 - d.pos.y);
-    ctx.lineTo(20, g.height * 0.78 - d.pos.y);
+    ctx.lineTo(-beamW, groundY - d.pos.y);
+    ctx.lineTo(beamW, groundY - d.pos.y);
     ctx.lineTo(3, d.size);
     ctx.fill();
 
-    // Body
-    ctx.fillStyle = '#4a1515';
-    ctx.beginPath();
-    ctx.ellipse(0, 0, d.size, d.size * 0.6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Eye
-    ctx.fillStyle = '#ef4444';
-    ctx.shadowColor = '#ef4444';
-    ctx.shadowBlur = 8;
-    ctx.beginPath();
-    ctx.arc(0, 0, d.size * 0.3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    // Propellers
-    const propAngle = g.elapsed * 20;
-    ctx.strokeStyle = '#888';
-    ctx.lineWidth = 1.5;
-    for (let i = 0; i < 4; i++) {
-      const a = propAngle + (Math.PI / 2) * i;
+    if (d.tier === 'scout') {
+      // SCOUT: Small quadcopter — 4 arms with rotors
+      const armLen = d.size * 1.2;
+      // Central body
+      const bodyGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, d.size * 0.6);
+      bodyGrad.addColorStop(0, '#555');
+      bodyGrad.addColorStop(1, '#333');
+      ctx.fillStyle = bodyGrad;
       ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * d.size * 0.7, Math.sin(a) * d.size * 0.4);
-      ctx.lineTo(Math.cos(a) * d.size * 1.5, Math.sin(a) * d.size * 0.9);
+      ctx.ellipse(0, 0, d.size * 0.5, d.size * 0.35, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#666';
+      ctx.lineWidth = 0.5;
       ctx.stroke();
+
+      // 4 arms
+      const propAngle = g.elapsed * 25;
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 4; i++) {
+        const armA = (Math.PI / 2) * i + Math.PI / 4;
+        const ax = Math.cos(armA) * armLen;
+        const ay = Math.sin(armA) * armLen * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(ax, ay);
+        ctx.stroke();
+        // Rotor disc
+        ctx.strokeStyle = `rgba(180,180,180,${0.3 + Math.sin(propAngle + i * 2) * 0.15})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(ax, ay, d.size * 0.4, d.size * 0.15, propAngle + i, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 2;
+      }
+
+      // LED indicator
+      const ledBlink = Math.sin(g.elapsed * 4) > 0;
+      ctx.fillStyle = ledBlink ? '#22c55e' : '#1a5c30';
+      ctx.beginPath();
+      ctx.arc(0, -d.size * 0.15, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+
+    } else if (d.tier === 'tracker') {
+      // TRACKER: Sleek military drone — elongated body with swept wings
+      const dir = facingRight ? 1 : -1;
+      // Main body (fuselage)
+      const bodyGrad = ctx.createLinearGradient(0, -d.size * 0.3, 0, d.size * 0.3);
+      bodyGrad.addColorStop(0, '#4a4a4a');
+      bodyGrad.addColorStop(0.5, '#2a2a2a');
+      bodyGrad.addColorStop(1, '#1a1a1a');
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.moveTo(dir * d.size * 1.3, 0);  // nose
+      ctx.lineTo(dir * d.size * 0.3, -d.size * 0.25);
+      ctx.lineTo(-dir * d.size, -d.size * 0.2);
+      ctx.lineTo(-dir * d.size * 1.1, 0);
+      ctx.lineTo(-dir * d.size, d.size * 0.2);
+      ctx.lineTo(dir * d.size * 0.3, d.size * 0.25);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+
+      // Wings
+      ctx.fillStyle = '#333';
+      ctx.beginPath();
+      ctx.moveTo(0, -d.size * 0.2);
+      ctx.lineTo(-dir * d.size * 0.4, -d.size * 0.9);
+      ctx.lineTo(-dir * d.size * 0.8, -d.size * 0.7);
+      ctx.lineTo(-dir * d.size * 0.3, -d.size * 0.2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(0, d.size * 0.2);
+      ctx.lineTo(-dir * d.size * 0.4, d.size * 0.9);
+      ctx.lineTo(-dir * d.size * 0.8, d.size * 0.7);
+      ctx.lineTo(-dir * d.size * 0.3, d.size * 0.2);
+      ctx.fill();
+
+      // Tail fins
+      ctx.fillStyle = '#3a3a3a';
+      ctx.beginPath();
+      ctx.moveTo(-dir * d.size * 0.9, 0);
+      ctx.lineTo(-dir * d.size * 1.2, -d.size * 0.4);
+      ctx.lineTo(-dir * d.size * 1.1, 0);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-dir * d.size * 0.9, 0);
+      ctx.lineTo(-dir * d.size * 1.2, d.size * 0.4);
+      ctx.lineTo(-dir * d.size * 1.1, 0);
+      ctx.fill();
+
+      // Engine glow
+      ctx.fillStyle = '#ef4444';
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.ellipse(-dir * d.size * 1.05, 0, 2, 1.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Red targeting eye
+      ctx.fillStyle = '#ef4444';
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(dir * d.size * 0.8, 0, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+    } else {
+      // BOMBER: Heavy military drone — large body with bomb bay
+      const dir = facingRight ? 1 : -1;
+      // Heavy fuselage
+      const bodyGrad = ctx.createLinearGradient(0, -d.size * 0.4, 0, d.size * 0.4);
+      bodyGrad.addColorStop(0, '#3d3530');
+      bodyGrad.addColorStop(0.5, '#2a2420');
+      bodyGrad.addColorStop(1, '#1a1510');
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.moveTo(dir * d.size * 1.2, 0);
+      ctx.lineTo(dir * d.size * 0.5, -d.size * 0.4);
+      ctx.lineTo(-dir * d.size * 0.8, -d.size * 0.35);
+      ctx.lineTo(-dir * d.size * 1.0, 0);
+      ctx.lineTo(-dir * d.size * 0.8, d.size * 0.4);
+      ctx.lineTo(dir * d.size * 0.5, d.size * 0.45);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#4a4035';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Wide wings
+      ctx.fillStyle = '#2a2420';
+      ctx.beginPath();
+      ctx.moveTo(dir * d.size * 0.2, -d.size * 0.35);
+      ctx.lineTo(-dir * d.size * 0.2, -d.size * 1.3);
+      ctx.lineTo(-dir * d.size * 0.7, -d.size * 1.1);
+      ctx.lineTo(-dir * d.size * 0.5, -d.size * 0.35);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(dir * d.size * 0.2, d.size * 0.4);
+      ctx.lineTo(-dir * d.size * 0.2, d.size * 1.3);
+      ctx.lineTo(-dir * d.size * 0.7, d.size * 1.1);
+      ctx.lineTo(-dir * d.size * 0.5, d.size * 0.4);
+      ctx.fill();
+
+      // Bomb bay indicator (underside glow)
+      const bombReady = d.bombTimer >= d.bombCooldown * 0.8;
+      if (bombReady) {
+        ctx.fillStyle = 'rgba(255, 100, 0, 0.4)';
+        ctx.beginPath();
+        ctx.ellipse(0, d.size * 0.3, d.size * 0.4, d.size * 0.15, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Dual engines
+      ctx.fillStyle = '#f97316';
+      ctx.shadowColor = '#f97316';
+      ctx.shadowBlur = 5;
+      ctx.beginPath();
+      ctx.ellipse(-dir * d.size * 0.95, -d.size * 0.15, 2.5, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(-dir * d.size * 0.95, d.size * 0.15, 2.5, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Warning stripes
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(dir * d.size * 0.1, -d.size * 0.35);
+      ctx.lineTo(dir * d.size * 0.1, d.size * 0.4);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Red eye
+      ctx.fillStyle = '#ef4444';
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(dir * d.size * 0.9, 0, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
     }
+
     ctx.restore();
   }
 }

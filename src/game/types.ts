@@ -7,7 +7,8 @@ export type GameState = 'start' | 'playing' | 'gameover';
 
 export type HazardType = 'shrapnel' | 'missile' | 'cluster';
 export type PowerUpType = 'medkit' | 'shield' | 'interceptor';
-export type DroneState = 'entering' | 'tracking';
+export type DroneState = 'entering' | 'tracking' | 'bombing';
+export type DroneTier = 'scout' | 'tracker' | 'bomber';
 export type PlayerAnim = 'idle' | 'walk' | 'roll' | 'hit';
 
 export interface Player {
@@ -110,6 +111,13 @@ export interface Drone {
   health: number;
   state: DroneState;
   entryTarget: Vec2;
+  tier: DroneTier;
+  bombTimer: number;
+  bombCooldown: number;
+  hoverTimer: number;
+  aggroDelay: number; // delay before tracking starts (for gradual difficulty)
+  trackingAccuracy: number; // 0-1, how well it tracks player
+  wobble: number; // visual wobble for scout drones
 }
 
 export interface Cloud {
