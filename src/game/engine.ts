@@ -1145,8 +1145,11 @@ export function update(g: GameData, input: InputState, dt: number) {
 
 function spawnBoss(g: GameData) {
   const count = g.bossCount;
-  const baseHP = 15 + count * 5;
+  // First boss: 10 HP, subsequent: 15 + count*5
+  const baseHP = count === 0 ? 10 : 15 + count * 5;
   const side = Math.random() < 0.5 ? -80 : g.width + 80;
+  // First boss: slower attacks (4.5s cooldown)
+  const cooldown = count === 0 ? 4.5 : Math.max(1.5, 3 - count * 0.3);
   g.boss = {
     pos: { x: side, y: g.height * 0.12 },
     vel: { x: 0, y: 0 },
@@ -1154,8 +1157,8 @@ function spawnBoss(g: GameData) {
     maxHealth: baseHP,
     size: 80,
     phase: 1,
-    attackTimer: 3,
-    attackCooldown: 3 - Math.min(1.5, count * 0.3),
+    attackTimer: cooldown,
+    attackCooldown: cooldown,
     attackPattern: 'missiles',
     entered: false,
     defeated: false,
