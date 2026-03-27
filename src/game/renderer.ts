@@ -1078,10 +1078,15 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.save();
   ctx.translate(p.pos.x, p.pos.y);
 
-  // Shadow on ground
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+  // Shadow on ground — multi-layer dynamic
+  const shadowPulse = 1 + Math.abs(bodyBob || 0) * 0.05;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
   ctx.beginPath();
-  ctx.ellipse(0, 2, p.size + 2, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 3, (p.size + 6) * shadowPulse, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+  ctx.beginPath();
+  ctx.ellipse(0, 2, (p.size + 1) * shadowPulse, 3.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
   const scale = p.facingRight ? 1 : -1;
@@ -1089,10 +1094,9 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
 
   // Hit flash
   const isHit = p.hitTimer > 0;
-  const bodyColor = isHit ? '#ef4444' : '#3b82f6';
-  const skinColor = isHit ? '#fca5a5' : '#f5d0a9';
-  const pantsColor = '#1e3a5f';
-  const shoeColor = '#2d2d2d';
+  const skinColor = isHit ? '#fca5a5' : '#f0c4a0';
+  const pantsColor = '#1a2f4a';
+  const shoeColor = '#1a1a1a';
 
   // Animation offsets
   let legOffset = 0;
