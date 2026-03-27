@@ -113,6 +113,22 @@ export function sfxExplosion() {
   setTimeout(() => playNoise(0.15, 0.03, { type: 'bandpass', freq: 3000 }), 120);
 }
 
+export function sfxImpactLight() {
+  // Light shrapnel hit — quick metallic ping
+  const freq = 800 + Math.random() * 600;
+  playTone(freq, 0.06, 'square', 0.06);
+  playNoise(0.08, 0.04, { type: 'highpass', freq: 3000 });
+}
+
+export function sfxImpactHeavy() {
+  // Heavy missile hit — deep rumbling thud
+  playTone(35, 0.4, 'sawtooth', 0.14);
+  playTone(55, 0.35, 'sine', 0.1);
+  playNoise(0.5, 0.12, { type: 'lowpass', freq: 400 });
+  setTimeout(() => playNoise(0.3, 0.06, { type: 'lowpass', freq: 200 }), 100);
+  setTimeout(() => playNoise(0.2, 0.04, { type: 'bandpass', freq: 600 }), 200);
+}
+
 export function sfxPickup() {
   playTone(500, 0.06, 'sine', 0.08);
   setTimeout(() => playTone(700, 0.06, 'sine', 0.08), 50);
