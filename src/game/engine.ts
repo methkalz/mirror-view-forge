@@ -431,6 +431,7 @@ export function update(g: GameData, input: InputState, dt: number) {
     { time: 120, id: 'bullet_2', text: '⬆ تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e' },
     { time: 200, id: 'bullet_3', text: '⬆ تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#fbbf24' },
     { time: 235, id: 'boss_warn', text: '🔴 إنذار أحمر!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626' },
+    { time: 235, id: 'boss_prep', text: '📦 إمدادات طارئة!', sub: 'EMERGENCY SUPPLIES DROPPED', color: '#22c55e' },
   ];
   for (const we of waveEvents) {
     if (g.elapsed >= we.time - 5 && !g.waveTriggered.has(we.id)) {
@@ -438,6 +439,22 @@ export function update(g: GameData, input: InputState, dt: number) {
       g.waveWarnings.push({ text: we.text, subText: we.sub, life: 4, maxLife: 4, color: we.color });
       if (we.id === 'bullet_2') g.bulletLevel = 2;
       if (we.id === 'bullet_3') g.bulletLevel = 3;
+      // Pre-boss: drop guaranteed ammo + medkit
+      if (we.id === 'boss_prep') {
+        for (const t of ['ammo', 'medkit'] as PowerUpType[]) {
+          const pu = getFromPool<PowerUp>(g.powerUps, () => ({
+            active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
+            parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
+          }), 20);
+          pu.type = t;
+          pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
+          pu.size = 14;
+          pu.parachuting = true;
+          pu.fallSpeed = 35;
+          pu.bobTimer = 0;
+          pu.groundTimer = 0;
+        }
+      }
     }
   }
   // Update wave warnings
@@ -578,15 +595,17 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (c.x > g.width + c.width) c.x = -c.width;
   }
 
-  // === Spawn hazards ===
+  // === Spawn hazards (reduced 60% during boss) ===
   g.spawnTimer -= dt;
   if (g.spawnTimer <= 0) {
     const spawnRate = Math.max(0.5, 2.0 - g.difficulty * 0.12);
-    g.spawnTimer = spawnRate;
+    // During boss fight, reduce hazard spawn rate by 60%
+    const bossMultiplier = g.boss && !g.boss.defeated ? 2.5 : 1;
+    g.spawnTimer = spawnRate * bossMultiplier;
     const types: HazardType[] = ['shrapnel', 'shrapnel', 'missile'];
     if (g.elapsed >= 90) types.push('cluster', 'cluster');
     spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
-    if (g.difficulty >= 4 && Math.random() < 0.25) {
+    if (g.difficulty >= 4 && Math.random() < 0.25 && !g.boss) {
       spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
     }
   }
@@ -1128,8 +1147,11 @@ export function update(g: GameData, input: InputState, dt: number) {
 
 function spawnBoss(g: GameData) {
   const count = g.bossCount;
-  const baseHP = 15 + count * 5;
+  // First boss: 10 HP, subsequent: 15 + count*5
+  const baseHP = count === 0 ? 10 : 15 + count * 5;
   const side = Math.random() < 0.5 ? -80 : g.width + 80;
+  // First boss: slower attacks (4.5s cooldown)
+  const cooldown = count === 0 ? 4.5 : Math.max(1.5, 3 - count * 0.3);
   g.boss = {
     pos: { x: side, y: g.height * 0.12 },
     vel: { x: 0, y: 0 },
@@ -1137,8 +1159,8 @@ function spawnBoss(g: GameData) {
     maxHealth: baseHP,
     size: 80,
     phase: 1,
-    attackTimer: 3,
-    attackCooldown: 3 - Math.min(1.5, count * 0.3),
+    attackTimer: cooldown,
+    attackCooldown: cooldown,
     attackPattern: 'missiles',
     entered: false,
     defeated: false,
@@ -1179,9 +1201,29 @@ function updateBoss(g: GameData, dt: number) {
     return;
   }
 
-  // Phase determination
+  // Phase determination with cooldown between phases
   const hpRatio = boss.health / boss.maxHealth;
-  boss.phase = hpRatio > 0.66 ? 1 : hpRatio > 0.33 ? 2 : 3;
+  const newPhase = hpRatio > 0.66 ? 1 : hpRatio > 0.33 ? 2 : 3;
+  if (newPhase !== boss.phase) {
+    boss.phase = newPhase;
+    // Phase transition: 2s cooldown + warning + power-up drop
+    boss.attackTimer = 2.0;
+    const phaseText = newPhase === 2 ? 'PHASE 2!' : 'PHASE 3!';
+    g.waveWarnings.push({ text: `⚡ ${phaseText}`, subText: 'BOSS PATTERN SHIFT', life: 2.5, maxLife: 2.5, color: '#fbbf24' });
+    // Drop a random power-up as mid-fight reward
+    const rewardTypes: PowerUpType[] = ['medkit', 'ammo', 'shield'];
+    const pu = getFromPool<PowerUp>(g.powerUps, () => ({
+      active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
+      parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
+    }), 20);
+    pu.type = rewardTypes[Math.floor(Math.random() * rewardTypes.length)];
+    pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
+    pu.size = 14;
+    pu.parachuting = true;
+    pu.fallSpeed = 40;
+    pu.bobTimer = 0;
+    pu.groundTimer = 0;
+  }
 
   // Slow patrol movement
   boss.pos.x += Math.sin(g.elapsed * 0.5) * 30 * dt;
@@ -1206,11 +1248,11 @@ function updateBoss(g: GameData, dt: number) {
           h.type = 'missile';
           h.pos = { x: g.boss!.pos.x + (Math.random() - 0.5) * 30, y: g.boss!.pos.y + 20 };
           h.targetPos = { x: p.pos.x + (Math.random() - 0.5) * 60, y: groundY };
-          h.speed = 280;
+          h.speed = 250;
           h.size = 10;
-          h.damage = 18;
-          h.warningDuration = 0.6;
-          h.warningTimer = 0.6;
+          h.damage = g.bossCount === 0 ? 12 : 18;
+          h.warningDuration = g.bossCount === 0 ? 1.2 : 0.6;
+          h.warningTimer = h.warningDuration;
           h.falling = false;
           h.rotation = 0;
           h.trailTimer = 0;
@@ -1234,9 +1276,9 @@ function updateBoss(g: GameData, dt: number) {
           h.targetPos = { x: bx, y: groundY };
           h.speed = 250;
           h.size = 12;
-          h.damage = 16;
-          h.warningDuration = 0.4;
-          h.warningTimer = 0.4;
+          h.damage = g.bossCount === 0 ? 10 : 16;
+          h.warningDuration = g.bossCount === 0 ? 1.0 : 0.4;
+          h.warningTimer = h.warningDuration;
           h.falling = false;
           h.rotation = 0;
           h.trailTimer = 0;
@@ -1259,11 +1301,11 @@ function updateBoss(g: GameData, dt: number) {
         h.type = 'missile';
         h.pos = { x: boss.pos.x + (i === 0 ? -20 : 20), y: boss.pos.y + 15 };
         h.targetPos = { x: p.pos.x + (Math.random() - 0.5) * 80, y: groundY };
-        h.speed = 300;
+        h.speed = 280;
         h.size = 10;
-        h.damage = 20;
-        h.warningDuration = 0.5;
-        h.warningTimer = 0.5;
+        h.damage = g.bossCount === 0 ? 14 : 20;
+        h.warningDuration = g.bossCount === 0 ? 1.0 : 0.5;
+        h.warningTimer = h.warningDuration;
         h.falling = false;
         h.rotation = 0;
         h.trailTimer = 0;
