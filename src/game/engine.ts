@@ -47,7 +47,7 @@ export function createGame(w: number, h: number): GameData {
     smokeTrails: [],
     floatingTexts: [],
     drones: [],
-    clouds: initClouds(w, h),
+    clouds: initClouds(),
     ambientParticles: [],
     bullets: [],
     score: 0,
@@ -80,19 +80,8 @@ export function createGame(w: number, h: number): GameData {
   };
 }
 
-function initClouds(w: number, h: number): Cloud[] {
-  const clouds: Cloud[] = [];
-  for (let i = 0; i < 6; i++) {
-    clouds.push({
-      x: Math.random() * w * 3 - w * 0.5,
-      y: 20 + Math.random() * h * 0.25,
-      width: 100 + Math.random() * 180,
-      height: 30 + Math.random() * 45,
-      speed: 2 + Math.random() * 4,
-      opacity: 0.15 + Math.random() * 0.2,
-    });
-  }
-  return clouds;
+function initClouds(): Cloud[] {
+  return [];
 }
 
 export function resetGame(g: GameData) {
@@ -123,7 +112,7 @@ export function resetGame(g: GameData) {
   g.smokeTrails.length = 0;
   g.floatingTexts.length = 0;
   g.ambientParticles.length = 0;
-  g.clouds = initClouds(g.width, g.height);
+  g.clouds = initClouds();
   g.score = 0;
   g.elapsed = 0;
   g.difficulty = 1;
@@ -589,16 +578,7 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (ap.life <= 0 || ap.pos.y > g.height) g.ambientParticles.splice(i, 1);
   }
 
-  // === Clouds (independent drift, no camera dependency) ===
-  for (const c of g.clouds) {
-    c.x += c.speed * dt;
-    // Recycle when drifting far off screen (absolute position)
-    if (c.x > g.width * 4) {
-      c.x = -c.width - Math.random() * 200;
-      c.y = 20 + Math.random() * g.height * 0.25;
-      c.opacity = 0.15 + Math.random() * 0.2;
-    }
-  }
+  // Clouds removed — stars only
 
   // === Spawn hazards (reduced 60% during boss) ===
   g.spawnTimer -= dt;
