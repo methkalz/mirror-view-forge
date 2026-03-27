@@ -110,6 +110,13 @@ export interface Drone {
   health: number;
   state: DroneState;
   entryTarget: Vec2;
+  tier: DroneTier;
+  bombTimer: number;
+  bombCooldown: number;
+  hoverTimer: number;
+  aggroDelay: number; // delay before tracking starts (for gradual difficulty)
+  trackingAccuracy: number; // 0-1, how well it tracks player
+  wobble: number; // visual wobble for scout drones
 }
 
 export interface Cloud {
