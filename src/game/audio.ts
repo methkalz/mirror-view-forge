@@ -131,3 +131,71 @@ export function sfxAirstrike() {
   setTimeout(() => sfxExplosion(), 350);
   setTimeout(() => sfxExplosion(), 500);
 }
+
+export function sfxThunder() {
+  playNoise(0.8, 0.15, { type: 'lowpass', freq: 200 });
+  playTone(30, 0.6, 'sine', 0.1);
+  setTimeout(() => playNoise(0.5, 0.08, { type: 'lowpass', freq: 150 }), 200);
+}
+
+export function sfxBossSiren() {
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(400, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.5);
+  osc.frequency.linearRampToValueAtTime(400, ctx.currentTime + 1.0);
+  osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 1.5);
+  gain.gain.setValueAtTime(0.08, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 2);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 2);
+}
+
+export function sfxBossExplosion() {
+  playTone(30, 0.8, 'sawtooth', 0.15);
+  playTone(50, 0.6, 'sine', 0.12);
+  playNoise(0.8, 0.15, { type: 'lowpass', freq: 500 });
+  setTimeout(() => { playNoise(0.5, 0.1, { type: 'lowpass', freq: 300 }); playTone(25, 0.5, 'sine', 0.08); }, 200);
+  setTimeout(() => playNoise(0.4, 0.06, { type: 'bandpass', freq: 1000 }), 400);
+}
+
+let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+let heartbeatGain: GainNode | null = null;
+
+export function updateHeartbeat(difficulty: number) {
+  if (difficulty < 2) {
+    stopHeartbeat();
+    return;
+  }
+  if (!heartbeatInterval) {
+    startHeartbeat(difficulty);
+  }
+}
+
+function startHeartbeat(difficulty: number) {
+  if (heartbeatInterval) return;
+  const beat = () => {
+    try {
+      const ctx = getCtx();
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 40;
+      const vol = Math.min(0.06, 0.02 + (difficulty - 2) * 0.01);
+      g.gain.setValueAtTime(vol, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.connect(g).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    } catch {}
+  };
+  const rate = Math.max(300, 800 - (difficulty - 2) * 100);
+  heartbeatInterval = setInterval(beat, rate);
+}
+
+export function stopHeartbeat() {
+  if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
+}

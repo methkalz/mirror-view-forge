@@ -1,9 +1,9 @@
 import {
   GameData, InputState, Hazard, PowerUp, Particle, Vec2, Crater, FloatingText, Drone, Bullet,
-  HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning
+  HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning, Boss
 } from './types';
 import { getFromPool } from './pool';
-import { sfxExplosion, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike } from './audio';
+import { sfxExplosion, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, updateHeartbeat, stopHeartbeat } from './audio';
 
 const DASH_SPEED = 500;
 const DASH_DURATION = 0.25;
@@ -62,7 +62,7 @@ export function createGame(w: number, h: number): GameData {
     width: w,
     height: h,
     camera: { x: 0, y: 0 },
-    stats: { closeCalls: 0, powerUpsCollected: 0, dronesDestroyed: 0, timeSurvived: 0 },
+    stats: { closeCalls: 0, powerUpsCollected: 0, dronesDestroyed: 0, timeSurvived: 0, bossesDefeated: 0 },
     windOffset: 0,
     waveWarnings: [],
     waveTriggered: new Set(),
@@ -70,6 +70,13 @@ export function createGame(w: number, h: number): GameData {
     slowMoTimer: 0,
     magnetTimer: 0,
     slowMoFactor: 1,
+    boss: null,
+    bossCount: 0,
+    bossTimer: 240,
+    rainDrops: [],
+    lightningTimer: 0,
+    lightningFlash: 0,
+    weatherIntensity: 0,
   };
 }
 
@@ -126,7 +133,7 @@ export function resetGame(g: GameData) {
   g.screenShake = { x: 0, y: 0 };
   g.damageFlash = 0;
   g.camera = { x: 0, y: 0 };
-  g.stats = { closeCalls: 0, powerUpsCollected: 0, dronesDestroyed: 0, timeSurvived: 0 };
+  g.stats = { closeCalls: 0, powerUpsCollected: 0, dronesDestroyed: 0, timeSurvived: 0, bossesDefeated: 0 };
   g.windOffset = 0;
   g.waveWarnings = [];
   g.waveTriggered = new Set();
@@ -134,6 +141,14 @@ export function resetGame(g: GameData) {
   g.slowMoTimer = 0;
   g.magnetTimer = 0;
   g.slowMoFactor = 1;
+  g.boss = null;
+  g.bossCount = 0;
+  g.bossTimer = 240;
+  g.rainDrops = [];
+  g.lightningTimer = 0;
+  g.lightningFlash = 0;
+  g.weatherIntensity = 0;
+  stopHeartbeat();
 }
 
 function dist(a: Vec2, b: Vec2): number {
