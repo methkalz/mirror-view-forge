@@ -56,6 +56,7 @@ export interface PowerUp {
   parachuting: boolean;
   fallSpeed: number;
   bobTimer: number;
+  groundTimer: number;
 }
 
 export interface Particle {

@@ -217,15 +217,23 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
     if (hz.type === 'missile') {
       const angle = Math.atan2(hz.targetPos.y - hz.pos.y, hz.targetPos.x - hz.pos.x);
       ctx.rotate(angle);
-      // Body
-      ctx.fillStyle = '#5a5f65';
+      // Body with metallic gradient
+      const bodyGrad = ctx.createLinearGradient(-hz.size, -hz.size * 0.35, -hz.size, hz.size * 0.35);
+      bodyGrad.addColorStop(0, '#7a8088');
+      bodyGrad.addColorStop(0.4, '#5a5f65');
+      bodyGrad.addColorStop(1, '#3a3f45');
+      ctx.fillStyle = bodyGrad;
       ctx.beginPath();
       ctx.moveTo(hz.size * 1.2, 0);
       ctx.lineTo(-hz.size, -hz.size * 0.35);
       ctx.lineTo(-hz.size, hz.size * 0.35);
       ctx.closePath();
       ctx.fill();
-      // Nose
+      // Outline
+      ctx.strokeStyle = '#9a9fa8';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+      // Nose cone (red)
       ctx.fillStyle = '#dc2626';
       ctx.beginPath();
       ctx.moveTo(hz.size * 1.2, 0);
@@ -233,45 +241,90 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.lineTo(hz.size * 0.7, hz.size * 0.2);
       ctx.closePath();
       ctx.fill();
+      // Stripes
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillRect(-hz.size * 0.2, -hz.size * 0.3, 3, hz.size * 0.6);
       // Fins
       ctx.fillStyle = '#4b5563';
-      ctx.fillRect(-hz.size * 0.8, -hz.size * 0.55, hz.size * 0.4, hz.size * 0.2);
-      ctx.fillRect(-hz.size * 0.8, hz.size * 0.35, hz.size * 0.4, hz.size * 0.2);
-      // Exhaust flame
+      ctx.beginPath();
+      ctx.moveTo(-hz.size * 0.8, -hz.size * 0.35);
+      ctx.lineTo(-hz.size * 1.1, -hz.size * 0.7);
+      ctx.lineTo(-hz.size * 0.5, -hz.size * 0.35);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-hz.size * 0.8, hz.size * 0.35);
+      ctx.lineTo(-hz.size * 1.1, hz.size * 0.7);
+      ctx.lineTo(-hz.size * 0.5, hz.size * 0.35);
+      ctx.fill();
+      // Exhaust flame (multi-layered)
       ctx.fillStyle = '#f97316';
       ctx.beginPath();
       ctx.moveTo(-hz.size, 0);
-      ctx.lineTo(-hz.size - 10 - Math.random() * 8, -3 - Math.random() * 2);
-      ctx.lineTo(-hz.size - 10 - Math.random() * 8, 3 + Math.random() * 2);
+      ctx.lineTo(-hz.size - 14 - Math.random() * 10, -4 - Math.random() * 3);
+      ctx.lineTo(-hz.size - 14 - Math.random() * 10, 4 + Math.random() * 3);
       ctx.closePath();
       ctx.fill();
       ctx.fillStyle = '#fbbf24';
       ctx.beginPath();
       ctx.moveTo(-hz.size, 0);
-      ctx.lineTo(-hz.size - 5 - Math.random() * 4, -1.5);
-      ctx.lineTo(-hz.size - 5 - Math.random() * 4, 1.5);
+      ctx.lineTo(-hz.size - 8 - Math.random() * 5, -2);
+      ctx.lineTo(-hz.size - 8 - Math.random() * 5, 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#fff8';
+      ctx.beginPath();
+      ctx.moveTo(-hz.size, 0);
+      ctx.lineTo(-hz.size - 3 - Math.random() * 3, -1);
+      ctx.lineTo(-hz.size - 3 - Math.random() * 3, 1);
       ctx.closePath();
       ctx.fill();
     } else if (hz.type === 'cluster') {
       ctx.rotate(hz.rotation);
-      // Glowing sphere
-      const cGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, hz.size);
-      cGrad.addColorStop(0, '#fbbf24');
-      cGrad.addColorStop(0.5, '#dc2626');
-      cGrad.addColorStop(1, '#7f1d1d');
-      ctx.fillStyle = cGrad;
+      // Bomb body — dark sphere with fuse
+      const bombGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, hz.size);
+      bombGrad.addColorStop(0, '#555');
+      bombGrad.addColorStop(0.7, '#222');
+      bombGrad.addColorStop(1, '#111');
+      ctx.fillStyle = bombGrad;
       ctx.beginPath();
       ctx.arc(0, 0, hz.size, 0, Math.PI * 2);
       ctx.fill();
-      // Inner glow
-      ctx.fillStyle = 'rgba(251, 191, 36, 0.6)';
+      // Metallic highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
       ctx.beginPath();
-      ctx.arc(0, 0, hz.size * 0.4, 0, Math.PI * 2);
+      ctx.arc(-hz.size * 0.3, -hz.size * 0.3, hz.size * 0.35, 0, Math.PI * 2);
       ctx.fill();
+      // Fuse on top
+      ctx.strokeStyle = '#8B7355';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, -hz.size);
+      ctx.quadraticCurveTo(4, -hz.size - 6, 2, -hz.size - 10);
+      ctx.stroke();
+      // Spark at fuse tip
+      const sparkSize = 2 + Math.sin(g.elapsed * 20) * 1.5;
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.arc(2, -hz.size - 10, sparkSize, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(2, -hz.size - 10, sparkSize * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      // Warning band
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, hz.size * 0.7, -0.3, Math.PI + 0.3);
+      ctx.stroke();
     } else {
-      // Shrapnel — angular metal chunk
+      // Shrapnel — angular metal chunk with better detail
       ctx.rotate(hz.rotation);
-      ctx.fillStyle = '#78716c';
+      const shrapGrad = ctx.createLinearGradient(-hz.size, -hz.size, hz.size, hz.size);
+      shrapGrad.addColorStop(0, '#9a9590');
+      shrapGrad.addColorStop(0.5, '#78716c');
+      shrapGrad.addColorStop(1, '#57534e');
+      ctx.fillStyle = shrapGrad;
       ctx.beginPath();
       const pts = [
         { x: -hz.size, y: -hz.size * 0.4 },
@@ -285,9 +338,16 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
       for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
       ctx.closePath();
       ctx.fill();
-      // Metal shine
-      ctx.strokeStyle = '#a8a29e';
+      // Edge highlight
+      ctx.strokeStyle = '#b8b2aa';
       ctx.lineWidth = 1;
+      ctx.stroke();
+      // Scratch marks
+      ctx.strokeStyle = 'rgba(200,195,185,0.3)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(-hz.size * 0.5, -hz.size * 0.2);
+      ctx.lineTo(hz.size * 0.3, hz.size * 0.1);
       ctx.stroke();
     }
     ctx.restore();
@@ -354,27 +414,52 @@ function renderExplosions(ctx: CanvasRenderingContext2D, g: GameData) {
 function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
   for (const pu of g.powerUps) {
     if (!pu.active) continue;
+
+    // Fade out when about to expire on ground
+    let fadeAlpha = 1;
+    if (!pu.parachuting) {
+      const maxGroundTime = Math.max(1.5, 3 - (g.difficulty - 1) * 0.3);
+      const remaining = maxGroundTime - pu.groundTimer;
+      if (remaining < 1.5) {
+        // Blink effect in last 1.5s
+        fadeAlpha = remaining < 0.8 ? (Math.sin(g.elapsed * 16) * 0.5 + 0.5) : 0.6 + remaining * 0.27;
+      }
+    }
+
     ctx.save();
+    ctx.globalAlpha = fadeAlpha;
     ctx.translate(pu.pos.x, pu.pos.y);
     const bob = Math.sin(pu.bobTimer * 3) * 3;
     ctx.translate(0, bob);
 
     if (pu.parachuting) {
-      // Parachute canopy
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      // Better parachute — dome shape with panels
+      const canopyW = 22, canopyH = 14;
+      // Main canopy
+      ctx.fillStyle = pu.type === 'medkit' ? 'rgba(34, 197, 94, 0.5)' :
+                      pu.type === 'shield' ? 'rgba(96, 165, 250, 0.5)' :
+                      'rgba(249, 115, 22, 0.5)';
       ctx.beginPath();
-      ctx.arc(0, -24, 16, Math.PI, 0);
+      ctx.ellipse(0, -26, canopyW, canopyH, 0, Math.PI, 0);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-      ctx.lineWidth = 0.5;
+      // Canopy outline
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Panel lines
+      ctx.beginPath();
+      ctx.moveTo(-11, -26); ctx.lineTo(-8, -38);
+      ctx.moveTo(0, -26); ctx.lineTo(0, -40);
+      ctx.moveTo(11, -26); ctx.lineTo(8, -38);
       ctx.stroke();
       // Strings
-      ctx.strokeStyle = '#aaa';
-      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = 'rgba(200,200,200,0.6)';
+      ctx.lineWidth = 0.7;
       ctx.beginPath();
-      ctx.moveTo(-10, -2); ctx.lineTo(-14, -22);
-      ctx.moveTo(10, -2); ctx.lineTo(14, -22);
-      ctx.moveTo(0, -4); ctx.lineTo(0, -24);
+      ctx.moveTo(-8, -4); ctx.lineTo(-18, -26);
+      ctx.moveTo(8, -4); ctx.lineTo(18, -26);
+      ctx.moveTo(-2, -6); ctx.lineTo(-5, -26);
+      ctx.moveTo(2, -6); ctx.lineTo(5, -26);
       ctx.stroke();
     }
 
@@ -384,18 +469,24 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     if (pu.type === 'interceptor') { color = '#f97316'; icon = '⚡'; }
 
     // Glow
-    const glowGrad = ctx.createRadialGradient(0, 0, pu.size * 0.5, 0, 0, pu.size * 2);
-    glowGrad.addColorStop(0, `${color}40`);
+    const glowGrad = ctx.createRadialGradient(0, 0, pu.size * 0.5, 0, 0, pu.size * 2.5);
+    glowGrad.addColorStop(0, `${color}50`);
     glowGrad.addColorStop(1, 'transparent');
     ctx.fillStyle = glowGrad;
     ctx.beginPath();
-    ctx.arc(0, 0, pu.size * 2, 0, Math.PI * 2);
+    ctx.arc(0, 0, pu.size * 2.5, 0, Math.PI * 2);
     ctx.fill();
 
+    // Item circle with border
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(0, 0, pu.size, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Icon
     ctx.fillStyle = '#fff';
     ctx.font = `bold ${pu.size}px sans-serif`;
     ctx.textAlign = 'center';

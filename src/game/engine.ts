@@ -216,7 +216,7 @@ function spawnPowerUp(g: GameData) {
   const type = types[Math.floor(Math.random() * types.length)];
   const pu = getFromPool<PowerUp>(g.powerUps, () => ({
     active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
-    parachuting: false, fallSpeed: 0, bobTimer: 0
+    parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
   }), 20);
   pu.type = type;
   pu.pos = { x: 40 + Math.random() * (g.width - 80), y: -20 };
@@ -224,6 +224,7 @@ function spawnPowerUp(g: GameData) {
   pu.parachuting = true;
   pu.fallSpeed = 35 + Math.random() * 15;
   pu.bobTimer = 0;
+  pu.groundTimer = 0;
 }
 
 function spawnDrone(g: GameData) {
@@ -532,6 +533,16 @@ export function update(g: GameData, input: InputState, dt: number) {
       if (pu.pos.y >= groundY - 10) {
         pu.parachuting = false;
         pu.pos.y = groundY - 10;
+        pu.groundTimer = 0;
+      }
+    } else {
+      // Timeout on ground: 3s base, decreasing with difficulty
+      const maxGroundTime = Math.max(1.5, 3 - (g.difficulty - 1) * 0.3);
+      pu.groundTimer += dt;
+      if (pu.groundTimer >= maxGroundTime) {
+        pu.active = false;
+        spawnParticles(g, pu.pos, 5, '#888', 60, false);
+        continue;
       }
     }
     pu.bobTimer += dt;
