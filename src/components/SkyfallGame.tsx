@@ -119,8 +119,6 @@ const SkyfallGame: React.FC = () => {
 
     // Unified pointer for start/restart (no double-fire)
     const onPointerDown = (e: PointerEvent) => {
-      // Always try to resume audio on any user interaction
-      resumeAudio();
       // Ignore if it came from a control button
       if ((e.target as HTMLElement) !== canvas) return;
       e.preventDefault();
@@ -132,8 +130,8 @@ const SkyfallGame: React.FC = () => {
     const preventContext = (e: Event) => e.preventDefault();
     document.addEventListener('selectstart', preventSelect);
     document.addEventListener('contextmenu', preventContext);
-    // Block touch callout on canvas — resume audio first so gesture is recognized
-    const preventTouch = (e: TouchEvent) => { resumeAudio(); e.preventDefault(); };
+    // Block touch callout on canvas
+    const preventTouch = (e: TouchEvent) => { e.preventDefault(); };
     canvas.addEventListener('touchstart', preventTouch, { passive: false });
 
     window.addEventListener('keydown', onKeyDown);
@@ -183,7 +181,6 @@ const SkyfallGame: React.FC = () => {
 
   // Button handlers
   const handleButtonDown = (action: 'left' | 'right' | 'roll' | 'shoot') => {
-    resumeAudio();
     vibrate(action === 'roll' ? 30 : 12);
     if (action === 'left') inputRef.current.keys.add('arrowleft');
     else if (action === 'right') inputRef.current.keys.add('arrowright');
