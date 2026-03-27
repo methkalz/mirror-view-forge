@@ -715,6 +715,44 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.shadowBlur = 0;
     }
 
+    // === Damage effects: fire & smoke on damaged drones ===
+    if (damaged) {
+      // Fire glow at center
+      const fireGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, d.size * 0.8);
+      fireGrad.addColorStop(0, `rgba(255, 100, 0, ${0.3 + Math.sin(d.wobble * 12) * 0.15})`);
+      fireGrad.addColorStop(0.6, 'rgba(255, 50, 0, 0.1)');
+      fireGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = fireGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, d.size * 0.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Flickering fire tongue
+      const fireH = 6 + Math.sin(d.wobble * 15) * 4;
+      ctx.fillStyle = `rgba(255, 150, 0, ${0.5 + Math.sin(d.wobble * 10) * 0.3})`;
+      ctx.beginPath();
+      ctx.moveTo(-3, d.size * 0.3);
+      ctx.lineTo(0, d.size * 0.3 + fireH);
+      ctx.lineTo(3, d.size * 0.3);
+      ctx.fill();
+      ctx.fillStyle = `rgba(255, 220, 50, 0.6)`;
+      ctx.beginPath();
+      ctx.moveTo(-1.5, d.size * 0.3);
+      ctx.lineTo(0, d.size * 0.3 + fireH * 0.5);
+      ctx.lineTo(1.5, d.size * 0.3);
+      ctx.fill();
+
+      // Health bar above drone
+      const barW = d.size * 2;
+      const barH = 3;
+      const barY = -d.size - 8;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(-barW / 2 - 1, barY - 1, barW + 2, barH + 2);
+      const hpRatio = d.health / d.maxHealth;
+      ctx.fillStyle = hpRatio > 0.5 ? '#22c55e' : '#ef4444';
+      ctx.fillRect(-barW / 2, barY, barW * hpRatio, barH);
+    }
+
     ctx.restore();
   }
 }
