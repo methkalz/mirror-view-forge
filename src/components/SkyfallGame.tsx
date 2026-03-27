@@ -181,7 +181,7 @@ const SkyfallGame: React.FC = () => {
             onPointerDown={(e) => { e.stopPropagation(); handleButtonDown('right'); }}
             onPointerUp={() => handleButtonUp('right')}
             onPointerLeave={() => handleButtonUp('right')}
-            style={btnStyle({ left: 92, bottom: 40, width: 64, height: 64 })}
+            style={btnStyle({ left: 104, bottom: 40, width: 64, height: 64 })}
           >▶</button>
           <button
             onPointerDown={(e) => { e.stopPropagation(); handleButtonDown('roll'); }}
