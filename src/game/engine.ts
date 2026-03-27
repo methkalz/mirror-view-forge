@@ -431,6 +431,7 @@ export function update(g: GameData, input: InputState, dt: number) {
     { time: 120, id: 'bullet_2', text: '⬆ تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e' },
     { time: 200, id: 'bullet_3', text: '⬆ تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#fbbf24' },
     { time: 235, id: 'boss_warn', text: '🔴 إنذار أحمر!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626' },
+    { time: 235, id: 'boss_prep', text: '📦 إمدادات طارئة!', sub: 'EMERGENCY SUPPLIES DROPPED', color: '#22c55e' },
   ];
   for (const we of waveEvents) {
     if (g.elapsed >= we.time - 5 && !g.waveTriggered.has(we.id)) {
@@ -438,6 +439,22 @@ export function update(g: GameData, input: InputState, dt: number) {
       g.waveWarnings.push({ text: we.text, subText: we.sub, life: 4, maxLife: 4, color: we.color });
       if (we.id === 'bullet_2') g.bulletLevel = 2;
       if (we.id === 'bullet_3') g.bulletLevel = 3;
+      // Pre-boss: drop guaranteed ammo + medkit
+      if (we.id === 'boss_prep') {
+        for (const t of ['ammo', 'medkit'] as PowerUpType[]) {
+          const pu = getFromPool<PowerUp>(g.powerUps, () => ({
+            active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
+            parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
+          }), 20);
+          pu.type = t;
+          pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
+          pu.size = 14;
+          pu.parachuting = true;
+          pu.fallSpeed = 35;
+          pu.bobTimer = 0;
+          pu.groundTimer = 0;
+        }
+      }
     }
   }
   // Update wave warnings
