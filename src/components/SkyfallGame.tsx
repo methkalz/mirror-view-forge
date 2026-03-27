@@ -107,7 +107,10 @@ const SkyfallGame: React.FC = () => {
       inputRef.current.keys.delete(e.key.toLowerCase());
     };
 
-    // Touch on canvas for start/gameover only
+    // Touch/click on canvas for start/gameover
+    const onCanvasClick = () => {
+      startOrRestart();
+    };
     const onTouchStart = (e: TouchEvent) => {
       const g = gameRef.current;
       if (g && (g.state === 'start' || g.state === 'gameover')) {
