@@ -1,39 +1,39 @@
 
 
-# منع قائمة Copy/Select All نهائياً على جميع الأجهزة
+# تحسين تخطيط أزرار التحكم + زر إطلاق احترافي
 
-## المشكلة
-رغم وجود `user-select: none` على `canvas` و `button`، قائمة النظام (Copy/Paste/Select All) تظهر عند الضغط المطوّل أو اللمسات المتعددة لأن:
-1. عنصر `body` و `html` و `#root` ليس عليهم حماية
-2. لا يوجد مُستمع لمنع أحداث `selectstart` و `touchstart` الافتراضية
-3. الـ CSS لا يغطي كل العناصر في شجرة DOM
+## التخطيط الحالي (viewport 430px)
+- السهم الأيسر: `left: 14, bottom: 95, width: 72`
+- السهم الأيمن: `left: 116, bottom: 95, width: 72` (فجوة 30px فقط)
+- زر FIRE: `left: 58, bottom: 170` (وسط الأسهم)
+- زر ROLL: `right: 16, bottom: 95`
 
-## الحل — 3 تغييرات
+## التخطيط الجديد
 
-### 1. `src/index.css` — تغطية شاملة
-توسيع القواعد لتشمل `*` (كل العناصر) بدل `canvas, button` فقط:
-```css
-*, *::before, *::after {
-  -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
+### 1. تباعد أكبر بين الأسهم
+- السهم الأيسر: `left: 14, bottom: 95, width: 72`
+- السهم الأيمن: `left: 136, bottom: 95, width: 72` (فجوة 50px بدل 30px)
+
+### 2. زر الإطلاق فوق السهم الأيمن مباشرة
+- الموقع: `left: 136, bottom: 170` (محاذاة مع السهم الأيمن)
+
+### 3. تصميم زر إطلاق احترافي
+بدل النص والرمز Unicode البسيط، تصميم مكون من جزئين:
+- **أيقونة رصاصة مرسومة بـ SVG inline**: شكل رصاصة بسيط احترافي (مستطيل مع رأس مدبب)
+- **عداد دائري**: دائرة صغيرة (badge) في الزاوية العلوية اليمنى تعرض عدد الطلقات بخط صغير
+- اللون: أرجواني نابض عند وجود ذخيرة، رمادي باهت عند النفاذ
+- الحجم: `width: 72, height: 52` ليتناسب مع عرض السهم تحته
+
+```text
+التخطيط الجديد:
+                                    
+  [  ‹  ]    [ 🔫 ③ ]   ...   [ ROLL ]
+  [  ‹  ]    [  ›   ]   ...   [ ROLL ]
+   left        right             right
 ```
 
-### 2. `index.html` — منع على مستوى الـ body
-إضافة `style` على `body` كخط دفاع أول قبل تحميل React:
-```html
-<body style="-webkit-user-select:none;-webkit-touch-callout:none;user-select:none;">
-```
+## التغييرات — ملف واحد: `src/components/SkyfallGame.tsx`
 
-### 3. `src/components/SkyfallGame.tsx` — منع أحداث التحديد برمجياً
-إضافة مُستمعات في `useEffect` الرئيسي:
-- `document.addEventListener('selectstart', e => e.preventDefault())` — يمنع بدء أي تحديد نصي
-- `document.addEventListener('contextmenu', e => e.preventDefault())` — يمنع القائمة السياقية على مستوى المستند
-- على الـ canvas: `touchstart` مع `{ passive: false }` و `e.preventDefault()` لمنع سلوك اللمس الافتراضي الذي يُفعّل القائمة
-
-هذا الحل يعمل على iOS Safari، Chrome Android، Samsung Internet، وجميع المتصفحات الأخرى.
-
+### زر FIRE (سطر 215-244)
+- تغيير `left: 58` → `left: 136` (فوق السهم الأيمن)
+- استبدال المحتوى بـ:
