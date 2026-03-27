@@ -1037,13 +1037,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillText('ROLL ●', w - 14, h - 14);
   }
 
-  // Shield indicator
-  if (p.shielded) {
-    ctx.fillStyle = '#60a5fa';
-    ctx.font = '10px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(`SHIELD ${p.shieldTimer.toFixed(1)}s`, 14, h - 14);
-  }
+  // Shield indicator moved to active effects section below
 
   // Ammo indicator with bullet level
   if (p.ammo > 0) {
