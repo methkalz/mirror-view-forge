@@ -139,8 +139,14 @@ const SkyfallGame: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Haptic feedback helper
+  const vibrate = (ms: number = 15) => {
+    if (navigator.vibrate) navigator.vibrate(ms);
+  };
+
   // Button handlers
   const handleButtonDown = (action: 'left' | 'right' | 'roll' | 'shoot') => {
+    vibrate(action === 'roll' ? 30 : 15);
     if (action === 'left') inputRef.current.keys.add('arrowleft');
     else if (action === 'right') inputRef.current.keys.add('arrowright');
     else if (action === 'roll') inputRef.current.dash = true;
