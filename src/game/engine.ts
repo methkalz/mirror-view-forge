@@ -64,6 +64,9 @@ export function createGame(w: number, h: number): GameData {
     camera: { x: 0, y: 0 },
     stats: { closeCalls: 0, powerUpsCollected: 0, dronesDestroyed: 0, timeSurvived: 0 },
     windOffset: 0,
+    waveWarnings: [],
+    waveTriggered: new Set(),
+    bulletLevel: 1,
   };
 }
 
@@ -122,6 +125,9 @@ export function resetGame(g: GameData) {
   g.camera = { x: 0, y: 0 };
   g.stats = { closeCalls: 0, powerUpsCollected: 0, dronesDestroyed: 0, timeSurvived: 0 };
   g.windOffset = 0;
+  g.waveWarnings = [];
+  g.waveTriggered = new Set();
+  g.bulletLevel = 1;
 }
 
 function dist(a: Vec2, b: Vec2): number {
