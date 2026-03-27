@@ -107,7 +107,10 @@ const SkyfallGame: React.FC = () => {
       inputRef.current.keys.delete(e.key.toLowerCase());
     };
 
-    // Touch on canvas for start/gameover only
+    // Touch/click on canvas for start/gameover
+    const onCanvasClick = () => {
+      startOrRestart();
+    };
     const onTouchStart = (e: TouchEvent) => {
       const g = gameRef.current;
       if (g && (g.state === 'start' || g.state === 'gameover')) {
@@ -119,6 +122,7 @@ const SkyfallGame: React.FC = () => {
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('click', onCanvasClick);
 
     return () => {
       cancelAnimationFrame(rafRef.current);
@@ -126,6 +130,7 @@ const SkyfallGame: React.FC = () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       canvas.removeEventListener('touchstart', onTouchStart);
+      canvas.removeEventListener('click', onCanvasClick);
     };
   }, [resize, loop, startOrRestart]);
 
