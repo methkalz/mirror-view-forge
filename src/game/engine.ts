@@ -3,7 +3,7 @@ import {
   HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning
 } from './types';
 import { getFromPool } from './pool';
-import { sfxExplosion, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning } from './audio';
+import { sfxExplosion, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike } from './audio';
 
 const DASH_SPEED = 500;
 const DASH_DURATION = 0.25;
@@ -67,6 +67,9 @@ export function createGame(w: number, h: number): GameData {
     waveWarnings: [],
     waveTriggered: new Set(),
     bulletLevel: 1,
+    slowMoTimer: 0,
+    magnetTimer: 0,
+    slowMoFactor: 1,
   };
 }
 
@@ -128,6 +131,9 @@ export function resetGame(g: GameData) {
   g.waveWarnings = [];
   g.waveTriggered = new Set();
   g.bulletLevel = 1;
+  g.slowMoTimer = 0;
+  g.magnetTimer = 0;
+  g.slowMoFactor = 1;
 }
 
 function dist(a: Vec2, b: Vec2): number {
@@ -376,9 +382,19 @@ export function update(g: GameData, input: InputState, dt: number) {
 
   dt = Math.min(dt, 0.05);
   g.elapsed += dt;
-  g.difficulty = 1 + g.elapsed / 60; // gradual: takes 60s per difficulty level instead of 30
-  g.score += Math.round(dt); // +1 per second survived, bonuses accumulate
+  g.difficulty = 1 + g.elapsed / 60;
+  g.score += Math.round(dt);
   g.windOffset = Math.sin(g.elapsed * 0.3) * 0.5;
+
+  // === Slow-mo & Magnet timers ===
+  if (g.slowMoTimer > 0) {
+    g.slowMoTimer -= dt;
+    g.slowMoFactor = 0.3;
+    if (g.slowMoTimer <= 0) { g.slowMoFactor = 1; g.slowMoTimer = 0; }
+  } else {
+    g.slowMoFactor = 1;
+  }
+  if (g.magnetTimer > 0) g.magnetTimer -= dt;
 
   // === Wave warnings ===
   const waveEvents: { time: number; id: string; text: string; sub: string; color: string }[] = [
@@ -643,8 +659,8 @@ export function update(g: GameData, input: InputState, dt: number) {
           }
         }
       } else {
-        h.pos.x += (dx / d) * h.speed * dt;
-        h.pos.y += (dy / d) * h.speed * dt;
+      h.pos.x += (dx / d) * h.speed * g.slowMoFactor * dt;
+        h.pos.y += (dy / d) * h.speed * g.slowMoFactor * dt;
       }
     }
   }
@@ -703,6 +719,59 @@ export function update(g: GameData, input: InputState, dt: number) {
           addFloatingText(g, '+8 Ammo', { x: p.pos.x, y: p.pos.y - 40 }, '#a855f7');
           spawnParticles(g, p.pos, 8, '#a855f7', 80);
           break;
+        case 'slowmo':
+          g.slowMoTimer = 5;
+          addFloatingText(g, 'SLOW-MO!', { x: p.pos.x, y: p.pos.y - 40 }, '#06b6d4');
+          spawnParticles(g, p.pos, 12, '#06b6d4', 100);
+          sfxSlowmo();
+          break;
+        case 'magnet':
+          g.magnetTimer = 8;
+          addFloatingText(g, 'MAGNET!', { x: p.pos.x, y: p.pos.y - 40 }, '#ef4444');
+          spawnParticles(g, p.pos, 10, '#ef4444', 90);
+          sfxMagnet();
+          break;
+        case 'airstrike': {
+          addFloatingText(g, 'AIRSTRIKE!', { x: p.pos.x, y: p.pos.y - 40 }, '#fbbf24');
+          g.damageFlash = 0.5; // white flash
+          sfxAirstrike();
+          // Destroy all hazards
+          for (const h of g.hazards) {
+            if (h.active) {
+              addExplosion(g, h.pos, h.size * 2);
+              spawnParticles(g, h.pos, 6, '#f97316', 150);
+              h.active = false;
+              g.score += 15;
+            }
+          }
+          // Destroy all drones
+          for (const dr of g.drones) {
+            if (dr.active) {
+              addExplosion(g, dr.pos, 20);
+              spawnParticles(g, dr.pos, 10, '#f97316', 180);
+              dr.active = false;
+              g.score += 30;
+              g.stats.dronesDestroyed++;
+            }
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  // === Magnet attraction ===
+  if (g.magnetTimer > 0) {
+    const magnetRange = g.width * 0.5;
+    for (const pu2 of g.powerUps) {
+      if (!pu2.active) continue;
+      const dx = p.pos.x - pu2.pos.x;
+      const dy = p.pos.y - pu2.pos.y;
+      const d2 = Math.sqrt(dx * dx + dy * dy);
+      if (d2 < magnetRange && d2 > 5) {
+        const speed = 200 * (1 - d2 / magnetRange);
+        pu2.pos.x += (dx / d2) * speed * dt;
+        pu2.pos.y += (dy / d2) * speed * dt;
       }
     }
   }
