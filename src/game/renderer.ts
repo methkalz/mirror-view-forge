@@ -1807,7 +1807,17 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderLightning(ctx, g);
 
   // Cinematic vignette overlay
-  renderVignette(ctx, g);
+  {
+    const { width: vw, height: vh } = g;
+    const cx = vw / 2, cy = vh / 2;
+    const r = Math.max(vw, vh) * 0.7;
+    const vigGrad = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r);
+    vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
+    vigGrad.addColorStop(0.7, 'rgba(0,0,0,0.1)');
+    vigGrad.addColorStop(1, 'rgba(0,0,0,0.45)');
+    ctx.fillStyle = vigGrad;
+    ctx.fillRect(0, 0, vw, vh);
+  }
 
   // Damage flash (full screen, no shake)
   if (g.damageFlash > 0) {
