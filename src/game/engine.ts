@@ -547,13 +547,24 @@ export function update(g: GameData, input: InputState, dt: number) {
           y: -(shakeStr * 0.7 + Math.random() * shakeStr * 0.3)
         };
 
-        // Player collision
-        if (dist(h.targetPos, p.pos) < h.size * 1.5 + p.size) {
+        // Player collision + proximity scoring
+        const distToPlayer = dist(h.targetPos, p.pos);
+        if (distToPlayer < h.size * 1.5 + p.size) {
           damagePlayer(g, h.damage, h.targetPos);
-        } else if (dist(h.targetPos, p.pos) < h.size * 1.5 + p.size + CLOSE_CALL_DIST) {
-          g.score += 50;
-          g.stats.closeCalls++;
-          addFloatingText(g, 'Close Call! +50', { x: p.pos.x, y: p.pos.y - 40 }, '#fbbf24');
+        } else {
+          // Proximity bonus: closer = more points
+          const maxBonusDist = 150;
+          if (distToPlayer < maxBonusDist) {
+            const proximity = 1 - (distToPlayer / maxBonusDist);
+            const bonus = Math.floor(10 + proximity * 90); // 10-100 points
+            g.score += bonus;
+            if (distToPlayer < h.size * 1.5 + p.size + CLOSE_CALL_DIST) {
+              g.stats.closeCalls++;
+              addFloatingText(g, `Close Call! +${bonus}`, { x: p.pos.x, y: p.pos.y - 40 }, '#fbbf24');
+            } else {
+              addFloatingText(g, `+${bonus}`, { x: h.targetPos.x, y: h.targetPos.y - 20 }, '#aaa');
+            }
+          }
         }
 
         // Cluster split
@@ -637,6 +648,11 @@ export function update(g: GameData, input: InputState, dt: number) {
         case 'interceptor':
           handleInterceptor(g);
           addFloatingText(g, 'Interceptor!', { x: p.pos.x, y: p.pos.y - 40 }, '#f97316');
+          break;
+        case 'ammo':
+          p.ammo = Math.min(30, p.ammo + 8);
+          addFloatingText(g, '+8 Ammo', { x: p.pos.x, y: p.pos.y - 40 }, '#a855f7');
+          spawnParticles(g, p.pos, 8, '#a855f7', 80);
           break;
       }
     }
