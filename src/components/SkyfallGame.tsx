@@ -119,6 +119,8 @@ const SkyfallGame: React.FC = () => {
 
     // Unified pointer for start/restart (no double-fire)
     const onPointerDown = (e: PointerEvent) => {
+      // Always try to resume audio on any user interaction
+      resumeAudio();
       // Ignore if it came from a control button
       if ((e.target as HTMLElement) !== canvas) return;
       e.preventDefault();
