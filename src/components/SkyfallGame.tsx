@@ -218,8 +218,8 @@ const SkyfallGame: React.FC = () => {
               position: 'absolute',
               left: 136, bottom: 170, width: 72, height: 52,
               borderRadius: 16,
-              border: hasAmmo ? '1.5px solid rgba(168,85,247,0.4)' : '1.5px solid rgba(80,80,80,0.25)',
-              background: hasAmmo ? 'rgba(168,85,247,0.12)' : 'rgba(40,40,40,0.08)',
+              border: hasAmmo ? '1.5px solid rgba(168,85,247,0.4)' : '1.5px solid rgba(220,38,38,0.3)',
+              background: hasAmmo ? 'rgba(168,85,247,0.12)' : 'rgba(220,38,38,0.06)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -233,17 +233,18 @@ const SkyfallGame: React.FC = () => {
               transition: 'all 0.15s ease',
             }}
           >
-            <svg width="16" height="24" viewBox="0 0 16 24" fill="none" style={{ opacity: hasAmmo ? 0.85 : 0.3 }}>
-              <rect x="3" y="10" width="10" height="12" rx="1.5" fill={hasAmmo ? 'rgba(168,85,247,0.8)' : 'rgba(120,120,120,0.5)'} />
-              <rect x="4.5" y="12" width="7" height="2" rx="0.5" fill="rgba(255,255,255,0.15)" />
-              <path d="M3 10 L8 2 L13 10" fill={hasAmmo ? 'rgba(200,120,255,0.9)' : 'rgba(150,150,150,0.5)'} />
+            <svg width="20" height="28" viewBox="0 0 20 28" fill="none" style={{ opacity: hasAmmo ? 0.9 : 0.5 }}>
+              <rect x="4" y="12" width="12" height="14" rx="2" fill={hasAmmo ? 'rgba(168,85,247,0.8)' : 'rgba(220,38,38,0.4)'} stroke={hasAmmo ? 'rgba(200,160,255,0.5)' : 'rgba(220,38,38,0.3)'} strokeWidth="0.8" />
+              <rect x="5.5" y="14.5" width="9" height="2" rx="0.5" fill="rgba(255,255,255,0.18)" />
+              <line x1="4" y1="12" x2="16" y2="12" stroke={hasAmmo ? 'rgba(255,255,255,0.3)' : 'rgba(220,38,38,0.25)'} strokeWidth="1" />
+              <path d="M4 12 L10 3 L16 12" fill={hasAmmo ? 'rgba(200,120,255,0.9)' : 'rgba(220,80,80,0.5)'} stroke={hasAmmo ? 'rgba(220,180,255,0.5)' : 'rgba(220,38,38,0.3)'} strokeWidth="0.8" />
             </svg>
             <span style={{
               position: 'absolute',
               top: -6, right: -6,
               width: 22, height: 22,
               borderRadius: '50%',
-              background: hasAmmo ? 'rgba(168,85,247,0.85)' : 'rgba(80,80,80,0.5)',
+              background: hasAmmo ? 'rgba(168,85,247,0.85)' : 'rgba(220,38,38,0.75)',
               color: '#fff',
               fontSize: 11,
               fontWeight: 700,
@@ -252,9 +253,9 @@ const SkyfallGame: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'center',
               border: '1.5px solid rgba(0,0,0,0.3)',
-              boxShadow: hasAmmo ? '0 0 8px rgba(168,85,247,0.4)' : 'none',
+              boxShadow: hasAmmo ? '0 0 8px rgba(168,85,247,0.4)' : '0 0 6px rgba(220,38,38,0.3)',
             }}>
-              {hasAmmo ? playerAmmo : '×'}
+              {hasAmmo ? playerAmmo : '0'}
             </span>
           </button>
 
