@@ -10,6 +10,7 @@ const SkyfallGame: React.FC = () => {
   const inputRef = useRef<InputState>({
     moveDir: { x: 0, y: 0 },
     dash: false,
+    shoot: false,
     keys: new Set(),
     touchJoystick: { active: false, origin: { x: 0, y: 0 }, current: { x: 0, y: 0 } },
     touchDash: false,
@@ -17,6 +18,7 @@ const SkyfallGame: React.FC = () => {
   const rafRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
   const [showButtons, setShowButtons] = useState(false);
+  const [playerAmmo, setPlayerAmmo] = useState(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -83,6 +85,9 @@ const SkyfallGame: React.FC = () => {
         prevState = g.state;
         setShowButtons(g.state === 'playing');
       }
+      if (g.state === 'playing') {
+        setPlayerAmmo(g.player.ammo);
+      }
 
       rafRef.current = requestAnimationFrame(loop);
     };
@@ -105,6 +110,7 @@ const SkyfallGame: React.FC = () => {
         e.preventDefault();
         inputRef.current.dash = true;
       }
+      if (key === 'f') inputRef.current.shoot = true;
       if (key === 'enter') startOrRestart();
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -134,15 +140,18 @@ const SkyfallGame: React.FC = () => {
   }, []);
 
   // Button handlers
-  const handleButtonDown = (action: 'left' | 'right' | 'roll') => {
+  const handleButtonDown = (action: 'left' | 'right' | 'roll' | 'shoot') => {
     if (action === 'left') inputRef.current.keys.add('arrowleft');
     else if (action === 'right') inputRef.current.keys.add('arrowright');
     else if (action === 'roll') inputRef.current.dash = true;
+    else if (action === 'shoot') inputRef.current.shoot = true;
   };
-  const handleButtonUp = (action: 'left' | 'right' | 'roll') => {
+  const handleButtonUp = (action: 'left' | 'right' | 'roll' | 'shoot') => {
     if (action === 'left') inputRef.current.keys.delete('arrowleft');
     else if (action === 'right') inputRef.current.keys.delete('arrowright');
   };
+
+  const hasAmmo = playerAmmo > 0;
 
   const btnStyle = (extra: React.CSSProperties): React.CSSProperties => ({
     position: 'absolute',
@@ -195,6 +204,20 @@ const SkyfallGame: React.FC = () => {
               fontWeight: 'bold',
             })}
           >ROLL</button>
+          {hasAmmo && (
+            <button
+              onPointerDown={(e) => { e.stopPropagation(); handleButtonDown('shoot'); }}
+              style={btnStyle({
+                right: 16, bottom: 130, width: 72, height: 72,
+                border: '2px solid rgba(168,85,247,0.5)',
+                background: 'rgba(168,85,247,0.15)',
+                color: '#a855f7',
+                fontSize: 11,
+                fontFamily: 'monospace',
+                fontWeight: 'bold',
+              })}
+            >{`FIRE\n${playerAmmo}`}</button>
+          )}
         </>
       )}
     </div>

@@ -6,7 +6,7 @@ export interface Vec2 {
 export type GameState = 'start' | 'playing' | 'gameover';
 
 export type HazardType = 'shrapnel' | 'missile' | 'cluster';
-export type PowerUpType = 'medkit' | 'shield' | 'interceptor';
+export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo';
 export type DroneState = 'entering' | 'tracking' | 'bombing';
 export type DroneTier = 'scout' | 'tracker' | 'bomber';
 export type PlayerAnim = 'idle' | 'walk' | 'roll' | 'hit';
@@ -30,7 +30,8 @@ export interface Player {
   animFrame: number;
   animTimer: number;
   hitTimer: number;
-  groundY: number; // Y position of the ground plane
+  groundY: number;
+  ammo: number;
 }
 
 export interface Hazard {
@@ -145,6 +146,14 @@ export interface GameStats {
   timeSurvived: number;
 }
 
+export interface Bullet {
+  active: boolean;
+  pos: Vec2;
+  vel: Vec2;
+  size: number;
+  damage: number;
+}
+
 export interface GameData {
   state: GameState;
   player: Player;
@@ -158,6 +167,7 @@ export interface GameData {
   drones: Drone[];
   clouds: Cloud[];
   ambientParticles: AmbientParticle[];
+  bullets: Bullet[];
   score: number;
   highScore: number;
   elapsed: number;
@@ -177,6 +187,7 @@ export interface GameData {
 export interface InputState {
   moveDir: Vec2;
   dash: boolean;
+  shoot: boolean;
   keys: Set<string>;
   touchJoystick: { active: boolean; origin: Vec2; current: Vec2 };
   touchDash: boolean;

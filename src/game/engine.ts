@@ -1,5 +1,5 @@
 import {
-  GameData, InputState, Hazard, PowerUp, Particle, Vec2, Crater, FloatingText, Drone,
+  GameData, InputState, Hazard, PowerUp, Particle, Vec2, Crater, FloatingText, Drone, Bullet,
   HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle
 } from './types';
 import { getFromPool } from './pool';
@@ -37,6 +37,7 @@ export function createGame(w: number, h: number): GameData {
       animTimer: 0,
       hitTimer: 0,
       groundY,
+      ammo: 0,
     },
     hazards: [],
     powerUps: [],
@@ -48,6 +49,7 @@ export function createGame(w: number, h: number): GameData {
     drones: [],
     clouds: initClouds(w, h),
     ambientParticles: [],
+    bullets: [],
     score: 0,
     highScore: parseInt(localStorage.getItem('skyfall_hi') || '0'),
     elapsed: 0,
@@ -97,10 +99,12 @@ export function resetGame(g: GameData) {
   g.player.animFrame = 0;
   g.player.animTimer = 0;
   g.player.hitTimer = 0;
+  g.player.ammo = 0;
   g.hazards.forEach(h => h.active = false);
   g.powerUps.forEach(p => p.active = false);
   g.particles.forEach(p => p.active = false);
   g.drones.forEach(d => d.active = false);
+  g.bullets.length = 0;
   g.craters.length = 0;
   g.explosions.length = 0;
   g.smokeTrails.length = 0;
@@ -212,7 +216,7 @@ function spawnHazard(g: GameData, type: HazardType) {
 }
 
 function spawnPowerUp(g: GameData) {
-  const types: PowerUpType[] = ['medkit', 'shield', 'interceptor'];
+  const types: PowerUpType[] = ['medkit', 'shield', 'interceptor', 'ammo', 'ammo'];
   const type = types[Math.floor(Math.random() * types.length)];
   const pu = getFromPool<PowerUp>(g.powerUps, () => ({
     active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
@@ -411,6 +415,23 @@ export function update(g: GameData, input: InputState, dt: number) {
     input.touchDash = false;
   }
 
+  // === Shooting ===
+  if (input.shoot && p.ammo > 0 && !p.isDashing) {
+    input.shoot = false;
+    p.ammo--;
+    const bullet: Bullet = {
+      active: true,
+      pos: { x: p.pos.x + (p.facingRight ? 10 : -10), y: p.pos.y - 20 },
+      vel: { x: 0, y: -600 },
+      size: 3,
+      damage: 1,
+    };
+    g.bullets.push(bullet);
+    // muzzle flash particles
+    spawnParticles(g, { x: bullet.pos.x, y: bullet.pos.y }, 3, '#fbbf24', 60, false);
+  }
+  if (input.shoot) input.shoot = false;
+
   if (p.isDashing) {
     p.dashTimer -= dt;
     p.velocity.x = p.dashDir.x * DASH_SPEED;
@@ -543,13 +564,24 @@ export function update(g: GameData, input: InputState, dt: number) {
           y: -(shakeStr * 0.7 + Math.random() * shakeStr * 0.3)
         };
 
-        // Player collision
-        if (dist(h.targetPos, p.pos) < h.size * 1.5 + p.size) {
+        // Player collision + proximity scoring
+        const distToPlayer = dist(h.targetPos, p.pos);
+        if (distToPlayer < h.size * 1.5 + p.size) {
           damagePlayer(g, h.damage, h.targetPos);
-        } else if (dist(h.targetPos, p.pos) < h.size * 1.5 + p.size + CLOSE_CALL_DIST) {
-          g.score += 50;
-          g.stats.closeCalls++;
-          addFloatingText(g, 'Close Call! +50', { x: p.pos.x, y: p.pos.y - 40 }, '#fbbf24');
+        } else {
+          // Proximity bonus: closer = more points
+          const maxBonusDist = 150;
+          if (distToPlayer < maxBonusDist) {
+            const proximity = 1 - (distToPlayer / maxBonusDist);
+            const bonus = Math.floor(10 + proximity * 90); // 10-100 points
+            g.score += bonus;
+            if (distToPlayer < h.size * 1.5 + p.size + CLOSE_CALL_DIST) {
+              g.stats.closeCalls++;
+              addFloatingText(g, `Close Call! +${bonus}`, { x: p.pos.x, y: p.pos.y - 40 }, '#fbbf24');
+            } else {
+              addFloatingText(g, `+${bonus}`, { x: h.targetPos.x, y: h.targetPos.y - 20 }, '#aaa');
+            }
+          }
         }
 
         // Cluster split
@@ -633,6 +665,11 @@ export function update(g: GameData, input: InputState, dt: number) {
         case 'interceptor':
           handleInterceptor(g);
           addFloatingText(g, 'Interceptor!', { x: p.pos.x, y: p.pos.y - 40 }, '#f97316');
+          break;
+        case 'ammo':
+          p.ammo = Math.min(30, p.ammo + 8);
+          addFloatingText(g, '+8 Ammo', { x: p.pos.x, y: p.pos.y - 40 }, '#a855f7');
+          spawnParticles(g, p.pos, 8, '#a855f7', 80);
           break;
       }
     }
@@ -785,6 +822,58 @@ export function update(g: GameData, input: InputState, dt: number) {
       }
     }
     pt.vel.x *= 0.97;
+  }
+
+  // === Update bullets ===
+  for (let i = g.bullets.length - 1; i >= 0; i--) {
+    const b = g.bullets[i];
+    if (!b.active) { g.bullets.splice(i, 1); continue; }
+    b.pos.x += b.vel.x * dt;
+    b.pos.y += b.vel.y * dt;
+    if (b.pos.y < -20 || b.pos.x < -20 || b.pos.x > g.width + 20) {
+      g.bullets.splice(i, 1);
+      continue;
+    }
+    // Hit hazards (shrapnel=1, missile=2, cluster=2)
+    let hit = false;
+    for (const h of g.hazards) {
+      if (!h.active || !h.falling) continue;
+      if (dist(b.pos, h.pos) < h.size + b.size + 4) {
+        h.active = false;
+        sfxExplosion();
+        addExplosion(g, h.pos, h.size * 2);
+        spawnParticles(g, h.pos, 8, '#f97316', 150);
+        const distToPlayer = dist(h.pos, p.pos);
+        const proximity = Math.max(0, 1 - distToPlayer / 200);
+        const bonus = Math.floor(20 + proximity * 80);
+        g.score += bonus;
+        addFloatingText(g, `Shot! +${bonus}`, h.pos, '#a855f7');
+        hit = true;
+        break;
+      }
+    }
+    if (hit) { g.bullets.splice(i, 1); continue; }
+    // Hit drones
+    for (const d of g.drones) {
+      if (!d.active) continue;
+      if (dist(b.pos, d.pos) < d.size + b.size + 4) {
+        d.health--;
+        spawnParticles(g, b.pos, 4, '#f97316', 80);
+        if (d.health <= 0) {
+          d.active = false;
+          addExplosion(g, d.pos, 20);
+          sfxExplosion();
+          spawnParticles(g, d.pos, 12, '#f97316', 150);
+          const bonus = d.tier === 'bomber' ? 80 : d.tier === 'tracker' ? 50 : 30;
+          addFloatingText(g, `Shot Down! +${bonus}`, d.pos, '#a855f7');
+          g.score += bonus;
+          g.stats.dronesDestroyed++;
+        }
+        hit = true;
+        break;
+      }
+    }
+    if (hit) { g.bullets.splice(i, 1); continue; }
   }
 
   // === Update explosions ===

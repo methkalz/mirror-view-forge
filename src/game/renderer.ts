@@ -467,6 +467,7 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     let icon = '♥';
     if (pu.type === 'shield') { color = '#60a5fa'; icon = '◆'; }
     if (pu.type === 'interceptor') { color = '#f97316'; icon = '⚡'; }
+    if (pu.type === 'ammo') { color = '#a855f7'; icon = '⊕'; }
 
     // Glow
     const glowGrad = ctx.createRadialGradient(0, 0, pu.size * 0.5, 0, 0, pu.size * 2.5);
@@ -856,6 +857,36 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.restore();
 }
 
+// ─── Bullets ──────────────────────────────────────────
+function renderBullets(ctx: CanvasRenderingContext2D, g: GameData) {
+  for (const b of g.bullets) {
+    if (!b.active) continue;
+    ctx.save();
+    ctx.translate(b.pos.x, b.pos.y);
+    // Glow
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.3)';
+    ctx.beginPath();
+    ctx.arc(0, 0, b.size * 3, 0, Math.PI * 2);
+    ctx.fill();
+    // Bullet tracer
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, b.size * 0.8, b.size * 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Core
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, b.size * 0.3, b.size * 1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Trail
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.15)';
+    ctx.beginPath();
+    ctx.ellipse(0, b.size * 4, b.size * 0.5, b.size * 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
 // ─── Particles ────────────────────────────────────────
 function renderParticles(ctx: CanvasRenderingContext2D, g: GameData) {
   for (const pt of g.particles) {
@@ -965,6 +996,14 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.textAlign = 'left';
     ctx.fillText(`SHIELD ${p.shieldTimer.toFixed(1)}s`, 14, h - 14);
   }
+
+  // Ammo indicator
+  if (p.ammo > 0) {
+    ctx.fillStyle = '#a855f7';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`⊕ ${p.ammo}`, w / 2, h - 14);
+  }
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -997,6 +1036,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderExplosions(ctx, g);
   renderPowerUps(ctx, g);
   renderDrones(ctx, g);
+  renderBullets(ctx, g);
   renderPlayer(ctx, g);
   renderParticles(ctx, g);
   renderFloatingTexts(ctx, g);
