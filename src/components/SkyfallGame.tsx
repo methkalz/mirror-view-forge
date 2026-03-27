@@ -184,7 +184,7 @@ const SkyfallGame: React.FC = () => {
           <button
             onPointerDown={(e) => { if (hasAmmo) { e.stopPropagation(); handleButtonDown('shoot'); } }}
             style={btnStyle({
-              left: 51, bottom: 155, width: 66, height: 66,
+              left: 62, bottom: 155, width: 66, height: 66,
               border: hasAmmo ? '2px solid rgba(168,85,247,0.6)' : '2px solid rgba(100,100,100,0.3)',
               background: hasAmmo ? 'rgba(168,85,247,0.2)' : 'rgba(60,60,60,0.15)',
               color: hasAmmo ? '#a855f7' : 'rgba(120,120,120,0.5)',
@@ -199,13 +199,13 @@ const SkyfallGame: React.FC = () => {
             onPointerDown={(e) => { e.stopPropagation(); handleButtonDown('left'); }}
             onPointerUp={() => handleButtonUp('left')}
             onPointerLeave={() => handleButtonUp('left')}
-            style={btnStyle({ left: 16, bottom: 70, width: 64, height: 64 })}
+            style={btnStyle({ left: 12, bottom: 70, width: 68, height: 68 })}
           >◀</button>
           <button
             onPointerDown={(e) => { e.stopPropagation(); handleButtonDown('right'); }}
             onPointerUp={() => handleButtonUp('right')}
             onPointerLeave={() => handleButtonUp('right')}
-            style={btnStyle({ left: 104, bottom: 70, width: 64, height: 64 })}
+            style={btnStyle({ left: 120, bottom: 70, width: 68, height: 68 })}
           >▶</button>
           <button
             onPointerDown={(e) => { e.stopPropagation(); handleButtonDown('roll'); }}
