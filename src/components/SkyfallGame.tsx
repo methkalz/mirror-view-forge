@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { GameData, InputState } from '@/game/types';
 import { createGame, resetGame, update } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
@@ -16,12 +16,12 @@ const SkyfallGame: React.FC = () => {
   });
   const rafRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
-  const joystickTouchIdRef = useRef<number | null>(null);
+  const [gameState, setGameState] = useState<'start' | 'playing' | 'gameover'>('start');
 
   const resize = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2); // Cap DPR for performance
     const w = window.innerWidth;
     const h = window.innerHeight;
     canvas.width = w * dpr;
@@ -50,43 +50,39 @@ const SkyfallGame: React.FC = () => {
     const w = window.innerWidth;
     const h = window.innerHeight;
 
-    ctx.save();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    try {
+      ctx.save();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (g.state === 'start') {
-      renderStartScreen(ctx, w, h, g.highScore);
-    } else if (g.state === 'playing') {
-      update(g, inputRef.current, dt);
-      render(ctx, g);
-
-      // Draw joystick overlay
-      const joy = inputRef.current.touchJoystick;
-      if (joy.active) {
-        ctx.globalAlpha = 0.25;
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(joy.origin.x, joy.origin.y, 50, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 0.5;
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        const dx = joy.current.x - joy.origin.x;
-        const dy = joy.current.y - joy.origin.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const maxR = 40;
-        const cx = dist > maxR ? joy.origin.x + (dx / dist) * maxR : joy.current.x;
-        const cy = dist > maxR ? joy.origin.y + (dy / dist) * maxR : joy.current.y;
-        ctx.arc(cx, cy, 18, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
+      if (g.state === 'start') {
+        renderStartScreen(ctx, w, h, g.highScore);
+      } else if (g.state === 'playing') {
+        update(g, inputRef.current, dt);
+        render(ctx, g);
+      } else if (g.state === 'gameover') {
+        render(ctx, g);
+        renderGameOver(ctx, w, h, g.score, g.highScore, g.stats);
       }
-    } else if (g.state === 'gameover') {
-      render(ctx, g);
-      renderGameOver(ctx, w, h, g.score, g.highScore, g.stats);
+
+      ctx.restore();
+
+      // Sync state for button visibility
+      if (g.state !== gameState) setGameState(g.state);
+    } catch (e) {
+      console.error('Render error:', e);
+      ctx.restore();
     }
 
-    ctx.restore();
     rafRef.current = requestAnimationFrame(loop);
+  }, [gameState]);
+
+  const startOrRestart = useCallback(() => {
+    const g = gameRef.current;
+    if (g && (g.state === 'start' || g.state === 'gameover')) {
+      resumeAudio();
+      resetGame(g);
+      setGameState('playing');
+    }
   }, []);
 
   useEffect(() => {
@@ -98,7 +94,6 @@ const SkyfallGame: React.FC = () => {
     window.addEventListener('resize', resize);
     rafRef.current = requestAnimationFrame(loop);
 
-    // Keyboard
     const onKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
       inputRef.current.keys.add(key);
@@ -106,72 +101,24 @@ const SkyfallGame: React.FC = () => {
         e.preventDefault();
         inputRef.current.dash = true;
       }
-      if (key === 'enter') {
-        const g = gameRef.current;
-        if (g && (g.state === 'start' || g.state === 'gameover')) {
-          resumeAudio();
-          resetGame(g);
-        }
-      }
+      if (key === 'enter') startOrRestart();
     };
     const onKeyUp = (e: KeyboardEvent) => {
       inputRef.current.keys.delete(e.key.toLowerCase());
     };
 
-    // Touch
+    // Touch on canvas for start/gameover only
     const onTouchStart = (e: TouchEvent) => {
-      e.preventDefault();
       const g = gameRef.current;
-      if (!g) return;
-
-      if (g.state === 'start' || g.state === 'gameover') {
-        resumeAudio();
-        resetGame(g);
-        return;
-      }
-
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const t = e.changedTouches[i];
-        if (t.clientX < window.innerWidth / 2) {
-          // Left side = joystick
-          joystickTouchIdRef.current = t.identifier;
-          inputRef.current.touchJoystick = {
-            active: true,
-            origin: { x: t.clientX, y: t.clientY },
-            current: { x: t.clientX, y: t.clientY },
-          };
-        } else {
-          // Right side = dash
-          inputRef.current.touchDash = true;
-        }
-      }
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      e.preventDefault();
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const t = e.changedTouches[i];
-        if (t.identifier === joystickTouchIdRef.current) {
-          inputRef.current.touchJoystick.current = { x: t.clientX, y: t.clientY };
-        }
-      }
-    };
-
-    const onTouchEnd = (e: TouchEvent) => {
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const t = e.changedTouches[i];
-        if (t.identifier === joystickTouchIdRef.current) {
-          joystickTouchIdRef.current = null;
-          inputRef.current.touchJoystick.active = false;
-        }
+      if (g && (g.state === 'start' || g.state === 'gameover')) {
+        e.preventDefault();
+        startOrRestart();
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     canvas.addEventListener('touchstart', onTouchStart, { passive: false });
-    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-    canvas.addEventListener('touchend', onTouchEnd);
 
     return () => {
       cancelAnimationFrame(rafRef.current);
@@ -179,22 +126,135 @@ const SkyfallGame: React.FC = () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       canvas.removeEventListener('touchstart', onTouchStart);
-      canvas.removeEventListener('touchmove', onTouchMove);
-      canvas.removeEventListener('touchend', onTouchEnd);
     };
-  }, [resize, loop]);
+  }, [resize, loop, startOrRestart]);
+
+  // Button handlers
+  const handleButtonDown = (action: 'left' | 'right' | 'roll') => {
+    if (action === 'left') inputRef.current.keys.add('arrowleft');
+    else if (action === 'right') inputRef.current.keys.add('arrowright');
+    else if (action === 'roll') inputRef.current.dash = true;
+  };
+  const handleButtonUp = (action: 'left' | 'right' | 'roll') => {
+    if (action === 'left') inputRef.current.keys.delete('arrowleft');
+    else if (action === 'right') inputRef.current.keys.delete('arrowright');
+  };
+
+  const showButtons = gameState === 'playing';
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        display: 'block',
-        width: '100vw',
-        height: '100vh',
-        touchAction: 'none',
-        userSelect: 'none',
-      }}
-    />
+    <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' }}>
+      <canvas
+        ref={canvasRef}
+        style={{
+          display: 'block',
+          width: '100vw',
+          height: '100vh',
+          touchAction: 'none',
+          userSelect: 'none',
+        }}
+      />
+
+      {/* Fixed Control Buttons */}
+      {showButtons && (
+        <>
+          {/* Left Arrow */}
+          <button
+            onTouchStart={(e) => { e.preventDefault(); handleButtonDown('left'); }}
+            onTouchEnd={(e) => { e.preventDefault(); handleButtonUp('left'); }}
+            onMouseDown={() => handleButtonDown('left')}
+            onMouseUp={() => handleButtonUp('left')}
+            onMouseLeave={() => handleButtonUp('left')}
+            style={{
+              position: 'absolute',
+              left: 16,
+              bottom: 40,
+              width: 64,
+              height: 64,
+              borderRadius: '50%',
+              border: '2px solid rgba(255,255,255,0.3)',
+              background: 'rgba(255,255,255,0.1)',
+              color: '#fff',
+              fontSize: 28,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              touchAction: 'none',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              cursor: 'pointer',
+              backdropFilter: 'blur(4px)',
+              zIndex: 10,
+            }}
+          >
+            ◀
+          </button>
+
+          {/* Right Arrow */}
+          <button
+            onTouchStart={(e) => { e.preventDefault(); handleButtonDown('right'); }}
+            onTouchEnd={(e) => { e.preventDefault(); handleButtonUp('right'); }}
+            onMouseDown={() => handleButtonDown('right')}
+            onMouseUp={() => handleButtonUp('right')}
+            onMouseLeave={() => handleButtonUp('right')}
+            style={{
+              position: 'absolute',
+              left: 92,
+              bottom: 40,
+              width: 64,
+              height: 64,
+              borderRadius: '50%',
+              border: '2px solid rgba(255,255,255,0.3)',
+              background: 'rgba(255,255,255,0.1)',
+              color: '#fff',
+              fontSize: 28,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              touchAction: 'none',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              cursor: 'pointer',
+              backdropFilter: 'blur(4px)',
+              zIndex: 10,
+            }}
+          >
+            ▶
+          </button>
+
+          {/* Roll / Dash Button */}
+          <button
+            onTouchStart={(e) => { e.preventDefault(); handleButtonDown('roll'); }}
+            onMouseDown={() => handleButtonDown('roll')}
+            style={{
+              position: 'absolute',
+              right: 16,
+              bottom: 40,
+              width: 72,
+              height: 72,
+              borderRadius: '50%',
+              border: '2px solid rgba(251,191,36,0.5)',
+              background: 'rgba(251,191,36,0.15)',
+              color: '#fbbf24',
+              fontSize: 13,
+              fontFamily: 'monospace',
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              touchAction: 'none',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              cursor: 'pointer',
+              backdropFilter: 'blur(4px)',
+              zIndex: 10,
+            }}
+          >
+            ROLL
+          </button>
+        </>
+      )}
+    </div>
   );
 };
 

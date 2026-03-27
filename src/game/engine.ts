@@ -144,14 +144,17 @@ function spawnParticles(g: GameData, pos: Vec2, count: number, color: string, sp
 }
 
 function addExplosion(g: GameData, pos: Vec2, size: number) {
+  if (g.explosions.length > 20) g.explosions.shift();
   g.explosions.push({ pos: { ...pos }, life: 0.6, maxLife: 0.6, size, stage: 'flash' });
 }
 
 function addSmokeTrail(g: GameData, pos: Vec2, size: number) {
+  if (g.smokeTrails.length > 80) g.smokeTrails.shift();
   g.smokeTrails.push({ pos: { ...pos }, life: 0.8, maxLife: 0.8, size, alpha: 0.5 });
 }
 
 function addFloatingText(g: GameData, text: string, pos: Vec2, color: string) {
+  if (g.floatingTexts.length > 15) g.floatingTexts.shift();
   g.floatingTexts.push({ text, pos: { ...pos }, life: 1.5, maxLife: 1.5, color });
 }
 
@@ -395,7 +398,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   g.camera.x += (targetCamX - g.camera.x) * 2 * dt;
 
   // === Ambient particles ===
-  if (g.ambientParticles.length < 30 && Math.random() < 0.3) {
+  if (g.ambientParticles.length < 15 && Math.random() < 0.15) {
     spawnAmbientParticle(g);
   }
   for (let i = g.ambientParticles.length - 1; i >= 0; i--) {
@@ -657,7 +660,8 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (s.life <= 0) g.smokeTrails.splice(i, 1);
   }
 
-  // === Update craters ===
+  // === Update craters (cap at 30) ===
+  while (g.craters.length > 30) g.craters.shift();
   for (let i = g.craters.length - 1; i >= 0; i--) {
     g.craters[i].life -= dt;
     if (g.craters[i].life <= 0) g.craters.splice(i, 1);
