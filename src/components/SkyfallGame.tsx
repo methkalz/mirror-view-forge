@@ -210,7 +210,7 @@ const SkyfallGame: React.FC = () => {
           <button
             onPointerDown={(e) => { e.stopPropagation(); handleButtonDown('roll'); }}
             style={btnStyle({
-              right: 16, bottom: 40, width: 72, height: 72,
+              right: 16, bottom: 70, width: 80, height: 80,
               border: '2px solid rgba(251,191,36,0.5)',
               background: 'rgba(251,191,36,0.15)',
               color: '#fbbf24',
