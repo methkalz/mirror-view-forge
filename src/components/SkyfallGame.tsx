@@ -106,6 +106,7 @@ const SkyfallGame: React.FC = () => {
         e.preventDefault();
         inputRef.current.dash = true;
       }
+      if (key === 'f') inputRef.current.shoot = true;
       if (key === 'enter') startOrRestart();
     };
     const onKeyUp = (e: KeyboardEvent) => {
