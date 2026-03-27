@@ -183,7 +183,16 @@ const SkyfallGame: React.FC = () => {
   const hasAmmo = playerAmmo > 0;
 
   return (
-    <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' }}>
+    <div
+      onContextMenu={(e) => e.preventDefault()}
+      style={{
+        position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#000',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
+        touchAction: 'manipulation',
+      } as React.CSSProperties}
+    >
       <canvas
         ref={canvasRef}
         style={{ display: 'block', width: '100vw', height: '100vh', touchAction: 'none', userSelect: 'none' }}
@@ -192,7 +201,7 @@ const SkyfallGame: React.FC = () => {
         <>
           {/* FIRE button */}
           <button
-            onPointerDown={(e) => { if (hasAmmo) { e.stopPropagation(); handleButtonDown('shoot'); } }}
+            onPointerDown={(e) => { e.preventDefault(); if (hasAmmo) { e.stopPropagation(); handleButtonDown('shoot'); } }}
             style={{
               position: 'absolute',
               left: 58, bottom: 170, width: 70, height: 44,
@@ -224,7 +233,7 @@ const SkyfallGame: React.FC = () => {
 
           {/* Left arrow */}
           <button
-            onPointerDown={(e) => { e.stopPropagation(); handleButtonDown('left'); }}
+            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleButtonDown('left'); }}
             onPointerUp={() => handleButtonUp('left')}
             onPointerLeave={() => handleButtonUp('left')}
             style={{
@@ -250,7 +259,7 @@ const SkyfallGame: React.FC = () => {
 
           {/* Right arrow */}
           <button
-            onPointerDown={(e) => { e.stopPropagation(); handleButtonDown('right'); }}
+            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleButtonDown('right'); }}
             onPointerUp={() => handleButtonUp('right')}
             onPointerLeave={() => handleButtonUp('right')}
             style={{
@@ -276,7 +285,7 @@ const SkyfallGame: React.FC = () => {
 
           {/* ROLL button */}
           <button
-            onPointerDown={(e) => { e.stopPropagation(); handleButtonDown('roll'); }}
+            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleButtonDown('roll'); }}
             style={{
               position: 'absolute',
               right: 16, bottom: 95, width: 80, height: 56,
