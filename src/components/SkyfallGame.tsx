@@ -211,24 +211,18 @@ const SkyfallGame: React.FC = () => {
       />
       {showButtons && (
         <>
-          {/* FIRE button */}
+          {/* FIRE button — above right arrow */}
           <button
             onPointerDown={(e) => { e.preventDefault(); if (hasAmmo) { e.stopPropagation(); handleButtonDown('shoot'); } }}
             style={{
               position: 'absolute',
-              left: 58, bottom: 170, width: 70, height: 44,
-              borderRadius: 22,
+              left: 136, bottom: 170, width: 72, height: 52,
+              borderRadius: 16,
               border: hasAmmo ? '1.5px solid rgba(168,85,247,0.4)' : '1.5px solid rgba(80,80,80,0.25)',
               background: hasAmmo ? 'rgba(168,85,247,0.12)' : 'rgba(40,40,40,0.08)',
-              color: hasAmmo ? 'rgba(168,85,247,0.85)' : 'rgba(100,100,100,0.35)',
-              fontSize: 10,
-              fontFamily: "'SF Pro', system-ui, -apple-system, sans-serif",
-              fontWeight: 600,
-              letterSpacing: 1.5,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 5,
               touchAction: 'none',
               userSelect: 'none',
               WebkitUserSelect: 'none',
@@ -239,8 +233,29 @@ const SkyfallGame: React.FC = () => {
               transition: 'all 0.15s ease',
             }}
           >
-            <span style={{ fontSize: 14, lineHeight: 1 }}>⊕</span>
-            <span>{hasAmmo ? playerAmmo : '—'}</span>
+            <svg width="16" height="24" viewBox="0 0 16 24" fill="none" style={{ opacity: hasAmmo ? 0.85 : 0.3 }}>
+              <rect x="3" y="10" width="10" height="12" rx="1.5" fill={hasAmmo ? 'rgba(168,85,247,0.8)' : 'rgba(120,120,120,0.5)'} />
+              <rect x="4.5" y="12" width="7" height="2" rx="0.5" fill="rgba(255,255,255,0.15)" />
+              <path d="M3 10 L8 2 L13 10" fill={hasAmmo ? 'rgba(200,120,255,0.9)' : 'rgba(150,150,150,0.5)'} />
+            </svg>
+            <span style={{
+              position: 'absolute',
+              top: -6, right: -6,
+              width: 22, height: 22,
+              borderRadius: '50%',
+              background: hasAmmo ? 'rgba(168,85,247,0.85)' : 'rgba(80,80,80,0.5)',
+              color: '#fff',
+              fontSize: 11,
+              fontWeight: 700,
+              fontFamily: "'SF Pro', system-ui, sans-serif",
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1.5px solid rgba(0,0,0,0.3)',
+              boxShadow: hasAmmo ? '0 0 8px rgba(168,85,247,0.4)' : 'none',
+            }}>
+              {hasAmmo ? playerAmmo : '×'}
+            </span>
           </button>
 
           {/* Left arrow */}
@@ -276,7 +291,7 @@ const SkyfallGame: React.FC = () => {
             onPointerLeave={() => handleButtonUp('right')}
             style={{
               position: 'absolute',
-              left: 116, bottom: 95, width: 72, height: 56,
+              left: 136, bottom: 95, width: 72, height: 56,
               borderRadius: 16,
               border: '1px solid rgba(255,255,255,0.12)',
               background: 'rgba(255,255,255,0.04)',
