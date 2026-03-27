@@ -7,7 +7,8 @@ export type GameState = 'start' | 'playing' | 'gameover';
 
 export type HazardType = 'shrapnel' | 'missile' | 'cluster';
 export type PowerUpType = 'medkit' | 'shield' | 'interceptor';
-export type DroneState = 'entering' | 'tracking';
+export type DroneState = 'entering' | 'tracking' | 'bombing';
+export type DroneTier = 'scout' | 'tracker' | 'bomber';
 export type PlayerAnim = 'idle' | 'walk' | 'roll' | 'hit';
 
 export interface Player {
