@@ -1,12 +1,44 @@
 let audioCtx: AudioContext | null = null;
 let ambientNode: AudioBufferSourceNode | null = null;
 
+/* ── iOS Silent-Mode bypass ── */
+let iosUnmuted = false;
+// Minimal valid MP3 (~150 bytes of silence)
+const SILENT_MP3 =
+  'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYlPnOyAAAAAAD/+1DEAAAHAAGf9AAAIAAAMH/EAABEASBAAAACQAAAAAAAP//////////////4gIAhQAAABP/7UsQBgAeAAaX9IAAg8AA0v6QAAAAAAaQ0P/+sRBCP/X/rGBw5fWMOh0f///xjBRPqOv///5coKJ9R1////+XKCifUd';
+
+function unmuteIOS() {
+  if (iosUnmuted) return;
+  iosUnmuted = true;
+  try {
+    const audio = document.createElement('audio');
+    audio.setAttribute('x-webkit-airplay', 'deny');
+    audio.preload = 'auto';
+    audio.loop = true;
+    audio.src = SILENT_MP3;
+    audio.play().catch(() => {});
+  } catch {}
+}
+
+// Auto-trigger on first interaction
+if (typeof document !== 'undefined') {
+  const trigger = () => {
+    unmuteIOS();
+    document.removeEventListener('touchstart', trigger);
+    document.removeEventListener('click', trigger);
+  };
+  document.addEventListener('touchstart', trigger, { passive: true });
+  document.addEventListener('click', trigger, { passive: true });
+}
+/* ── end iOS bypass ── */
+
 function getCtx(): AudioContext {
   if (!audioCtx) audioCtx = new AudioContext();
   return audioCtx;
 }
 
 export function resumeAudio() {
+  unmuteIOS();
   if (audioCtx?.state === 'suspended') audioCtx.resume();
   startAmbient();
 }
