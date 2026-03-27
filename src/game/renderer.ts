@@ -410,18 +410,243 @@ function renderExplosions(ctx: CanvasRenderingContext2D, g: GameData) {
   }
 }
 
+// ─── Power-up Icon Drawers ────────────────────────────
+function drawMedkitIcon(ctx: CanvasRenderingContext2D, s: number) {
+  // White box with colored cross
+  const b = s * 0.7;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.roundRect(-b, -b, b * 2, b * 2, 2);
+  ctx.fill();
+  ctx.fillStyle = '#22c55e';
+  ctx.fillRect(-b * 0.2, -b * 0.65, b * 0.4, b * 1.3);
+  ctx.fillRect(-b * 0.65, -b * 0.2, b * 1.3, b * 0.4);
+}
+
+function drawShieldIcon(ctx: CanvasRenderingContext2D, s: number) {
+  const h = s * 0.85, w = s * 0.7;
+  // Shield shape
+  ctx.beginPath();
+  ctx.moveTo(0, -h);
+  ctx.quadraticCurveTo(w, -h * 0.6, w, -h * 0.1);
+  ctx.quadraticCurveTo(w * 0.8, h * 0.6, 0, h);
+  ctx.quadraticCurveTo(-w * 0.8, h * 0.6, -w, -h * 0.1);
+  ctx.quadraticCurveTo(-w, -h * 0.6, 0, -h);
+  ctx.closePath();
+  const sg = ctx.createLinearGradient(0, -h, 0, h);
+  sg.addColorStop(0, '#93c5fd');
+  sg.addColorStop(0.5, '#3b82f6');
+  sg.addColorStop(1, '#1d4ed8');
+  ctx.fillStyle = sg;
+  ctx.fill();
+  ctx.strokeStyle = '#bfdbfe';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // Star
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+    const r = i % 2 === 0 ? s * 0.3 : s * 0.12;
+    const method = i === 0 ? 'moveTo' : 'lineTo';
+    ctx[method](Math.cos(a) * r, Math.sin(a) * r + h * 0.05);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawAmmoIcon(ctx: CanvasRenderingContext2D, s: number) {
+  // Bullet shape — golden metallic
+  const bh = s * 0.9, bw = s * 0.35;
+  const bg = ctx.createLinearGradient(-bw, 0, bw, 0);
+  bg.addColorStop(0, '#92710a');
+  bg.addColorStop(0.3, '#fbbf24');
+  bg.addColorStop(0.6, '#f59e0b');
+  bg.addColorStop(1, '#92710a');
+  ctx.fillStyle = bg;
+  // Casing
+  ctx.beginPath();
+  ctx.roundRect(-bw, -bh * 0.3, bw * 2, bh * 0.8, 2);
+  ctx.fill();
+  // Tip
+  ctx.fillStyle = '#b45309';
+  ctx.beginPath();
+  ctx.moveTo(-bw * 0.8, -bh * 0.3);
+  ctx.quadraticCurveTo(0, -bh, bw * 0.8, -bh * 0.3);
+  ctx.closePath();
+  ctx.fill();
+  // Highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.fillRect(-bw * 0.15, -bh * 0.25, bw * 0.3, bh * 0.65);
+}
+
+function drawSlowMoIcon(ctx: CanvasRenderingContext2D, s: number, elapsed: number) {
+  // Clock face
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(0, 0, s * 0.7, 0, Math.PI * 2);
+  ctx.stroke();
+  // Hour ticks
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+    const inner = s * 0.55, outer = s * 0.7;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
+    ctx.lineTo(Math.cos(a) * outer, Math.sin(a) * outer);
+    ctx.stroke();
+  }
+  // Hands
+  const handAngle = elapsed * 0.3;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(Math.cos(handAngle) * s * 0.45, Math.sin(handAngle) * s * 0.45);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(Math.cos(handAngle * 3) * s * 0.55, Math.sin(handAngle * 3) * s * 0.55);
+  ctx.stroke();
+  // Center dot
+  ctx.fillStyle = '#06b6d4';
+  ctx.beginPath();
+  ctx.arc(0, 0, 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawMagnetIcon(ctx: CanvasRenderingContext2D, s: number) {
+  // U-shaped magnet
+  const w = s * 0.7, h = s * 0.8, t = s * 0.28;
+  // Left pole (red)
+  ctx.fillStyle = '#ef4444';
+  ctx.fillRect(-w, -h * 0.5, t, h);
+  // Right pole (blue)
+  ctx.fillStyle = '#3b82f6';
+  ctx.fillRect(w - t, -h * 0.5, t, h);
+  // Curved bottom
+  ctx.strokeStyle = '#a1a1aa';
+  ctx.lineWidth = t;
+  ctx.lineCap = 'butt';
+  ctx.beginPath();
+  ctx.arc(0, h * 0.5, w - t / 2, 0, Math.PI);
+  ctx.stroke();
+  // Tips
+  ctx.fillStyle = '#d4d4d8';
+  ctx.fillRect(-w, -h * 0.5, t, t * 0.6);
+  ctx.fillRect(w - t, -h * 0.5, t, t * 0.6);
+}
+
+function drawAirstrikeIcon(ctx: CanvasRenderingContext2D, s: number) {
+  // Mini jet silhouette
+  ctx.fillStyle = '#fbbf24';
+  ctx.beginPath();
+  // Fuselage
+  ctx.moveTo(s * 0.9, 0);
+  ctx.lineTo(-s * 0.6, -s * 0.12);
+  ctx.lineTo(-s * 0.9, -s * 0.1);
+  ctx.lineTo(-s * 0.9, s * 0.1);
+  ctx.lineTo(-s * 0.6, s * 0.12);
+  ctx.closePath();
+  ctx.fill();
+  // Wings
+  ctx.beginPath();
+  ctx.moveTo(s * 0.1, -s * 0.12);
+  ctx.lineTo(-s * 0.2, -s * 0.65);
+  ctx.lineTo(-s * 0.5, -s * 0.65);
+  ctx.lineTo(-s * 0.3, -s * 0.12);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(s * 0.1, s * 0.12);
+  ctx.lineTo(-s * 0.2, s * 0.65);
+  ctx.lineTo(-s * 0.5, s * 0.65);
+  ctx.lineTo(-s * 0.3, s * 0.12);
+  ctx.closePath();
+  ctx.fill();
+  // Tail fins
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.7, -s * 0.1);
+  ctx.lineTo(-s * 0.85, -s * 0.4);
+  ctx.lineTo(-s * 0.9, -s * 0.1);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.7, s * 0.1);
+  ctx.lineTo(-s * 0.85, s * 0.4);
+  ctx.lineTo(-s * 0.9, s * 0.1);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawInterceptorIcon(ctx: CanvasRenderingContext2D, s: number) {
+  // Mini rocket with flame
+  const bw = s * 0.25, bh = s * 0.8;
+  // Body
+  const bg = ctx.createLinearGradient(-bw, 0, bw, 0);
+  bg.addColorStop(0, '#78716c');
+  bg.addColorStop(0.5, '#d6d3d1');
+  bg.addColorStop(1, '#78716c');
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.roundRect(-bw, -bh * 0.3, bw * 2, bh * 0.7, 2);
+  ctx.fill();
+  // Nose
+  ctx.fillStyle = '#f97316';
+  ctx.beginPath();
+  ctx.moveTo(-bw, -bh * 0.3);
+  ctx.quadraticCurveTo(0, -bh, bw, -bh * 0.3);
+  ctx.closePath();
+  ctx.fill();
+  // Fins
+  ctx.fillStyle = '#57534e';
+  ctx.beginPath();
+  ctx.moveTo(-bw, bh * 0.35);
+  ctx.lineTo(-bw * 2.2, bh * 0.55);
+  ctx.lineTo(-bw, bh * 0.15);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(bw, bh * 0.35);
+  ctx.lineTo(bw * 2.2, bh * 0.55);
+  ctx.lineTo(bw, bh * 0.15);
+  ctx.closePath();
+  ctx.fill();
+  // Flame
+  ctx.fillStyle = '#fbbf24';
+  ctx.beginPath();
+  ctx.moveTo(-bw * 0.6, bh * 0.4);
+  ctx.quadraticCurveTo(0, bh * 0.85, bw * 0.6, bh * 0.4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#fff8';
+  ctx.beginPath();
+  ctx.moveTo(-bw * 0.3, bh * 0.4);
+  ctx.quadraticCurveTo(0, bh * 0.65, bw * 0.3, bh * 0.4);
+  ctx.closePath();
+  ctx.fill();
+}
+
 // ─── Power-ups ────────────────────────────────────────
 function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
+  const puColors: Record<string, { base: string; light: string; dark: string }> = {
+    medkit:      { base: '#22c55e', light: '#4ade80', dark: '#15803d' },
+    shield:      { base: '#60a5fa', light: '#93c5fd', dark: '#2563eb' },
+    ammo:        { base: '#a855f7', light: '#c084fc', dark: '#7e22ce' },
+    slowmo:      { base: '#06b6d4', light: '#22d3ee', dark: '#0e7490' },
+    magnet:      { base: '#ef4444', light: '#f87171', dark: '#b91c1c' },
+    airstrike:   { base: '#fbbf24', light: '#fcd34d', dark: '#b45309' },
+    interceptor: { base: '#f97316', light: '#fb923c', dark: '#c2410c' },
+  };
+
   for (const pu of g.powerUps) {
     if (!pu.active) continue;
 
-    // Fade out when about to expire on ground
     let fadeAlpha = 1;
     if (!pu.parachuting) {
       const maxGroundTime = Math.max(1.5, 3 - (g.difficulty - 1) * 0.3);
       const remaining = maxGroundTime - pu.groundTimer;
       if (remaining < 1.5) {
-        // Blink effect in last 1.5s
         fadeAlpha = remaining < 0.8 ? (Math.sin(g.elapsed * 16) * 0.5 + 0.5) : 0.6 + remaining * 0.27;
       }
     }
@@ -432,73 +657,157 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     const bob = Math.sin(pu.bobTimer * 3) * 3;
     ctx.translate(0, bob);
 
+    const cols = puColors[pu.type] || puColors.medkit;
+
+    // ── Professional Parachute ──
     if (pu.parachuting) {
-      // Better parachute — dome shape with panels
-      const canopyW = 22, canopyH = 14;
-      // Main canopy
-      ctx.fillStyle = pu.type === 'medkit' ? 'rgba(34, 197, 94, 0.5)' :
-                      pu.type === 'shield' ? 'rgba(96, 165, 250, 0.5)' :
-                      pu.type === 'slowmo' ? 'rgba(6, 182, 212, 0.5)' :
-                      pu.type === 'magnet' ? 'rgba(239, 68, 68, 0.5)' :
-                      pu.type === 'airstrike' ? 'rgba(251, 191, 36, 0.5)' :
-                      'rgba(249, 115, 22, 0.5)';
-      ctx.beginPath();
-      ctx.ellipse(0, -26, canopyW, canopyH, 0, Math.PI, 0);
-      ctx.fill();
-      // Canopy outline
+      const cW = 26, cH = 16;
+      const cY = -28; // canopy center Y
+      const panels = 8;
+      const sway = Math.sin(pu.bobTimer * 2) * 0.06;
+      ctx.save();
+      ctx.rotate(sway);
+
+      // Canopy panels with alternating colors
+      for (let i = 0; i < panels; i++) {
+        const startA = Math.PI + (i / panels) * Math.PI;
+        const endA = Math.PI + ((i + 1) / panels) * Math.PI;
+        const panelColor = i % 2 === 0 ? cols.light : cols.dark;
+        ctx.fillStyle = panelColor;
+        ctx.globalAlpha = fadeAlpha * 0.75;
+        ctx.beginPath();
+        ctx.ellipse(0, cY, cW, cH, 0, startA, endA);
+        ctx.lineTo(0, cY);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.globalAlpha = fadeAlpha;
+
+      // Canopy outline + highlight
       ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      // Panel lines
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.moveTo(-11, -26); ctx.lineTo(-8, -38);
-      ctx.moveTo(0, -26); ctx.lineTo(0, -40);
-      ctx.moveTo(11, -26); ctx.lineTo(8, -38);
+      ctx.ellipse(0, cY, cW, cH, 0, Math.PI, 0);
       ctx.stroke();
-      // Strings
-      ctx.strokeStyle = 'rgba(200,200,200,0.6)';
-      ctx.lineWidth = 0.7;
+
+      // Top highlight arc (3D effect)
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(-8, -4); ctx.lineTo(-18, -26);
-      ctx.moveTo(8, -4); ctx.lineTo(18, -26);
-      ctx.moveTo(-2, -6); ctx.lineTo(-5, -26);
-      ctx.moveTo(2, -6); ctx.lineTo(5, -26);
+      ctx.ellipse(0, cY - 2, cW * 0.6, cH * 0.5, 0, Math.PI + 0.4, -0.4);
       ctx.stroke();
+
+      // Inner shadow under canopy
+      const shadowGrad = ctx.createLinearGradient(0, cY, 0, cY + cH * 0.6);
+      shadowGrad.addColorStop(0, 'rgba(0,0,0,0.2)');
+      shadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = shadowGrad;
+      ctx.beginPath();
+      ctx.ellipse(0, cY + 2, cW * 0.9, cH * 0.35, 0, 0, Math.PI);
+      ctx.fill();
+
+      // Bezier curve strings (4 strings with natural drape)
+      ctx.strokeStyle = 'rgba(220,215,205,0.65)';
+      ctx.lineWidth = 0.8;
+      const stringAttach = [
+        { cx: -cW * 0.85, cy: cY + 2 },
+        { cx: -cW * 0.35, cy: cY + cH * 0.4 },
+        { cx: cW * 0.35, cy: cY + cH * 0.4 },
+        { cx: cW * 0.85, cy: cY + 2 },
+      ];
+      for (const sa of stringAttach) {
+        ctx.beginPath();
+        ctx.moveTo(sa.cx, sa.cy);
+        ctx.bezierCurveTo(
+          sa.cx * 0.6, sa.cy + 10,
+          sa.cx > 0 ? 3 : -3, -8,
+          0, -4
+        );
+        ctx.stroke();
+      }
+
+      ctx.restore(); // restore sway rotation
     }
 
-    let color = '#22c55e';
-    let icon = '♥';
-    if (pu.type === 'shield') { color = '#60a5fa'; icon = '◆'; }
-    if (pu.type === 'interceptor') { color = '#f97316'; icon = '⚡'; }
-    if (pu.type === 'ammo') { color = '#a855f7'; icon = '⊕'; }
-    if (pu.type === 'slowmo') { color = '#06b6d4'; icon = '⏳'; }
-    if (pu.type === 'magnet') { color = '#ef4444'; icon = '🧲'; }
-    if (pu.type === 'airstrike') { color = '#fbbf24'; icon = '✈'; }
+    // ── Pulse ring ──
+    const pulsePhase = (g.elapsed * 2 + pu.bobTimer) % 1;
+    const pulseR = pu.size * 1.5 + pulsePhase * pu.size * 1.5;
+    ctx.strokeStyle = `${cols.base}`;
+    ctx.globalAlpha = fadeAlpha * (1 - pulsePhase) * 0.35;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, pulseR, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = fadeAlpha;
 
-    // Glow
-    const glowGrad = ctx.createRadialGradient(0, 0, pu.size * 0.5, 0, 0, pu.size * 2.5);
-    glowGrad.addColorStop(0, `${color}50`);
+    // ── Outer glow ──
+    const glowGrad = ctx.createRadialGradient(0, 0, pu.size * 0.3, 0, 0, pu.size * 2.8);
+    glowGrad.addColorStop(0, `${cols.base}40`);
     glowGrad.addColorStop(1, 'transparent');
     ctx.fillStyle = glowGrad;
     ctx.beginPath();
-    ctx.arc(0, 0, pu.size * 2.5, 0, Math.PI * 2);
+    ctx.arc(0, 0, pu.size * 2.8, 0, Math.PI * 2);
     ctx.fill();
 
-    // Item circle with border
-    ctx.fillStyle = color;
+    // ── Item circle background with gradient ──
+    const bgGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, pu.size);
+    bgGrad.addColorStop(0, cols.light);
+    bgGrad.addColorStop(0.7, cols.base);
+    bgGrad.addColorStop(1, cols.dark);
+    ctx.fillStyle = bgGrad;
     ctx.beginPath();
     ctx.arc(0, 0, pu.size, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+
+    // Glossy highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(-pu.size * 0.2, -pu.size * 0.3, pu.size * 0.5, pu.size * 0.3, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Border ring
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
     ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, pu.size, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Icon
-    ctx.fillStyle = '#fff';
-    ctx.font = `bold ${pu.size}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(icon, 0, 1);
+    // ── Draw icon (hand-drawn, no Unicode) ──
+    ctx.save();
+    const iconScale = pu.size * 0.85;
+    if (pu.type === 'medkit') drawMedkitIcon(ctx, iconScale);
+    else if (pu.type === 'shield') drawShieldIcon(ctx, iconScale);
+    else if (pu.type === 'ammo') drawAmmoIcon(ctx, iconScale);
+    else if (pu.type === 'slowmo') drawSlowMoIcon(ctx, iconScale, g.elapsed);
+    else if (pu.type === 'magnet') drawMagnetIcon(ctx, iconScale);
+    else if (pu.type === 'airstrike') drawAirstrikeIcon(ctx, iconScale);
+    else if (pu.type === 'interceptor') drawInterceptorIcon(ctx, iconScale);
+    ctx.restore();
+
+    // ── Sparkles ──
+    for (let i = 0; i < 3; i++) {
+      const sparkA = g.elapsed * 1.5 + i * (Math.PI * 2 / 3);
+      const sparkR = pu.size * 1.3 + Math.sin(g.elapsed * 3 + i) * 3;
+      const sx = Math.cos(sparkA) * sparkR;
+      const sy = Math.sin(sparkA) * sparkR;
+      const sparkAlpha = 0.4 + Math.sin(g.elapsed * 5 + i * 2) * 0.3;
+      ctx.fillStyle = '#fff';
+      ctx.globalAlpha = fadeAlpha * sparkAlpha;
+      // 4-point star sparkle
+      ctx.beginPath();
+      const ss = 1.5;
+      ctx.moveTo(sx, sy - ss * 2);
+      ctx.lineTo(sx + ss * 0.5, sy - ss * 0.5);
+      ctx.lineTo(sx + ss * 2, sy);
+      ctx.lineTo(sx + ss * 0.5, sy + ss * 0.5);
+      ctx.lineTo(sx, sy + ss * 2);
+      ctx.lineTo(sx - ss * 0.5, sy + ss * 0.5);
+      ctx.lineTo(sx - ss * 2, sy);
+      ctx.lineTo(sx - ss * 0.5, sy - ss * 0.5);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
 
     ctx.restore();
   }
