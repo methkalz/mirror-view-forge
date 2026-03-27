@@ -415,6 +415,23 @@ export function update(g: GameData, input: InputState, dt: number) {
     input.touchDash = false;
   }
 
+  // === Shooting ===
+  if (input.shoot && p.ammo > 0 && !p.isDashing) {
+    input.shoot = false;
+    p.ammo--;
+    const bullet: Bullet = {
+      active: true,
+      pos: { x: p.pos.x + (p.facingRight ? 10 : -10), y: p.pos.y - 20 },
+      vel: { x: 0, y: -600 },
+      size: 3,
+      damage: 1,
+    };
+    g.bullets.push(bullet);
+    // muzzle flash particles
+    spawnParticles(g, { x: bullet.pos.x, y: bullet.pos.y }, 3, '#fbbf24', 60, false);
+  }
+  if (input.shoot) input.shoot = false;
+
   if (p.isDashing) {
     p.dashTimer -= dt;
     p.velocity.x = p.dashDir.x * DASH_SPEED;
@@ -805,6 +822,58 @@ export function update(g: GameData, input: InputState, dt: number) {
       }
     }
     pt.vel.x *= 0.97;
+  }
+
+  // === Update bullets ===
+  for (let i = g.bullets.length - 1; i >= 0; i--) {
+    const b = g.bullets[i];
+    if (!b.active) { g.bullets.splice(i, 1); continue; }
+    b.pos.x += b.vel.x * dt;
+    b.pos.y += b.vel.y * dt;
+    if (b.pos.y < -20 || b.pos.x < -20 || b.pos.x > g.width + 20) {
+      g.bullets.splice(i, 1);
+      continue;
+    }
+    // Hit hazards (shrapnel=1, missile=2, cluster=2)
+    let hit = false;
+    for (const h of g.hazards) {
+      if (!h.active || !h.falling) continue;
+      if (dist(b.pos, h.pos) < h.size + b.size + 4) {
+        h.active = false;
+        sfxExplosion();
+        addExplosion(g, h.pos, h.size * 2);
+        spawnParticles(g, h.pos, 8, '#f97316', 150);
+        const distToPlayer = dist(h.pos, p.pos);
+        const proximity = Math.max(0, 1 - distToPlayer / 200);
+        const bonus = Math.floor(20 + proximity * 80);
+        g.score += bonus;
+        addFloatingText(g, `Shot! +${bonus}`, h.pos, '#a855f7');
+        hit = true;
+        break;
+      }
+    }
+    if (hit) { g.bullets.splice(i, 1); continue; }
+    // Hit drones
+    for (const d of g.drones) {
+      if (!d.active) continue;
+      if (dist(b.pos, d.pos) < d.size + b.size + 4) {
+        d.health--;
+        spawnParticles(g, b.pos, 4, '#f97316', 80);
+        if (d.health <= 0) {
+          d.active = false;
+          addExplosion(g, d.pos, 20);
+          sfxExplosion();
+          spawnParticles(g, d.pos, 12, '#f97316', 150);
+          const bonus = d.tier === 'bomber' ? 80 : d.tier === 'tracker' ? 50 : 30;
+          addFloatingText(g, `Shot Down! +${bonus}`, d.pos, '#a855f7');
+          g.score += bonus;
+          g.stats.dronesDestroyed++;
+        }
+        hit = true;
+        break;
+      }
+    }
+    if (hit) { g.bullets.splice(i, 1); continue; }
   }
 
   // === Update explosions ===
