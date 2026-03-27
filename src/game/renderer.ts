@@ -1,120 +1,217 @@
 import { GameData, Player } from './types';
 
-const SKY_TOP = '#0c1445';
-const SKY_BOTTOM = '#1a0a2e';
-const GROUND_TOP = '#2a2520';
-const GROUND_BOTTOM = '#1a1512';
+// ─── Color Interpolation Helpers ──────────────────────
+function lerpColor(a: number[], b: number[], t: number): number[] {
+  return a.map((v, i) => Math.round(v + (b[i] - v) * t));
+}
+function rgbStr(c: number[]): string {
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+// Sky color presets [R,G,B] — top, mid, bottom
+const SKY_PHASES = [
+  { time: 0,   top: [12,20,69],   mid: [26,16,46],  bottom: [26,10,46] },   // calm night
+  { time: 60,  top: [15,22,60],   mid: [35,20,55],  bottom: [60,30,50] },   // pre-dawn
+  { time: 120, top: [20,15,50],   mid: [50,20,40],  bottom: [90,35,30] },   // battle dusk
+  { time: 240, top: [30,5,10],    mid: [50,8,15],   bottom: [100,15,10] },  // boss hell
+  { time: 400, top: [40,2,5],     mid: [60,5,8],    bottom: [120,10,5] },   // deep hell
+];
+
+function getSkyColors(elapsed: number) {
+  let i = 0;
+  for (; i < SKY_PHASES.length - 1; i++) {
+    if (elapsed < SKY_PHASES[i + 1].time) break;
+  }
+  if (i >= SKY_PHASES.length - 1) i = SKY_PHASES.length - 2;
+  const a = SKY_PHASES[i], b = SKY_PHASES[i + 1];
+  const t = Math.min(1, (elapsed - a.time) / (b.time - a.time));
+  return {
+    top: lerpColor(a.top, b.top, t),
+    mid: lerpColor(a.mid, b.mid, t),
+    bottom: lerpColor(a.bottom, b.bottom, t),
+  };
+}
 
 // ─── Sky & Environment ────────────────────────────────
 function renderSky(ctx: CanvasRenderingContext2D, g: GameData) {
   const { width: w, height: h } = g;
   const groundY = h * 0.78;
+  const camX = g.camera.x;
+  const margin = 200;
+  const left = camX - margin;
+  const right = camX + w + margin;
 
-  // Gradient sky
+  // Dynamic sky gradient
+  const colors = getSkyColors(g.elapsed);
   const skyGrad = ctx.createLinearGradient(0, 0, 0, groundY);
-  skyGrad.addColorStop(0, SKY_TOP);
-  skyGrad.addColorStop(0.6, '#1a1040');
-  skyGrad.addColorStop(1, SKY_BOTTOM);
+  skyGrad.addColorStop(0, rgbStr(colors.top));
+  skyGrad.addColorStop(0.5, rgbStr(colors.mid));
+  skyGrad.addColorStop(1, rgbStr(colors.bottom));
   ctx.fillStyle = skyGrad;
-  ctx.fillRect(0, 0, w, groundY);
+  ctx.fillRect(left, 0, right - left, groundY);
 
-  // Stars
-  ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  for (let i = 0; i < 40; i++) {
-    const sx = ((i * 137.5 + 50) % w);
-    const sy = ((i * 73.1 + 20) % (groundY * 0.5));
-    const ss = 0.5 + (i % 3) * 0.5;
-    const flicker = 0.3 + Math.sin(g.elapsed * 2 + i) * 0.3;
-    ctx.globalAlpha = flicker;
-    ctx.fillRect(sx, sy, ss, ss);
+  // Stars (world-space, dimmer as dawn approaches)
+  const starAlphaBase = Math.max(0, 0.4 - g.elapsed * 0.001);
+  if (starAlphaBase > 0.02) {
+    ctx.fillStyle = `rgba(255,255,255,${starAlphaBase})`;
+    for (let i = 0; i < 60; i++) {
+      const sx = ((i * 237.5 + 50) % 2000) - 200;
+      const sy = ((i * 73.1 + 20) % (groundY * 0.5));
+      const ss = 0.5 + (i % 3) * 0.5;
+      const flicker = 0.3 + Math.sin(g.elapsed * 2 + i) * 0.3;
+      ctx.globalAlpha = flicker * starAlphaBase;
+      ctx.fillRect(sx, sy, ss, ss);
+    }
+    ctx.globalAlpha = 1;
   }
-  ctx.globalAlpha = 1;
 
-  // Clouds
+  // Clouds (world-space with parallax)
   for (const c of g.clouds) {
+    const cloudX = c.x - camX * 0.15; // slow parallax
+    // Skip if out of view
+    if (cloudX + c.width < -margin || cloudX - c.width > w + margin) continue;
+    const adjustedX = cloudX + camX; // back to world coords after parallax offset
     ctx.fillStyle = `rgba(200, 200, 220, ${c.opacity})`;
     ctx.beginPath();
-    ctx.ellipse(c.x, c.y, c.width / 2, c.height / 2, 0, 0, Math.PI * 2);
+    ctx.ellipse(adjustedX, c.y, c.width / 2, c.height / 2, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(c.x - c.width * 0.25, c.y + 3, c.width * 0.35, c.height * 0.4, 0, 0, Math.PI * 2);
+    ctx.ellipse(adjustedX - c.width * 0.25, c.y + 3, c.width * 0.35, c.height * 0.4, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(c.x + c.width * 0.3, c.y + 2, c.width * 0.3, c.height * 0.35, 0, 0, Math.PI * 2);
+    ctx.ellipse(adjustedX + c.width * 0.3, c.y + 2, c.width * 0.3, c.height * 0.35, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 }
 
+// ─── City Building Data (seeded, repeatable tiles) ────
+const BUILDING_TILE_WIDTH = 800;
+
+function generateBuildingTile(seed: number, count: number, minH: number, maxH: number): { x: number; bw: number; bh: number; roof: number }[] {
+  const buildings: { x: number; bw: number; bh: number; roof: number }[] = [];
+  let cx = 0;
+  for (let i = 0; i < count; i++) {
+    const s = Math.sin(seed + i * 7.31) * 10000;
+    const bw = 30 + (Math.abs(s) % 40);
+    const bh = minH + (Math.abs(Math.sin(s * 1.3)) * (maxH - minH));
+    const gap = 5 + (Math.abs(Math.sin(s * 2.7)) * 15);
+    const roof = Math.floor(Math.abs(Math.sin(s * 3.1)) * 3); // 0=flat, 1=triangle, 2=antenna
+    buildings.push({ x: cx, bw, bh, roof });
+    cx += bw + gap;
+  }
+  // Scale to fit tile width
+  const scale = BUILDING_TILE_WIDTH / cx;
+  return buildings.map(b => ({ ...b, x: b.x * scale, bw: b.bw * scale }));
+}
+
+const FAR_BUILDINGS = generateBuildingTile(42, 14, 60, 150);
+const MID_BUILDINGS = generateBuildingTile(77, 10, 40, 100);
+const NEAR_BUILDINGS = generateBuildingTile(13, 7, 25, 55);
+
 function renderCitySilhouette(ctx: CanvasRenderingContext2D, g: GameData) {
   const { width: w } = g;
   const groundY = g.height * 0.78;
-  const baseY = groundY;
+  const camX = g.camera.x;
+  const elapsed = g.elapsed;
 
-  // Far buildings (darker, smaller)
-  ctx.fillStyle = '#0d0a15';
-  const buildings = [
-    { x: 0, bw: 40, bh: 80 }, { x: 50, bw: 30, bh: 60 }, { x: 90, bw: 50, bh: 110 },
-    { x: 150, bw: 35, bh: 70 }, { x: 200, bw: 45, bh: 95 }, { x: 260, bw: 55, bh: 130 },
-    { x: 330, bw: 30, bh: 55 }, { x: 370, bw: 40, bh: 85 }, { x: 420, bw: 60, bh: 140 },
-    { x: 490, bw: 35, bh: 65 }, { x: 540, bw: 50, bh: 100 }, { x: 600, bw: 40, bh: 75 },
+  const layers: { buildings: typeof FAR_BUILDINGS; parallax: number; color: string; windowColor: string; opacity: number }[] = [
+    { buildings: FAR_BUILDINGS, parallax: 0.05, color: 'rgb(13,10,21)', windowColor: 'rgba(251,191,36,0.25)', opacity: 1 },
+    { buildings: MID_BUILDINGS, parallax: 0.1,  color: 'rgb(18,14,28)', windowColor: 'rgba(251,191,36,0.2)', opacity: 1 },
+    { buildings: NEAR_BUILDINGS, parallax: 0.2, color: 'rgb(21,16,30)', windowColor: 'rgba(251,191,36,0.15)', opacity: 1 },
   ];
 
-  for (const b of buildings) {
-    const bx = b.x % w;
-    ctx.fillRect(bx, baseY - b.bh, b.bw, b.bh);
-    // Lit windows
-    ctx.fillStyle = '#fbbf2430';
-    for (let wy = baseY - b.bh + 8; wy < baseY - 10; wy += 12) {
-      for (let wx = bx + 5; wx < bx + b.bw - 5; wx += 10) {
-        if (Math.sin(wx * 3.7 + wy * 2.1 + g.elapsed * 0.1) > 0.3) {
-          ctx.fillRect(wx, wy, 4, 5);
+  for (const layer of layers) {
+    const offsetX = camX * layer.parallax;
+    // How many tiles to draw
+    const startTile = Math.floor((camX - 200 - offsetX) / BUILDING_TILE_WIDTH) - 1;
+    const endTile = Math.ceil((camX + w + 200 - offsetX) / BUILDING_TILE_WIDTH) + 1;
+
+    for (let tile = startTile; tile <= endTile; tile++) {
+      const tileOffset = tile * BUILDING_TILE_WIDTH + offsetX;
+
+      for (const b of layer.buildings) {
+        const bx = b.x + tileOffset;
+        // Skip if fully off screen
+        if (bx + b.bw < camX - 100 || bx > camX + w + 100) continue;
+
+        ctx.fillStyle = layer.color;
+        ctx.fillRect(bx, groundY - b.bh, b.bw, b.bh);
+
+        // Roof details
+        if (b.roof === 1) {
+          // Triangle roof
+          ctx.beginPath();
+          ctx.moveTo(bx, groundY - b.bh);
+          ctx.lineTo(bx + b.bw / 2, groundY - b.bh - 12);
+          ctx.lineTo(bx + b.bw, groundY - b.bh);
+          ctx.closePath();
+          ctx.fill();
+        } else if (b.roof === 2) {
+          // Antenna
+          ctx.strokeStyle = layer.color;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(bx + b.bw / 2, groundY - b.bh);
+          ctx.lineTo(bx + b.bw / 2, groundY - b.bh - 18);
+          ctx.stroke();
+          // Blinking light
+          if (Math.sin(elapsed * 2 + bx * 0.1) > 0.3) {
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(bx + b.bw / 2, groundY - b.bh - 18, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // Windows
+        ctx.fillStyle = layer.windowColor;
+        for (let wy = groundY - b.bh + 8; wy < groundY - 10; wy += 11) {
+          for (let wx = bx + 4; wx < bx + b.bw - 4; wx += 9) {
+            if (Math.sin(wx * 3.7 + wy * 2.1 + elapsed * 0.05) > 0.25) {
+              ctx.fillRect(wx, wy, 4, 5);
+            }
+          }
         }
       }
     }
-    ctx.fillStyle = '#0d0a15';
-  }
-
-  // Near buildings (slightly lighter)
-  ctx.fillStyle = '#15101e';
-  const nearBuildings = [
-    { x: 20, bw: 50, bh: 50 }, { x: 100, bw: 60, bh: 40 },
-    { x: 300, bw: 70, bh: 45 }, { x: 450, bw: 55, bh: 35 },
-  ];
-  for (const b of nearBuildings) {
-    const bx = b.x % w;
-    ctx.fillRect(bx, baseY - b.bh, b.bw, b.bh);
   }
 }
 
 function renderGround(ctx: CanvasRenderingContext2D, g: GameData) {
   const { width: w, height: h } = g;
   const groundY = h * 0.78;
+  const camX = g.camera.x;
+  const margin = 200;
+  const left = camX - margin;
+  const right = camX + w + margin;
+  const totalW = right - left;
 
   // Ground gradient
   const grdGrad = ctx.createLinearGradient(0, groundY, 0, h);
-  grdGrad.addColorStop(0, GROUND_TOP);
+  grdGrad.addColorStop(0, '#2a2520');
   grdGrad.addColorStop(0.3, '#221e18');
-  grdGrad.addColorStop(1, GROUND_BOTTOM);
+  grdGrad.addColorStop(1, '#1a1512');
   ctx.fillStyle = grdGrad;
-  ctx.fillRect(0, groundY, w, h - groundY);
+  ctx.fillRect(left, groundY, totalW, h - groundY);
 
   // Asphalt texture lines
   ctx.strokeStyle = 'rgba(60, 55, 45, 0.3)';
   ctx.lineWidth = 0.5;
   for (let y = groundY + 5; y < h; y += 8) {
     ctx.beginPath();
-    ctx.moveTo(0, y);
-    for (let x = 0; x < w; x += 6) {
+    ctx.moveTo(left, y);
+    for (let x = left; x < right; x += 6) {
       ctx.lineTo(x, y + Math.sin(x * 0.15 + y * 0.3) * 1.5);
     }
     ctx.stroke();
   }
 
-  // Cracks
+  // Cracks (world-space)
   ctx.strokeStyle = 'rgba(80, 70, 55, 0.2)';
   ctx.lineWidth = 1;
-  for (let i = 0; i < 8; i++) {
-    const cx = (i * 97 + 30) % w;
+  for (let i = 0; i < 12; i++) {
+    const cx = ((i * 137 + 30) % 1200) + Math.floor(camX / 1200) * 1200;
+    if (cx < left || cx > right) continue;
     const cy = groundY + 10 + (i * 31) % 40;
     ctx.beginPath();
     ctx.moveTo(cx, cy);
@@ -127,8 +224,8 @@ function renderGround(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.strokeStyle = 'rgba(100, 90, 70, 0.4)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(0, groundY);
-  ctx.lineTo(w, groundY);
+  ctx.moveTo(left, groundY);
+  ctx.lineTo(right, groundY);
   ctx.stroke();
 }
 
@@ -1708,6 +1805,19 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
 
   // Lightning flash
   renderLightning(ctx, g);
+
+  // Cinematic vignette overlay
+  {
+    const { width: vw, height: vh } = g;
+    const cx = vw / 2, cy = vh / 2;
+    const r = Math.max(vw, vh) * 0.7;
+    const vigGrad = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r);
+    vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
+    vigGrad.addColorStop(0.7, 'rgba(0,0,0,0.1)');
+    vigGrad.addColorStop(1, 'rgba(0,0,0,0.45)');
+    ctx.fillStyle = vigGrad;
+    ctx.fillRect(0, 0, vw, vh);
+  }
 
   // Damage flash (full screen, no shake)
   if (g.damageFlash > 0) {
