@@ -151,8 +151,7 @@ const SkyfallGame: React.FC = () => {
     else if (action === 'right') inputRef.current.keys.delete('arrowright');
   };
 
-  const hasAmmo = gameRef.current ? gameRef.current.player.ammo > 0 : false;
-  const ammoCount = gameRef.current ? gameRef.current.player.ammo : 0;
+  const hasAmmo = playerAmmo > 0;
 
   const btnStyle = (extra: React.CSSProperties): React.CSSProperties => ({
     position: 'absolute',
