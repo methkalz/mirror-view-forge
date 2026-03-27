@@ -1806,6 +1806,9 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   // Lightning flash
   renderLightning(ctx, g);
 
+  // Cinematic vignette overlay
+  renderVignette(ctx, g);
+
   // Damage flash (full screen, no shake)
   if (g.damageFlash > 0) {
     ctx.fillStyle = `rgba(200, 30, 30, ${g.damageFlash * 0.4})`;
