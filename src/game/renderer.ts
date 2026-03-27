@@ -1078,21 +1078,11 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.save();
   ctx.translate(p.pos.x, p.pos.y);
 
-  // Shadow on ground
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-  ctx.beginPath();
-  ctx.ellipse(0, 2, p.size + 2, 4, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  const scale = p.facingRight ? 1 : -1;
-  ctx.scale(scale, 1);
-
   // Hit flash
   const isHit = p.hitTimer > 0;
-  const bodyColor = isHit ? '#ef4444' : '#3b82f6';
-  const skinColor = isHit ? '#fca5a5' : '#f5d0a9';
-  const pantsColor = '#1e3a5f';
-  const shoeColor = '#2d2d2d';
+  const skinColor = isHit ? '#fca5a5' : '#f0c4a0';
+  const pantsColor = '#1a2f4a';
+  const shoeColor = '#1a1a1a';
 
   // Animation offsets
   let legOffset = 0;
@@ -1108,23 +1098,47 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
   } else if (p.anim === 'roll') {
     const rollProgress = 1 - p.dashTimer / 0.25;
     lean = rollProgress * Math.PI * 2;
-    ctx.rotate(lean);
   }
+
+  // Shadow on ground — multi-layer dynamic
+  const shadowPulse = 1 + Math.abs(bodyBob) * 0.05;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+  ctx.beginPath();
+  ctx.ellipse(0, 3, (p.size + 6) * shadowPulse, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+  ctx.beginPath();
+  ctx.ellipse(0, 2, (p.size + 1) * shadowPulse, 3.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const scale = p.facingRight ? 1 : -1;
+  ctx.scale(scale, 1);
+  if (p.anim === 'roll') ctx.rotate(lean);
 
   const headY = -32 + bodyBob;
   const bodyTopY = -24 + bodyBob;
   const bodyBottomY = -8 + bodyBob;
 
+  // Body shadow for depth
+  ctx.shadowColor = 'rgba(0,0,0,0.25)';
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 3;
+
   // ─ Legs ─
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 4.5;
   ctx.lineCap = 'round';
-  // Back leg
-  ctx.strokeStyle = pantsColor;
+  // Back leg — pants gradient
+  const legGradBack = ctx.createLinearGradient(-3, bodyBottomY, -3, 1);
+  legGradBack.addColorStop(0, '#1a2f4a');
+  legGradBack.addColorStop(1, '#2a4a6a');
+  ctx.strokeStyle = legGradBack;
   ctx.beginPath();
   ctx.moveTo(-2, bodyBottomY);
   ctx.lineTo(-3 - legOffset, bodyBottomY + 10);
   ctx.lineTo(-2 - legOffset * 0.5, -1);
   ctx.stroke();
+  // Shoe with shine
   ctx.strokeStyle = shoeColor;
   ctx.beginPath();
   ctx.moveTo(-2 - legOffset * 0.5, -1);
@@ -1132,7 +1146,10 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.stroke();
 
   // Front leg
-  ctx.strokeStyle = pantsColor;
+  const legGradFront = ctx.createLinearGradient(3, bodyBottomY, 3, 1);
+  legGradFront.addColorStop(0, '#1a2f4a');
+  legGradFront.addColorStop(1, '#2a4a6a');
+  ctx.strokeStyle = legGradFront;
   ctx.beginPath();
   ctx.moveTo(2, bodyBottomY);
   ctx.lineTo(3 + legOffset, bodyBottomY + 10);
@@ -1144,8 +1161,16 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.lineTo(3 + legOffset * 0.3, 1);
   ctx.stroke();
 
-  // ─ Torso ─
-  ctx.fillStyle = bodyColor;
+  // ─ Torso with gradient ─
+  const torsoGrad = ctx.createLinearGradient(0, bodyTopY, 0, bodyBottomY);
+  if (isHit) {
+    torsoGrad.addColorStop(0, '#ef4444');
+    torsoGrad.addColorStop(1, '#dc2626');
+  } else {
+    torsoGrad.addColorStop(0, '#4a90e2');
+    torsoGrad.addColorStop(1, '#2563eb');
+  }
+  ctx.fillStyle = torsoGrad;
   ctx.beginPath();
   ctx.moveTo(-6, bodyTopY);
   ctx.lineTo(6, bodyTopY);
@@ -1153,50 +1178,90 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.lineTo(-5, bodyBottomY);
   ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle = '#1d4ed8';
-  ctx.lineWidth = 1;
+  // Torso outline
+  ctx.strokeStyle = isHit ? '#b91c1c' : '#1d4ed8';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+  // Collar detail
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(-3, bodyTopY + 1);
+  ctx.lineTo(0, bodyTopY + 3);
+  ctx.lineTo(3, bodyTopY + 1);
   ctx.stroke();
 
   // ─ Arms ─
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 3.5;
   ctx.lineCap = 'round';
-  // Back arm
-  ctx.strokeStyle = bodyColor;
+  const armColor = isHit ? '#ef4444' : '#3a7bd5';
+  // Back arm — sleeve
+  ctx.strokeStyle = armColor;
   ctx.beginPath();
   ctx.moveTo(-5, bodyTopY + 3);
   ctx.lineTo(-8 + armOffset, bodyTopY + 14);
   ctx.stroke();
+  // Back hand
   ctx.strokeStyle = skinColor;
+  ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(-8 + armOffset, bodyTopY + 14);
   ctx.lineTo(-7 + armOffset * 0.5, bodyTopY + 19);
   ctx.stroke();
 
-  // Front arm
-  ctx.strokeStyle = bodyColor;
+  // Front arm — sleeve
+  ctx.lineWidth = 3.5;
+  ctx.strokeStyle = armColor;
   ctx.beginPath();
   ctx.moveTo(5, bodyTopY + 3);
   ctx.lineTo(8 - armOffset, bodyTopY + 14);
   ctx.stroke();
+  // Front hand
   ctx.strokeStyle = skinColor;
+  ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(8 - armOffset, bodyTopY + 14);
   ctx.lineTo(7 - armOffset * 0.5, bodyTopY + 19);
   ctx.stroke();
 
-  // ─ Head ─
-  ctx.fillStyle = skinColor;
+  // Reset shadow before head
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+
+  // ─ Head with radial gradient ─
+  const headGrad = ctx.createRadialGradient(0, headY - 1, 1, 0, headY, 6);
+  headGrad.addColorStop(0, isHit ? '#fecaca' : '#fad5b5');
+  headGrad.addColorStop(1, skinColor);
+  ctx.fillStyle = headGrad;
   ctx.beginPath();
   ctx.arc(0, headY, 6, 0, Math.PI * 2);
   ctx.fill();
-  // Hair/helmet
-  ctx.fillStyle = '#1e293b';
+  // Hair/helmet with gradient + shine
+  const helmetGrad = ctx.createLinearGradient(0, headY - 8, 0, headY);
+  helmetGrad.addColorStop(0, '#334155');
+  helmetGrad.addColorStop(0.5, '#1e293b');
+  helmetGrad.addColorStop(1, '#0f172a');
+  ctx.fillStyle = helmetGrad;
   ctx.beginPath();
   ctx.arc(0, headY - 1.5, 6.5, Math.PI, 0);
   ctx.fill();
-  // Eyes
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(2, headY - 1, 2, 2);
+  // Helmet shine
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(-1.5, headY - 4, 3, Math.PI * 1.1, Math.PI * 1.7);
+  ctx.stroke();
+  // Eye — white + pupil
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(2.5, headY - 0.5, 1.8, 1.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(3, headY - 0.5, 0.9, 0, Math.PI * 2);
+  ctx.fill();
 
   // Shield aura
   if (p.shielded) {
