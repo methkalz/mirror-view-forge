@@ -10,6 +10,7 @@ const SkyfallGame: React.FC = () => {
   const inputRef = useRef<InputState>({
     moveDir: { x: 0, y: 0 },
     dash: false,
+    shoot: false,
     keys: new Set(),
     touchJoystick: { active: false, origin: { x: 0, y: 0 }, current: { x: 0, y: 0 } },
     touchDash: false,

@@ -1,5 +1,5 @@
 import {
-  GameData, InputState, Hazard, PowerUp, Particle, Vec2, Crater, FloatingText, Drone,
+  GameData, InputState, Hazard, PowerUp, Particle, Vec2, Crater, FloatingText, Drone, Bullet,
   HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle
 } from './types';
 import { getFromPool } from './pool';
@@ -37,6 +37,7 @@ export function createGame(w: number, h: number): GameData {
       animTimer: 0,
       hitTimer: 0,
       groundY,
+      ammo: 0,
     },
     hazards: [],
     powerUps: [],
@@ -48,6 +49,7 @@ export function createGame(w: number, h: number): GameData {
     drones: [],
     clouds: initClouds(w, h),
     ambientParticles: [],
+    bullets: [],
     score: 0,
     highScore: parseInt(localStorage.getItem('skyfall_hi') || '0'),
     elapsed: 0,
