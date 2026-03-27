@@ -6,7 +6,7 @@ export interface Vec2 {
 export type GameState = 'start' | 'playing' | 'gameover';
 
 export type HazardType = 'shrapnel' | 'missile' | 'cluster';
-export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo';
+export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike';
 export type DroneState = 'entering' | 'tracking' | 'bombing';
 export type DroneTier = 'scout' | 'tracker' | 'bomber';
 export type PlayerAnim = 'idle' | 'walk' | 'roll' | 'hit';
@@ -196,6 +196,9 @@ export interface GameData {
   waveWarnings: WaveWarning[];
   waveTriggered: Set<string>;
   bulletLevel: number;
+  slowMoTimer: number;
+  magnetTimer: number;
+  slowMoFactor: number;
 }
 
 export interface InputState {

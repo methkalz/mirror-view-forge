@@ -438,6 +438,9 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
       // Main canopy
       ctx.fillStyle = pu.type === 'medkit' ? 'rgba(34, 197, 94, 0.5)' :
                       pu.type === 'shield' ? 'rgba(96, 165, 250, 0.5)' :
+                      pu.type === 'slowmo' ? 'rgba(6, 182, 212, 0.5)' :
+                      pu.type === 'magnet' ? 'rgba(239, 68, 68, 0.5)' :
+                      pu.type === 'airstrike' ? 'rgba(251, 191, 36, 0.5)' :
                       'rgba(249, 115, 22, 0.5)';
       ctx.beginPath();
       ctx.ellipse(0, -26, canopyW, canopyH, 0, Math.PI, 0);
@@ -468,6 +471,9 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     if (pu.type === 'shield') { color = '#60a5fa'; icon = '◆'; }
     if (pu.type === 'interceptor') { color = '#f97316'; icon = '⚡'; }
     if (pu.type === 'ammo') { color = '#a855f7'; icon = '⊕'; }
+    if (pu.type === 'slowmo') { color = '#06b6d4'; icon = '⏳'; }
+    if (pu.type === 'magnet') { color = '#ef4444'; icon = '🧲'; }
+    if (pu.type === 'airstrike') { color = '#fbbf24'; icon = '✈'; }
 
     // Glow
     const glowGrad = ctx.createRadialGradient(0, 0, pu.size * 0.5, 0, 0, pu.size * 2.5);
@@ -1031,13 +1037,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillText('ROLL ●', w - 14, h - 14);
   }
 
-  // Shield indicator
-  if (p.shielded) {
-    ctx.fillStyle = '#60a5fa';
-    ctx.font = '10px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(`SHIELD ${p.shieldTimer.toFixed(1)}s`, 14, h - 14);
-  }
+  // Shield indicator moved to active effects section below
 
   // Ammo indicator with bullet level
   if (p.ammo > 0) {
@@ -1054,6 +1054,51 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.font = '9px monospace';
     ctx.textAlign = 'left';
     ctx.fillText(`SHOT LV.${g.bulletLevel}`, 14, 62);
+  }
+
+  // Active effect indicators (left side, below wave)
+  let effectY = 72;
+  if (g.slowMoTimer > 0) {
+    const blink = g.slowMoTimer < 1.5 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
+    ctx.globalAlpha = blink;
+    ctx.fillStyle = '#06b6d4';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`⏳ SLOW ${g.slowMoTimer.toFixed(1)}s`, 14, effectY);
+    // Progress bar
+    ctx.fillStyle = 'rgba(6, 182, 212, 0.2)';
+    ctx.fillRect(14, effectY + 2, 60, 3);
+    ctx.fillStyle = '#06b6d4';
+    ctx.fillRect(14, effectY + 2, 60 * (g.slowMoTimer / 5), 3);
+    ctx.globalAlpha = 1;
+    effectY += 18;
+  }
+  if (g.magnetTimer > 0) {
+    const blink = g.magnetTimer < 2 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
+    ctx.globalAlpha = blink;
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`🧲 MAGNET ${g.magnetTimer.toFixed(1)}s`, 14, effectY);
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.2)';
+    ctx.fillRect(14, effectY + 2, 60, 3);
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(14, effectY + 2, 60 * (g.magnetTimer / 8), 3);
+    ctx.globalAlpha = 1;
+    effectY += 18;
+  }
+  if (p.shielded) {
+    const blink = p.shieldTimer < 2 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
+    ctx.globalAlpha = blink;
+    ctx.fillStyle = '#60a5fa';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`◆ SHIELD ${p.shieldTimer.toFixed(1)}s`, 14, effectY);
+    ctx.fillStyle = 'rgba(96, 165, 250, 0.2)';
+    ctx.fillRect(14, effectY + 2, 60, 3);
+    ctx.fillStyle = '#60a5fa';
+    ctx.fillRect(14, effectY + 2, 60 * (p.shieldTimer / 8), 3);
+    ctx.globalAlpha = 1;
   }
 }
 
@@ -1098,6 +1143,32 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   if (g.damageFlash > 0) {
     ctx.fillStyle = `rgba(200, 30, 30, ${g.damageFlash * 0.4})`;
     ctx.fillRect(0, 0, g.width, g.height);
+  }
+
+  // Slow-mo screen tint
+  if (g.slowMoTimer > 0) {
+    const pulse = 0.08 + Math.sin(g.elapsed * 4) * 0.03;
+    ctx.fillStyle = `rgba(6, 182, 212, ${pulse})`;
+    ctx.fillRect(0, 0, g.width, g.height);
+  }
+
+  // Magnet attraction lines
+  if (g.magnetTimer > 0) {
+    const p = g.player;
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 6]);
+    for (const pu of g.powerUps) {
+      if (!pu.active) continue;
+      const d = Math.sqrt((pu.pos.x - p.pos.x) ** 2 + (pu.pos.y - p.pos.y) ** 2);
+      if (d < g.width * 0.5) {
+        ctx.beginPath();
+        ctx.moveTo(p.pos.x - g.camera.x + g.screenShake.x, p.pos.y + g.screenShake.y);
+        ctx.lineTo(pu.pos.x - g.camera.x + g.screenShake.x, pu.pos.y + g.screenShake.y);
+        ctx.stroke();
+      }
+    }
+    ctx.setLineDash([]);
   }
 
   // HUD (no shake)
@@ -1233,11 +1304,15 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
   // Power-up legend
   ctx.font = '10px monospace';
   ctx.fillStyle = '#22c55e';
-  ctx.fillText('♥ Medkit', w / 2 - 70, h * 0.60);
+  ctx.fillText('♥ Medkit', w / 2 - 90, h * 0.58);
   ctx.fillStyle = '#60a5fa';
-  ctx.fillText('◆ Shield', w / 2, h * 0.60);
+  ctx.fillText('◆ Shield', w / 2, h * 0.58);
   ctx.fillStyle = '#f97316';
-  ctx.fillText('⚡ Intercept', w / 2 + 75, h * 0.60);
+  ctx.fillText('⚡ Intercept', w / 2 + 90, h * 0.58);
+  ctx.fillStyle = '#06b6d4';
+  ctx.fillText('⏳ Slow-Mo', w / 2 - 60, h * 0.63);
+  ctx.fillStyle = '#ef4444';
+  ctx.fillText('🧲 Magnet', w / 2 + 60, h * 0.63);
 
   if (highScore > 0) {
     ctx.fillStyle = '#fbbf24';

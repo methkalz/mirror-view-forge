@@ -112,3 +112,22 @@ export function sfxWarning() {
   playTone(800, 0.08, 'sine', 0.03);
   setTimeout(() => playTone(1000, 0.06, 'sine', 0.02), 80);
 }
+
+export function sfxSlowmo() {
+  playTone(150, 0.6, 'sine', 0.1);
+  playTone(100, 0.8, 'sine', 0.06);
+}
+
+export function sfxMagnet() {
+  playTone(400, 0.15, 'sawtooth', 0.06);
+  setTimeout(() => playTone(500, 0.12, 'sawtooth', 0.05), 60);
+  setTimeout(() => playTone(600, 0.1, 'sawtooth', 0.04), 120);
+}
+
+export function sfxAirstrike() {
+  playTone(1200, 0.1, 'sine', 0.08);
+  setTimeout(() => playTone(800, 0.15, 'sine', 0.06), 100);
+  setTimeout(() => sfxExplosion(), 200);
+  setTimeout(() => sfxExplosion(), 350);
+  setTimeout(() => sfxExplosion(), 500);
+}
