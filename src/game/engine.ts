@@ -56,7 +56,7 @@ export function createGame(w: number, h: number): GameData {
     difficulty: 1,
     spawnTimer: 0,
     powerUpTimer: 8,
-    droneTimer: 60,
+    droneTimer: 90,
     screenShake: { x: 0, y: 0 },
     damageFlash: 0,
     width: w,
@@ -114,9 +114,9 @@ export function resetGame(g: GameData) {
   g.score = 0;
   g.elapsed = 0;
   g.difficulty = 1;
-  g.spawnTimer = 1.5;
+  g.spawnTimer = 2.5;
   g.powerUpTimer = 8;
-  g.droneTimer = 60;
+  g.droneTimer = 90;
   g.screenShake = { x: 0, y: 0 };
   g.damageFlash = 0;
   g.camera = { x: 0, y: 0 };
@@ -248,18 +248,18 @@ function spawnDrone(g: GameData) {
 
   // Determine tier based on elapsed time (gradual difficulty)
   const elapsed = g.elapsed;
-  if (elapsed < 90) {
-    // First 60-90s: scouts only — slow, inaccurate, just patrol
+  if (elapsed < 150) {
+    // First 90-150s: scouts only — slow, inaccurate, just patrol
     d.tier = 'scout';
-    d.speed = 30 + Math.min(20, (elapsed - 60) * 0.7);
+    d.speed = 25 + Math.min(15, (elapsed - 90) * 0.5);
     d.size = 14;
     d.health = 1;
-    d.aggroDelay = 3 + Math.random() * 2; // wait 3-5s before tracking
-    d.trackingAccuracy = 0.15 + Math.random() * 0.15; // very inaccurate
+    d.aggroDelay = 4 + Math.random() * 3;
+    d.trackingAccuracy = 0.1 + Math.random() * 0.1;
     d.bombTimer = 0;
     d.bombCooldown = 0;
-  } else if (elapsed < 150) {
-    // 90-150s: mix of scouts and trackers
+  } else if (elapsed < 210) {
+    // 150-210s: mix of scouts and trackers
     const roll = Math.random();
     if (roll < 0.5) {
       d.tier = 'scout';
@@ -281,7 +281,7 @@ function spawnDrone(g: GameData) {
       d.bombCooldown = 0;
     }
   } else {
-    // 150s+: all tiers including bombers
+    // 210s+: all tiers including bombers
     const roll = Math.random();
     if (roll < 0.2) {
       d.tier = 'scout';
@@ -372,7 +372,7 @@ export function update(g: GameData, input: InputState, dt: number) {
 
   dt = Math.min(dt, 0.05);
   g.elapsed += dt;
-  g.difficulty = 1 + Math.floor(g.elapsed / 30);
+  g.difficulty = 1 + g.elapsed / 60; // gradual: takes 60s per difficulty level instead of 30
   g.score = Math.floor(g.elapsed);
   g.windOffset = Math.sin(g.elapsed * 0.3) * 0.5;
 
@@ -507,12 +507,12 @@ export function update(g: GameData, input: InputState, dt: number) {
   // === Spawn hazards ===
   g.spawnTimer -= dt;
   if (g.spawnTimer <= 0) {
-    const spawnRate = Math.max(0.3, 1.5 - g.difficulty * 0.1);
+    const spawnRate = Math.max(0.5, 2.0 - g.difficulty * 0.12);
     g.spawnTimer = spawnRate;
     const types: HazardType[] = ['shrapnel', 'shrapnel', 'missile'];
-    if (g.elapsed >= 45) types.push('cluster', 'cluster');
+    if (g.elapsed >= 90) types.push('cluster', 'cluster');
     spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
-    if (g.difficulty >= 3 && Math.random() < 0.3) {
+    if (g.difficulty >= 4 && Math.random() < 0.25) {
       spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
     }
   }
@@ -676,14 +676,13 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Drones ===
-  if (g.elapsed >= 60) {
+  if (g.elapsed >= 90) {
     g.droneTimer -= dt;
     if (g.droneTimer <= 0) {
-      // Spawn rate: starts slow, gradually increases
-      const timeSinceDrones = g.elapsed - 60;
-      const baseInterval = 25; // first drone at 60s, next after 25s
-      const minInterval = 8;
-      const interval = Math.max(minInterval, baseInterval - timeSinceDrones * 0.08);
+      const timeSinceDrones = g.elapsed - 90;
+      const baseInterval = 30;
+      const minInterval = 10;
+      const interval = Math.max(minInterval, baseInterval - timeSinceDrones * 0.05);
       g.droneTimer = interval + Math.random() * 5;
       spawnDrone(g);
     }
