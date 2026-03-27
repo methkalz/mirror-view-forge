@@ -857,6 +857,36 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.restore();
 }
 
+// ─── Bullets ──────────────────────────────────────────
+function renderBullets(ctx: CanvasRenderingContext2D, g: GameData) {
+  for (const b of g.bullets) {
+    if (!b.active) continue;
+    ctx.save();
+    ctx.translate(b.pos.x, b.pos.y);
+    // Glow
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.3)';
+    ctx.beginPath();
+    ctx.arc(0, 0, b.size * 3, 0, Math.PI * 2);
+    ctx.fill();
+    // Bullet tracer
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, b.size * 0.8, b.size * 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Core
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, b.size * 0.3, b.size * 1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Trail
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.15)';
+    ctx.beginPath();
+    ctx.ellipse(0, b.size * 4, b.size * 0.5, b.size * 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
 // ─── Particles ────────────────────────────────────────
 function renderParticles(ctx: CanvasRenderingContext2D, g: GameData) {
   for (const pt of g.particles) {
