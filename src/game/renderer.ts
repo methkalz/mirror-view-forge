@@ -438,6 +438,9 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
       // Main canopy
       ctx.fillStyle = pu.type === 'medkit' ? 'rgba(34, 197, 94, 0.5)' :
                       pu.type === 'shield' ? 'rgba(96, 165, 250, 0.5)' :
+                      pu.type === 'slowmo' ? 'rgba(6, 182, 212, 0.5)' :
+                      pu.type === 'magnet' ? 'rgba(239, 68, 68, 0.5)' :
+                      pu.type === 'airstrike' ? 'rgba(251, 191, 36, 0.5)' :
                       'rgba(249, 115, 22, 0.5)';
       ctx.beginPath();
       ctx.ellipse(0, -26, canopyW, canopyH, 0, Math.PI, 0);
@@ -468,6 +471,9 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     if (pu.type === 'shield') { color = '#60a5fa'; icon = '◆'; }
     if (pu.type === 'interceptor') { color = '#f97316'; icon = '⚡'; }
     if (pu.type === 'ammo') { color = '#a855f7'; icon = '⊕'; }
+    if (pu.type === 'slowmo') { color = '#06b6d4'; icon = '⏳'; }
+    if (pu.type === 'magnet') { color = '#ef4444'; icon = '🧲'; }
+    if (pu.type === 'airstrike') { color = '#fbbf24'; icon = '✈'; }
 
     // Glow
     const glowGrad = ctx.createRadialGradient(0, 0, pu.size * 0.5, 0, 0, pu.size * 2.5);

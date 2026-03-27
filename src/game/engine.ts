@@ -867,8 +867,8 @@ export function update(g: GameData, input: InputState, dt: number) {
             d.vel.y = (d.vel.y / vLen) * d.speed;
           }
         }
-        d.pos.x += d.vel.x * dt;
-        d.pos.y += d.vel.y * dt;
+        d.pos.x += d.vel.x * g.slowMoFactor * dt;
+        d.pos.y += d.vel.y * g.slowMoFactor * dt;
 
         // Keep drones in upper portion of screen
         const minY = g.height * 0.08;
