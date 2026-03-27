@@ -180,6 +180,21 @@ const SkyfallGame: React.FC = () => {
       />
       {showButtons && (
         <>
+          {/* FIRE button - always visible, above left arrows */}
+          <button
+            onPointerDown={(e) => { if (hasAmmo) { e.stopPropagation(); handleButtonDown('shoot'); } }}
+            style={btnStyle({
+              left: 40, bottom: 130, width: 66, height: 66,
+              border: hasAmmo ? '2px solid rgba(168,85,247,0.6)' : '2px solid rgba(100,100,100,0.3)',
+              background: hasAmmo ? 'rgba(168,85,247,0.2)' : 'rgba(60,60,60,0.15)',
+              color: hasAmmo ? '#a855f7' : 'rgba(120,120,120,0.5)',
+              fontSize: 10,
+              fontFamily: 'monospace',
+              fontWeight: 'bold',
+              lineHeight: '1.3',
+              whiteSpace: 'pre' as const,
+            })}
+          >{hasAmmo ? `FIRE\n${playerAmmo}` : 'FIRE\n—'}</button>
           <button
             onPointerDown={(e) => { e.stopPropagation(); handleButtonDown('left'); }}
             onPointerUp={() => handleButtonUp('left')}
@@ -204,20 +219,6 @@ const SkyfallGame: React.FC = () => {
               fontWeight: 'bold',
             })}
           >ROLL</button>
-          {hasAmmo && (
-            <button
-              onPointerDown={(e) => { e.stopPropagation(); handleButtonDown('shoot'); }}
-              style={btnStyle({
-                right: 16, bottom: 130, width: 72, height: 72,
-                border: '2px solid rgba(168,85,247,0.5)',
-                background: 'rgba(168,85,247,0.15)',
-                color: '#a855f7',
-                fontSize: 11,
-                fontFamily: 'monospace',
-                fontWeight: 'bold',
-              })}
-            >{`FIRE\n${playerAmmo}`}</button>
-          )}
         </>
       )}
     </div>

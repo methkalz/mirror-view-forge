@@ -372,7 +372,7 @@ export function update(g: GameData, input: InputState, dt: number) {
 
   dt = Math.min(dt, 0.05);
   g.elapsed += dt;
-  g.difficulty = 1 + Math.floor(g.elapsed / 30);
+  g.difficulty = 1 + g.elapsed / 60; // gradual: takes 60s per difficulty level instead of 30
   g.score = Math.floor(g.elapsed);
   g.windOffset = Math.sin(g.elapsed * 0.3) * 0.5;
 
@@ -507,12 +507,12 @@ export function update(g: GameData, input: InputState, dt: number) {
   // === Spawn hazards ===
   g.spawnTimer -= dt;
   if (g.spawnTimer <= 0) {
-    const spawnRate = Math.max(0.3, 1.5 - g.difficulty * 0.1);
+    const spawnRate = Math.max(0.5, 2.0 - g.difficulty * 0.12);
     g.spawnTimer = spawnRate;
     const types: HazardType[] = ['shrapnel', 'shrapnel', 'missile'];
-    if (g.elapsed >= 45) types.push('cluster', 'cluster');
+    if (g.elapsed >= 90) types.push('cluster', 'cluster');
     spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
-    if (g.difficulty >= 3 && Math.random() < 0.3) {
+    if (g.difficulty >= 4 && Math.random() < 0.25) {
       spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
     }
   }
