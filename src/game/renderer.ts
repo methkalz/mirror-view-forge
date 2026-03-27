@@ -82,64 +82,38 @@ function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.fillStyle = overlayGrad;
   ctx.fillRect(left, 0, totalW, h);
 
-  // Stars (world-space, dimmer as dawn approaches)
+  // Stars — few twinkling 4-pointed stars
   const groundY = h * 0.78;
-  const starAlphaBase = Math.max(0, 0.4 - g.elapsed * 0.001);
+  const starAlphaBase = Math.max(0, 0.5 - g.elapsed * 0.001);
   if (starAlphaBase > 0.02) {
-    ctx.fillStyle = `rgba(255,255,255,${starAlphaBase})`;
-    for (let i = 0; i < 60; i++) {
+    const saved = ctx.save();
+    for (let i = 0; i < 15; i++) {
       const sx = ((i * 237.5 + 50) % 2000) - 200;
-      const sy = ((i * 73.1 + 20) % (groundY * 0.5));
-      const ss = 0.5 + (i % 3) * 0.5;
-      const flicker = 0.3 + Math.sin(g.elapsed * 2 + i) * 0.3;
-      ctx.globalAlpha = flicker * starAlphaBase;
-      ctx.fillRect(sx, sy, ss, ss);
+      const sy = ((i * 73.1 + 20) % (groundY * 0.45));
+      const size = 1 + (i % 3);
+      const flicker = 0.4 + Math.sin(g.elapsed * 0.8 + i * 2.7) * 0.35;
+      const alpha = flicker * starAlphaBase;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#fff';
+      ctx.shadowColor = 'rgba(200,220,255,0.8)';
+      ctx.shadowBlur = size * 3;
+      // Draw 4-pointed star
+      ctx.beginPath();
+      ctx.moveTo(sx, sy - size * 1.8);
+      ctx.lineTo(sx + size * 0.35, sy - size * 0.35);
+      ctx.lineTo(sx + size * 1.8, sy);
+      ctx.lineTo(sx + size * 0.35, sy + size * 0.35);
+      ctx.lineTo(sx, sy + size * 1.8);
+      ctx.lineTo(sx - size * 0.35, sy + size * 0.35);
+      ctx.lineTo(sx - size * 1.8, sy);
+      ctx.lineTo(sx - size * 0.35, sy - size * 0.35);
+      ctx.closePath();
+      ctx.fill();
     }
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
     ctx.globalAlpha = 1;
-  }
-
-  // Clouds — slow parallax, independent of player movement
-  for (const c of g.clouds) {
-    // Cloud moves at its own pace; parallax makes it appear distant
-    const screenX = c.x - camX * 0.85;
-    if (screenX + c.width < -margin || screenX - c.width > w + margin) continue;
-    // Convert back to world-space for drawing (context is translated by -camX)
-    const cx = screenX + camX;
-    const cy = c.y;
-    const rw = c.width / 2;
-    const rh = c.height / 2;
-
-    // 4 puffs — cleaner, softer shape
-    const puffs = [
-      { dx: 0, dy: 0, rx: rw * 0.6, ry: rh * 0.7 },
-      { dx: -rw * 0.38, dy: rh * 0.05, rx: rw * 0.42, ry: rh * 0.55 },
-      { dx: rw * 0.4, dy: rh * 0.03, rx: rw * 0.4, ry: rh * 0.52 },
-      { dx: rw * 0.05, dy: -rh * 0.22, rx: rw * 0.38, ry: rh * 0.42 },
-    ];
-
-    // Soft shadow
-    ctx.fillStyle = `rgba(140,140,160,${c.opacity * 0.2})`;
-    for (const p of puffs) {
-      ctx.beginPath();
-      ctx.ellipse(cx + p.dx, cy + p.dy + rh * 0.18, p.rx * 0.95, p.ry * 0.7, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Main body
-    ctx.fillStyle = `rgba(210,210,225,${c.opacity})`;
-    for (const p of puffs) {
-      ctx.beginPath();
-      ctx.ellipse(cx + p.dx, cy + p.dy, p.rx, p.ry, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Subtle top highlight
-    ctx.fillStyle = `rgba(235,235,250,${c.opacity * 0.3})`;
-    for (const p of puffs) {
-      ctx.beginPath();
-      ctx.ellipse(cx + p.dx, cy + p.dy - p.ry * 0.35, p.rx * 0.5, p.ry * 0.3, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    ctx.restore();
   }
 }
 
