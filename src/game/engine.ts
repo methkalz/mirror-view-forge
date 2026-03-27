@@ -281,7 +281,7 @@ function spawnDrone(g: GameData) {
       d.bombCooldown = 0;
     }
   } else {
-    // 150s+: all tiers including bombers
+    // 210s+: all tiers including bombers
     const roll = Math.random();
     if (roll < 0.2) {
       d.tier = 'scout';
