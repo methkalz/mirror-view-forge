@@ -216,7 +216,7 @@ function spawnHazard(g: GameData, type: HazardType) {
 }
 
 function spawnPowerUp(g: GameData) {
-  const types: PowerUpType[] = ['medkit', 'shield', 'interceptor'];
+  const types: PowerUpType[] = ['medkit', 'shield', 'interceptor', 'ammo', 'ammo'];
   const type = types[Math.floor(Math.random() * types.length)];
   const pu = getFromPool<PowerUp>(g.powerUps, () => ({
     active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
