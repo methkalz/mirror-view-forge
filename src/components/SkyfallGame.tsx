@@ -139,14 +139,37 @@ const SkyfallGame: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Haptic feedback helper
+  // iOS haptic trick: hidden checkbox toggle triggers Taptic Engine
+  const hapticRef = useRef<{ checkbox: HTMLInputElement; label: HTMLLabelElement } | null>(null);
+  useEffect(() => {
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = '_haptic_cb';
+    checkbox.style.cssText = 'position:fixed;left:-9999px;opacity:0;pointer-events:none';
+    const label = document.createElement('label');
+    label.htmlFor = '_haptic_cb';
+    label.style.cssText = 'position:fixed;left:-9999px;opacity:0;pointer-events:none';
+    document.body.appendChild(checkbox);
+    document.body.appendChild(label);
+    hapticRef.current = { checkbox, label };
+    return () => { checkbox.remove(); label.remove(); };
+  }, []);
+
   const vibrate = (ms: number = 15) => {
-    if (navigator.vibrate) navigator.vibrate(ms);
+    // Android: Vibration API
+    if (navigator.vibrate) {
+      navigator.vibrate(ms);
+      return;
+    }
+    // iOS: checkbox trick for Taptic Engine
+    if (hapticRef.current) {
+      hapticRef.current.label.click();
+    }
   };
 
   // Button handlers
   const handleButtonDown = (action: 'left' | 'right' | 'roll' | 'shoot') => {
-    vibrate(action === 'roll' ? 30 : 15);
+    vibrate(action === 'roll' ? 30 : 12);
     if (action === 'left') inputRef.current.keys.add('arrowleft');
     else if (action === 'right') inputRef.current.keys.add('arrowright');
     else if (action === 'roll') inputRef.current.dash = true;
@@ -159,25 +182,6 @@ const SkyfallGame: React.FC = () => {
 
   const hasAmmo = playerAmmo > 0;
 
-  const btnStyle = (extra: React.CSSProperties): React.CSSProperties => ({
-    position: 'absolute',
-    borderRadius: '50%',
-    border: '2px solid rgba(255,255,255,0.3)',
-    background: 'rgba(255,255,255,0.1)',
-    color: '#fff',
-    fontSize: 28,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    touchAction: 'none',
-    userSelect: 'none',
-    WebkitUserSelect: 'none',
-    cursor: 'pointer',
-    backdropFilter: 'blur(4px)',
-    zIndex: 10,
-    ...extra,
-  });
-
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' }}>
       <canvas
@@ -186,44 +190,115 @@ const SkyfallGame: React.FC = () => {
       />
       {showButtons && (
         <>
-          {/* FIRE button - always visible, above left arrows */}
+          {/* FIRE button */}
           <button
             onPointerDown={(e) => { if (hasAmmo) { e.stopPropagation(); handleButtonDown('shoot'); } }}
-            style={btnStyle({
-              left: 62, bottom: 155, width: 66, height: 66,
-              border: hasAmmo ? '2px solid rgba(168,85,247,0.6)' : '2px solid rgba(100,100,100,0.3)',
-              background: hasAmmo ? 'rgba(168,85,247,0.2)' : 'rgba(60,60,60,0.15)',
-              color: hasAmmo ? '#a855f7' : 'rgba(120,120,120,0.5)',
+            style={{
+              position: 'absolute',
+              left: 58, bottom: 158, width: 70, height: 44,
+              borderRadius: 22,
+              border: hasAmmo ? '1.5px solid rgba(168,85,247,0.4)' : '1.5px solid rgba(80,80,80,0.25)',
+              background: hasAmmo ? 'rgba(168,85,247,0.12)' : 'rgba(40,40,40,0.08)',
+              color: hasAmmo ? 'rgba(168,85,247,0.85)' : 'rgba(100,100,100,0.35)',
               fontSize: 10,
-              fontFamily: 'monospace',
-              fontWeight: 'bold',
-              lineHeight: '1.3',
-              whiteSpace: 'pre' as const,
-            })}
-          >{hasAmmo ? `FIRE\n${playerAmmo}` : 'FIRE\n—'}</button>
+              fontFamily: "'SF Pro', system-ui, -apple-system, sans-serif",
+              fontWeight: 600,
+              letterSpacing: 1.5,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 5,
+              touchAction: 'none',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              cursor: 'pointer',
+              zIndex: 10,
+              backdropFilter: 'blur(2px)',
+              WebkitBackdropFilter: 'blur(2px)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span style={{ fontSize: 14, lineHeight: 1 }}>⊕</span>
+            <span>{hasAmmo ? playerAmmo : '—'}</span>
+          </button>
+
+          {/* Left arrow */}
           <button
             onPointerDown={(e) => { e.stopPropagation(); handleButtonDown('left'); }}
             onPointerUp={() => handleButtonUp('left')}
             onPointerLeave={() => handleButtonUp('left')}
-            style={btnStyle({ left: 12, bottom: 70, width: 68, height: 68 })}
-          >◀</button>
+            style={{
+              position: 'absolute',
+              left: 14, bottom: 72, width: 72, height: 56,
+              borderRadius: 16,
+              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(255,255,255,0.04)',
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: 22,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              touchAction: 'none',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              cursor: 'pointer',
+              zIndex: 10,
+              backdropFilter: 'blur(2px)',
+              WebkitBackdropFilter: 'blur(2px)',
+            }}
+          >‹</button>
+
+          {/* Right arrow */}
           <button
             onPointerDown={(e) => { e.stopPropagation(); handleButtonDown('right'); }}
             onPointerUp={() => handleButtonUp('right')}
             onPointerLeave={() => handleButtonUp('right')}
-            style={btnStyle({ left: 120, bottom: 70, width: 68, height: 68 })}
-          >▶</button>
+            style={{
+              position: 'absolute',
+              left: 116, bottom: 72, width: 72, height: 56,
+              borderRadius: 16,
+              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(255,255,255,0.04)',
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: 22,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              touchAction: 'none',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              cursor: 'pointer',
+              zIndex: 10,
+              backdropFilter: 'blur(2px)',
+              WebkitBackdropFilter: 'blur(2px)',
+            }}
+          >›</button>
+
+          {/* ROLL button */}
           <button
             onPointerDown={(e) => { e.stopPropagation(); handleButtonDown('roll'); }}
-            style={btnStyle({
-              right: 16, bottom: 70, width: 80, height: 80,
-              border: '2px solid rgba(251,191,36,0.5)',
-              background: 'rgba(251,191,36,0.15)',
-              color: '#fbbf24',
-              fontSize: 13,
-              fontFamily: 'monospace',
-              fontWeight: 'bold',
-            })}
+            style={{
+              position: 'absolute',
+              right: 16, bottom: 72, width: 80, height: 56,
+              borderRadius: 16,
+              border: '1px solid rgba(251,191,36,0.25)',
+              background: 'rgba(251,191,36,0.06)',
+              color: 'rgba(251,191,36,0.65)',
+              fontSize: 11,
+              fontFamily: "'SF Pro', system-ui, -apple-system, sans-serif",
+              fontWeight: 600,
+              letterSpacing: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              touchAction: 'none',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              cursor: 'pointer',
+              zIndex: 10,
+              backdropFilter: 'blur(2px)',
+              WebkitBackdropFilter: 'blur(2px)',
+            }}
           >ROLL</button>
         </>
       )}
