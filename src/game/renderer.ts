@@ -1051,6 +1051,9 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
 
   // HUD (no shake)
   renderHUD(ctx, g);
+
+  // Wave warnings (cinematic banner at top)
+  renderWaveWarnings(ctx, g);
 }
 
 // ─── Start Screen ─────────────────────────────────────
