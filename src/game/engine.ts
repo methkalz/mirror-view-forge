@@ -746,20 +746,32 @@ export function update(g: GameData, input: InputState, dt: number) {
       } else {
         // Active tracking with accuracy-based steering
         const dx = p.pos.x - d.pos.x;
-        const targetY = d.tier === 'bomber' ? p.pos.y - 80 : p.pos.y - 30;
+        const targetY = d.tier === 'bomber' ? p.pos.y - 80 - d.altitudeOffset * 0.5 : p.pos.y - 30 - d.altitudeOffset * 0.5;
         const dy = targetY - d.pos.y;
         const dd = Math.sqrt(dx * dx + dy * dy);
         
         if (dd > 0) {
-          // trackingAccuracy controls how much force is applied toward player
           const steerForce = 100 * d.trackingAccuracy;
           d.vel.x += (dx / dd) * steerForce * dt;
           d.vel.y += (dy / dd) * steerForce * dt;
           
-          // Add random jitter for scouts (they're erratic)
           if (d.tier === 'scout') {
             d.vel.x += (Math.random() - 0.5) * 60 * dt;
             d.vel.y += (Math.random() - 0.5) * 30 * dt;
+          }
+
+          // === Separation force: push away from other active drones ===
+          for (const other of g.drones) {
+            if (!other.active || other === d) continue;
+            const sx = d.pos.x - other.pos.x;
+            const sy = d.pos.y - other.pos.y;
+            const sd = Math.sqrt(sx * sx + sy * sy);
+            const minSep = d.size + other.size + 30;
+            if (sd < minSep && sd > 0) {
+              const force = (minSep - sd) * 3;
+              d.vel.x += (sx / sd) * force * dt;
+              d.vel.y += (sy / sd) * force * dt;
+            }
           }
           
           const vLen = Math.sqrt(d.vel.x * d.vel.x + d.vel.y * d.vel.y);
@@ -772,8 +784,8 @@ export function update(g: GameData, input: InputState, dt: number) {
         d.pos.y += d.vel.y * dt;
 
         // Keep drones in upper portion of screen
-        const minY = g.height * 0.1;
-        const maxY = g.height * 0.55;
+        const minY = g.height * 0.08;
+        const maxY = g.height * 0.58;
         d.pos.y = Math.max(minY, Math.min(maxY, d.pos.y));
         d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
 
