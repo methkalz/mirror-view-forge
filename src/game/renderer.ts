@@ -1557,6 +1557,10 @@ export function renderGameOver(ctx: CanvasRenderingContext2D, w: number, h: numb
     ctx.fillText(`Close Calls: ${stats.closeCalls}`, w / 2, statY + 18);
     ctx.fillText(`Power-ups: ${stats.powerUpsCollected}`, w / 2, statY + 36);
     ctx.fillText(`Drones: ${stats.dronesDestroyed}`, w / 2, statY + 54);
+    if (stats.bossesDefeated > 0) {
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillText(`Bosses: ${stats.bossesDefeated}`, w / 2, statY + 72);
+    }
   }
 
   const t = Date.now() / 1000;

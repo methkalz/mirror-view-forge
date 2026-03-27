@@ -427,6 +427,7 @@ export function update(g: GameData, input: InputState, dt: number) {
     { time: 205, id: 'drones_bomber', text: '⚠ قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444' },
     { time: 120, id: 'bullet_2', text: '⬆ تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e' },
     { time: 200, id: 'bullet_3', text: '⬆ تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#fbbf24' },
+    { time: 235, id: 'boss_warn', text: '🔴 إنذار أحمر!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626' },
   ];
   for (const we of waveEvents) {
     if (g.elapsed >= we.time - 5 && !g.waveTriggered.has(we.id)) {
