@@ -507,8 +507,11 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
 
     const groundY = g.height * 0.78;
     const facingRight = d.vel.x >= 0;
-    const tilt = Math.sin(d.wobble * 2) * 0.05; // subtle tilt
-    ctx.rotate(tilt);
+    const tilt = Math.sin(d.wobble * 2) * 0.05;
+    const damaged = d.health < d.maxHealth;
+    // Extra wobble when damaged
+    const damageTilt = damaged ? Math.sin(d.wobble * 8) * 0.08 : 0;
+    ctx.rotate(tilt + damageTilt);
 
     // Searchlight beam (stronger for trackers/bombers)
     const beamAlpha = d.tier === 'scout' ? 0.03 : d.tier === 'tracker' ? 0.06 : 0.08;
@@ -710,6 +713,44 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.arc(dir * d.size * 0.9, 0, 3, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
+    }
+
+    // === Damage effects: fire & smoke on damaged drones ===
+    if (damaged) {
+      // Fire glow at center
+      const fireGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, d.size * 0.8);
+      fireGrad.addColorStop(0, `rgba(255, 100, 0, ${0.3 + Math.sin(d.wobble * 12) * 0.15})`);
+      fireGrad.addColorStop(0.6, 'rgba(255, 50, 0, 0.1)');
+      fireGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = fireGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, d.size * 0.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Flickering fire tongue
+      const fireH = 6 + Math.sin(d.wobble * 15) * 4;
+      ctx.fillStyle = `rgba(255, 150, 0, ${0.5 + Math.sin(d.wobble * 10) * 0.3})`;
+      ctx.beginPath();
+      ctx.moveTo(-3, d.size * 0.3);
+      ctx.lineTo(0, d.size * 0.3 + fireH);
+      ctx.lineTo(3, d.size * 0.3);
+      ctx.fill();
+      ctx.fillStyle = `rgba(255, 220, 50, 0.6)`;
+      ctx.beginPath();
+      ctx.moveTo(-1.5, d.size * 0.3);
+      ctx.lineTo(0, d.size * 0.3 + fireH * 0.5);
+      ctx.lineTo(1.5, d.size * 0.3);
+      ctx.fill();
+
+      // Health bar above drone
+      const barW = d.size * 2;
+      const barH = 3;
+      const barY = -d.size - 8;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(-barW / 2 - 1, barY - 1, barW + 2, barH + 2);
+      const hpRatio = d.health / d.maxHealth;
+      ctx.fillStyle = hpRatio > 0.5 ? '#22c55e' : '#ef4444';
+      ctx.fillRect(-barW / 2, barY, barW * hpRatio, barH);
     }
 
     ctx.restore();
