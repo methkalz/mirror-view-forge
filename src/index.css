@@ -104,7 +104,7 @@ All colors MUST be HSL.
   }
 }
 
-canvas, button {
+*, *::before, *::after {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   -webkit-user-select: none;

@@ -125,6 +125,15 @@ const SkyfallGame: React.FC = () => {
       startOrRestart();
     };
 
+    // Prevent text selection & context menu globally
+    const preventSelect = (e: Event) => e.preventDefault();
+    const preventContext = (e: Event) => e.preventDefault();
+    document.addEventListener('selectstart', preventSelect);
+    document.addEventListener('contextmenu', preventContext);
+    // Block touch callout on canvas
+    const preventTouch = (e: TouchEvent) => { e.preventDefault(); };
+    canvas.addEventListener('touchstart', preventTouch, { passive: false });
+
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     canvas.addEventListener('pointerdown', onPointerDown);
@@ -135,6 +144,9 @@ const SkyfallGame: React.FC = () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       canvas.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('selectstart', preventSelect);
+      document.removeEventListener('contextmenu', preventContext);
+      canvas.removeEventListener('touchstart', preventTouch);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
