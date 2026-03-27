@@ -195,7 +195,7 @@ const SkyfallGame: React.FC = () => {
             onPointerDown={(e) => { if (hasAmmo) { e.stopPropagation(); handleButtonDown('shoot'); } }}
             style={{
               position: 'absolute',
-              left: 58, bottom: 158, width: 70, height: 44,
+              left: 58, bottom: 170, width: 70, height: 44,
               borderRadius: 22,
               border: hasAmmo ? '1.5px solid rgba(168,85,247,0.4)' : '1.5px solid rgba(80,80,80,0.25)',
               background: hasAmmo ? 'rgba(168,85,247,0.12)' : 'rgba(40,40,40,0.08)',
@@ -229,7 +229,7 @@ const SkyfallGame: React.FC = () => {
             onPointerLeave={() => handleButtonUp('left')}
             style={{
               position: 'absolute',
-              left: 14, bottom: 72, width: 72, height: 56,
+              left: 14, bottom: 95, width: 72, height: 56,
               borderRadius: 16,
               border: '1px solid rgba(255,255,255,0.12)',
               background: 'rgba(255,255,255,0.04)',
@@ -255,7 +255,7 @@ const SkyfallGame: React.FC = () => {
             onPointerLeave={() => handleButtonUp('right')}
             style={{
               position: 'absolute',
-              left: 116, bottom: 72, width: 72, height: 56,
+              left: 116, bottom: 95, width: 72, height: 56,
               borderRadius: 16,
               border: '1px solid rgba(255,255,255,0.12)',
               background: 'rgba(255,255,255,0.04)',
@@ -279,7 +279,7 @@ const SkyfallGame: React.FC = () => {
             onPointerDown={(e) => { e.stopPropagation(); handleButtonDown('roll'); }}
             style={{
               position: 'absolute',
-              right: 16, bottom: 72, width: 80, height: 56,
+              right: 16, bottom: 95, width: 80, height: 56,
               borderRadius: 16,
               border: '1px solid rgba(251,191,36,0.25)',
               background: 'rgba(251,191,36,0.06)',
