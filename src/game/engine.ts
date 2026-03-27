@@ -595,15 +595,17 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (c.x > g.width + c.width) c.x = -c.width;
   }
 
-  // === Spawn hazards ===
+  // === Spawn hazards (reduced 60% during boss) ===
   g.spawnTimer -= dt;
   if (g.spawnTimer <= 0) {
     const spawnRate = Math.max(0.5, 2.0 - g.difficulty * 0.12);
-    g.spawnTimer = spawnRate;
+    // During boss fight, reduce hazard spawn rate by 60%
+    const bossMultiplier = g.boss && !g.boss.defeated ? 2.5 : 1;
+    g.spawnTimer = spawnRate * bossMultiplier;
     const types: HazardType[] = ['shrapnel', 'shrapnel', 'missile'];
     if (g.elapsed >= 90) types.push('cluster', 'cluster');
     spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
-    if (g.difficulty >= 4 && Math.random() < 0.25) {
+    if (g.difficulty >= 4 && Math.random() < 0.25 && !g.boss) {
       spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
     }
   }
@@ -1199,9 +1201,29 @@ function updateBoss(g: GameData, dt: number) {
     return;
   }
 
-  // Phase determination
+  // Phase determination with cooldown between phases
   const hpRatio = boss.health / boss.maxHealth;
-  boss.phase = hpRatio > 0.66 ? 1 : hpRatio > 0.33 ? 2 : 3;
+  const newPhase = hpRatio > 0.66 ? 1 : hpRatio > 0.33 ? 2 : 3;
+  if (newPhase !== boss.phase) {
+    boss.phase = newPhase;
+    // Phase transition: 2s cooldown + warning + power-up drop
+    boss.attackTimer = 2.0;
+    const phaseText = newPhase === 2 ? 'PHASE 2!' : 'PHASE 3!';
+    g.waveWarnings.push({ text: `⚡ ${phaseText}`, subText: 'BOSS PATTERN SHIFT', life: 2.5, maxLife: 2.5, color: '#fbbf24' });
+    // Drop a random power-up as mid-fight reward
+    const rewardTypes: PowerUpType[] = ['medkit', 'ammo', 'shield'];
+    const pu = getFromPool<PowerUp>(g.powerUps, () => ({
+      active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
+      parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
+    }), 20);
+    pu.type = rewardTypes[Math.floor(Math.random() * rewardTypes.length)];
+    pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
+    pu.size = 14;
+    pu.parachuting = true;
+    pu.fallSpeed = 40;
+    pu.bobTimer = 0;
+    pu.groundTimer = 0;
+  }
 
   // Slow patrol movement
   boss.pos.x += Math.sin(g.elapsed * 0.5) * 30 * dt;
@@ -1226,11 +1248,11 @@ function updateBoss(g: GameData, dt: number) {
           h.type = 'missile';
           h.pos = { x: g.boss!.pos.x + (Math.random() - 0.5) * 30, y: g.boss!.pos.y + 20 };
           h.targetPos = { x: p.pos.x + (Math.random() - 0.5) * 60, y: groundY };
-          h.speed = 280;
+          h.speed = 250;
           h.size = 10;
-          h.damage = 18;
-          h.warningDuration = 0.6;
-          h.warningTimer = 0.6;
+          h.damage = g.bossCount === 0 ? 12 : 18;
+          h.warningDuration = g.bossCount === 0 ? 1.2 : 0.6;
+          h.warningTimer = h.warningDuration;
           h.falling = false;
           h.rotation = 0;
           h.trailTimer = 0;
@@ -1254,9 +1276,9 @@ function updateBoss(g: GameData, dt: number) {
           h.targetPos = { x: bx, y: groundY };
           h.speed = 250;
           h.size = 12;
-          h.damage = 16;
-          h.warningDuration = 0.4;
-          h.warningTimer = 0.4;
+          h.damage = g.bossCount === 0 ? 10 : 16;
+          h.warningDuration = g.bossCount === 0 ? 1.0 : 0.4;
+          h.warningTimer = h.warningDuration;
           h.falling = false;
           h.rotation = 0;
           h.trailTimer = 0;
@@ -1279,11 +1301,11 @@ function updateBoss(g: GameData, dt: number) {
         h.type = 'missile';
         h.pos = { x: boss.pos.x + (i === 0 ? -20 : 20), y: boss.pos.y + 15 };
         h.targetPos = { x: p.pos.x + (Math.random() - 0.5) * 80, y: groundY };
-        h.speed = 300;
+        h.speed = 280;
         h.size = 10;
-        h.damage = 20;
-        h.warningDuration = 0.5;
-        h.warningTimer = 0.5;
+        h.damage = g.bossCount === 0 ? 14 : 20;
+        h.warningDuration = g.bossCount === 0 ? 1.0 : 0.5;
+        h.warningTimer = h.warningDuration;
         h.falling = false;
         h.rotation = 0;
         h.trailTimer = 0;
