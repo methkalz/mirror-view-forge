@@ -1068,4 +1068,269 @@ export function update(g: GameData, input: InputState, dt: number) {
   if (Math.abs(g.screenShake.y) < 0.3) g.screenShake.y = 0;
 
   if (g.damageFlash > 0) g.damageFlash -= dt * 2;
+
+  // === Weather ===
+  g.weatherIntensity = Math.min(1, Math.max(0, (g.elapsed - 120) / 180));
+  // Rain
+  const targetDrops = Math.floor(g.weatherIntensity * 60);
+  while (g.rainDrops.length < targetDrops) {
+    g.rainDrops.push({
+      x: Math.random() * g.width * 1.2 - g.width * 0.1,
+      y: Math.random() * g.height * 0.8,
+      speed: 400 + Math.random() * 300,
+      len: 8 + Math.random() * 12,
+    });
+  }
+  for (let i = g.rainDrops.length - 1; i >= 0; i--) {
+    const rd = g.rainDrops[i];
+    rd.y += rd.speed * dt;
+    rd.x += g.windOffset * 50 * dt;
+    if (rd.y > g.height * 0.78) {
+      if (g.rainDrops.length > targetDrops) {
+        g.rainDrops.splice(i, 1);
+      } else {
+        rd.y = -10;
+        rd.x = Math.random() * g.width * 1.2 - g.width * 0.1;
+      }
+    }
+  }
+  // Lightning
+  if (g.elapsed > 180) {
+    g.lightningTimer -= dt;
+    if (g.lightningTimer <= 0) {
+      g.lightningTimer = 15 + Math.random() * 20;
+      g.lightningFlash = 0.4;
+      sfxThunder();
+    }
+  }
+  if (g.lightningFlash > 0) g.lightningFlash -= dt * 3;
+
+  // === Heartbeat ===
+  updateHeartbeat(g.difficulty);
+
+  // === Boss ===
+  g.bossTimer -= dt;
+  if (g.bossTimer <= 0 && !g.boss) {
+    spawnBoss(g);
+    g.bossTimer = 240 + g.bossCount * 30;
+  }
+  if (g.boss && !g.boss.defeated) {
+    updateBoss(g, dt);
+  }
+}
+
+// ========== BOSS SYSTEM ==========
+
+function spawnBoss(g: GameData) {
+  const count = g.bossCount;
+  const baseHP = 15 + count * 5;
+  const side = Math.random() < 0.5 ? -80 : g.width + 80;
+  g.boss = {
+    pos: { x: side, y: g.height * 0.12 },
+    vel: { x: 0, y: 0 },
+    health: baseHP,
+    maxHealth: baseHP,
+    size: 80,
+    phase: 1,
+    attackTimer: 3,
+    attackCooldown: 3 - Math.min(1.5, count * 0.3),
+    attackPattern: 'missiles',
+    entered: false,
+    defeated: false,
+    entryTarget: { x: g.width * 0.5, y: g.height * 0.12 },
+    carpetX: 0,
+    carpetDir: 1,
+    spawnedDrones: 0,
+    damageFlash: 0,
+  };
+  sfxBossSiren();
+  g.waveWarnings.push({
+    text: '⚠ GUNSHIP INCOMING!',
+    subText: 'PREPARE FOR HEAVY ASSAULT',
+    life: 4,
+    maxLife: 4,
+    color: '#dc2626',
+  });
+}
+
+function updateBoss(g: GameData, dt: number) {
+  const boss = g.boss!;
+  const p = g.player;
+  const groundY = g.height * GROUND_RATIO;
+
+  boss.damageFlash = Math.max(0, boss.damageFlash - dt * 4);
+
+  // Entry
+  if (!boss.entered) {
+    const dx = boss.entryTarget.x - boss.pos.x;
+    const dy = boss.entryTarget.y - boss.pos.y;
+    const dd = Math.sqrt(dx * dx + dy * dy);
+    if (dd < 5) {
+      boss.entered = true;
+    } else {
+      boss.pos.x += (dx / dd) * 60 * dt;
+      boss.pos.y += (dy / dd) * 60 * dt;
+    }
+    return;
+  }
+
+  // Phase determination
+  const hpRatio = boss.health / boss.maxHealth;
+  boss.phase = hpRatio > 0.66 ? 1 : hpRatio > 0.33 ? 2 : 3;
+
+  // Slow patrol movement
+  boss.pos.x += Math.sin(g.elapsed * 0.5) * 30 * dt;
+  boss.pos.y += Math.cos(g.elapsed * 0.7) * 10 * dt;
+  boss.pos.y = Math.max(g.height * 0.08, Math.min(g.height * 0.2, boss.pos.y));
+  boss.pos.x = Math.max(40, Math.min(g.width - 40, boss.pos.x));
+
+  // Attacks
+  boss.attackTimer -= dt;
+  if (boss.attackTimer <= 0) {
+    boss.attackTimer = boss.attackCooldown;
+    if (boss.phase === 1) {
+      // Phase 1: 3 rapid missiles
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+          if (!g.boss || g.boss.defeated) return;
+          const h = getFromPool<Hazard>(g.hazards, () => ({
+            active: false, type: 'missile' as const, pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
+            speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
+            rotation: 0, trailTimer: 0
+          }));
+          h.type = 'missile';
+          h.pos = { x: g.boss!.pos.x + (Math.random() - 0.5) * 30, y: g.boss!.pos.y + 20 };
+          h.targetPos = { x: p.pos.x + (Math.random() - 0.5) * 60, y: groundY };
+          h.speed = 280;
+          h.size = 10;
+          h.damage = 18;
+          h.warningDuration = 0.6;
+          h.warningTimer = 0.6;
+          h.falling = false;
+          h.rotation = 0;
+          h.trailTimer = 0;
+          sfxWarning();
+        }, i * 300);
+      }
+    } else if (boss.phase === 2) {
+      // Phase 2: carpet bombing from left to right
+      const bombCount = 6;
+      for (let i = 0; i < bombCount; i++) {
+        setTimeout(() => {
+          if (!g.boss || g.boss.defeated) return;
+          const bx = (g.width / (bombCount + 1)) * (i + 1);
+          const h = getFromPool<Hazard>(g.hazards, () => ({
+            active: false, type: 'shrapnel' as const, pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
+            speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
+            rotation: 0, trailTimer: 0
+          }));
+          h.type = 'cluster';
+          h.pos = { x: bx, y: g.boss!.pos.y + 20 };
+          h.targetPos = { x: bx, y: groundY };
+          h.speed = 250;
+          h.size = 12;
+          h.damage = 16;
+          h.warningDuration = 0.4;
+          h.warningTimer = 0.4;
+          h.falling = false;
+          h.rotation = 0;
+          h.trailTimer = 0;
+          sfxWarning();
+        }, i * 200);
+      }
+    } else {
+      // Phase 3: spawn escort drones + missiles
+      if (boss.spawnedDrones < 2 + g.bossCount) {
+        boss.spawnedDrones++;
+        spawnDrone(g);
+      }
+      // Also fire 2 missiles
+      for (let i = 0; i < 2; i++) {
+        const h = getFromPool<Hazard>(g.hazards, () => ({
+          active: false, type: 'missile' as const, pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
+          speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
+          rotation: 0, trailTimer: 0
+        }));
+        h.type = 'missile';
+        h.pos = { x: boss.pos.x + (i === 0 ? -20 : 20), y: boss.pos.y + 15 };
+        h.targetPos = { x: p.pos.x + (Math.random() - 0.5) * 80, y: groundY };
+        h.speed = 300;
+        h.size = 10;
+        h.damage = 20;
+        h.warningDuration = 0.5;
+        h.warningTimer = 0.5;
+        h.falling = false;
+        h.rotation = 0;
+        h.trailTimer = 0;
+        sfxWarning();
+      }
+    }
+  }
+
+  // Bullet hits on boss
+  for (let i = g.bullets.length - 1; i >= 0; i--) {
+    const b = g.bullets[i];
+    if (!b.active) continue;
+    if (dist(b.pos, boss.pos) < boss.size * 0.5 + b.size) {
+      boss.health--;
+      boss.damageFlash = 0.3;
+      spawnParticles(g, b.pos, 5, '#f97316', 100);
+      addExplosion(g, b.pos, 8);
+      g.bullets.splice(i, 1);
+      if (boss.health <= 0) {
+        defeatBoss(g);
+      }
+    }
+  }
+
+  // Damage smoke
+  if (boss.health < boss.maxHealth * 0.7 && Math.random() < 0.5) {
+    addSmokeTrail(g, { x: boss.pos.x + (Math.random() - 0.5) * boss.size * 0.6, y: boss.pos.y + (Math.random() - 0.5) * 20 }, 6);
+  }
+  if (boss.health < boss.maxHealth * 0.35 && Math.random() < 0.3) {
+    spawnParticles(g, { x: boss.pos.x + (Math.random() - 0.5) * boss.size * 0.5, y: boss.pos.y }, 1, '#f97316', 40, false);
+  }
+}
+
+function defeatBoss(g: GameData) {
+  const boss = g.boss!;
+  boss.defeated = true;
+  g.bossCount++;
+  g.stats.bossesDefeated++;
+
+  // Cinematic explosion sequence
+  sfxBossExplosion();
+  for (let i = 0; i < 5; i++) {
+    setTimeout(() => {
+      const ox = (Math.random() - 0.5) * boss.size;
+      const oy = (Math.random() - 0.5) * 40;
+      addExplosion(g, { x: boss.pos.x + ox, y: boss.pos.y + oy }, 30);
+      spawnParticles(g, { x: boss.pos.x + ox, y: boss.pos.y + oy }, 12, '#f97316', 200);
+      sfxExplosion();
+    }, i * 250);
+  }
+  setTimeout(() => {
+    addExplosion(g, boss.pos, 60);
+    spawnParticles(g, boss.pos, 25, '#fbbf24', 300);
+    g.screenShake = { x: 20, y: -20 };
+    g.boss = null;
+  }, 1300);
+
+  // Rewards
+  g.score += 500;
+  addFloatingText(g, `BOSS DOWN! +500`, boss.pos, '#fbbf24');
+
+  // Guaranteed power-up drop
+  const pu = getFromPool<PowerUp>(g.powerUps, () => ({
+    active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
+    parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
+  }), 20);
+  const types: PowerUpType[] = ['medkit', 'shield', 'ammo', 'slowmo'];
+  pu.type = types[Math.floor(Math.random() * types.length)];
+  pu.pos = { x: boss.pos.x, y: boss.pos.y };
+  pu.size = 14;
+  pu.parachuting = true;
+  pu.fallSpeed = 30;
+  pu.bobTimer = 0;
+  pu.groundTimer = 0;
 }
