@@ -467,6 +467,7 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     let icon = '♥';
     if (pu.type === 'shield') { color = '#60a5fa'; icon = '◆'; }
     if (pu.type === 'interceptor') { color = '#f97316'; icon = '⚡'; }
+    if (pu.type === 'ammo') { color = '#a855f7'; icon = '⊕'; }
 
     // Glow
     const glowGrad = ctx.createRadialGradient(0, 0, pu.size * 0.5, 0, 0, pu.size * 2.5);
@@ -965,6 +966,14 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.textAlign = 'left';
     ctx.fillText(`SHIELD ${p.shieldTimer.toFixed(1)}s`, 14, h - 14);
   }
+
+  // Ammo indicator
+  if (p.ammo > 0) {
+    ctx.fillStyle = '#a855f7';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`⊕ ${p.ammo}`, w / 2, h - 14);
+  }
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -997,6 +1006,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderExplosions(ctx, g);
   renderPowerUps(ctx, g);
   renderDrones(ctx, g);
+  renderBullets(ctx, g);
   renderPlayer(ctx, g);
   renderParticles(ctx, g);
   renderFloatingTexts(ctx, g);
