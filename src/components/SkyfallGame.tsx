@@ -82,7 +82,7 @@ const SkyfallGame: React.FC = () => {
       }
     } else if (g.state === 'gameover') {
       render(ctx, g);
-      renderGameOver(ctx, w, h, g.score, g.highScore);
+      renderGameOver(ctx, w, h, g.score, g.highScore, g.stats);
     }
 
     ctx.restore();

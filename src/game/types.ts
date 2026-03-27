@@ -8,6 +8,7 @@ export type GameState = 'start' | 'playing' | 'gameover';
 export type HazardType = 'shrapnel' | 'missile' | 'cluster';
 export type PowerUpType = 'medkit' | 'shield' | 'interceptor';
 export type DroneState = 'entering' | 'tracking';
+export type PlayerAnim = 'idle' | 'walk' | 'roll' | 'hit';
 
 export interface Player {
   pos: Vec2;
@@ -22,6 +23,13 @@ export interface Player {
   isDashing: boolean;
   dashDir: Vec2;
   velocity: Vec2;
+  // New side-view fields
+  facingRight: boolean;
+  anim: PlayerAnim;
+  animFrame: number;
+  animTimer: number;
+  hitTimer: number;
+  groundY: number; // Y position of the ground plane
 }
 
 export interface Hazard {
@@ -36,6 +44,8 @@ export interface Hazard {
   warningDuration: number;
   falling: boolean;
   splitDone?: boolean;
+  rotation: number;
+  trailTimer: number;
 }
 
 export interface PowerUp {
@@ -56,6 +66,7 @@ export interface Particle {
   maxLife: number;
   color: string;
   size: number;
+  gravity: boolean;
 }
 
 export interface Crater {
@@ -63,6 +74,22 @@ export interface Crater {
   size: number;
   life: number;
   maxLife: number;
+}
+
+export interface Explosion {
+  pos: Vec2;
+  life: number;
+  maxLife: number;
+  size: number;
+  stage: 'flash' | 'fireball' | 'smoke';
+}
+
+export interface SmokeTrail {
+  pos: Vec2;
+  life: number;
+  maxLife: number;
+  size: number;
+  alpha: number;
 }
 
 export interface FloatingText {
@@ -84,6 +111,31 @@ export interface Drone {
   entryTarget: Vec2;
 }
 
+export interface Cloud {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  speed: number;
+  opacity: number;
+}
+
+export interface AmbientParticle {
+  pos: Vec2;
+  vel: Vec2;
+  life: number;
+  maxLife: number;
+  size: number;
+  opacity: number;
+}
+
+export interface GameStats {
+  closeCalls: number;
+  powerUpsCollected: number;
+  dronesDestroyed: number;
+  timeSurvived: number;
+}
+
 export interface GameData {
   state: GameState;
   player: Player;
@@ -91,8 +143,12 @@ export interface GameData {
   powerUps: PowerUp[];
   particles: Particle[];
   craters: Crater[];
+  explosions: Explosion[];
+  smokeTrails: SmokeTrail[];
   floatingTexts: FloatingText[];
   drones: Drone[];
+  clouds: Cloud[];
+  ambientParticles: AmbientParticle[];
   score: number;
   highScore: number;
   elapsed: number;
@@ -104,6 +160,9 @@ export interface GameData {
   damageFlash: number;
   width: number;
   height: number;
+  camera: Vec2;
+  stats: GameStats;
+  windOffset: number;
 }
 
 export interface InputState {
