@@ -445,20 +445,24 @@ export function update(g: GameData, input: InputState, dt: number) {
     input.touchDash = false;
   }
 
-  // === Shooting ===
+  // === Shooting (multi-shot based on bulletLevel) ===
   if (input.shoot && p.ammo > 0 && !p.isDashing) {
     input.shoot = false;
     p.ammo--;
-    const bullet: Bullet = {
-      active: true,
-      pos: { x: p.pos.x + (p.facingRight ? 10 : -10), y: p.pos.y - 20 },
-      vel: { x: 0, y: -600 },
-      size: 3,
-      damage: 1,
-    };
-    g.bullets.push(bullet);
-    // muzzle flash particles
-    spawnParticles(g, { x: bullet.pos.x, y: bullet.pos.y }, 3, '#fbbf24', 60, false);
+    const baseX = p.pos.x + (p.facingRight ? 10 : -10);
+    const baseY = p.pos.y - 20;
+    const angles = g.bulletLevel === 1 ? [0] : g.bulletLevel === 2 ? [-0.1, 0.1] : [-0.15, 0, 0.15];
+    for (const angle of angles) {
+      const bullet: Bullet = {
+        active: true,
+        pos: { x: baseX, y: baseY },
+        vel: { x: Math.sin(angle) * 600, y: -Math.cos(angle) * 600 },
+        size: 3,
+        damage: 1,
+      };
+      g.bullets.push(bullet);
+    }
+    spawnParticles(g, { x: baseX, y: baseY }, 4, '#fbbf24', 80, false);
   }
   if (input.shoot) input.shoot = false;
 
