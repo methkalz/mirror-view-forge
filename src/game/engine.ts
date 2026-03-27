@@ -228,8 +228,15 @@ function spawnHazard(g: GameData, type: HazardType) {
 }
 
 function spawnPowerUp(g: GameData) {
-  const types: PowerUpType[] = ['medkit', 'shield', 'interceptor', 'ammo', 'ammo'];
-  const type = types[Math.floor(Math.random() * types.length)];
+  const weighted: { type: PowerUpType; w: number }[] = [
+    { type: 'medkit', w: 3 }, { type: 'shield', w: 2 }, { type: 'interceptor', w: 2 },
+    { type: 'ammo', w: 4 }, { type: 'slowmo', w: 2 }, { type: 'magnet', w: 2 },
+    { type: 'airstrike', w: 1 },
+  ];
+  const totalW = weighted.reduce((s, e) => s + e.w, 0);
+  let r = Math.random() * totalW;
+  let type: PowerUpType = 'medkit';
+  for (const e of weighted) { r -= e.w; if (r <= 0) { type = e.type; break; } }
   const pu = getFromPool<PowerUp>(g.powerUps, () => ({
     active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
     parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
