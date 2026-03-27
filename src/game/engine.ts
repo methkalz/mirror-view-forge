@@ -3,7 +3,7 @@ import {
   HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning, Boss
 } from './types';
 import { getFromPool } from './pool';
-import { sfxExplosion, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, updateHeartbeat, stopHeartbeat } from './audio';
+import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, updateHeartbeat, stopHeartbeat } from './audio';
 
 const DASH_SPEED = 500;
 const DASH_DURATION = 0.25;
@@ -209,19 +209,19 @@ function spawnHazard(g: GameData, type: HazardType) {
 
   switch (type) {
     case 'shrapnel':
-      h.speed = 350 + g.difficulty * 20;
+      h.speed = 280 + g.difficulty * 20 + Math.random() * 140;
       h.size = 8;
       h.damage = 10;
       h.warningDuration = 0.7;
       break;
     case 'missile':
-      h.speed = 220 + g.difficulty * 15;
+      h.speed = 160 + g.difficulty * 15 + Math.random() * 100;
       h.size = 12;
       h.damage = 22;
       h.warningDuration = 1.2;
       break;
     case 'cluster':
-      h.speed = 180 + g.difficulty * 10;
+      h.speed = 140 + g.difficulty * 10 + Math.random() * 80;
       h.size = 14;
       h.damage = 16;
       h.warningDuration = 1.4;
@@ -621,7 +621,10 @@ export function update(g: GameData, input: InputState, dt: number) {
       if (d < 8) {
         // Impact
         h.active = false;
-        sfxExplosion();
+        // Type-specific impact sound
+        if (h.type === 'shrapnel') sfxImpactLight();
+        else if (h.type === 'missile') sfxImpactHeavy();
+        else sfxExplosion();
         
         // Multi-stage explosion
         addExplosion(g, h.targetPos, h.type === 'missile' ? h.size * 3 : h.size * 2);
@@ -679,7 +682,7 @@ export function update(g: GameData, input: InputState, dt: number) {
               x: h.targetPos.x + Math.cos(angle) * splitDist,
               y: groundY - 5 + Math.random() * 10
             };
-            sh.speed = 300;
+            sh.speed = 250 + Math.random() * 100;
             sh.size = 6;
             sh.damage = 8;
             sh.warningDuration = 0.3;
@@ -914,7 +917,7 @@ export function update(g: GameData, input: InputState, dt: number) {
             bomb.type = 'cluster';
             bomb.pos = { x: d.pos.x, y: d.pos.y + d.size };
             bomb.targetPos = { x: d.pos.x + (Math.random() - 0.5) * 30, y: g.height * GROUND_RATIO };
-            bomb.speed = 200;
+            bomb.speed = 170 + Math.random() * 60;
             bomb.size = 10;
             bomb.damage = 18;
             bomb.warningDuration = 0;
