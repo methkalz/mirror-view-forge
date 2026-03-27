@@ -122,6 +122,7 @@ const SkyfallGame: React.FC = () => {
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('click', onCanvasClick);
 
     return () => {
       cancelAnimationFrame(rafRef.current);
@@ -129,6 +130,7 @@ const SkyfallGame: React.FC = () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       canvas.removeEventListener('touchstart', onTouchStart);
+      canvas.removeEventListener('click', onCanvasClick);
     };
   }, [resize, loop, startOrRestart]);
 
