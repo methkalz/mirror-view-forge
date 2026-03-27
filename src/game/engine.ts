@@ -379,7 +379,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   dt = Math.min(dt, 0.05);
   g.elapsed += dt;
   g.difficulty = 1 + g.elapsed / 60; // gradual: takes 60s per difficulty level instead of 30
-  g.score = Math.floor(g.elapsed);
+  g.score += Math.round(dt); // +1 per second survived, bonuses accumulate
   g.windOffset = Math.sin(g.elapsed * 0.3) * 0.5;
 
   // === Wave warnings ===
