@@ -1814,9 +1814,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.save();
   ctx.translate(g.screenShake.x - g.camera.x, g.screenShake.y);
 
-  renderSky(ctx, g);
-  renderCitySilhouette(ctx, g);
-  renderGround(ctx, g);
+  renderBackground(ctx, g);
   renderCraters(ctx, g);
   renderAmbient(ctx, g);
   renderWarnings(ctx, g);
