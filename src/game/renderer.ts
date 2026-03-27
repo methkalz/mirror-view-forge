@@ -1310,11 +1310,15 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
   // Power-up legend
   ctx.font = '10px monospace';
   ctx.fillStyle = '#22c55e';
-  ctx.fillText('♥ Medkit', w / 2 - 70, h * 0.60);
+  ctx.fillText('♥ Medkit', w / 2 - 90, h * 0.58);
   ctx.fillStyle = '#60a5fa';
-  ctx.fillText('◆ Shield', w / 2, h * 0.60);
+  ctx.fillText('◆ Shield', w / 2, h * 0.58);
   ctx.fillStyle = '#f97316';
-  ctx.fillText('⚡ Intercept', w / 2 + 75, h * 0.60);
+  ctx.fillText('⚡ Intercept', w / 2 + 90, h * 0.58);
+  ctx.fillStyle = '#06b6d4';
+  ctx.fillText('⏳ Slow-Mo', w / 2 - 60, h * 0.63);
+  ctx.fillStyle = '#ef4444';
+  ctx.fillText('🧲 Magnet', w / 2 + 60, h * 0.63);
 
   if (highScore > 0) {
     ctx.fillStyle = '#fbbf24';
