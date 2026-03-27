@@ -1,4 +1,11 @@
 import { GameData, Player } from './types';
+import bgCityUrl from '../assets/bg-city.jpeg';
+
+// ─── Background Image ─────────────────────────────────
+const bgImage = new Image();
+let bgLoaded = false;
+bgImage.onload = () => { bgLoaded = true; };
+bgImage.src = bgCityUrl;
 
 // ─── Color Interpolation Helpers ──────────────────────
 function lerpColor(a: number[], b: number[], t: number): number[] {
@@ -32,25 +39,51 @@ function getSkyColors(elapsed: number) {
   };
 }
 
-// ─── Sky & Environment ────────────────────────────────
-function renderSky(ctx: CanvasRenderingContext2D, g: GameData) {
+// ─── Background with Image ────────────────────────────
+function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
   const { width: w, height: h } = g;
-  const groundY = h * 0.78;
   const camX = g.camera.x;
   const margin = 200;
   const left = camX - margin;
   const right = camX + w + margin;
+  const totalW = right - left;
 
-  // Dynamic sky gradient
+  if (bgLoaded) {
+    // Draw the background image covering the full visible area
+    // Use cover-style: fill height, tile horizontally with parallax
+    const imgAspect = bgImage.width / bgImage.height;
+    const drawH = h;
+    const drawW = drawH * imgAspect;
+
+    // Parallax: image moves slower than camera
+    const parallax = 0.3;
+    const imgOffset = camX * parallax;
+
+    // Tile the image to cover the full visible width
+    const startTile = Math.floor((left + imgOffset) / drawW) - 1;
+    const endTile = Math.ceil((right + imgOffset) / drawW) + 1;
+
+    for (let tile = startTile; tile <= endTile; tile++) {
+      const drawX = tile * drawW - imgOffset;
+      ctx.drawImage(bgImage, drawX, 0, drawW, drawH);
+    }
+  } else {
+    // Fallback: solid dark color while loading
+    ctx.fillStyle = '#0c1445';
+    ctx.fillRect(left, 0, totalW, h);
+  }
+
+  // Dynamic color overlay that changes with time (preserves time-based atmosphere)
   const colors = getSkyColors(g.elapsed);
-  const skyGrad = ctx.createLinearGradient(0, 0, 0, groundY);
-  skyGrad.addColorStop(0, rgbStr(colors.top));
-  skyGrad.addColorStop(0.5, rgbStr(colors.mid));
-  skyGrad.addColorStop(1, rgbStr(colors.bottom));
-  ctx.fillStyle = skyGrad;
-  ctx.fillRect(left, 0, right - left, groundY);
+  const overlayGrad = ctx.createLinearGradient(0, 0, 0, h);
+  overlayGrad.addColorStop(0, `rgba(${colors.top[0]},${colors.top[1]},${colors.top[2]},0.45)`);
+  overlayGrad.addColorStop(0.5, `rgba(${colors.mid[0]},${colors.mid[1]},${colors.mid[2]},0.35)`);
+  overlayGrad.addColorStop(1, `rgba(${colors.bottom[0]},${colors.bottom[1]},${colors.bottom[2]},0.4)`);
+  ctx.fillStyle = overlayGrad;
+  ctx.fillRect(left, 0, totalW, h);
 
   // Stars (world-space, dimmer as dawn approaches)
+  const groundY = h * 0.78;
   const starAlphaBase = Math.max(0, 0.4 - g.elapsed * 0.001);
   if (starAlphaBase > 0.02) {
     ctx.fillStyle = `rgba(255,255,255,${starAlphaBase})`;
@@ -67,10 +100,9 @@ function renderSky(ctx: CanvasRenderingContext2D, g: GameData) {
 
   // Clouds (world-space with parallax)
   for (const c of g.clouds) {
-    const cloudX = c.x - camX * 0.15; // slow parallax
-    // Skip if out of view
+    const cloudX = c.x - camX * 0.15;
     if (cloudX + c.width < -margin || cloudX - c.width > w + margin) continue;
-    const adjustedX = cloudX + camX; // back to world coords after parallax offset
+    const adjustedX = cloudX + camX;
     ctx.fillStyle = `rgba(200, 200, 220, ${c.opacity})`;
     ctx.beginPath();
     ctx.ellipse(adjustedX, c.y, c.width / 2, c.height / 2, 0, 0, Math.PI * 2);
@@ -1782,9 +1814,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.save();
   ctx.translate(g.screenShake.x - g.camera.x, g.screenShake.y);
 
-  renderSky(ctx, g);
-  renderCitySilhouette(ctx, g);
-  renderGround(ctx, g);
+  renderBackground(ctx, g);
   renderCraters(ctx, g);
   renderAmbient(ctx, g);
   renderWarnings(ctx, g);
