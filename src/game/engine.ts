@@ -240,80 +240,78 @@ function spawnPowerUp(g: GameData) {
 function spawnDrone(g: GameData) {
   const d = getFromPool<Drone>(g.drones, () => ({
     active: false, pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
-    speed: 0, size: 0, health: 0, state: 'entering' as const, entryTarget: { x: 0, y: 0 },
+    speed: 0, size: 0, health: 0, maxHealth: 0, state: 'entering' as const, entryTarget: { x: 0, y: 0 },
     tier: 'scout' as const, bombTimer: 0, bombCooldown: 0, hoverTimer: 0,
-    aggroDelay: 0, trackingAccuracy: 0, wobble: 0
+    aggroDelay: 0, trackingAccuracy: 0, wobble: 0, altitudeOffset: 0, colorHue: 0
   }), 10);
   const side = Math.random() < 0.5 ? 0 : 1;
   const w = g.width, h = g.height;
-  d.pos = { x: side === 0 ? -20 : w + 20, y: h * 0.15 + Math.random() * h * 0.25 };
-  d.entryTarget = { x: w * 0.2 + Math.random() * w * 0.6, y: h * 0.25 + Math.random() * h * 0.15 };
+
+  // Unique altitude offset based on active drone count to prevent stacking
+  const activeDrones = g.drones.filter(dr => dr.active);
+  const altSlot = activeDrones.length;
+  d.altitudeOffset = (altSlot % 4) * 35 - 50; // spread across -50 to +55
+  d.colorHue = Math.random() * 30 - 15; // slight hue variation
+
+  d.pos = { x: side === 0 ? -20 : w + 20, y: h * 0.15 + Math.random() * h * 0.2 + d.altitudeOffset };
+  d.entryTarget = { x: w * 0.15 + Math.random() * w * 0.7, y: h * 0.2 + d.altitudeOffset + Math.random() * h * 0.1 };
   d.state = 'entering';
   d.vel = { x: 0, y: 0 };
-  d.wobble = 0;
+  d.wobble = Math.random() * Math.PI * 2; // random phase
 
-  // Determine tier based on elapsed time (gradual difficulty)
   const elapsed = g.elapsed;
   if (elapsed < 150) {
-    // First 90-150s: scouts only — slow, inaccurate, just patrol
     d.tier = 'scout';
     d.speed = 25 + Math.min(15, (elapsed - 90) * 0.5);
     d.size = 14;
-    d.health = 1;
+    d.health = 1; d.maxHealth = 1;
     d.aggroDelay = 4 + Math.random() * 3;
     d.trackingAccuracy = 0.1 + Math.random() * 0.1;
-    d.bombTimer = 0;
-    d.bombCooldown = 0;
+    d.bombTimer = 0; d.bombCooldown = 0;
   } else if (elapsed < 210) {
-    // 150-210s: mix of scouts and trackers
     const roll = Math.random();
     if (roll < 0.5) {
       d.tier = 'scout';
       d.speed = 40 + Math.random() * 15;
       d.size = 14;
-      d.health = 1;
+      d.health = 1; d.maxHealth = 1;
       d.aggroDelay = 2 + Math.random() * 1.5;
       d.trackingAccuracy = 0.25 + Math.random() * 0.2;
-      d.bombTimer = 0;
-      d.bombCooldown = 0;
+      d.bombTimer = 0; d.bombCooldown = 0;
     } else {
       d.tier = 'tracker';
       d.speed = 50 + Math.random() * 20;
       d.size = 16;
-      d.health = 2;
+      d.health = 2; d.maxHealth = 2;
       d.aggroDelay = 1.5 + Math.random() * 1;
       d.trackingAccuracy = 0.4 + Math.random() * 0.2;
-      d.bombTimer = 0;
-      d.bombCooldown = 0;
+      d.bombTimer = 0; d.bombCooldown = 0;
     }
   } else {
-    // 210s+: all tiers including bombers
     const roll = Math.random();
     if (roll < 0.2) {
       d.tier = 'scout';
       d.speed = 50;
       d.size = 14;
-      d.health = 1;
+      d.health = 1; d.maxHealth = 1;
       d.aggroDelay = 1;
       d.trackingAccuracy = 0.35;
-      d.bombTimer = 0;
-      d.bombCooldown = 0;
+      d.bombTimer = 0; d.bombCooldown = 0;
     } else if (roll < 0.6) {
       d.tier = 'tracker';
       d.speed = 60 + Math.min(30, (elapsed - 150) * 0.2);
       d.size = 16;
-      d.health = 2;
+      d.health = 2; d.maxHealth = 2;
       d.aggroDelay = 0.5 + Math.random() * 0.5;
       d.trackingAccuracy = 0.5 + Math.min(0.35, (elapsed - 150) * 0.002);
-      d.bombTimer = 0;
-      d.bombCooldown = 0;
+      d.bombTimer = 0; d.bombCooldown = 0;
     } else {
       d.tier = 'bomber';
       d.speed = 45 + Math.random() * 15;
       d.size = 20;
-      d.health = 3;
+      d.health = 3; d.maxHealth = 3;
       d.aggroDelay = 1;
-      d.trackingAccuracy = 0.3; // bombers don't need to be fast — they drop bombs
+      d.trackingAccuracy = 0.3;
       d.bombTimer = 0;
       d.bombCooldown = 4 + Math.random() * 2;
     }
