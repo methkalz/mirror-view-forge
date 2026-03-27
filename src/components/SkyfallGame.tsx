@@ -18,6 +18,7 @@ const SkyfallGame: React.FC = () => {
   const rafRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
   const [showButtons, setShowButtons] = useState(false);
+  const [playerAmmo, setPlayerAmmo] = useState(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
