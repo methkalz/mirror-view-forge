@@ -211,12 +211,12 @@ const SkyfallGame: React.FC = () => {
       />
       {showButtons && (
         <>
-          {/* FIRE button — above right arrow */}
-          <button
-            onPointerDown={(e) => { e.preventDefault(); if (hasAmmo) { e.stopPropagation(); handleButtonDown('shoot'); } }}
-            style={{
-              position: 'absolute',
-              left: 136, bottom: 170, width: 72, height: 52,
+           {/* FIRE button — beside right arrow */}
+           <button
+             onPointerDown={(e) => { e.preventDefault(); if (hasAmmo) { e.stopPropagation(); handleButtonDown('shoot'); } }}
+             style={{
+               position: 'absolute',
+               left: 220, bottom: 95, width: 72, height: 56,
               borderRadius: 16,
               border: hasAmmo ? '1.5px solid rgba(168,85,247,0.4)' : '1.5px solid rgba(220,38,38,0.3)',
               background: hasAmmo ? 'rgba(168,85,247,0.12)' : 'rgba(220,38,38,0.06)',

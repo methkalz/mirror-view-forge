@@ -82,14 +82,14 @@ export function createGame(w: number, h: number): GameData {
 
 function initClouds(w: number, h: number): Cloud[] {
   const clouds: Cloud[] = [];
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 12; i++) {
     clouds.push({
-      x: Math.random() * w * 1.5 - w * 0.25,
-      y: 20 + Math.random() * h * 0.25,
-      width: 60 + Math.random() * 120,
-      height: 20 + Math.random() * 30,
-      speed: 8 + Math.random() * 15,
-      opacity: 0.15 + Math.random() * 0.2,
+      x: Math.random() * w * 3 - w * 0.5,
+      y: 15 + Math.random() * h * 0.28,
+      width: 80 + Math.random() * 160,
+      height: 25 + Math.random() * 40,
+      speed: 3 + Math.random() * 7,
+      opacity: 0.1 + Math.random() * 0.25,
     });
   }
   return clouds;
@@ -590,9 +590,20 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Clouds ===
+  const camLeft = g.camera.x - 300;
+  const camRight = g.camera.x + g.width + 300;
   for (const c of g.clouds) {
     c.x += c.speed * dt;
-    if (c.x > g.width + c.width) c.x = -c.width;
+    // Recycle based on camera bounds, not screen bounds
+    if (c.x - c.width > camRight) {
+      c.x = camLeft - c.width - Math.random() * 200;
+      c.y = 15 + Math.random() * g.height * 0.28;
+      c.opacity = 0.1 + Math.random() * 0.25;
+    } else if (c.x + c.width < camLeft - 500) {
+      c.x = camRight + Math.random() * 200;
+      c.y = 15 + Math.random() * g.height * 0.28;
+      c.opacity = 0.1 + Math.random() * 0.25;
+    }
   }
 
   // === Spawn hazards (reduced 60% during boss) ===
