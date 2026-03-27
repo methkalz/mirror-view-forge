@@ -183,6 +183,7 @@ const SkyfallGame: React.FC = () => {
 
   // Button handlers
   const handleButtonDown = (action: 'left' | 'right' | 'roll' | 'shoot') => {
+    resumeAudio();
     vibrate(action === 'roll' ? 30 : 12);
     if (action === 'left') inputRef.current.keys.add('arrowleft');
     else if (action === 'right') inputRef.current.keys.add('arrowright');
