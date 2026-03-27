@@ -1,62 +1,82 @@
 
 
-# Skyfall Survival — Top-Down 2D Survival Game
+# Skyfall Survival — Major Overhaul
 
-A mobile-first browser game where the player dodges falling missiles and shrapnel, collects power-ups, and survives as long as possible for a high score.
+The current game uses basic circles and allows free movement in all directions. This plan transforms it into a visually polished, fun survival game with a human character, ground-restricted movement, better physics, and richer visual effects.
 
-## Phase 1 — Core Game
+## 1. Human Player Character (Procedural Sprite)
 
-### 1. Game Canvas & Structure
-- Full-screen responsive Canvas component (100vw × 100vh)
-- Game loop using requestAnimationFrame targeting 60 FPS
-- Game states: Start Screen → Playing → Game Over (with score display)
-- Cracked asphalt ground texture drawn via Canvas
+Replace the circle with a procedurally drawn human figure using Canvas paths — no sprite sheet needed.
 
-### 2. Player & Controls
-- Player character rendered as a top-down sprite on the canvas
-- Virtual joystick appears on left half of screen on touch
-- Dash button on right half of screen for quick dodge
-- Keyboard support (WASD/arrows + Space for dash) on desktop
-- Smooth 8-directional movement with bounded area
+- **Idle pose**: Standing figure with body, head, arms, legs drawn via Canvas shapes
+- **Walk animation**: 4-frame walk cycle (alternating leg/arm positions) driven by a frame timer
+- **Run animation**: Faster cycle when dashing, with lean angle
+- **Direction facing**: Character faces left/right based on movement direction
+- **Hit reaction**: Brief red flash and knockback animation
+- **Shadow**: Oval shadow beneath the character for grounding
 
-### 3. Falling Hazards System
-- Missiles and shrapnel fall from top of screen with randomized patterns
-- Red shadow/circle warning indicator grows on ground before impact
-- Three threat types: fast shrapnel (light damage), standard missiles (medium damage + crater), cluster missiles (split into 3 pieces mid-fall)
-- Object pooling for efficient memory management
-- Collision detection between player and projectiles
+## 2. Ground-Only Horizontal Movement
 
-### 4. Health & Scoring
-- Health bar UI at top of screen
-- Score counter increases every second of survival
-- Game ends when health reaches zero
-- Difficulty scaling: missile frequency increases every 30 seconds
+Currently the player moves freely in all directions including upward. Change to:
 
-### 5. Power-ups
-- Randomly spawning pickups: Medkit (heals), Shield (blocks one hit with blue aura), Interceptor (auto-destroys 3 nearest missiles)
+- **Restrict vertical movement**: Player stays on a ground plane (bottom ~30% of screen)
+- **Horizontal movement**: Full left/right movement along the ground
+- **Dodge roll**: Replace the generic dash with a visible roll animation (horizontal only)
+- **Jump/duck** (optional): Small jump to dodge low debris, duck to avoid aerial threats
+- The camera perspective shifts to a **side-view** instead of top-down, making missiles fall from above naturally
 
-### 6. Visual Effects
-- Screen shake on missile impact
-- Simple particle explosions on impact
-- Temporary crater marks on ground
-- Red flash overlay when player takes damage
+## 3. Improved Visual Environment
 
-## Phase 2 — Advanced Features
+Replace the flat grey ground with a richer scene:
 
-### 7. Advanced Threats
-- Cluster missiles (appear after 45s): split into 3 shrapnel mid-air
-- Homing drones (appear after 60s): enter from screen edges, track player with simple AI, destroyed by interceptors or luring into explosions
+- **Parallax sky background**: Gradient sky with moving clouds at different speeds
+- **City skyline silhouette**: Dark buildings in the mid-ground with lit windows
+- **Textured ground**: Asphalt/concrete surface with cracks, debris details
+- **Dust particles**: Ambient floating dust/ash particles for atmosphere
+- **Dynamic lighting**: Explosions cast brief orange glow on nearby surfaces
+- **Better craters**: Scorched marks with debris rings and smoke wisps
 
-### 8. Parachute Drops
-- Power-ups descend slowly from top with parachute visual instead of appearing instantly
-- Interceptors launch 3 homing projectiles that destroy nearest threats with explosion effects
+## 4. Improved Hazard Visuals
 
-### 9. Close Call Mechanic
-- Detect near-misses (close to explosion but no damage)
-- Show floating "Close Call!" text that rises and fades
-- Award +50 bonus points
+- **Missiles**: Properly shaped with fins, exhaust trails (particle stream), rotation
+- **Shrapnel**: Angular metal chunks with spin and sparks
+- **Cluster bombs**: Glowing sphere that visibly splits with connecting lines
+- **Warning indicators**: Crosshair/target reticle instead of plain circles, with pulsing animation
+- **Explosion effects**: Multi-stage explosion — flash → fireball → smoke ring → debris scatter
+- **Smoke trails**: Missiles leave fading smoke trails as they fall
 
-### 10. Audio (Web Audio API)
-- Synthesized sound effects for explosions, pickups, damage, and dash
-- Placeholder system ready for MP3 replacement
+## 5. Better Physics & Game Feel
+
+- **Gravity on particles**: Particles arc downward instead of moving linearly
+- **Momentum**: Player has acceleration/deceleration, not instant stop
+- **Screen shake improvement**: Directional shake based on explosion position, with frequency variation
+- **Camera follow**: Slight camera lag following player for dynamic feel
+- **Debris bounce**: Small debris pieces bounce on ground after explosions
+- **Wind effect**: Slight horizontal drift on falling objects
+
+## 6. Enhanced Audio
+
+- **Richer explosions**: Layered sounds — bass thump + crackle + debris scatter
+- **Footstep sounds**: Rhythmic taps synced to walk animation
+- **Ambient wind**: Low continuous background sound
+- **Warning siren**: Rising tone when hazard warning appears
+- **Impact variety**: Different sounds for different surfaces/sizes
+
+## 7. Improved HUD & UI
+
+- **Health bar**: Styled with icon, gradient fill, damage tick marks
+- **Score**: Animated counter with combo multiplier display
+- **Wave indicator**: Cleaner design with progress bar to next wave
+- **Start screen**: Animated background with falling missiles, better typography
+- **Game over**: Stats summary (time survived, close calls, power-ups collected)
+
+## Technical Approach
+
+All changes are in 4 files:
+- **`src/game/types.ts`** — Add animation state, facing direction, camera offset, player grounding fields
+- **`src/game/engine.ts`** — Restrict Y movement to ground zone, add momentum physics, improve particle gravity, animation frame cycling
+- **`src/game/renderer.ts`** — Complete visual overhaul: procedural human character, parallax background, improved explosions, smoke trails, better HUD
+- **`src/game/audio.ts`** — Richer layered sound effects, ambient audio, footsteps
+
+No external assets or sprite sheets needed — everything is procedurally drawn with Canvas API.
 
