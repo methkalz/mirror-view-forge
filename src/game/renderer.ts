@@ -98,46 +98,46 @@ function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.globalAlpha = 1;
   }
 
-  // Clouds (world-space with parallax) — fluffy multi-circle rendering
+  // Clouds — slow parallax, independent of player movement
   for (const c of g.clouds) {
-    const cloudX = c.x - camX * 0.15;
-    if (cloudX + c.width < -margin || cloudX - c.width > w + margin) continue;
-    const cx = cloudX + camX;
+    // Cloud moves at its own pace; parallax makes it appear distant
+    const screenX = c.x - camX * 0.85;
+    if (screenX + c.width < -margin || screenX - c.width > w + margin) continue;
+    // Convert back to world-space for drawing (context is translated by -camX)
+    const cx = screenX + camX;
     const cy = c.y;
     const rw = c.width / 2;
     const rh = c.height / 2;
 
-    // Fluffy cloud: 6 overlapping circles
+    // 4 puffs — cleaner, softer shape
     const puffs = [
-      { dx: 0, dy: 0, rx: rw * 0.55, ry: rh * 0.7 },
-      { dx: -rw * 0.35, dy: rh * 0.1, rx: rw * 0.4, ry: rh * 0.55 },
-      { dx: rw * 0.4, dy: rh * 0.05, rx: rw * 0.38, ry: rh * 0.5 },
-      { dx: -rw * 0.15, dy: -rh * 0.25, rx: rw * 0.35, ry: rh * 0.45 },
-      { dx: rw * 0.2, dy: -rh * 0.2, rx: rw * 0.32, ry: rh * 0.4 },
-      { dx: rw * 0.55, dy: rh * 0.15, rx: rw * 0.25, ry: rh * 0.35 },
+      { dx: 0, dy: 0, rx: rw * 0.6, ry: rh * 0.7 },
+      { dx: -rw * 0.38, dy: rh * 0.05, rx: rw * 0.42, ry: rh * 0.55 },
+      { dx: rw * 0.4, dy: rh * 0.03, rx: rw * 0.4, ry: rh * 0.52 },
+      { dx: rw * 0.05, dy: -rh * 0.22, rx: rw * 0.38, ry: rh * 0.42 },
     ];
 
-    // Shadow layer
-    ctx.fillStyle = `rgba(120,120,140,${c.opacity * 0.3})`;
+    // Soft shadow
+    ctx.fillStyle = `rgba(140,140,160,${c.opacity * 0.2})`;
     for (const p of puffs) {
       ctx.beginPath();
-      ctx.ellipse(cx + p.dx, cy + p.dy + rh * 0.2, p.rx, p.ry * 0.8, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + p.dx, cy + p.dy + rh * 0.18, p.rx * 0.95, p.ry * 0.7, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
     // Main body
-    ctx.fillStyle = `rgba(200,200,220,${c.opacity})`;
+    ctx.fillStyle = `rgba(210,210,225,${c.opacity})`;
     for (const p of puffs) {
       ctx.beginPath();
       ctx.ellipse(cx + p.dx, cy + p.dy, p.rx, p.ry, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Highlight on top
-    ctx.fillStyle = `rgba(240,240,255,${c.opacity * 0.4})`;
+    // Subtle top highlight
+    ctx.fillStyle = `rgba(235,235,250,${c.opacity * 0.3})`;
     for (const p of puffs) {
       ctx.beginPath();
-      ctx.ellipse(cx + p.dx, cy + p.dy - p.ry * 0.3, p.rx * 0.6, p.ry * 0.4, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + p.dx, cy + p.dy - p.ry * 0.35, p.rx * 0.5, p.ry * 0.3, 0, 0, Math.PI * 2);
       ctx.fill();
     }
   }

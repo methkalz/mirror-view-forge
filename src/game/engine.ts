@@ -82,14 +82,14 @@ export function createGame(w: number, h: number): GameData {
 
 function initClouds(w: number, h: number): Cloud[] {
   const clouds: Cloud[] = [];
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 6; i++) {
     clouds.push({
       x: Math.random() * w * 3 - w * 0.5,
-      y: 15 + Math.random() * h * 0.28,
-      width: 80 + Math.random() * 160,
-      height: 25 + Math.random() * 40,
-      speed: 3 + Math.random() * 7,
-      opacity: 0.1 + Math.random() * 0.25,
+      y: 20 + Math.random() * h * 0.25,
+      width: 100 + Math.random() * 180,
+      height: 30 + Math.random() * 45,
+      speed: 2 + Math.random() * 4,
+      opacity: 0.15 + Math.random() * 0.2,
     });
   }
   return clouds;
@@ -589,20 +589,14 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (ap.life <= 0 || ap.pos.y > g.height) g.ambientParticles.splice(i, 1);
   }
 
-  // === Clouds ===
-  const camLeft = g.camera.x - 300;
-  const camRight = g.camera.x + g.width + 300;
+  // === Clouds (independent drift, no camera dependency) ===
   for (const c of g.clouds) {
     c.x += c.speed * dt;
-    // Recycle based on camera bounds, not screen bounds
-    if (c.x - c.width > camRight) {
-      c.x = camLeft - c.width - Math.random() * 200;
-      c.y = 15 + Math.random() * g.height * 0.28;
-      c.opacity = 0.1 + Math.random() * 0.25;
-    } else if (c.x + c.width < camLeft - 500) {
-      c.x = camRight + Math.random() * 200;
-      c.y = 15 + Math.random() * g.height * 0.28;
-      c.opacity = 0.1 + Math.random() * 0.25;
+    // Recycle when drifting far off screen (absolute position)
+    if (c.x > g.width * 4) {
+      c.x = -c.width - Math.random() * 200;
+      c.y = 20 + Math.random() * g.height * 0.25;
+      c.opacity = 0.15 + Math.random() * 0.2;
     }
   }
 
