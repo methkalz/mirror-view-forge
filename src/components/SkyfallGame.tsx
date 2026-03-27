@@ -85,6 +85,9 @@ const SkyfallGame: React.FC = () => {
         prevState = g.state;
         setShowButtons(g.state === 'playing');
       }
+      if (g.state === 'playing') {
+        setPlayerAmmo(g.player.ammo);
+      }
 
       rafRef.current = requestAnimationFrame(loop);
     };
