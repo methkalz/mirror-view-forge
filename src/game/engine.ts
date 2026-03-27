@@ -421,7 +421,10 @@ export function update(g: GameData, input: InputState, dt: number) {
   // === Wave warnings ===
   const waveEvents: { time: number; id: string; text: string; sub: string; color: string }[] = [
     { time: 45, id: 'missiles', text: '⚠ تحذير: صواريخ', sub: 'MISSILES DETECTED', color: '#f97316' },
-    { time: 85, id: 'clusters', text: '⚠ تحذير: قنابل عنقودية', sub: 'CLUSTER BOMBS INCOMING', color: '#ef4444' },
+    { time: 85, id: 'clusters', text: '⚠ تحذير: صواريخ متشظية', sub: 'SPLITTING MISSILES INCOMING', color: '#ef4444' },
+    { time: 145, id: 'cluster_3', text: '⚠ تشظي ثلاثي!', sub: 'TRIPLE SPLIT MISSILES', color: '#f43f5e' },
+    { time: 205, id: 'cluster_4', text: '⚠ تشظي رباعي!', sub: 'QUAD SPLIT MISSILES', color: '#dc2626' },
+    { time: 265, id: 'cluster_5', text: '💀 تشظي خماسي!', sub: 'MAX SPLIT — DANGER', color: '#991b1b' },
     { time: 85, id: 'drones_scout', text: '⚠ رصد طائرات استطلاع', sub: 'SCOUT DRONES APPROACHING', color: '#60a5fa' },
     { time: 145, id: 'drones_tracker', text: '⚠ طائرات تتبع معادية', sub: 'TRACKER DRONES INBOUND', color: '#a855f7' },
     { time: 205, id: 'drones_bomber', text: '⚠ قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444' },
@@ -655,10 +658,11 @@ export function update(g: GameData, input: InputState, dt: number) {
           }
         }
 
-        // Cluster split
+        // Cluster split — progressive: 2 at 90s, 3 at 150s, 4 at 210s, 5 at 270s
         if (h.type === 'cluster') {
-          for (let i = 0; i < 3; i++) {
-            const angle = (Math.PI * 2 / 3) * i + Math.random() * 0.5 - Math.PI / 2;
+          const splitCount = Math.min(5, 2 + Math.floor(Math.max(0, g.elapsed - 90) / 60));
+          for (let i = 0; i < splitCount; i++) {
+            const angle = (Math.PI * 2 / splitCount) * i + Math.random() * 0.4 - Math.PI / 2;
             const splitDist = 50 + Math.random() * 40;
             const sh = getFromPool<Hazard>(g.hazards, () => ({
               active: false, type: 'shrapnel', pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
