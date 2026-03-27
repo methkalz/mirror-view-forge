@@ -1056,6 +1056,72 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderWaveWarnings(ctx, g);
 }
 
+// ─── Wave Warning Banners ─────────────────────────────
+function renderWaveWarnings(ctx: CanvasRenderingContext2D, g: GameData) {
+  if (!g.waveWarnings || g.waveWarnings.length === 0) return;
+  const { width: w } = g;
+
+  for (let i = 0; i < g.waveWarnings.length; i++) {
+    const ww = g.waveWarnings[i];
+    const progress = 1 - ww.life / ww.maxLife;
+
+    // Fade in first 0.5s, fade out last 1s
+    let alpha = 1;
+    if (progress < 0.12) alpha = progress / 0.12;
+    else if (progress > 0.75) alpha = (1 - progress) / 0.25;
+
+    // Slide in from top
+    const slideY = progress < 0.1 ? -30 + progress * 300 : 0;
+    const y = 60 + i * 55 + slideY;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Banner background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    const bannerW = Math.min(380, w - 40);
+    const bannerX = (w - bannerW) / 2;
+    ctx.beginPath();
+    const r = 6;
+    ctx.moveTo(bannerX + r, y - 18);
+    ctx.lineTo(bannerX + bannerW - r, y - 18);
+    ctx.quadraticCurveTo(bannerX + bannerW, y - 18, bannerX + bannerW, y - 18 + r);
+    ctx.lineTo(bannerX + bannerW, y + 18 - r);
+    ctx.quadraticCurveTo(bannerX + bannerW, y + 18, bannerX + bannerW - r, y + 18);
+    ctx.lineTo(bannerX + r, y + 18);
+    ctx.quadraticCurveTo(bannerX, y + 18, bannerX, y + 18 - r);
+    ctx.lineTo(bannerX, y - 18 + r);
+    ctx.quadraticCurveTo(bannerX, y - 18, bannerX + r, y - 18);
+    ctx.closePath();
+    ctx.fill();
+
+    // Colored left accent
+    ctx.fillStyle = ww.color;
+    ctx.fillRect(bannerX, y - 18, 4, 36);
+
+    // Pulsing border
+    const pulse = 0.3 + Math.sin(g.elapsed * 6) * 0.2;
+    ctx.strokeStyle = ww.color;
+    ctx.globalAlpha = alpha * pulse;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.globalAlpha = alpha;
+
+    // Main text
+    ctx.textAlign = 'center';
+    ctx.fillStyle = ww.color;
+    ctx.font = 'bold 13px monospace';
+    ctx.fillText(ww.text, w / 2, y - 2);
+
+    // Sub text
+    ctx.fillStyle = 'rgba(200,200,200,0.8)';
+    ctx.font = '9px monospace';
+    ctx.fillText(ww.subText, w / 2, y + 12);
+
+    ctx.restore();
+  }
+}
+
 // ─── Start Screen ─────────────────────────────────────
 export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: number, highScore: number) {
   // Dark scene
