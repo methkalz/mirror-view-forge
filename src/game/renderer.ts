@@ -1116,6 +1116,196 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
+// ─── Weather Effects ──────────────────────────────────
+function renderRain(ctx: CanvasRenderingContext2D, g: GameData) {
+  if (g.rainDrops.length === 0) return;
+  ctx.strokeStyle = `rgba(150, 170, 200, ${0.15 + g.weatherIntensity * 0.15})`;
+  ctx.lineWidth = 1;
+  for (const rd of g.rainDrops) {
+    ctx.beginPath();
+    ctx.moveTo(rd.x, rd.y);
+    ctx.lineTo(rd.x + g.windOffset * 8, rd.y + rd.len);
+    ctx.stroke();
+  }
+}
+
+function renderLightning(ctx: CanvasRenderingContext2D, g: GameData) {
+  if (g.lightningFlash <= 0) return;
+  ctx.fillStyle = `rgba(200, 210, 255, ${g.lightningFlash * 0.5})`;
+  ctx.fillRect(0, 0, g.width, g.height);
+}
+
+// ─── Boss ─────────────────────────────────────────────
+function renderBoss(ctx: CanvasRenderingContext2D, g: GameData) {
+  const boss = g.boss;
+  if (!boss || boss.defeated) return;
+  ctx.save();
+  ctx.translate(boss.pos.x, boss.pos.y);
+
+  const s = boss.size;
+  const tilt = Math.sin(g.elapsed * 0.8) * 0.03;
+  ctx.rotate(tilt);
+
+  // Damage flash
+  if (boss.damageFlash > 0) {
+    ctx.globalAlpha = 0.7 + boss.damageFlash;
+  }
+
+  // Shadow on ground
+  const groundY = g.height * 0.78 - boss.pos.y;
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.beginPath();
+  ctx.ellipse(0, groundY, s * 0.6, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Main fuselage
+  const bodyGrad = ctx.createLinearGradient(0, -s * 0.15, 0, s * 0.15);
+  bodyGrad.addColorStop(0, '#4a4540');
+  bodyGrad.addColorStop(0.5, '#2a2520');
+  bodyGrad.addColorStop(1, '#1a1510');
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.moveTo(s * 0.6, 0);        // nose
+  ctx.lineTo(s * 0.3, -s * 0.12);
+  ctx.lineTo(-s * 0.5, -s * 0.1);
+  ctx.lineTo(-s * 0.6, 0);       // tail
+  ctx.lineTo(-s * 0.5, s * 0.12);
+  ctx.lineTo(s * 0.3, s * 0.15);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#5a5550';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Wings
+  ctx.fillStyle = '#333028';
+  // Top wing
+  ctx.beginPath();
+  ctx.moveTo(s * 0.1, -s * 0.1);
+  ctx.lineTo(-s * 0.15, -s * 0.5);
+  ctx.lineTo(-s * 0.45, -s * 0.45);
+  ctx.lineTo(-s * 0.3, -s * 0.1);
+  ctx.fill();
+  // Bottom wing
+  ctx.beginPath();
+  ctx.moveTo(s * 0.1, s * 0.12);
+  ctx.lineTo(-s * 0.15, s * 0.5);
+  ctx.lineTo(-s * 0.45, s * 0.45);
+  ctx.lineTo(-s * 0.3, s * 0.12);
+  ctx.fill();
+
+  // Tail
+  ctx.fillStyle = '#2a2520';
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.5, 0);
+  ctx.lineTo(-s * 0.65, -s * 0.2);
+  ctx.lineTo(-s * 0.6, 0);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.5, 0);
+  ctx.lineTo(-s * 0.65, s * 0.2);
+  ctx.lineTo(-s * 0.6, 0);
+  ctx.fill();
+
+  // Cockpit
+  ctx.fillStyle = 'rgba(100, 200, 255, 0.3)';
+  ctx.beginPath();
+  ctx.ellipse(s * 0.35, 0, s * 0.08, s * 0.05, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Engines (4x)
+  const enginePositions = [
+    { x: -s * 0.35, y: -s * 0.35 },
+    { x: -s * 0.35, y: s * 0.35 },
+    { x: -s * 0.25, y: -s * 0.15 },
+    { x: -s * 0.25, y: s * 0.18 },
+  ];
+  for (const ep of enginePositions) {
+    ctx.fillStyle = '#f97316';
+    ctx.shadowColor = '#f97316';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.ellipse(ep.x, ep.y, 3, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Exhaust
+    const exLen = 8 + Math.random() * 6;
+    ctx.fillStyle = `rgba(249, 115, 22, ${0.4 + Math.random() * 0.3})`;
+    ctx.beginPath();
+    ctx.moveTo(ep.x, ep.y - 1.5);
+    ctx.lineTo(ep.x - exLen, ep.y);
+    ctx.lineTo(ep.x, ep.y + 1.5);
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+
+  // Warning stripes if phase 2+
+  if (boss.phase >= 2) {
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.3, -s * 0.1);
+    ctx.lineTo(-s * 0.3, s * 0.12);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Weapon hardpoints (missiles under wings)
+  ctx.fillStyle = '#555';
+  ctx.fillRect(s * 0.05, -s * 0.38, 6, 3);
+  ctx.fillRect(s * 0.05, s * 0.35, 6, 3);
+  ctx.fillStyle = '#dc2626';
+  ctx.fillRect(s * 0.1, -s * 0.37, 3, 2);
+  ctx.fillRect(s * 0.1, s * 0.36, 3, 2);
+
+  // Damage fire
+  if (boss.health < boss.maxHealth * 0.6) {
+    const fires = boss.health < boss.maxHealth * 0.3 ? 3 : 1;
+    for (let i = 0; i < fires; i++) {
+      const fx = (Math.random() - 0.5) * s * 0.5;
+      const fy = (Math.random() - 0.5) * s * 0.2;
+      const fh = 8 + Math.random() * 8;
+      ctx.fillStyle = `rgba(255, 120, 0, ${0.5 + Math.random() * 0.3})`;
+      ctx.beginPath();
+      ctx.moveTo(fx - 3, fy);
+      ctx.lineTo(fx, fy + fh);
+      ctx.lineTo(fx + 3, fy);
+      ctx.fill();
+    }
+  }
+
+  // Health bar
+  const barW = s * 1.2;
+  const barH = 5;
+  const barY = -s * 0.3 - 12;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(-barW / 2 - 1, barY - 1, barW + 2, barH + 2);
+  const hpRatio = boss.health / boss.maxHealth;
+  const hpColor = hpRatio > 0.5 ? '#22c55e' : hpRatio > 0.25 ? '#eab308' : '#ef4444';
+  ctx.fillStyle = hpColor;
+  ctx.fillRect(-barW / 2, barY, barW * hpRatio, barH);
+  // Boss label
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 8px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('GUNSHIP', 0, barY - 4);
+
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// ─── Player Glow (ambient lighting) ──────────────────
+function renderPlayerGlow(ctx: CanvasRenderingContext2D, g: GameData) {
+  const p = g.player;
+  const glowGrad = ctx.createRadialGradient(p.pos.x, p.pos.y - 10, 5, p.pos.x, p.pos.y - 10, 60);
+  glowGrad.addColorStop(0, 'rgba(100, 150, 255, 0.04)');
+  glowGrad.addColorStop(1, 'rgba(100, 150, 255, 0)');
+  ctx.fillStyle = glowGrad;
+  ctx.beginPath();
+  ctx.arc(p.pos.x, p.pos.y - 10, 60, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 // ─── Main Render ──────────────────────────────────────
 export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.save();
@@ -1132,12 +1322,18 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderExplosions(ctx, g);
   renderPowerUps(ctx, g);
   renderDrones(ctx, g);
+  renderBoss(ctx, g);
   renderBullets(ctx, g);
+  renderPlayerGlow(ctx, g);
   renderPlayer(ctx, g);
   renderParticles(ctx, g);
+  renderRain(ctx, g);
   renderFloatingTexts(ctx, g);
 
   ctx.restore();
+
+  // Lightning flash
+  renderLightning(ctx, g);
 
   // Damage flash (full screen, no shake)
   if (g.damageFlash > 0) {
@@ -1361,6 +1557,10 @@ export function renderGameOver(ctx: CanvasRenderingContext2D, w: number, h: numb
     ctx.fillText(`Close Calls: ${stats.closeCalls}`, w / 2, statY + 18);
     ctx.fillText(`Power-ups: ${stats.powerUpsCollected}`, w / 2, statY + 36);
     ctx.fillText(`Drones: ${stats.dronesDestroyed}`, w / 2, statY + 54);
+    if (stats.bossesDefeated > 0) {
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillText(`Bosses: ${stats.bossesDefeated}`, w / 2, statY + 72);
+    }
   }
 
   const t = Date.now() / 1000;
