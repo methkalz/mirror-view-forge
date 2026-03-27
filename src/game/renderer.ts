@@ -1106,6 +1106,32 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillRect(0, 0, g.width, g.height);
   }
 
+  // Slow-mo screen tint
+  if (g.slowMoTimer > 0) {
+    const pulse = 0.08 + Math.sin(g.elapsed * 4) * 0.03;
+    ctx.fillStyle = `rgba(6, 182, 212, ${pulse})`;
+    ctx.fillRect(0, 0, g.width, g.height);
+  }
+
+  // Magnet attraction lines
+  if (g.magnetTimer > 0) {
+    const p = g.player;
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 6]);
+    for (const pu of g.powerUps) {
+      if (!pu.active) continue;
+      const d = Math.sqrt((pu.pos.x - p.pos.x) ** 2 + (pu.pos.y - p.pos.y) ** 2);
+      if (d < g.width * 0.5) {
+        ctx.beginPath();
+        ctx.moveTo(p.pos.x - g.camera.x + g.screenShake.x, p.pos.y + g.screenShake.y);
+        ctx.lineTo(pu.pos.x - g.camera.x + g.screenShake.x, pu.pos.y + g.screenShake.y);
+        ctx.stroke();
+      }
+    }
+    ctx.setLineDash([]);
+  }
+
   // HUD (no shake)
   renderHUD(ctx, g);
 
