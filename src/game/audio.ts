@@ -15,7 +15,7 @@ function unmuteIOS() {
     iosUnlockAudio = document.createElement('audio');
     iosUnlockAudio.setAttribute('x-webkit-airplay', 'deny');
     iosUnlockAudio.preload = 'auto';
-    iosUnlockAudio.playsInline = true;
+    iosUnlockAudio.setAttribute('playsinline', 'true');
     iosUnlockAudio.loop = true;
     iosUnlockAudio.volume = 0.001;
     iosUnlockAudio.src = SILENT_MP3;
