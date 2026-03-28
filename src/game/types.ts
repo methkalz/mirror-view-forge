@@ -49,6 +49,11 @@ export interface Hazard {
   splitDone?: boolean;
   rotation: number;
   trailTimer: number;
+  // Cluster missile phases
+  clusterPhase?: 'flying' | 'opening' | 'releasing' | 'done';
+  clusterTimer?: number;
+  clusterVelX?: number;
+  clusterStartSpeed?: number;
 }
 
 export interface PowerUp {
@@ -222,6 +227,7 @@ export interface GameData {
   bulletLevel: number;
   slowMoTimer: number;
   magnetTimer: number;
+  magnetFlashTimer: number;
   slowMoFactor: number;
   boss: Boss | null;
   bossCount: number;

@@ -70,6 +70,7 @@ export function createGame(w: number, h: number): GameData {
     bulletLevel: 1,
     slowMoTimer: 0,
     magnetTimer: 0,
+    magnetFlashTimer: 0,
     slowMoFactor: 1,
     boss: null,
     bossCount: 0,
@@ -231,12 +232,26 @@ function spawnHazard(g: GameData, type: HazardType) {
       h.damage = 22;
       h.warningDuration = 1.2;
       break;
-    case 'cluster':
-      h.speed = 140 + g.difficulty * 10 + Math.random() * 80;
+    case 'cluster': {
+      // Horizontal flying missile
+      const fromRight = Math.random() > 0.5;
+      const startX = fromRight ? g.width + 40 : -40;
+      const flyY = g.height * (0.15 + Math.random() * 0.1);
+      h.pos = { x: startX, y: flyY };
+      h.targetPos = { x: g.width / 2, y: flyY }; // not used for ground impact
+      const baseSpeed = 400 + g.difficulty * 10 + Math.random() * 100;
+      h.clusterVelX = fromRight ? -baseSpeed : baseSpeed;
+      h.clusterStartSpeed = baseSpeed;
+      h.clusterPhase = 'flying';
+      h.clusterTimer = 0;
+      h.speed = 0;
       h.size = 14;
       h.damage = 16;
-      h.warningDuration = 1.4;
+      h.warningDuration = 0;
+      h.warningTimer = 0;
+      h.falling = true; // skip warning phase
       break;
+    }
   }
   h.warningTimer = h.warningDuration;
   // Avoid repetitive heartbeat-like beeps from frequent shrapnel spawns
@@ -519,6 +534,7 @@ export function update(g: GameData, input: InputState, dt: number) {
     g.slowMoFactor = 1;
   }
   if (g.magnetTimer > 0) g.magnetTimer -= dt;
+  if (g.magnetFlashTimer > 0) g.magnetFlashTimer -= dt;
 
   // === Wave warnings ===
   // === Cinematic warning system ===
@@ -715,6 +731,85 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (!h.active) continue;
     h.rotation += dt * (h.type === 'shrapnel' ? 8 : 2);
 
+    // === Cluster missile: horizontal flying phases ===
+    if (h.type === 'cluster' && h.clusterPhase) {
+      h.trailTimer -= dt;
+      if (h.trailTimer <= 0) {
+        h.trailTimer = 0.04;
+        addSmokeTrail(g, { x: h.pos.x, y: h.pos.y }, h.size * 0.5);
+      }
+
+      if (h.clusterPhase === 'flying') {
+        // Decelerate gradually
+        const decel = (h.clusterStartSpeed || 400) * 0.4 * dt;
+        if (h.clusterVelX! > 0) {
+          h.clusterVelX = Math.max(h.clusterVelX! - decel, (h.clusterStartSpeed || 400) * 0.25);
+        } else {
+          h.clusterVelX = Math.min(h.clusterVelX! + decel, -(h.clusterStartSpeed || 400) * 0.25);
+        }
+        h.pos.x += h.clusterVelX! * g.slowMoFactor * dt;
+
+        // Check if slowed enough to open
+        if (Math.abs(h.clusterVelX!) <= (h.clusterStartSpeed || 400) * 0.28) {
+          h.clusterPhase = 'opening';
+          h.clusterTimer = 0.5;
+        }
+        // Off-screen removal
+        if (h.pos.x < -100 || h.pos.x > g.width + 100) {
+          h.active = false;
+        }
+      } else if (h.clusterPhase === 'opening') {
+        h.clusterTimer! -= dt;
+        // Slow drift
+        h.pos.x += (h.clusterVelX! * 0.3) * g.slowMoFactor * dt;
+        if (h.clusterTimer! <= 0) {
+          h.clusterPhase = 'releasing';
+          h.clusterTimer = 0.1;
+        }
+      } else if (h.clusterPhase === 'releasing') {
+        // Release bombs downward with varied sizes
+        let splitCount = 2;
+        if (g.activatedWaveEvents.has('cluster_3')) splitCount = 3;
+        if (g.activatedWaveEvents.has('cluster_4')) splitCount = 4;
+        if (g.activatedWaveEvents.has('cluster_5')) splitCount = 5;
+
+        for (let i = 0; i < splitCount; i++) {
+          const spreadX = (i - (splitCount - 1) / 2) * 35 + (Math.random() - 0.5) * 20;
+          const sh = getFromPool<Hazard>(g.hazards, () => ({
+            active: false, type: 'shrapnel', pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
+            speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
+            rotation: 0, trailTimer: 0
+          }));
+          sh.type = 'shrapnel';
+          sh.pos = { x: h.pos.x + spreadX, y: h.pos.y + 10 };
+          const targetX = h.pos.x + spreadX + (Math.random() - 0.5) * 40;
+          sh.targetPos = { x: targetX, y: groundY - 5 + Math.random() * 10 };
+          sh.speed = 200 + Math.random() * 150;
+          // Varied sizes and damage
+          const sizeVar = Math.random();
+          sh.size = sizeVar > 0.7 ? 9 : sizeVar > 0.3 ? 7 : 5;
+          sh.damage = sizeVar > 0.7 ? 12 : sizeVar > 0.3 ? 9 : 5;
+          sh.warningDuration = 0.3;
+          sh.warningTimer = 0.3;
+          sh.falling = false;
+          sh.rotation = Math.random() * Math.PI * 2;
+          sh.trailTimer = 0;
+        }
+        // Quiet explosion and remove
+        h.clusterPhase = 'done';
+        h.clusterTimer = 0.4;
+        addExplosion(g, h.pos, h.size * 1.5);
+        spawnParticles(g, h.pos, 5, '#888', 60, false);
+        sfxImpactLight();
+      } else if (h.clusterPhase === 'done') {
+        h.clusterTimer! -= dt;
+        if (h.clusterTimer! <= 0) {
+          h.active = false;
+        }
+      }
+      continue; // skip normal hazard logic for clusters
+    }
+
     if (!h.falling) {
       h.warningTimer -= dt;
       if (h.warningTimer <= 0) h.falling = true;
@@ -736,15 +831,12 @@ export function update(g: GameData, input: InputState, dt: number) {
       if (d < 8) {
         // Impact
         h.active = false;
-        // Type-specific impact sound
         if (h.type === 'shrapnel') sfxImpactLight();
         else if (h.type === 'missile') sfxImpactHeavy();
         else sfxExplosion();
         
-        // Multi-stage explosion
         addExplosion(g, h.targetPos, h.type === 'missile' ? h.size * 3 : h.size * 2);
         
-        // Ground debris particles
         const colors = ['#ef4444', '#f97316', '#fbbf24', '#6b7280', '#4b5563'];
         for (const c of colors.slice(0, 3)) {
           spawnParticles(g, h.targetPos, h.type === 'missile' ? 6 : 3, c, h.type === 'missile' ? 250 : 150);
@@ -752,7 +844,6 @@ export function update(g: GameData, input: InputState, dt: number) {
         
         g.craters.push({ pos: { ...h.targetPos }, size: h.size * 2.5, life: 8, maxLife: 8 });
         
-        // Directional screen shake
         const shakeStr = h.type === 'missile' ? 12 : 5;
         const shakeDirX = h.targetPos.x < g.width / 2 ? 1 : -1;
         g.screenShake = {
@@ -760,16 +851,14 @@ export function update(g: GameData, input: InputState, dt: number) {
           y: -(shakeStr * 0.7 + Math.random() * shakeStr * 0.3)
         };
 
-        // Player collision + proximity scoring
         const distToPlayer = dist(h.targetPos, p.pos);
         if (distToPlayer < h.size * 1.5 + p.size) {
           damagePlayer(g, h.damage, h.targetPos);
         } else {
-          // Proximity bonus: closer = more points
           const maxBonusDist = 150;
           if (distToPlayer < maxBonusDist) {
             const proximity = 1 - (distToPlayer / maxBonusDist);
-            const bonus = Math.floor(10 + proximity * 90); // 10-100 points
+            const bonus = Math.floor(10 + proximity * 90);
             g.score += bonus;
             if (distToPlayer < h.size * 1.5 + p.size + CLOSE_CALL_DIST) {
               g.stats.closeCalls++;
@@ -779,39 +868,8 @@ export function update(g: GameData, input: InputState, dt: number) {
             }
           }
         }
-
-        // Cluster split — progressive: 2 at 90s, 3 at 150s, 4 at 210s, 5 at 270s
-        if (h.type === 'cluster') {
-          let splitCount = 2;
-          if (g.activatedWaveEvents.has('cluster_3')) splitCount = 3;
-          if (g.activatedWaveEvents.has('cluster_4')) splitCount = 4;
-          if (g.activatedWaveEvents.has('cluster_5')) splitCount = 5;
-          for (let i = 0; i < splitCount; i++) {
-            const angle = (Math.PI * 2 / splitCount) * i + Math.random() * 0.4 - Math.PI / 2;
-            const splitDist = 50 + Math.random() * 40;
-            const sh = getFromPool<Hazard>(g.hazards, () => ({
-              active: false, type: 'shrapnel', pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
-              speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
-              rotation: 0, trailTimer: 0
-            }));
-            sh.type = 'shrapnel';
-            sh.pos = { x: h.targetPos.x, y: h.targetPos.y - 30 };
-            sh.targetPos = {
-              x: h.targetPos.x + Math.cos(angle) * splitDist,
-              y: groundY - 5 + Math.random() * 10
-            };
-            sh.speed = 250 + Math.random() * 100;
-            sh.size = 6;
-            sh.damage = 8;
-            sh.warningDuration = 0.3;
-            sh.warningTimer = 0.3;
-            sh.falling = false;
-            sh.rotation = Math.random() * Math.PI * 2;
-            sh.trailTimer = 0;
-          }
-        }
       } else {
-      h.pos.x += (dx / d) * h.speed * g.slowMoFactor * dt;
+        h.pos.x += (dx / d) * h.speed * g.slowMoFactor * dt;
         h.pos.y += (dy / d) * h.speed * g.slowMoFactor * dt;
       }
     }
@@ -878,14 +936,17 @@ export function update(g: GameData, input: InputState, dt: number) {
           sfxSlowmo();
           break;
         case 'magnet':
-          g.magnetTimer = 8;
+          g.magnetFlashTimer = 1.5;
           addFloatingText(g, 'MAGNET!', { x: p.pos.x, y: p.pos.y - 40 }, '#9ca3af');
           spawnParticles(g, p.pos, 10, '#9ca3af', 90);
           sfxMagnet();
-          // Instantly attract all parachuting power-ups
+          // Instantly collect all currently parachuting power-ups
           for (const pu2 of g.powerUps) {
-            if (pu2.active && pu2.parachuting) {
-              pu2.fallSpeed = 900;
+            if (pu2 !== pu && pu2.active && pu2.parachuting) {
+              pu2.pos.x = p.pos.x;
+              pu2.pos.y = p.pos.y;
+              pu2.parachuting = false;
+              pu2.fallSpeed = 0;
             }
           }
           break;
@@ -918,22 +979,7 @@ export function update(g: GameData, input: InputState, dt: number) {
     }
   }
 
-  // === Magnet attraction ===
-  if (g.magnetTimer > 0) {
-    const magnetRange = g.width * 1.5;
-    for (const pu2 of g.powerUps) {
-      if (!pu2.active) continue;
-      const dx = p.pos.x - pu2.pos.x;
-      const dy = p.pos.y - pu2.pos.y;
-      const d2 = Math.sqrt(dx * dx + dy * dy);
-      if (d2 > 5) {
-        const speed = 500 * Math.max(0.3, 1 - d2 / magnetRange);
-        pu2.pos.x += (dx / d2) * speed * dt;
-        pu2.pos.y += (dy / d2) * speed * dt;
-        if (pu2.parachuting) pu2.fallSpeed = 800;
-      }
-    }
-  }
+  // Magnet attraction removed — magnet now works instantly
 
   // === Drones ===
   if (g.activatedWaveEvents.has('drones_scout')) {
