@@ -409,44 +409,105 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.closePath();
       ctx.fill();
     } else if (hz.type === 'cluster') {
-      ctx.rotate(hz.rotation);
-      // Bomb body — dark sphere with fuse
-      const bombGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, hz.size);
-      bombGrad.addColorStop(0, '#555');
-      bombGrad.addColorStop(0.7, '#222');
-      bombGrad.addColorStop(1, '#111');
-      ctx.fillStyle = bombGrad;
-      ctx.beginPath();
-      ctx.arc(0, 0, hz.size, 0, Math.PI * 2);
-      ctx.fill();
-      // Metallic highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.15)';
-      ctx.beginPath();
-      ctx.arc(-hz.size * 0.3, -hz.size * 0.3, hz.size * 0.35, 0, Math.PI * 2);
-      ctx.fill();
-      // Fuse on top
-      ctx.strokeStyle = '#8B7355';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(0, -hz.size);
-      ctx.quadraticCurveTo(4, -hz.size - 6, 2, -hz.size - 10);
-      ctx.stroke();
-      // Spark at fuse tip
-      const sparkSize = 2 + Math.sin(g.elapsed * 20) * 1.5;
-      ctx.fillStyle = '#fbbf24';
-      ctx.beginPath();
-      ctx.arc(2, -hz.size - 10, sparkSize, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(2, -hz.size - 10, sparkSize * 0.4, 0, Math.PI * 2);
-      ctx.fill();
-      // Warning band
-      ctx.strokeStyle = '#dc2626';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, hz.size * 0.7, -0.3, Math.PI + 0.3);
-      ctx.stroke();
+      // Horizontal flying missile with phases
+      const phase = hz.clusterPhase || 'flying';
+      const flyingRight = (hz.clusterVelX || 0) > 0;
+      const dir = flyingRight ? 1 : -1;
+
+      if (phase === 'done') {
+        // Fading smoke puff
+        const alpha = Math.min(1, (hz.clusterTimer || 0) / 0.4);
+        ctx.fillStyle = `rgba(100,90,80,${alpha * 0.4})`;
+        ctx.beginPath();
+        ctx.arc(0, 0, hz.size * 2 * (1 - alpha * 0.3), 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.save();
+        ctx.scale(dir, 1);
+        // Missile body — long horizontal
+        const bodyLen = hz.size * 2.5;
+        const bodyH = hz.size * 0.5;
+        const bodyGrad = ctx.createLinearGradient(0, -bodyH, 0, bodyH);
+        bodyGrad.addColorStop(0, '#8a8f98');
+        bodyGrad.addColorStop(0.4, '#5a5f65');
+        bodyGrad.addColorStop(1, '#3a3f45');
+        ctx.fillStyle = bodyGrad;
+        ctx.beginPath();
+        ctx.moveTo(bodyLen, 0);
+        ctx.lineTo(bodyLen * 0.3, -bodyH);
+        ctx.lineTo(-bodyLen * 0.6, -bodyH * 0.8);
+        ctx.lineTo(-bodyLen * 0.7, 0);
+        ctx.lineTo(-bodyLen * 0.6, bodyH * 0.8);
+        ctx.lineTo(bodyLen * 0.3, bodyH);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#9a9fa8';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+        // Nose cone (red)
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath();
+        ctx.moveTo(bodyLen, 0);
+        ctx.lineTo(bodyLen * 0.65, -bodyH * 0.7);
+        ctx.lineTo(bodyLen * 0.65, bodyH * 0.7);
+        ctx.closePath();
+        ctx.fill();
+        // Fins
+        ctx.fillStyle = '#4b5563';
+        ctx.beginPath();
+        ctx.moveTo(-bodyLen * 0.5, -bodyH * 0.8);
+        ctx.lineTo(-bodyLen * 0.7, -bodyH * 2.2);
+        ctx.lineTo(-bodyLen * 0.35, -bodyH * 0.8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(-bodyLen * 0.5, bodyH * 0.8);
+        ctx.lineTo(-bodyLen * 0.7, bodyH * 2.2);
+        ctx.lineTo(-bodyLen * 0.35, bodyH * 0.8);
+        ctx.closePath();
+        ctx.fill();
+        // Warning stripe
+        ctx.fillStyle = 'rgba(255,200,0,0.25)';
+        ctx.fillRect(-bodyLen * 0.1, -bodyH * 0.7, 3, bodyH * 1.4);
+        // Exhaust flame
+        if (phase === 'flying') {
+          ctx.fillStyle = '#f97316';
+          ctx.beginPath();
+          ctx.moveTo(-bodyLen * 0.7, -bodyH * 0.4);
+          ctx.lineTo(-bodyLen * 1.2 - Math.random() * 8, 0);
+          ctx.lineTo(-bodyLen * 0.7, bodyH * 0.4);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = '#fbbf24';
+          ctx.beginPath();
+          ctx.moveTo(-bodyLen * 0.7, -bodyH * 0.2);
+          ctx.lineTo(-bodyLen * 0.95 - Math.random() * 5, 0);
+          ctx.lineTo(-bodyLen * 0.7, bodyH * 0.2);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // Opening phase: missile splitting
+        if (phase === 'opening') {
+          const openT = 1 - Math.max(0, (hz.clusterTimer || 0) / 0.5);
+          const gap = openT * bodyH * 2;
+          ctx.fillStyle = '#fbbf24';
+          ctx.globalAlpha = 0.5 + openT * 0.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, bodyH * 1.5 * (0.5 + openT * 0.5), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          // Crack line
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 1 + openT * 2;
+          ctx.beginPath();
+          ctx.moveTo(-bodyLen * 0.3, -gap);
+          ctx.lineTo(bodyLen * 0.3, -gap);
+          ctx.moveTo(-bodyLen * 0.3, gap);
+          ctx.lineTo(bodyLen * 0.3, gap);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
     } else {
       // Shrapnel — angular metal chunk with better detail
       ctx.rotate(hz.rotation);
