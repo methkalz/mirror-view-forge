@@ -1,6 +1,6 @@
 import {
   GameData, InputState, Hazard, PowerUp, Particle, Vec2, Crater, FloatingText, Drone, Bullet,
-  HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning, Boss
+  HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning, Boss, DroneTier
 } from './types';
 import { getFromPool } from './pool';
 import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder } from './audio';
@@ -78,6 +78,9 @@ export function createGame(w: number, h: number): GameData {
     lightningFlash: 0,
     weatherIntensity: 0,
     cinematicWarning: null,
+    warningLockUntil: 0,
+    pendingWaveEvents: [],
+    activatedWaveEvents: new Set(),
     missileStartTime: 5 + Math.random() * 5, // 5-10s random
   };
 }
@@ -140,6 +143,9 @@ export function resetGame(g: GameData) {
   g.lightningFlash = 0;
   g.weatherIntensity = 0;
   g.cinematicWarning = null;
+  g.warningLockUntil = 0;
+  g.pendingWaveEvents = [];
+  g.activatedWaveEvents = new Set();
   g.missileStartTime = 5 + Math.random() * 5;
 }
 
@@ -258,7 +264,43 @@ function spawnPowerUp(g: GameData) {
   pu.groundTimer = 0;
 }
 
-function spawnDrone(g: GameData) {
+function configureDroneByTier(d: Drone, tier: DroneTier, elapsed: number) {
+  d.tier = tier;
+  if (tier === 'scout') {
+    d.speed = 35 + Math.min(25, elapsed * 0.08);
+    d.size = 14;
+    d.health = 1;
+    d.maxHealth = 1;
+    d.aggroDelay = 2.5 + Math.random() * 1.5;
+    d.trackingAccuracy = 0.2 + Math.min(0.25, elapsed * 0.0015);
+    d.bombTimer = 0;
+    d.bombCooldown = 0;
+    return;
+  }
+
+  if (tier === 'tracker') {
+    d.speed = 50 + Math.min(25, elapsed * 0.06);
+    d.size = 16;
+    d.health = 2;
+    d.maxHealth = 2;
+    d.aggroDelay = 1.2 + Math.random() * 1.2;
+    d.trackingAccuracy = 0.45 + Math.min(0.25, elapsed * 0.001);
+    d.bombTimer = 0;
+    d.bombCooldown = 0;
+    return;
+  }
+
+  d.speed = 42 + Math.min(18, elapsed * 0.04);
+  d.size = 20;
+  d.health = 3;
+  d.maxHealth = 3;
+  d.aggroDelay = 0.8 + Math.random() * 0.8;
+  d.trackingAccuracy = 0.35 + Math.min(0.15, elapsed * 0.0008);
+  d.bombTimer = 0;
+  d.bombCooldown = 4 + Math.random() * 2;
+}
+
+function spawnDrone(g: GameData, forcedTier?: DroneTier) {
   const d = getFromPool<Drone>(g.drones, () => ({
     active: false, pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
     speed: 0, size: 0, health: 0, maxHealth: 0, state: 'entering' as const, entryTarget: { x: 0, y: 0 },
@@ -280,62 +322,93 @@ function spawnDrone(g: GameData) {
   d.vel = { x: 0, y: 0 };
   d.wobble = Math.random() * Math.PI * 2; // random phase
 
-  const elapsed = g.elapsed;
-  if (elapsed < 150) {
-    d.tier = 'scout';
-    d.speed = 25 + Math.min(15, (elapsed - 90) * 0.5);
-    d.size = 14;
-    d.health = 1; d.maxHealth = 1;
-    d.aggroDelay = 4 + Math.random() * 3;
-    d.trackingAccuracy = 0.1 + Math.random() * 0.1;
-    d.bombTimer = 0; d.bombCooldown = 0;
-  } else if (elapsed < 210) {
-    const roll = Math.random();
-    if (roll < 0.5) {
-      d.tier = 'scout';
-      d.speed = 40 + Math.random() * 15;
-      d.size = 14;
-      d.health = 1; d.maxHealth = 1;
-      d.aggroDelay = 2 + Math.random() * 1.5;
-      d.trackingAccuracy = 0.25 + Math.random() * 0.2;
-      d.bombTimer = 0; d.bombCooldown = 0;
-    } else {
-      d.tier = 'tracker';
-      d.speed = 50 + Math.random() * 20;
-      d.size = 16;
-      d.health = 2; d.maxHealth = 2;
-      d.aggroDelay = 1.5 + Math.random() * 1;
-      d.trackingAccuracy = 0.4 + Math.random() * 0.2;
-      d.bombTimer = 0; d.bombCooldown = 0;
+  const unlockedTiers: DroneTier[] = [];
+  if (g.activatedWaveEvents.has('drones_scout')) unlockedTiers.push('scout');
+  if (g.activatedWaveEvents.has('drones_tracker')) unlockedTiers.push('tracker');
+  if (g.activatedWaveEvents.has('drones_bomber')) unlockedTiers.push('bomber');
+  const selectedTier = forcedTier
+    ?? (unlockedTiers.length > 0
+      ? unlockedTiers[Math.floor(Math.random() * unlockedTiers.length)]
+      : 'scout');
+
+  configureDroneByTier(d, selectedTier, g.elapsed);
+}
+
+function queueWaveEvent(
+  g: GameData,
+  event: { id: string; text: string; sub: string; color: string; duration: number }
+) {
+  const resolveDelay = 2 + Math.random() * 3;
+  const resolveAt = g.elapsed + resolveDelay;
+
+  g.waveTriggered.add(event.id);
+  g.warningLockUntil = resolveAt;
+  g.pendingWaveEvents.push({ id: event.id, resolveAt });
+
+  g.cinematicWarning = {
+    text: event.text,
+    subText: event.sub,
+    color: event.color,
+    timer: event.duration,
+    duration: event.duration,
+  };
+  g.slowMoFactor = 0.1;
+}
+
+function applyWaveEvent(g: GameData, id: string) {
+  g.activatedWaveEvents.add(id);
+
+  if (id === 'bullet_2') {
+    g.bulletLevel = Math.max(g.bulletLevel, 2);
+    return;
+  }
+
+  if (id === 'bullet_3') {
+    g.bulletLevel = Math.max(g.bulletLevel, 3);
+    return;
+  }
+
+  if (id === 'drones_scout') {
+    g.droneTimer = Math.min(g.droneTimer, 2 + Math.random() * 3);
+    return;
+  }
+
+  if (id === 'boss_warn') {
+    if (!g.boss) {
+      spawnBoss(g, false);
+      g.bossTimer = 240 + g.bossCount * 30;
     }
-  } else {
-    const roll = Math.random();
-    if (roll < 0.2) {
-      d.tier = 'scout';
-      d.speed = 50;
-      d.size = 14;
-      d.health = 1; d.maxHealth = 1;
-      d.aggroDelay = 1;
-      d.trackingAccuracy = 0.35;
-      d.bombTimer = 0; d.bombCooldown = 0;
-    } else if (roll < 0.6) {
-      d.tier = 'tracker';
-      d.speed = 60 + Math.min(30, (elapsed - 150) * 0.2);
-      d.size = 16;
-      d.health = 2; d.maxHealth = 2;
-      d.aggroDelay = 0.5 + Math.random() * 0.5;
-      d.trackingAccuracy = 0.5 + Math.min(0.35, (elapsed - 150) * 0.002);
-      d.bombTimer = 0; d.bombCooldown = 0;
-    } else {
-      d.tier = 'bomber';
-      d.speed = 45 + Math.random() * 15;
-      d.size = 20;
-      d.health = 3; d.maxHealth = 3;
-      d.aggroDelay = 1;
-      d.trackingAccuracy = 0.3;
-      d.bombTimer = 0;
-      d.bombCooldown = 4 + Math.random() * 2;
+    return;
+  }
+
+  if (id === 'boss_prep') {
+    for (const t of ['ammo', 'medkit'] as PowerUpType[]) {
+      const pu = getFromPool<PowerUp>(g.powerUps, () => ({
+        active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
+        parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
+      }), 20);
+      pu.type = t;
+      pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
+      pu.size = 14;
+      pu.parachuting = true;
+      pu.fallSpeed = 35;
+      pu.bobTimer = 0;
+      pu.groundTimer = 0;
     }
+  }
+}
+
+function resolvePendingWaveEvents(g: GameData) {
+  for (let i = g.pendingWaveEvents.length - 1; i >= 0; i--) {
+    const pending = g.pendingWaveEvents[i];
+    if (g.elapsed >= pending.resolveAt) {
+      applyWaveEvent(g, pending.id);
+      g.pendingWaveEvents.splice(i, 1);
+    }
+  }
+
+  if (g.pendingWaveEvents.length === 0 && g.elapsed >= g.warningLockUntil) {
+    g.warningLockUntil = 0;
   }
 }
 
@@ -411,6 +484,8 @@ export function update(g: GameData, input: InputState, dt: number) {
     }
   }
 
+  resolvePendingWaveEvents(g);
+
   // === Slow-mo & Magnet timers ===
   if (!g.cinematicWarning && g.slowMoTimer > 0) {
     g.slowMoTimer -= dt;
@@ -440,30 +515,8 @@ export function update(g: GameData, input: InputState, dt: number) {
   ];
   for (const we of waveEvents) {
     if (g.elapsed >= we.time && !g.waveTriggered.has(we.id)) {
-      // Don't trigger ANY event if a cinematic warning is active
-      if (g.cinematicWarning) continue;
-      g.waveTriggered.add(we.id);
-      // All warnings are cinematic (centered)
-      g.cinematicWarning = { text: we.text, subText: we.sub, color: we.color, timer: we.duration, duration: we.duration };
-      g.slowMoFactor = 0.1;
-      if (we.id === 'bullet_2') g.bulletLevel = 2;
-      if (we.id === 'bullet_3') g.bulletLevel = 3;
-      // Pre-boss: drop guaranteed ammo + medkit
-      if (we.id === 'boss_prep') {
-        for (const t of ['ammo', 'medkit'] as PowerUpType[]) {
-          const pu = getFromPool<PowerUp>(g.powerUps, () => ({
-            active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
-            parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
-          }), 20);
-          pu.type = t;
-          pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
-          pu.size = 14;
-          pu.parachuting = true;
-          pu.fallSpeed = 35;
-          pu.bobTimer = 0;
-          pu.groundTimer = 0;
-        }
-      }
+      if (g.cinematicWarning || g.pendingWaveEvents.length > 0 || g.elapsed < g.warningLockUntil) continue;
+      queueWaveEvent(g, we);
     }
   }
   // Update wave warnings
@@ -604,12 +657,20 @@ export function update(g: GameData, input: InputState, dt: number) {
   if (g.elapsed >= 3 && !g.cinematicWarning) {
     g.spawnTimer -= dt;
     if (g.spawnTimer <= 0) {
+      const types: HazardType[] = [];
+      if (g.activatedWaveEvents.has('shrapnel_start')) types.push('shrapnel', 'shrapnel');
+      if (g.activatedWaveEvents.has('missiles')) types.push('missile');
+      if (g.activatedWaveEvents.has('clusters')) types.push('cluster', 'cluster');
+
+      if (types.length === 0) {
+        g.spawnTimer = 0.12;
+        return;
+      }
+
       const spawnRate = Math.max(0.5, 2.0 - g.difficulty * 0.12);
       const bossMultiplier = g.boss && !g.boss.defeated ? 2.5 : 1;
       g.spawnTimer = spawnRate * bossMultiplier;
-      const types: HazardType[] = ['shrapnel'];
-      if (g.elapsed >= g.missileStartTime) types.push('shrapnel', 'missile');
-      if (g.elapsed >= 90) types.push('cluster', 'cluster');
+
       spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
       if (g.difficulty >= 4 && Math.random() < 0.25 && !g.boss) {
         spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
@@ -689,7 +750,10 @@ export function update(g: GameData, input: InputState, dt: number) {
 
         // Cluster split — progressive: 2 at 90s, 3 at 150s, 4 at 210s, 5 at 270s
         if (h.type === 'cluster') {
-          const splitCount = Math.min(5, 2 + Math.floor(Math.max(0, g.elapsed - 90) / 60));
+          let splitCount = 2;
+          if (g.activatedWaveEvents.has('cluster_3')) splitCount = 3;
+          if (g.activatedWaveEvents.has('cluster_4')) splitCount = 4;
+          if (g.activatedWaveEvents.has('cluster_5')) splitCount = 5;
           for (let i = 0; i < splitCount; i++) {
             const angle = (Math.PI * 2 / splitCount) * i + Math.random() * 0.4 - Math.PI / 2;
             const splitDist = 50 + Math.random() * 40;
@@ -833,14 +897,15 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Drones ===
-  if (g.elapsed >= 90) {
+  if (g.activatedWaveEvents.has('drones_scout')) {
     g.droneTimer -= dt;
     if (g.droneTimer <= 0) {
-      const timeSinceDrones = g.elapsed - 90;
-      const baseInterval = 30;
-      const minInterval = 10;
-      const interval = Math.max(minInterval, baseInterval - timeSinceDrones * 0.05);
-      g.droneTimer = interval + Math.random() * 5;
+      const hasTrackers = g.activatedWaveEvents.has('drones_tracker');
+      const hasBombers = g.activatedWaveEvents.has('drones_bomber');
+      const baseInterval = hasBombers ? 16 : hasTrackers ? 20 : 26;
+      const minInterval = hasBombers ? 8 : hasTrackers ? 10 : 12;
+      const interval = Math.max(minInterval, baseInterval - g.elapsed * 0.02);
+      g.droneTimer = interval + Math.random() * 4;
       spawnDrone(g);
     }
   }
@@ -1142,7 +1207,7 @@ export function update(g: GameData, input: InputState, dt: number) {
 
   // === Boss ===
   g.bossTimer -= dt;
-  if (g.bossTimer <= 0 && !g.boss) {
+  if (g.bossTimer <= 0 && !g.boss && g.bossCount > 0) {
     spawnBoss(g);
     g.bossTimer = 240 + g.bossCount * 30;
   }
@@ -1153,7 +1218,7 @@ export function update(g: GameData, input: InputState, dt: number) {
 
 // ========== BOSS SYSTEM ==========
 
-function spawnBoss(g: GameData) {
+function spawnBoss(g: GameData, showWarning = true) {
   const count = g.bossCount;
   // First boss: 10 HP, subsequent: 15 + count*5
   const baseHP = count === 0 ? 10 : 15 + count * 5;
@@ -1179,8 +1244,10 @@ function spawnBoss(g: GameData) {
     damageFlash: 0,
   };
   sfxBossSiren();
-  g.cinematicWarning = { text: '⚠ GUNSHIP INCOMING!', subText: 'PREPARE FOR HEAVY ASSAULT', color: '#dc2626', timer: 1.5, duration: 1.5 };
-  g.slowMoFactor = 0.1;
+  if (showWarning) {
+    g.cinematicWarning = { text: '⚠ GUNSHIP INCOMING!', subText: 'PREPARE FOR HEAVY ASSAULT', color: '#dc2626', timer: 1.5, duration: 1.5 };
+    g.slowMoFactor = 0.1;
+  }
 }
 
 function updateBoss(g: GameData, dt: number) {
