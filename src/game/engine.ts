@@ -70,6 +70,7 @@ export function createGame(w: number, h: number): GameData {
     bulletLevel: 1,
     slowMoTimer: 0,
     magnetTimer: 0,
+    magnetFlashTimer: 0,
     slowMoFactor: 1,
     boss: null,
     bossCount: 0,
@@ -519,6 +520,7 @@ export function update(g: GameData, input: InputState, dt: number) {
     g.slowMoFactor = 1;
   }
   if (g.magnetTimer > 0) g.magnetTimer -= dt;
+  if (g.magnetFlashTimer > 0) g.magnetFlashTimer -= dt;
 
   // === Wave warnings ===
   // === Cinematic warning system ===
@@ -878,14 +880,17 @@ export function update(g: GameData, input: InputState, dt: number) {
           sfxSlowmo();
           break;
         case 'magnet':
-          g.magnetTimer = 8;
+          g.magnetFlashTimer = 1.5;
           addFloatingText(g, 'MAGNET!', { x: p.pos.x, y: p.pos.y - 40 }, '#9ca3af');
           spawnParticles(g, p.pos, 10, '#9ca3af', 90);
           sfxMagnet();
-          // Instantly attract all parachuting power-ups
+          // Instantly collect all currently parachuting power-ups
           for (const pu2 of g.powerUps) {
-            if (pu2.active && pu2.parachuting) {
-              pu2.fallSpeed = 900;
+            if (pu2 !== pu && pu2.active && pu2.parachuting) {
+              pu2.pos.x = p.pos.x;
+              pu2.pos.y = p.pos.y;
+              pu2.parachuting = false;
+              pu2.fallSpeed = 0;
             }
           }
           break;
@@ -918,22 +923,7 @@ export function update(g: GameData, input: InputState, dt: number) {
     }
   }
 
-  // === Magnet attraction ===
-  if (g.magnetTimer > 0) {
-    const magnetRange = g.width * 1.5;
-    for (const pu2 of g.powerUps) {
-      if (!pu2.active) continue;
-      const dx = p.pos.x - pu2.pos.x;
-      const dy = p.pos.y - pu2.pos.y;
-      const d2 = Math.sqrt(dx * dx + dy * dy);
-      if (d2 > 5) {
-        const speed = 500 * Math.max(0.3, 1 - d2 / magnetRange);
-        pu2.pos.x += (dx / d2) * speed * dt;
-        pu2.pos.y += (dy / d2) * speed * dt;
-        if (pu2.parachuting) pu2.fallSpeed = 800;
-      }
-    }
-  }
+  // Magnet attraction removed — magnet now works instantly
 
   // === Drones ===
   if (g.activatedWaveEvents.has('drones_scout')) {
