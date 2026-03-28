@@ -966,6 +966,7 @@ export function update(g: GameData, input: InputState, dt: number) {
             g.score += bonus;
             if (distToPlayer < h.size * 1.5 + p.size + CLOSE_CALL_DIST) {
               g.stats.closeCalls++;
+              g.microSlowTimer = 0.15;
               addFloatingText(g, `Close Call! +${bonus}`, { x: p.pos.x, y: p.pos.y - 40 }, '#fbbf24');
             } else {
               addFloatingText(g, `+${bonus}`, { x: h.targetPos.x, y: h.targetPos.y - 20 }, '#aaa');
