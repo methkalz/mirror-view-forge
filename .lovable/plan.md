@@ -1,41 +1,26 @@
 
 
-# تحسين أصوات الاصطدام — جعلها واقعية وغير مزعجة
+# إصلاح أصوات الاصطدام بالأرض + إزالة صوت نبض القلب المتكرر
 
 ## المشكلة
-- `sfxImpactLight()` يستخدم `square` wave بتردد عالي (800-1400Hz) — صوت إلكتروني مزعج لا يشبه سقوط شظية
-- `sfxImpactHeavy()` يستخدم `sawtooth` بصوت عالٍ جداً (vol 0.14) ومدة طويلة — مبالغ فيه
-- كلاهما لا يشبه صوت ارتطام حقيقي بالأرض
+1. **أصوات الاصطدام بالأرض موجودة** (سطور 625-627) لكنها خافتة جداً — `sfxImpactLight` بصوت 0.03 و`sfxImpactHeavy` بصوت 0.06 — بالكاد تُسمع
+2. **الصوت المتكرر المزعج** هو نظام نبض القلب (heartbeat) الذي يعمل كل 300-800 ميلي ثانية عندما تكون الصعوبة > 2
 
-## الحل — أصوات ارتطام طبيعية
+## التغييرات
 
-### التغييرات في `src/game/audio.ts`:
+### 1. `src/game/audio.ts` — رفع صوت الاصطدام بالأرض
+- `sfxImpactLight()`: رفع الصوت من 0.03 → 0.06، إضافة تنوع بسيط في التردد
+- `sfxImpactHeavy()`: رفع الصوت من 0.06 → 0.10، إضافة نويز إضافي
 
-**`sfxImpactLight()` — شظية صغيرة تضرب الأرض:**
-- استبدال square wave → نويز قصير جداً مع فلتر lowpass (صوت "طق" خفيف)
-- تردد منخفض (200-400Hz)، مدة قصيرة (0.04s)، صوت خافت (vol 0.03)
-- يشبه حصاة تسقط على إسفلت
+### 2. `src/game/audio.ts` + `src/game/engine.ts` — إزالة نظام Heartbeat بالكامل
+- حذف `updateHeartbeat()`, `startHeartbeat()`, `stopHeartbeat()`, والمتغيرات المرتبطة من `audio.ts`
+- حذف استدعاء `updateHeartbeat(g.difficulty)` و `stopHeartbeat()` من `engine.ts`
+- حذفها من سطر الـ import
 
-**`sfxImpactHeavy()` — صاروخ يضرب الأرض:**
-- تقليل الصوت من 0.14 → 0.06
-- تقصير المدة من 0.5s → 0.2s
-- استبدال sawtooth → sine منخفض (50Hz) + نويز lowpass قصير
-- يشبه دوي ارتطام ثقيل بدون المبالغة
-
-### الكود الجديد:
-```typescript
-export function sfxImpactLight() {
-  // Small debris hitting ground — soft thud
-  playNoise(0.04, 0.03, { type: 'lowpass', freq: 300 + Math.random() * 200 });
-  playTone(150 + Math.random() * 100, 0.03, 'sine', 0.02);
-}
-
-export function sfxImpactHeavy() {
-  // Heavy object hitting ground — deep thump
-  playTone(50, 0.15, 'sine', 0.06);
-  playNoise(0.12, 0.05, { type: 'lowpass', freq: 250 });
-}
-```
-
-ملف واحد يتغير: `src/game/audio.ts` (سطور 116-130)
+### ملخص
+| العنصر | قبل | بعد |
+|--------|------|------|
+| اصطدام شظية بالأرض | vol 0.03 (بالكاد يُسمع) | vol 0.06 (واضح) |
+| اصطدام صاروخ بالأرض | vol 0.06 (خافت) | vol 0.10 (مسموع) |
+| نبض القلب | يعمل كل ~0.5 ثانية | محذوف بالكامل |
 
