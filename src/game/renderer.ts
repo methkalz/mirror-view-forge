@@ -2074,6 +2074,72 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderCinematicWarning(ctx, g);
 }
 
+// ─── Cinematic Warning (Full-Screen Center) ───────────
+function renderCinematicWarning(ctx: CanvasRenderingContext2D, g: GameData) {
+  const cw = g.cinematicWarning;
+  if (!cw) return;
+
+  const { width: w, height: h } = g;
+  const progress = 1 - cw.timer / cw.duration;
+
+  // Fade: quick in (0.15), hold, quick out (last 0.2)
+  let alpha = 1;
+  if (progress < 0.1) alpha = progress / 0.1;
+  else if (progress > 0.8) alpha = (1 - progress) / 0.2;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // Dark overlay (simulates blur)
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.fillRect(0, 0, w, h);
+
+  // Glowing border lines at top and bottom of warning area
+  const centerY = h * 0.45;
+  const bandH = 80;
+  const borderGrad = ctx.createLinearGradient(0, centerY - bandH / 2, 0, centerY + bandH / 2);
+  borderGrad.addColorStop(0, `${cw.color}00`);
+  borderGrad.addColorStop(0.15, `${cw.color}33`);
+  borderGrad.addColorStop(0.5, `${cw.color}22`);
+  borderGrad.addColorStop(0.85, `${cw.color}33`);
+  borderGrad.addColorStop(1, `${cw.color}00`);
+  ctx.fillStyle = borderGrad;
+  ctx.fillRect(0, centerY - bandH / 2, w, bandH);
+
+  // Top and bottom border lines
+  ctx.strokeStyle = cw.color;
+  ctx.lineWidth = 1.5;
+  ctx.globalAlpha = alpha * 0.6;
+  ctx.beginPath();
+  ctx.moveTo(w * 0.1, centerY - bandH / 2);
+  ctx.lineTo(w * 0.9, centerY - bandH / 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(w * 0.1, centerY + bandH / 2);
+  ctx.lineTo(w * 0.9, centerY + bandH / 2);
+  ctx.stroke();
+  ctx.globalAlpha = alpha;
+
+  // Main text
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 28px monospace';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = cw.color;
+  ctx.shadowBlur = 20;
+  ctx.fillText(cw.text, w / 2, centerY - 2);
+
+  // Sub text
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = cw.color;
+  ctx.font = 'bold 13px monospace';
+  ctx.fillText(cw.subText, w / 2, centerY + 22);
+
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 // ─── Wave Warning Banners ─────────────────────────────
 function renderWaveWarnings(ctx: CanvasRenderingContext2D, g: GameData) {
   if (!g.waveWarnings || g.waveWarnings.length === 0) return;
