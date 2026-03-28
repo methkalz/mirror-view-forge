@@ -243,6 +243,14 @@ export interface GameData {
   pendingWaveEvents: { id: string; resolveAt: number }[];
   activatedWaveEvents: Set<string>;
   missileStartTime: number;
+  // Game feel systems
+  hitStopTimer: number;
+  comboCount: number;
+  comboTimer: number;
+  comboMultiplier: number;
+  microSlowTimer: number;
+  deathTimer: number;
+  deathPhase: 'alive' | 'dying' | 'dead';
 }
 
 export interface InputState {
