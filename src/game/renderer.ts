@@ -1464,27 +1464,88 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.arc(backHandX, backHandY, 2, 0, Math.PI * 2);
   ctx.fill();
 
-  // Front arm
-  const frontElbowX = 8 - armOffset * 0.5;
-  const frontElbowY = bodyTopY + 10;
-  const frontHandX = 7 - armOffset * 0.3;
-  const frontHandY = bodyTopY + 18;
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = armColor;
-  ctx.beginPath();
-  ctx.moveTo(5, bodyTopY + 3);
-  ctx.lineTo(frontElbowX, frontElbowY);
-  ctx.stroke();
-  ctx.lineWidth = 3.5;
-  ctx.strokeStyle = armHighlight;
-  ctx.beginPath();
-  ctx.moveTo(frontElbowX, frontElbowY);
-  ctx.lineTo(frontHandX, frontHandY);
-  ctx.stroke();
-  ctx.fillStyle = skinColor;
-  ctx.beginPath();
-  ctx.arc(frontHandX, frontHandY, 2, 0, Math.PI * 2);
-  ctx.fill();
+  // Front arm — raises with pistol when shooting
+  const isShooting = p.shootTimer > 0;
+  if (isShooting) {
+    // Arm raised at ~-60 degrees
+    const shoulderX = 5, shoulderY = bodyTopY + 3;
+    const elbowX = 10, elbowY = bodyTopY - 4;
+    const handX = 12, handY = bodyTopY - 14;
+    // Upper arm
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = armColor;
+    ctx.beginPath();
+    ctx.moveTo(shoulderX, shoulderY);
+    ctx.lineTo(elbowX, elbowY);
+    ctx.stroke();
+    // Forearm
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = armHighlight;
+    ctx.beginPath();
+    ctx.moveTo(elbowX, elbowY);
+    ctx.lineTo(handX, handY);
+    ctx.stroke();
+    // Hand
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(handX, handY, 2, 0, Math.PI * 2);
+    ctx.fill();
+    // Pistol
+    const pX = handX, pY = handY;
+    // Barrel (pointing up)
+    ctx.fillStyle = '#1a1a1a';
+    ctx.save();
+    ctx.translate(pX, pY);
+    ctx.rotate(-0.15);
+    ctx.fillRect(-1.2, -9, 2.4, 7); // barrel
+    ctx.fillStyle = '#333';
+    ctx.fillRect(-2, -2, 4, 4); // grip
+    ctx.fillStyle = '#555';
+    ctx.fillRect(-2.5, 1, 5, 2); // trigger guard
+    ctx.restore();
+    // Muzzle flash (first 0.08s)
+    if (p.shootTimer > 0.22) {
+      ctx.save();
+      ctx.translate(pX, pY - 10);
+      ctx.fillStyle = '#fbbf24';
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(0, -6);
+      ctx.lineTo(-3, 0);
+      ctx.lineTo(3, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      ctx.arc(0, -2, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+  } else {
+    // Normal front arm
+    const frontElbowX = 8 - armOffset * 0.5;
+    const frontElbowY = bodyTopY + 10;
+    const frontHandX = 7 - armOffset * 0.3;
+    const frontHandY = bodyTopY + 18;
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = armColor;
+    ctx.beginPath();
+    ctx.moveTo(5, bodyTopY + 3);
+    ctx.lineTo(frontElbowX, frontElbowY);
+    ctx.stroke();
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = armHighlight;
+    ctx.beginPath();
+    ctx.moveTo(frontElbowX, frontElbowY);
+    ctx.lineTo(frontHandX, frontHandY);
+    ctx.stroke();
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(frontHandX, frontHandY, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   // Reset shadow before head
   ctx.shadowColor = 'transparent';
