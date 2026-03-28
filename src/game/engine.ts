@@ -493,6 +493,16 @@ function damagePlayer(g: GameData, dmg: number, sourcePos: Vec2) {
   }
 }
 
+function incrementCombo(g: GameData) {
+  g.comboCount++;
+  g.comboTimer = 3;
+  g.comboMultiplier = Math.min(3, 1 + Math.floor(g.comboCount / 3) * 0.5);
+}
+
+function comboScore(g: GameData, base: number): number {
+  return Math.floor(base * g.comboMultiplier);
+}
+
 function handleInterceptor(g: GameData) {
   sfxInterceptor();
   const activeHazards = g.hazards
