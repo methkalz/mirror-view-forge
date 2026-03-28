@@ -157,6 +157,13 @@ export function resetGame(g: GameData) {
   g.pendingWaveEvents = [];
   g.activatedWaveEvents = new Set();
   g.missileStartTime = 5 + Math.random() * 5;
+  g.hitStopTimer = 0;
+  g.comboCount = 0;
+  g.comboTimer = 0;
+  g.comboMultiplier = 1;
+  g.microSlowTimer = 0;
+  g.deathTimer = 0;
+  g.deathPhase = 'alive';
 }
 
 function dist(a: Vec2, b: Vec2): number {
@@ -516,6 +523,51 @@ export function update(g: GameData, input: InputState, dt: number) {
   if (g.state !== 'playing') return;
 
   dt = Math.min(dt, 0.05);
+
+  // Hit stop — freeze all logic
+  if (g.hitStopTimer > 0) {
+    g.hitStopTimer -= dt;
+    return;
+  }
+
+  // Death transition
+  if (g.deathPhase === 'dying') {
+    g.deathTimer -= dt;
+    g.slowMoFactor = 0.15;
+    g.elapsed += dt * 0.15;
+    // Still update particles/explosions for visual
+    g.damageFlash = Math.max(0, g.damageFlash - dt * 0.5);
+    if (g.deathTimer <= 0) {
+      g.deathPhase = 'dead';
+      g.state = 'gameover';
+      g.stats.timeSurvived = g.elapsed;
+      if (g.score > g.highScore) {
+        g.highScore = g.score;
+        localStorage.setItem('skyfall_hi', g.score.toString());
+      }
+    }
+    return;
+  }
+
+  // Micro slow-mo (independent of power-up slow-mo)
+  if (g.microSlowTimer > 0) {
+    g.microSlowTimer -= dt;
+    if (g.slowMoTimer <= 0) {
+      g.slowMoFactor = 0.3;
+    }
+  } else if (g.slowMoTimer <= 0 && g.cinematicWarning === null) {
+    g.slowMoFactor = 1;
+  }
+
+  // Combo timer
+  if (g.comboTimer > 0) {
+    g.comboTimer -= dt;
+    if (g.comboTimer <= 0) {
+      g.comboCount = 0;
+      g.comboMultiplier = 1;
+    }
+  }
+
   g.elapsed += dt;
   g.difficulty = 1 + g.elapsed / 60;
   g.score += Math.round(dt);
