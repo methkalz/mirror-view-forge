@@ -54,6 +54,7 @@ export interface Hazard {
   clusterPhase?: 'flying' | 'opening' | 'releasing' | 'done';
   clusterTimer?: number;
   clusterVelX?: number;
+  clusterVelY?: number;
   clusterStartSpeed?: number;
 }
 

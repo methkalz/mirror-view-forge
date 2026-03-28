@@ -424,6 +424,10 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
       } else {
         ctx.save();
         ctx.scale(dir, 1);
+        // Rotate missile based on vertical velocity for arc effect
+        const velY = hz.clusterVelY || 0;
+        const arcAngle = Math.atan2(velY, Math.abs(hz.clusterVelX || 300)) * dir;
+        ctx.rotate(arcAngle);
 
         // === Ballistic missile design ===
         const bodyLen = hz.size * 3.5;
@@ -576,44 +580,34 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
         ctx.restore();
       }
     } else if (hz.isClusterBomb) {
-      // Cluster bomb — glowing molten metal sphere
+      // Cluster bomb — lit/heated metal sphere (no fire effect)
       ctx.rotate(hz.rotation);
       const s = hz.size;
 
-      // Outer glow
-      const glowGrad = ctx.createRadialGradient(0, 0, s * 0.3, 0, 0, s * 2.5);
-      glowGrad.addColorStop(0, 'rgba(253,224,71,0.6)');
-      glowGrad.addColorStop(0.4, 'rgba(251,191,36,0.3)');
-      glowGrad.addColorStop(1, 'rgba(251,146,60,0)');
-      ctx.fillStyle = glowGrad;
+      // Subtle thin halo
+      const haloGrad = ctx.createRadialGradient(0, 0, s * 0.8, 0, 0, s * 1.4);
+      haloGrad.addColorStop(0, 'rgba(253,224,71,0.15)');
+      haloGrad.addColorStop(1, 'rgba(253,224,71,0)');
+      ctx.fillStyle = haloGrad;
       ctx.beginPath();
-      ctx.arc(0, 0, s * 2.5, 0, Math.PI * 2);
+      ctx.arc(0, 0, s * 1.4, 0, Math.PI * 2);
       ctx.fill();
 
-      // Main molten sphere — yellow-orange gradient
-      const bombGrad = ctx.createRadialGradient(-s * 0.2, -s * 0.2, s * 0.1, 0, 0, s);
-      bombGrad.addColorStop(0, '#fefce8');
-      bombGrad.addColorStop(0.3, '#fde047');
-      bombGrad.addColorStop(0.6, '#f59e0b');
-      bombGrad.addColorStop(1, '#d97706');
+      // Main sphere — soft lemon-yellow gradient
+      const bombGrad = ctx.createRadialGradient(-s * 0.15, -s * 0.15, s * 0.1, 0, 0, s);
+      bombGrad.addColorStop(0, '#fef9c3');
+      bombGrad.addColorStop(0.5, '#fde047');
+      bombGrad.addColorStop(1, '#eab308');
       ctx.fillStyle = bombGrad;
       ctx.beginPath();
       ctx.arc(0, 0, s, 0, Math.PI * 2);
       ctx.fill();
 
-      // White-hot center
-      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      // Small white highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
       ctx.beginPath();
-      ctx.arc(-s * 0.15, -s * 0.15, s * 0.35, 0, Math.PI * 2);
+      ctx.arc(-s * 0.2, -s * 0.2, s * 0.25, 0, Math.PI * 2);
       ctx.fill();
-
-      // Sparks around
-      for (let i = 0; i < 4; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const dist = s * (1.2 + Math.random() * 0.8);
-        ctx.fillStyle = `rgba(253,224,71,${0.5 + Math.random() * 0.5})`;
-        ctx.fillRect(Math.cos(angle) * dist, Math.sin(angle) * dist, 1.5 + Math.random(), 1.5 + Math.random());
-      }
 
     } else {
       // Shrapnel — angular metal chunk with better detail

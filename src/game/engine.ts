@@ -233,7 +233,7 @@ function spawnHazard(g: GameData, type: HazardType) {
       h.warningDuration = 1.2;
       break;
     case 'cluster': {
-      // Horizontal flying ballistic missile
+      // Horizontal flying ballistic missile with arc trajectory
       const fromRight = Math.random() > 0.5;
       const startX = fromRight ? g.width + 40 : -40;
       const flyY = g.height * (0.12 + Math.random() * 0.2);
@@ -241,6 +241,7 @@ function spawnHazard(g: GameData, type: HazardType) {
       h.targetPos = { x: g.width / 2, y: flyY };
       const baseSpeed = 300 + g.difficulty * 10 + Math.random() * 100;
       h.clusterVelX = fromRight ? -baseSpeed : baseSpeed;
+      h.clusterVelY = -(30 + Math.random() * 40); // slight upward arc initially
       h.clusterStartSpeed = baseSpeed;
       h.clusterPhase = 'flying';
       h.clusterTimer = 0;
@@ -708,7 +709,12 @@ export function update(g: GameData, input: InputState, dt: number) {
       const types: HazardType[] = [];
       if (g.activatedWaveEvents.has('shrapnel_start')) types.push('shrapnel', 'shrapnel');
       if (g.activatedWaveEvents.has('missiles')) types.push('missile');
-      if (g.activatedWaveEvents.has('clusters')) types.push('cluster', 'cluster');
+      // Gradual cluster increase
+      if (g.activatedWaveEvents.has('clusters')) {
+        types.push('cluster');
+        if (g.difficulty >= 4) types.push('cluster');
+        if (g.difficulty >= 7) types.push('cluster');
+      }
 
       if (types.length === 0) {
         g.spawnTimer = 0.12;
@@ -720,7 +726,7 @@ export function update(g: GameData, input: InputState, dt: number) {
       g.spawnTimer = spawnRate * bossMultiplier;
 
       spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
-      if (g.difficulty >= 4 && Math.random() < 0.25 && !g.boss) {
+      if (g.difficulty >= 4 && Math.random() < 0.15 && !g.boss) {
         spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
       }
     }
@@ -751,19 +757,25 @@ export function update(g: GameData, input: InputState, dt: number) {
         }
         h.pos.x += h.clusterVelX! * g.slowMoFactor * dt;
 
+        // Arc trajectory — gravity pulls missile down
+        h.clusterVelY = (h.clusterVelY || 0) + 90 * dt;
+        h.pos.y += h.clusterVelY * g.slowMoFactor * dt;
+
         // Check if slowed enough to open
         if (Math.abs(h.clusterVelX!) <= startSpd * 0.4) {
           h.clusterPhase = 'opening';
           h.clusterTimer = 0.5;
         }
         // Off-screen removal
-        if (h.pos.x < -100 || h.pos.x > g.width + 100) {
+        if (h.pos.x < -100 || h.pos.x > g.width + 100 || h.pos.y > g.height + 50) {
           h.active = false;
         }
       } else if (h.clusterPhase === 'opening') {
         h.clusterTimer! -= dt;
-        // Keep moving at 60% speed during opening
+        // Keep moving at 60% speed during opening + gravity arc continues
         h.pos.x += (h.clusterVelX! * 0.6) * g.slowMoFactor * dt;
+        h.clusterVelY = (h.clusterVelY || 0) + 50 * dt;
+        h.pos.y += (h.clusterVelY || 0) * 0.5 * g.slowMoFactor * dt;
         if (h.clusterTimer! <= 0) {
           h.clusterPhase = 'releasing';
           h.clusterTimer = 0.1;
@@ -790,7 +802,7 @@ export function update(g: GameData, input: InputState, dt: number) {
           sh.pos = { x: h.pos.x + spreadX, y: h.pos.y + 10 };
           const targetX = h.pos.x + spreadX + (Math.random() - 0.5) * 40;
           sh.targetPos = { x: targetX, y: groundY - 5 + Math.random() * 10 };
-          sh.speed = 200 + Math.random() * 150;
+          sh.speed = 80 + Math.random() * 80; // slow falling bombs with varied speeds
           const sizeVar = Math.random();
           sh.size = sizeVar > 0.7 ? 9 : sizeVar > 0.3 ? 7 : 5;
           sh.damage = sizeVar > 0.7 ? 12 : sizeVar > 0.3 ? 9 : 5;
