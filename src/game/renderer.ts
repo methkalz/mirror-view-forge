@@ -585,7 +585,7 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
       const s = hz.size;
 
       // Light smoke trail above the bomb
-      const smokeTime = (g.time || 0) + hz.pos.x * 0.01;
+      const smokeTime = performance.now() * 0.001 + hz.pos.x * 0.01;
       for (let si = 0; si < 3; si++) {
         const smokeY = -(s * 1.5 + si * s * 0.8);
         const smokeX = Math.sin(smokeTime + si * 1.3) * s * 0.4;

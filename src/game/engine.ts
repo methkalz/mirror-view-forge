@@ -804,7 +804,7 @@ export function update(g: GameData, input: InputState, dt: number) {
           sh.targetPos = { x: targetX, y: groundY - 5 + Math.random() * 10 };
           sh.speed = 80 + Math.random() * 80; // slow falling bombs with varied speeds
           sh.size = 4 + Math.random() * 1.5;
-          sh.damage = sizeVar > 0.7 ? 12 : sizeVar > 0.3 ? 9 : 5;
+          sh.damage = 7;
           sh.warningDuration = 0.3;
           sh.warningTimer = 0.3;
           sh.falling = false;
