@@ -1207,6 +1207,8 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
   const p = g.player;
   ctx.save();
   ctx.translate(p.pos.x, p.pos.y);
+  const S = 1.3; // scale factor for bigger character
+  ctx.scale(S, S);
 
   // Hit flash & shake
   const isHit = p.hitTimer > 0;
