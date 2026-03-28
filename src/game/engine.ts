@@ -479,17 +479,17 @@ function damagePlayer(g: GameData, dmg: number, sourcePos: Vec2) {
   p.hitTimer = 0.3;
   p.anim = 'hit';
   g.damageFlash = 0.35;
+  g.hitStopTimer = 0.06; // 60ms freeze on player hit
   // Knockback
   const kdir = sourcePos.x < p.pos.x ? 1 : -1;
   p.velocity.x += kdir * 200;
   sfxDamage();
   if (p.health <= 0) {
-    g.state = 'gameover';
-    g.stats.timeSurvived = g.elapsed;
-    if (g.score > g.highScore) {
-      g.highScore = g.score;
-      localStorage.setItem('skyfall_hi', g.score.toString());
-    }
+    // Death transition instead of instant gameover
+    g.deathPhase = 'dying';
+    g.deathTimer = 1.5;
+    g.slowMoFactor = 0.15;
+    g.hitStopTimer = 0.15; // longer freeze on death
   }
 }
 
