@@ -2567,6 +2567,52 @@ function renderPlayerGlow(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.fill();
 }
 
+// ─── Off-screen Threat Indicators ─────────────────────
+function renderOffscreenIndicators(ctx: CanvasRenderingContext2D, g: GameData) {
+  const margin = 20;
+  const arrowSize = 8;
+  const camX = g.camera.x;
+
+  const threats: { x: number; y: number; color: string }[] = [];
+
+  for (const h of g.hazards) {
+    if (!h.active || !h.falling) continue;
+    const sx = h.pos.x - camX;
+    const sy = h.pos.y;
+    if (sx < -10 || sx > g.width + 10 || sy < -10) {
+      threats.push({ x: sx, y: sy, color: h.type === 'cluster' ? '#f59e0b' : '#ef4444' });
+    }
+  }
+  for (const d of g.drones) {
+    if (!d.active) continue;
+    const sx = d.pos.x - camX;
+    const sy = d.pos.y;
+    if (sx < -10 || sx > g.width + 10 || sy < -10) {
+      threats.push({ x: sx, y: sy, color: '#f97316' });
+    }
+  }
+
+  for (const t of threats) {
+    const cx = Math.max(margin, Math.min(g.width - margin, t.x));
+    const cy = Math.max(margin, Math.min(g.height - margin, t.y));
+    const angle = Math.atan2(t.y - g.height / 2, t.x - g.width / 2);
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
+    ctx.fillStyle = t.color;
+    ctx.globalAlpha = 0.7 + Math.sin(g.elapsed * 6) * 0.3;
+    ctx.beginPath();
+    ctx.moveTo(arrowSize, 0);
+    ctx.lineTo(-arrowSize * 0.5, -arrowSize * 0.6);
+    ctx.lineTo(-arrowSize * 0.5, arrowSize * 0.6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+}
+
 // ─── Main Render ──────────────────────────────────────
 export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.save();
