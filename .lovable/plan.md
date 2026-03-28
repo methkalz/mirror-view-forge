@@ -1,42 +1,81 @@
 
 
-# إصلاح وتحسين الصاروخ المتشظي — الحركة من اليمين لليسار + تحسينات شاملة
+# تحسينات احترافية شاملة — Game Feel, UI/UX, Logic
 
-## المشكلة
-حركة الصاروخ من اليمين لليسار تبدو معكوسة بصرياً. السبب في حساب زاوية الانحناء في الـ renderer:
+بناءً على بحث معمق في أفضل ممارسات تصميم الألعاب 2023-2026 (Game Juice, Hit Stop, Screen Shake, Feedback Systems)، إليك التحسينات المقترحة:
 
-```text
-arcAngle = atan2(velY, |velX|) * dir
-```
+---
 
-المشكلة أن `dir` يُستخدم مرتين — مرة في `ctx.scale(dir, 1)` ومرة في ضرب الزاوية. هذا يسبب سلوكاً غير متسق للقوس خاصة عند تغير اتجاه velY.
+## 1. Hit Stop / Freeze Frame — تأثير التجمد اللحظي عند الإصابة
 
-## التغييرات
+عند إصابة عدو أو تلقي ضربة، تتوقف اللعبة لـ 50-80ms (3-5 إطارات). هذا هو **أهم تقنية** لجعل اللعبة تشعر بالتأثير.
 
-### 1. `src/game/renderer.ts` — إصلاح زاوية القوس
+### `src/game/types.ts`
+- إضافة `hitStopTimer: number` إلى `GameData`
 
-**سطر 429**: إصلاح حساب الزاوية ليعمل بشكل صحيح مع `ctx.scale`:
-```typescript
-// بعد scale(dir,1)، الإحداثيات مقلوبة أفقياً
-// نستخدم السرعة الفعلية (مع الإشارة) لحساب الزاوية بشكل صحيح
-const arcAngle = Math.atan2(velY, Math.abs(hz.clusterVelX || 300));
-```
-إزالة الضرب بـ `dir` لأن `ctx.scale` يتكفل بالانعكاس تلقائياً.
+### `src/game/engine.ts`
+- عند بداية `update()`: إذا `hitStopTimer > 0`، خفضه بـ `dt` ثم `return` فوراً (تجميد كامل)
+- تفعيله عند: إصابة عدو بالرصاص (`0.05s`)، تدمير طائرة (`0.08s`)، إصابة اللاعب (`0.06s`)، تدمير البوس (`0.15s`)
 
-### 2. `src/game/engine.ts` — تحسين الفيزياء
+---
 
-**سرعة أبطأ قليلاً + قوس أنعم**:
-- خفض `baseSpeed` من `150 + difficulty*6 + random*50` إلى `120 + difficulty*5 + random*40`
-- خفض الجاذبية من `55` إلى `40` لقوس أوسع وأنعم
-- خفض السرعة العمودية الابتدائية من `-(15+random*20)` إلى `-(10+random*15)` لانحناء أخف
-- تقليل عتبة التباطؤ من `0.8` إلى `0.6` ليبقى الصاروخ بسرعة أعلى لفترة أطول
-- ضمان أن الصاروخ يبقى داخل الشاشة عبر تعديل ارتفاعات الدخول
+## 2. Chromatic Aberration عند الإصابة
 
-### 3. `src/game/renderer.ts` — تحسين بصري للقوس
+### `src/game/renderer.ts`
+- عند `damageFlash > 0`: رسم الإطار 3 مرات بإزاحة بكسل واحد أحمر/أخضر/أزرق — تأثير انزياح لوني سينمائي سريع
 
-**تحسين اللهب ليتناسب مع الاتجاه**: ضمان أن اللهب يخرج دائماً من خلف الصاروخ بشكل صحيح بغض النظر عن الاتجاه.
+---
 
-### الملفات المتأثرة
-1. **`src/game/engine.ts`** — فيزياء أبطأ + قوس أنعم
-2. **`src/game/renderer.ts`** — إصلاح زاوية القوس
+## 3. نظام Combo / تسلسل النقاط
 
+### `src/game/types.ts`
+- إضافة `comboCount: number`, `comboTimer: number`, `comboMultiplier: number`
+
+### `src/game/engine.ts`
+- عند كل إصابة ناجحة (رصاصة → عدو/صاروخ): `comboCount++`, `comboTimer = 3s`
+- المضاعف: `1 + floor(comboCount / 3) * 0.5` (بحد أقصى ×3)
+- النقاط المكتسبة × المضاعف
+- إذا انتهى `comboTimer` بدون إصابة: إعادة الـ combo لصفر
+
+### `src/game/renderer.ts` — HUD
+- عرض عداد Combo بتأثير نابض (مثلاً "×2.5 COMBO" بلون ذهبي متدرج)
+
+---
+
+## 4. Time Dilation عند الإنجازات (Bullet Time مصغر)
+
+### `src/game/engine.ts`
+- عند close call أو تدمير طائرة بالرصاص: `slowMoFactor = 0.3` لمدة `0.2s` (بطء لحظي مختلف عن power-up)
+- إضافة `microSlowTimer: number` يعمل بشكل مستقل عن `slowMoTimer`
+
+---
+
+## 5. تأثير الموت / Death Transition
+
+### `src/game/types.ts`
+- إضافة `deathTimer: number`, `deathPhase: 'alive' | 'dying' | 'dead'`
+
+### `src/game/engine.ts`
+- عند `health <= 0`: بدلاً من `gameover` فوراً:
+  - `deathPhase = 'dying'`, `deathTimer = 1.5s`
+  - `slowMoFactor = 0.15` (بطء شديد)
+  - بعد انتهاء المؤقت: `state = 'gameover'`
+
+### `src/game/renderer.ts`
+- أثناء `dying`: vignette أبيض يتزايد + تشبع الألوان ينخفض تدريجياً
+
+---
+
+## 6. مؤشر اتجاه التهديدات خارج الشاشة
+
+### `src/game/renderer.ts`
+- إضافة دالة `renderOffscreenIndicators()`:
+  - لكل طائرة أو صاروخ خارج حدود الشاشة: رسم سهم مثلثي أحمر صغير على الحافة الأقرب
+  - حجم ولون السهم يعتمد على المسافة والنوع (أحمر للصواريخ، برتقالي للطائرات)
+
+---
+
+## 7. تحسين أزرار التحكم — Responsive Feedback
+
+### `src/components/SkyfallGame.tsx`
+- إضافة حالة `pressed` لكل زر مع تأثير بصري (scale down + لون أكثر و
