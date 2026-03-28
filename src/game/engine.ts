@@ -9,7 +9,7 @@ const DASH_SPEED = 500;
 const DASH_DURATION = 0.25;
 const DASH_COOLDOWN = 1.2;
 const CLOSE_CALL_DIST = 45;
-const PLAYER_RADIUS = 18;
+const PLAYER_RADIUS = 22;
 const GROUND_RATIO = 0.78; // Ground plane at 78% of screen height
 const PLAYER_ACCEL = 1200;
 const PLAYER_FRICTION = 8;
@@ -77,6 +77,8 @@ export function createGame(w: number, h: number): GameData {
     lightningTimer: 0,
     lightningFlash: 0,
     weatherIntensity: 0,
+    cinematicWarning: null,
+    missileStartTime: 15 + Math.random() * 10, // 15-25s random
   };
 }
 
@@ -116,7 +118,7 @@ export function resetGame(g: GameData) {
   g.score = 0;
   g.elapsed = 0;
   g.difficulty = 1;
-  g.spawnTimer = 2.5;
+  g.spawnTimer = 3.5;
   g.powerUpTimer = 8;
   g.droneTimer = 90;
   g.screenShake = { x: 0, y: 0 };
@@ -137,7 +139,8 @@ export function resetGame(g: GameData) {
   g.lightningTimer = 0;
   g.lightningFlash = 0;
   g.weatherIntensity = 0;
-  
+  g.cinematicWarning = null;
+  g.missileStartTime = 15 + Math.random() * 10;
 }
 
 function dist(a: Vec2, b: Vec2): number {
@@ -398,35 +401,55 @@ export function update(g: GameData, input: InputState, dt: number) {
   g.score += Math.round(dt);
   g.windOffset = Math.sin(g.elapsed * 0.3) * 0.5;
 
+  // === Cinematic warning timer ===
+  if (g.cinematicWarning) {
+    g.cinematicWarning.timer -= dt;
+    g.slowMoFactor = 0.1;
+    if (g.cinematicWarning.timer <= 0) {
+      g.cinematicWarning = null;
+      g.slowMoFactor = 1;
+    }
+  }
+
   // === Slow-mo & Magnet timers ===
-  if (g.slowMoTimer > 0) {
+  if (!g.cinematicWarning && g.slowMoTimer > 0) {
     g.slowMoTimer -= dt;
     g.slowMoFactor = 0.3;
     if (g.slowMoTimer <= 0) { g.slowMoFactor = 1; g.slowMoTimer = 0; }
-  } else {
+  } else if (!g.cinematicWarning && g.slowMoTimer <= 0) {
     g.slowMoFactor = 1;
   }
   if (g.magnetTimer > 0) g.magnetTimer -= dt;
 
   // === Wave warnings ===
-  const waveEvents: { time: number; id: string; text: string; sub: string; color: string }[] = [
-    { time: 45, id: 'missiles', text: '⚠ تحذير: صواريخ', sub: 'MISSILES DETECTED', color: '#f97316' },
-    { time: 85, id: 'clusters', text: '⚠ تحذير: صواريخ متشظية', sub: 'SPLITTING MISSILES INCOMING', color: '#ef4444' },
-    { time: 145, id: 'cluster_3', text: '⚠ تشظي ثلاثي!', sub: 'TRIPLE SPLIT MISSILES', color: '#f43f5e' },
-    { time: 205, id: 'cluster_4', text: '⚠ تشظي رباعي!', sub: 'QUAD SPLIT MISSILES', color: '#dc2626' },
-    { time: 265, id: 'cluster_5', text: '💀 تشظي خماسي!', sub: 'MAX SPLIT — DANGER', color: '#991b1b' },
-    { time: 85, id: 'drones_scout', text: '⚠ رصد طائرات استطلاع', sub: 'SCOUT DRONES APPROACHING', color: '#60a5fa' },
-    { time: 145, id: 'drones_tracker', text: '⚠ طائرات تتبع معادية', sub: 'TRACKER DRONES INBOUND', color: '#a855f7' },
-    { time: 205, id: 'drones_bomber', text: '⚠ قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444' },
-    { time: 120, id: 'bullet_2', text: '⬆ تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e' },
-    { time: 200, id: 'bullet_3', text: '⬆ تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#fbbf24' },
-    { time: 235, id: 'boss_warn', text: '🔴 إنذار أحمر!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626' },
-    { time: 235, id: 'boss_prep', text: '📦 إمدادات طارئة!', sub: 'EMERGENCY SUPPLIES DROPPED', color: '#22c55e' },
+  // === Cinematic warning system ===
+  const cinematicEvents: { time: number; id: string; text: string; sub: string; color: string; cinematic: boolean }[] = [
+    { time: 3, id: 'shrapnel_start', text: '⚠ شظايا متساقطة!', sub: 'SHRAPNEL INCOMING', color: '#f97316', cinematic: true },
+    { time: g.missileStartTime, id: 'missiles', text: '⚠ صواريخ قادمة!', sub: 'MISSILES DETECTED', color: '#ef4444', cinematic: true },
+    { time: 85, id: 'clusters', text: '⚠ صواريخ متشظية!', sub: 'SPLITTING MISSILES INCOMING', color: '#f43f5e', cinematic: true },
+    { time: 85, id: 'drones_scout', text: '⚠ طائرات استطلاع!', sub: 'SCOUT DRONES APPROACHING', color: '#60a5fa', cinematic: true },
+    { time: 120, id: 'bullet_2', text: '⬆ تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e', cinematic: false },
+    { time: 145, id: 'cluster_3', text: '⚠ تشظي ثلاثي!', sub: 'TRIPLE SPLIT MISSILES', color: '#f43f5e', cinematic: false },
+    { time: 145, id: 'drones_tracker', text: '⚠ طائرات تتبع!', sub: 'TRACKER DRONES INBOUND', color: '#a855f7', cinematic: true },
+    { time: 200, id: 'bullet_3', text: '⬆ تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#fbbf24', cinematic: false },
+    { time: 205, id: 'cluster_4', text: '⚠ تشظي رباعي!', sub: 'QUAD SPLIT MISSILES', color: '#dc2626', cinematic: false },
+    { time: 205, id: 'drones_bomber', text: '⚠ قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444', cinematic: true },
+    { time: 235, id: 'boss_warn', text: '🔴 طائرة حربية!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626', cinematic: true },
+    { time: 235, id: 'boss_prep', text: '📦 إمدادات طارئة!', sub: 'EMERGENCY SUPPLIES DROPPED', color: '#22c55e', cinematic: false },
+    { time: 265, id: 'cluster_5', text: '💀 تشظي خماسي!', sub: 'MAX SPLIT — DANGER', color: '#991b1b', cinematic: false },
   ];
+  const waveEvents = cinematicEvents;
   for (const we of waveEvents) {
-    if (g.elapsed >= we.time - 5 && !g.waveTriggered.has(we.id)) {
+    const triggerTime = we.cinematic ? we.time : we.time - 5;
+    if (g.elapsed >= triggerTime && !g.waveTriggered.has(we.id)) {
       g.waveTriggered.add(we.id);
-      g.waveWarnings.push({ text: we.text, subText: we.sub, life: 4, maxLife: 4, color: we.color });
+      // Cinematic warning: full-screen centered with slow-mo
+      if (we.cinematic) {
+        g.cinematicWarning = { text: we.text, subText: we.sub, color: we.color, timer: 1.5, duration: 1.5 };
+        g.slowMoFactor = 0.1;
+      } else {
+        g.waveWarnings.push({ text: we.text, subText: we.sub, life: 4, maxLife: 4, color: we.color });
+      }
       if (we.id === 'bullet_2') g.bulletLevel = 2;
       if (we.id === 'bullet_3') g.bulletLevel = 3;
       // Pre-boss: drop guaranteed ammo + medkit
@@ -581,18 +604,20 @@ export function update(g: GameData, input: InputState, dt: number) {
 
   // Clouds removed — stars only
 
-  // === Spawn hazards (reduced 60% during boss) ===
-  g.spawnTimer -= dt;
-  if (g.spawnTimer <= 0) {
-    const spawnRate = Math.max(0.5, 2.0 - g.difficulty * 0.12);
-    // During boss fight, reduce hazard spawn rate by 60%
-    const bossMultiplier = g.boss && !g.boss.defeated ? 2.5 : 1;
-    g.spawnTimer = spawnRate * bossMultiplier;
-    const types: HazardType[] = ['shrapnel', 'shrapnel', 'missile'];
-    if (g.elapsed >= 90) types.push('cluster', 'cluster');
-    spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
-    if (g.difficulty >= 4 && Math.random() < 0.25 && !g.boss) {
+  // === Spawn hazards (safety period + staggered types) ===
+  if (g.elapsed >= 3 && !g.cinematicWarning) {
+    g.spawnTimer -= dt;
+    if (g.spawnTimer <= 0) {
+      const spawnRate = Math.max(0.5, 2.0 - g.difficulty * 0.12);
+      const bossMultiplier = g.boss && !g.boss.defeated ? 2.5 : 1;
+      g.spawnTimer = spawnRate * bossMultiplier;
+      const types: HazardType[] = ['shrapnel'];
+      if (g.elapsed >= g.missileStartTime) types.push('shrapnel', 'missile');
+      if (g.elapsed >= 90) types.push('cluster', 'cluster');
       spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
+      if (g.difficulty >= 4 && Math.random() < 0.25 && !g.boss) {
+        spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
+      }
     }
   }
 
