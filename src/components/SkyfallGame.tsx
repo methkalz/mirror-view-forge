@@ -236,40 +236,54 @@ const SkyfallGame: React.FC = () => {
             }}
           >
             <svg width="24" height="28" viewBox="0 0 24 28" fill="none" style={{ opacity: hasAmmo ? 0.95 : 0.4 }}>
-              {bulletLevel >= 3 && (
-                <>
-                  {/* Left bullet */}
-                  <rect x="2" y="8" width="5" height="14" rx="2.5" fill={hasAmmo ? 'rgba(220,38,38,0.7)' : 'rgba(120,120,120,0.4)'} />
-                  <ellipse cx="4.5" cy="8" rx="2.5" ry="3" fill={hasAmmo ? 'rgba(255,80,80,0.9)' : 'rgba(150,150,150,0.5)'} />
-                  {/* Right bullet */}
-                  <rect x="17" y="8" width="5" height="14" rx="2.5" fill={hasAmmo ? 'rgba(220,38,38,0.7)' : 'rgba(120,120,120,0.4)'} />
-                  <ellipse cx="19.5" cy="8" rx="2.5" ry="3" fill={hasAmmo ? 'rgba(255,80,80,0.9)' : 'rgba(150,150,150,0.5)'} />
-                </>
-              )}
-              {bulletLevel >= 2 && bulletLevel < 3 && (
-                <>
-                  {/* Left bullet */}
-                  <rect x="4" y="6" width="5.5" height="16" rx="2.75" fill={hasAmmo ? 'rgba(220,38,38,0.7)' : 'rgba(120,120,120,0.4)'} />
-                  <ellipse cx="6.75" cy="6" rx="2.75" ry="3.5" fill={hasAmmo ? 'rgba(255,80,80,0.9)' : 'rgba(150,150,150,0.5)'} />
-                  {/* Right bullet */}
-                  <rect x="14.5" y="6" width="5.5" height="16" rx="2.75" fill={hasAmmo ? 'rgba(220,38,38,0.7)' : 'rgba(120,120,120,0.4)'} />
-                  <ellipse cx="17.25" cy="6" rx="2.75" ry="3.5" fill={hasAmmo ? 'rgba(255,80,80,0.9)' : 'rgba(150,150,150,0.5)'} />
-                </>
-              )}
-              {/* Center bullet (always shown) */}
-              <rect x="8.5" y={bulletLevel >= 3 ? '4' : bulletLevel >= 2 ? '22' : '5'} width="7" height={bulletLevel >= 2 ? '0' : '18'} rx="3.5" fill={hasAmmo ? 'rgba(220,38,38,0.8)' : 'rgba(120,120,120,0.4)'} />
+              <defs>
+                <linearGradient id="bulletBodyGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor={hasAmmo ? '#b8860b' : '#888'} />
+                  <stop offset="40%" stopColor={hasAmmo ? '#daa520' : '#aaa'} />
+                  <stop offset="60%" stopColor={hasAmmo ? '#ffd700' : '#bbb'} />
+                  <stop offset="100%" stopColor={hasAmmo ? '#b8860b' : '#888'} />
+                </linearGradient>
+                <linearGradient id="bulletTipGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={hasAmmo ? '#cd853f' : '#999'} />
+                  <stop offset="100%" stopColor={hasAmmo ? '#8b6914' : '#777'} />
+                </linearGradient>
+              </defs>
               {bulletLevel === 1 && (
                 <>
-                  <rect x="8.5" y="5" width="7" height="18" rx="3.5" fill={hasAmmo ? 'rgba(220,38,38,0.8)' : 'rgba(120,120,120,0.4)'} />
-                  <ellipse cx="12" cy="5" rx="3.5" ry="4" fill={hasAmmo ? 'rgba(255,80,80,0.95)' : 'rgba(150,150,150,0.5)'} />
-                  <rect x="10" y="14" width="4" height="2" rx="0.5" fill="rgba(255,255,255,0.15)" />
+                  {/* Single realistic bullet */}
+                  <rect x="9" y="10" width="6" height="13" rx="1" fill="url(#bulletBodyGrad)" />
+                  <path d="M9,10 Q9,4 12,2 Q15,4 15,10 Z" fill="url(#bulletTipGrad)" />
+                  <rect x="9" y="21" width="6" height="2" rx="0.5" fill={hasAmmo ? '#8b6914' : '#666'} />
+                  <rect x="10.5" y="14" width="3" height="1" rx="0.3" fill="rgba(255,255,255,0.2)" />
+                </>
+              )}
+              {bulletLevel === 2 && (
+                <>
+                  {/* Two bullets side by side */}
+                  <rect x="3" y="10" width="5.5" height="13" rx="1" fill="url(#bulletBodyGrad)" />
+                  <path d="M3,10 Q3,4.5 5.75,2.5 Q8.5,4.5 8.5,10 Z" fill="url(#bulletTipGrad)" />
+                  <rect x="3" y="21" width="5.5" height="2" rx="0.5" fill={hasAmmo ? '#8b6914' : '#666'} />
+                  <rect x="15.5" y="10" width="5.5" height="13" rx="1" fill="url(#bulletBodyGrad)" />
+                  <path d="M15.5,10 Q15.5,4.5 18.25,2.5 Q21,4.5 21,10 Z" fill="url(#bulletTipGrad)" />
+                  <rect x="15.5" y="21" width="5.5" height="2" rx="0.5" fill={hasAmmo ? '#8b6914' : '#666'} />
                 </>
               )}
               {bulletLevel >= 3 && (
                 <>
-                  {/* Center bullet for triple */}
-                  <rect x="8.5" y="4" width="7" height="18" rx="3.5" fill={hasAmmo ? 'rgba(220,38,38,0.85)' : 'rgba(120,120,120,0.4)'} />
-                  <ellipse cx="12" cy="4" rx="3.5" ry="4" fill={hasAmmo ? 'rgba(255,100,100,0.95)' : 'rgba(150,150,150,0.5)'} />
+                  {/* Three bullets in fan formation */}
+                  <g transform="translate(1,2) rotate(-12, 5.5, 14)">
+                    <rect x="2.5" y="8" width="5" height="12" rx="1" fill="url(#bulletBodyGrad)" />
+                    <path d="M2.5,8 Q2.5,3 5,1.5 Q7.5,3 7.5,8 Z" fill="url(#bulletTipGrad)" />
+                    <rect x="2.5" y="18.5" width="5" height="1.5" rx="0.4" fill={hasAmmo ? '#8b6914' : '#666'} />
+                  </g>
+                  <rect x="9.5" y="8" width="5" height="12" rx="1" fill="url(#bulletBodyGrad)" />
+                  <path d="M9.5,8 Q9.5,3 12,1.5 Q14.5,3 14.5,8 Z" fill="url(#bulletTipGrad)" />
+                  <rect x="9.5" y="18.5" width="5" height="1.5" rx="0.4" fill={hasAmmo ? '#8b6914' : '#666'} />
+                  <g transform="translate(-1,2) rotate(12, 18.5, 14)">
+                    <rect x="16.5" y="8" width="5" height="12" rx="1" fill="url(#bulletBodyGrad)" />
+                    <path d="M16.5,8 Q16.5,3 19,1.5 Q21.5,3 21.5,8 Z" fill="url(#bulletTipGrad)" />
+                    <rect x="16.5" y="18.5" width="5" height="1.5" rx="0.4" fill={hasAmmo ? '#8b6914' : '#666'} />
+                  </g>
                 </>
               )}
             </svg>

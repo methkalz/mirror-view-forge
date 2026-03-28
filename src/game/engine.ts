@@ -38,6 +38,7 @@ export function createGame(w: number, h: number): GameData {
       hitTimer: 0,
       groundY,
       ammo: 0,
+      shootTimer: 0,
     },
     hazards: [],
     powerUps: [],
@@ -107,6 +108,7 @@ export function resetGame(g: GameData) {
   g.player.animTimer = 0;
   g.player.hitTimer = 0;
   g.player.ammo = 0;
+  g.player.shootTimer = 0;
   g.hazards.forEach(h => h.active = false);
   g.powerUps.forEach(p => p.active = false);
   g.particles.forEach(p => p.active = false);
@@ -580,10 +582,14 @@ export function update(g: GameData, input: InputState, dt: number) {
     input.touchDash = false;
   }
 
+  // === Shoot timer countdown ===
+  if (p.shootTimer > 0) p.shootTimer -= dt;
+
   // === Shooting (multi-shot based on bulletLevel) ===
   if (input.shoot && p.ammo > 0 && !p.isDashing) {
     input.shoot = false;
     p.ammo--;
+    p.shootTimer = 0.3;
     const baseX = p.pos.x + (p.facingRight ? 10 : -10);
     const baseY = p.pos.y - 20;
     const angles = g.bulletLevel === 1 ? [0] : g.bulletLevel === 2 ? [-0.1, 0.1] : [-0.15, 0, 0.15];
@@ -863,9 +869,15 @@ export function update(g: GameData, input: InputState, dt: number) {
           break;
         case 'magnet':
           g.magnetTimer = 8;
-          addFloatingText(g, 'MAGNET!', { x: p.pos.x, y: p.pos.y - 40 }, '#ef4444');
-          spawnParticles(g, p.pos, 10, '#ef4444', 90);
+          addFloatingText(g, 'MAGNET!', { x: p.pos.x, y: p.pos.y - 40 }, '#9ca3af');
+          spawnParticles(g, p.pos, 10, '#9ca3af', 90);
           sfxMagnet();
+          // Instantly attract all parachuting power-ups
+          for (const pu2 of g.powerUps) {
+            if (pu2.active && pu2.parachuting) {
+              pu2.fallSpeed = 900;
+            }
+          }
           break;
         case 'airstrike': {
           addFloatingText(g, 'AIRSTRIKE!', { x: p.pos.x, y: p.pos.y - 40 }, '#fbbf24');
@@ -898,16 +910,17 @@ export function update(g: GameData, input: InputState, dt: number) {
 
   // === Magnet attraction ===
   if (g.magnetTimer > 0) {
-    const magnetRange = g.width * 0.5;
+    const magnetRange = g.width * 1.5;
     for (const pu2 of g.powerUps) {
       if (!pu2.active) continue;
       const dx = p.pos.x - pu2.pos.x;
       const dy = p.pos.y - pu2.pos.y;
       const d2 = Math.sqrt(dx * dx + dy * dy);
-      if (d2 < magnetRange && d2 > 5) {
-        const speed = 200 * (1 - d2 / magnetRange);
+      if (d2 > 5) {
+        const speed = 500 * Math.max(0.3, 1 - d2 / magnetRange);
         pu2.pos.x += (dx / d2) * speed * dt;
         pu2.pos.y += (dy / d2) * speed * dt;
+        if (pu2.parachuting) pu2.fallSpeed = 800;
       }
     }
   }

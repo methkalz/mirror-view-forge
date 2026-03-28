@@ -32,6 +32,7 @@ export interface Player {
   hitTimer: number;
   groundY: number;
   ammo: number;
+  shootTimer: number;
 }
 
 export interface Hazard {
