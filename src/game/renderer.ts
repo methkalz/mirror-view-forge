@@ -3580,17 +3580,34 @@ export function renderGameOver(ctx: CanvasRenderingContext2D, w: number, h: numb
     });
   }
 
-  // Restart prompt — at 2.5s
+  // Restart prompt — at 2.5s with prominent border
   if (elapsed > 2.5) {
     const restartAlpha = Math.min(1, (elapsed - 2.5) * 2);
     const pulse = 0.5 + Math.sin(now * 3) * 0.3;
+    const isMobile = 'ontouchstart' in window;
+    const btnText = isMobile ? 'TAP TO RESTART' : 'PRESS ENTER';
+    const btnW = 170, btnH = 34;
+    const btnX = w / 2 - btnW / 2, btnY = h * 0.85 - btnH / 2;
+
     ctx.save();
-    ctx.globalAlpha = restartAlpha * pulse;
+    ctx.globalAlpha = restartAlpha;
+
+    // Button border with pulse
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + pulse * 0.4})`;
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, btnX, btnY, btnW, btnH, 6);
+    ctx.stroke();
+    // Subtle fill
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.03 + pulse * 0.02})`;
+    roundRect(ctx, btnX, btnY, btnW, btnH, 6);
+    ctx.fill();
+
+    // Text
+    ctx.globalAlpha = restartAlpha * (0.6 + pulse * 0.4);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 13px monospace';
     ctx.textAlign = 'center';
-    const isMobile = 'ontouchstart' in window;
-    ctx.fillText(isMobile ? 'TAP TO RESTART' : 'PRESS ENTER', w / 2, h * 0.88);
+    ctx.fillText(btnText, w / 2, h * 0.85 + 5);
     ctx.restore();
   }
 }
