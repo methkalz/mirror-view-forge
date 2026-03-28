@@ -203,3 +203,21 @@ export function sfxBossExplosion() {
   setTimeout(() => playNoise(0.4, 0.06, { type: 'bandpass', freq: 1000 }), 400);
 }
 
+export function sfxShoot1() {
+  playTone(800, 0.06, 'square', 0.1);
+  playNoise(0.04, 0.06, { type: 'highpass', freq: 2000 });
+}
+
+export function sfxShoot2() {
+  playTone(900, 0.05, 'square', 0.1);
+  playNoise(0.06, 0.08, { type: 'highpass', freq: 1800 });
+  setTimeout(() => playTone(700, 0.05, 'square', 0.08), 40);
+}
+
+export function sfxShoot3() {
+  playTone(1000, 0.05, 'square', 0.1);
+  playNoise(0.08, 0.1, { type: 'highpass', freq: 1500 });
+  setTimeout(() => playTone(800, 0.04, 'square', 0.08), 35);
+  setTimeout(() => playTone(600, 0.06, 'sine', 0.07), 70);
+}
+

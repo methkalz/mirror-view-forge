@@ -3,7 +3,7 @@ import {
   HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning, Boss, DroneTier
 } from './types';
 import { getFromPool } from './pool';
-import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder } from './audio';
+import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3 } from './audio';
 
 const DASH_SPEED = 500;
 const DASH_DURATION = 0.25;
@@ -590,6 +590,9 @@ export function update(g: GameData, input: InputState, dt: number) {
     input.shoot = false;
     p.ammo--;
     p.shootTimer = 0.3;
+    if (g.bulletLevel >= 3) sfxShoot3();
+    else if (g.bulletLevel >= 2) sfxShoot2();
+    else sfxShoot1();
     p.velocity.x += p.facingRight ? -60 : 60;
     const baseX = p.pos.x + (p.facingRight ? 10 : -10);
     const baseY = p.pos.y - 20;
