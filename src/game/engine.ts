@@ -590,6 +590,9 @@ export function update(g: GameData, input: InputState, dt: number) {
     input.shoot = false;
     p.ammo--;
     p.shootTimer = 0.3;
+    if (g.bulletLevel >= 3) sfxShoot3();
+    else if (g.bulletLevel >= 2) sfxShoot2();
+    else sfxShoot1();
     p.velocity.x += p.facingRight ? -60 : 60;
     const baseX = p.pos.x + (p.facingRight ? 10 : -10);
     const baseY = p.pos.y - 20;
