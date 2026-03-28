@@ -271,12 +271,35 @@ function renderCraters(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.beginPath();
     ctx.ellipse(c.pos.x, c.pos.y, c.size, c.size * 0.4, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Ring
-    ctx.strokeStyle = `rgba(80, 60, 30, ${alpha * 0.5})`;
-    ctx.lineWidth = 1.5;
+    // Raised rim — lighter edge
+    ctx.strokeStyle = `rgba(120, 100, 60, ${alpha * 0.35})`;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(c.pos.x, c.pos.y, c.size * 1.2, c.size * 0.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(c.pos.x, c.pos.y, c.size * 1.15, c.size * 0.45, 0, 0, Math.PI * 2);
     ctx.stroke();
+    // Outer ring
+    ctx.strokeStyle = `rgba(80, 60, 30, ${alpha * 0.4})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(c.pos.x, c.pos.y, c.size * 1.3, c.size * 0.55, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // Cracks extending from crater
+    ctx.strokeStyle = `rgba(60, 45, 25, ${alpha * 0.25})`;
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i < 4; i++) {
+      const crackAngle = (i / 4) * Math.PI * 2 + c.pos.x * 0.05;
+      const crackLen = c.size * (0.8 + Math.sin(c.pos.y + i * 3) * 0.3);
+      ctx.beginPath();
+      ctx.moveTo(
+        c.pos.x + Math.cos(crackAngle) * c.size * 0.9,
+        c.pos.y + Math.sin(crackAngle) * c.size * 0.35
+      );
+      ctx.lineTo(
+        c.pos.x + Math.cos(crackAngle) * (c.size + crackLen),
+        c.pos.y + Math.sin(crackAngle) * (c.size * 0.4 + crackLen * 0.3)
+      );
+      ctx.stroke();
+    }
   }
 }
 
