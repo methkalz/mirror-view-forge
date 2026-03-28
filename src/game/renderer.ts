@@ -2562,6 +2562,34 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderDrones(ctx, g);
   renderBoss(ctx, g);
   renderBullets(ctx, g);
+  // Player shadow on ground
+  {
+    const p = g.player;
+    const groundY = g.height * 0.78;
+    const shadowDist = groundY - p.pos.y;
+    const shadowScale = Math.max(0.3, 1 - shadowDist * 0.003);
+    ctx.fillStyle = `rgba(0,0,0,${0.15 * shadowScale})`;
+    ctx.beginPath();
+    ctx.ellipse(p.pos.x, groundY, 12 * shadowScale, 3 * shadowScale, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Walking dust particles
+  {
+    const p = g.player;
+    const groundY = g.height * 0.78;
+    if (p.vel.x !== 0 && Math.abs(p.pos.y - groundY) < 5) {
+      for (let i = 0; i < 2; i++) {
+        const dx = (Math.random() - 0.5) * 8;
+        const dy = -Math.random() * 4;
+        const sz = 1 + Math.random() * 1.5;
+        const alpha = 0.1 + Math.random() * 0.1;
+        ctx.fillStyle = `rgba(160, 140, 120, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(p.pos.x + dx, groundY + dy, sz, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
   renderPlayerGlow(ctx, g);
   renderPlayer(ctx, g);
   renderParticles(ctx, g);
