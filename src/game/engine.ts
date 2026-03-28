@@ -108,6 +108,7 @@ export function resetGame(g: GameData) {
   g.player.animTimer = 0;
   g.player.hitTimer = 0;
   g.player.ammo = 0;
+  g.player.shootTimer = 0;
   g.hazards.forEach(h => h.active = false);
   g.powerUps.forEach(p => p.active = false);
   g.particles.forEach(p => p.active = false);
