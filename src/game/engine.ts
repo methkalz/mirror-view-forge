@@ -423,35 +423,29 @@ export function update(g: GameData, input: InputState, dt: number) {
 
   // === Wave warnings ===
   // === Cinematic warning system ===
-  const cinematicEvents: { time: number; id: string; text: string; sub: string; color: string; cinematic: boolean }[] = [
-    { time: 3, id: 'shrapnel_start', text: '⚠ شظايا متساقطة!', sub: 'SHRAPNEL INCOMING', color: '#f97316', cinematic: true },
-    { time: g.missileStartTime, id: 'missiles', text: '⚠ صواريخ قادمة!', sub: 'MISSILES DETECTED', color: '#ef4444', cinematic: true },
-    { time: 80, id: 'clusters', text: '⚠ صواريخ متشظية!', sub: 'SPLITTING MISSILES INCOMING', color: '#f43f5e', cinematic: true },
-    { time: 90, id: 'drones_scout', text: '⚠ طائرات استطلاع!', sub: 'SCOUT DRONES APPROACHING', color: '#60a5fa', cinematic: true },
-    { time: 120, id: 'bullet_2', text: '⬆ تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e', cinematic: false },
-    { time: 145, id: 'cluster_3', text: '⚠ تشظي ثلاثي!', sub: 'TRIPLE SPLIT MISSILES', color: '#f43f5e', cinematic: false },
-    { time: 155, id: 'drones_tracker', text: '⚠ طائرات تتبع!', sub: 'TRACKER DRONES INBOUND', color: '#a855f7', cinematic: true },
-    { time: 200, id: 'bullet_3', text: '⬆ تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#fbbf24', cinematic: false },
-    { time: 205, id: 'cluster_4', text: '⚠ تشظي رباعي!', sub: 'QUAD SPLIT MISSILES', color: '#dc2626', cinematic: false },
-    { time: 215, id: 'drones_bomber', text: '⚠ قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444', cinematic: true },
-    { time: 235, id: 'boss_warn', text: '🔴 طائرة حربية!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626', cinematic: true },
-    { time: 235, id: 'boss_prep', text: '📦 إمدادات طارئة!', sub: 'EMERGENCY SUPPLIES DROPPED', color: '#22c55e', cinematic: false },
-    { time: 265, id: 'cluster_5', text: '💀 تشظي خماسي!', sub: 'MAX SPLIT — DANGER', color: '#991b1b', cinematic: false },
+  const waveEvents: { time: number; id: string; text: string; sub: string; color: string; duration: number }[] = [
+    { time: 3, id: 'shrapnel_start', text: '⚠ شظايا متساقطة!', sub: 'SHRAPNEL INCOMING', color: '#f97316', duration: 1.5 },
+    { time: g.missileStartTime, id: 'missiles', text: '⚠ صواريخ قادمة!', sub: 'MISSILES DETECTED', color: '#ef4444', duration: 1.5 },
+    { time: 75, id: 'clusters', text: '⚠ صواريخ متشظية!', sub: 'SPLITTING MISSILES INCOMING', color: '#f43f5e', duration: 1.5 },
+    { time: 85, id: 'drones_scout', text: '⚠ طائرات استطلاع!', sub: 'SCOUT DRONES APPROACHING', color: '#60a5fa', duration: 1.5 },
+    { time: 115, id: 'bullet_2', text: '⬆ تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e', duration: 0.8 },
+    { time: 125, id: 'cluster_3', text: '⚠ تشظي ثلاثي!', sub: 'TRIPLE SPLIT MISSILES', color: '#f43f5e', duration: 1.0 },
+    { time: 150, id: 'drones_tracker', text: '⚠ طائرات تتبع!', sub: 'TRACKER DRONES INBOUND', color: '#a855f7', duration: 1.5 },
+    { time: 190, id: 'bullet_3', text: '⬆ تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#fbbf24', duration: 0.8 },
+    { time: 200, id: 'cluster_4', text: '⚠ تشظي رباعي!', sub: 'QUAD SPLIT MISSILES', color: '#dc2626', duration: 1.0 },
+    { time: 210, id: 'drones_bomber', text: '⚠ قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444', duration: 1.5 },
+    { time: 230, id: 'boss_warn', text: '🔴 طائرة حربية!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626', duration: 1.5 },
+    { time: 233, id: 'boss_prep', text: '📦 إمدادات طارئة!', sub: 'EMERGENCY SUPPLIES DROPPED', color: '#22c55e', duration: 1.0 },
+    { time: 260, id: 'cluster_5', text: '💀 تشظي خماسي!', sub: 'MAX SPLIT — DANGER', color: '#991b1b', duration: 1.0 },
   ];
-  const waveEvents = cinematicEvents;
   for (const we of waveEvents) {
-    const triggerTime = we.cinematic ? we.time : we.time - 5;
-    if (g.elapsed >= triggerTime && !g.waveTriggered.has(we.id)) {
-      // Don't trigger a new cinematic if one is already active
-      if (we.cinematic && g.cinematicWarning) continue;
+    if (g.elapsed >= we.time && !g.waveTriggered.has(we.id)) {
+      // Don't trigger ANY event if a cinematic warning is active
+      if (g.cinematicWarning) continue;
       g.waveTriggered.add(we.id);
-      // Cinematic warning: full-screen centered with slow-mo
-      if (we.cinematic) {
-        g.cinematicWarning = { text: we.text, subText: we.sub, color: we.color, timer: 1.5, duration: 1.5 };
-        g.slowMoFactor = 0.1;
-      } else {
-        g.waveWarnings.push({ text: we.text, subText: we.sub, life: 4, maxLife: 4, color: we.color });
-      }
+      // All warnings are cinematic (centered)
+      g.cinematicWarning = { text: we.text, subText: we.sub, color: we.color, timer: we.duration, duration: we.duration };
+      g.slowMoFactor = 0.1;
       if (we.id === 'bullet_2') g.bulletLevel = 2;
       if (we.id === 'bullet_3') g.bulletLevel = 3;
       // Pre-boss: drop guaranteed ammo + medkit
@@ -1185,13 +1179,8 @@ function spawnBoss(g: GameData) {
     damageFlash: 0,
   };
   sfxBossSiren();
-  g.waveWarnings.push({
-    text: '⚠ GUNSHIP INCOMING!',
-    subText: 'PREPARE FOR HEAVY ASSAULT',
-    life: 4,
-    maxLife: 4,
-    color: '#dc2626',
-  });
+  g.cinematicWarning = { text: '⚠ GUNSHIP INCOMING!', subText: 'PREPARE FOR HEAVY ASSAULT', color: '#dc2626', timer: 1.5, duration: 1.5 };
+  g.slowMoFactor = 0.1;
 }
 
 function updateBoss(g: GameData, dt: number) {
@@ -1223,7 +1212,8 @@ function updateBoss(g: GameData, dt: number) {
     // Phase transition: 2s cooldown + warning + power-up drop
     boss.attackTimer = 2.0;
     const phaseText = newPhase === 2 ? 'PHASE 2!' : 'PHASE 3!';
-    g.waveWarnings.push({ text: `⚡ ${phaseText}`, subText: 'BOSS PATTERN SHIFT', life: 2.5, maxLife: 2.5, color: '#fbbf24' });
+    g.cinematicWarning = { text: `⚡ ${phaseText}`, subText: 'BOSS PATTERN SHIFT', color: '#fbbf24', timer: 1.0, duration: 1.0 };
+    g.slowMoFactor = 0.1;
     // Drop a random power-up as mid-fight reward
     const rewardTypes: PowerUpType[] = ['medkit', 'ammo', 'shield'];
     const pu = getFromPool<PowerUp>(g.powerUps, () => ({

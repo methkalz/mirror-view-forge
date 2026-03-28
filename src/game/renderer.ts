@@ -2067,8 +2067,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   // HUD (no shake)
   renderHUD(ctx, g);
 
-  // Wave warnings (cinematic banner at top)
-  renderWaveWarnings(ctx, g);
+  // Wave warnings removed — all warnings now use cinematic system
 
   // Cinematic warning overlay (center screen + blur + slow-mo)
   renderCinematicWarning(ctx, g);
