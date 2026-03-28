@@ -1091,6 +1091,18 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
 
     ctx.save();
     ctx.globalAlpha = fadeAlpha;
+
+    // Power-up ground shadow
+    const groundY = g.height * 0.78;
+    const shadowY = groundY - pu.pos.y;
+    if (shadowY > 0 && pu.parachuting) {
+      const sShrink = Math.max(0.3, 1 - shadowY * 0.003);
+      ctx.fillStyle = `rgba(0,0,0,${0.1 * sShrink})`;
+      ctx.beginPath();
+      ctx.ellipse(pu.pos.x, groundY, 10 * sShrink, 3 * sShrink, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     ctx.translate(pu.pos.x, pu.pos.y);
     const bob = Math.sin(pu.bobTimer * 3) * 3;
     ctx.translate(0, bob);
