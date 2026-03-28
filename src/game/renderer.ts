@@ -2801,6 +2801,23 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
       }
     }
   }
+  // Motion trail during dash
+  {
+    const p = g.player;
+    if (p.isDashing) {
+      const trailCount = 4;
+      for (let i = 1; i <= trailCount; i++) {
+        const trailX = p.pos.x - p.velocity.x * 0.008 * i;
+        const trailAlpha = 0.15 - i * 0.035;
+        ctx.globalAlpha = Math.max(0, trailAlpha);
+        ctx.fillStyle = '#4a90e2';
+        ctx.beginPath();
+        ctx.ellipse(trailX, p.pos.y - 12, 6, 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
   renderPlayerGlow(ctx, g);
   renderPlayer(ctx, g);
   renderParticles(ctx, g);
