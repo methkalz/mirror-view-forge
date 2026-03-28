@@ -764,7 +764,7 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     shield:      { base: '#60a5fa', light: '#93c5fd', dark: '#2563eb' },
     ammo:        { base: '#a855f7', light: '#c084fc', dark: '#7e22ce' },
     slowmo:      { base: '#06b6d4', light: '#22d3ee', dark: '#0e7490' },
-    magnet:      { base: '#9ca3af', light: '#d1d5db', dark: '#6b7280' },
+    magnet:      { base: '#94a3b8', light: '#cbd5e1', dark: '#64748b' },
     airstrike:   { base: '#fbbf24', light: '#fcd34d', dark: '#b45309' },
     interceptor: { base: '#f97316', light: '#fb923c', dark: '#c2410c' },
   };
@@ -917,12 +917,33 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.ellipse(-pu.size * 0.2, -pu.size * 0.3, pu.size * 0.5, pu.size * 0.3, -0.3, 0, Math.PI * 2);
     ctx.fill();
 
-    // Border ring
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(0, 0, pu.size, 0, Math.PI * 2);
-    ctx.stroke();
+    // Border ring — enhanced for magnet visibility
+    if (pu.type === 'magnet') {
+      // Extra contrast border for magnet
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, pu.size + 1, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, pu.size, 0, Math.PI * 2);
+      ctx.stroke();
+      // Magnetic field glow
+      const magnetPulse = 0.3 + Math.sin(g.elapsed * 5) * 0.2;
+      ctx.strokeStyle = `rgba(148,163,184,${magnetPulse})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, pu.size * 1.6, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, pu.size, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     // ── Draw icon (hand-drawn, no Unicode) ──
     ctx.save();
@@ -993,191 +1014,270 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fill();
 
     if (d.tier === 'scout') {
-      // SCOUT: Small quadcopter — 4 arms with rotors
-      const armLen = d.size * 1.2;
-      // Central body
-      const bodyGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, d.size * 0.6);
-      bodyGrad.addColorStop(0, '#555');
-      bodyGrad.addColorStop(1, '#333');
+      // SCOUT: Professional quadcopter with camera sensor
+      const armLen = d.size * 1.3;
+      // Central body — darker, more defined
+      const bodyGrad = ctx.createRadialGradient(-1, -1, 0, 0, 0, d.size * 0.65);
+      bodyGrad.addColorStop(0, '#4a4a4a');
+      bodyGrad.addColorStop(0.6, '#2a2a2a');
+      bodyGrad.addColorStop(1, '#1a1a1a');
       ctx.fillStyle = bodyGrad;
       ctx.beginPath();
-      ctx.ellipse(0, 0, d.size * 0.5, d.size * 0.35, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, d.size * 0.55, d.size * 0.4, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = '#666';
-      ctx.lineWidth = 0.5;
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 0.8;
       ctx.stroke();
 
-      // 4 arms
-      const propAngle = g.elapsed * 25;
-      ctx.strokeStyle = '#555';
-      ctx.lineWidth = 2;
+      // Camera/sensor pod underneath
+      ctx.fillStyle = '#222';
+      ctx.beginPath();
+      ctx.ellipse(0, d.size * 0.25, d.size * 0.2, d.size * 0.15, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Camera lens
+      ctx.fillStyle = '#0ea5e9';
+      ctx.shadowColor = '#0ea5e9';
+      ctx.shadowBlur = 4;
+      ctx.beginPath();
+      ctx.arc(0, d.size * 0.25, d.size * 0.08, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // 4 arms — thicker with joint details
+      const propAngle = g.elapsed * 30;
       for (let i = 0; i < 4; i++) {
         const armA = (Math.PI / 2) * i + Math.PI / 4;
         const ax = Math.cos(armA) * armLen;
         const ay = Math.sin(armA) * armLen * 0.5;
+        // Arm with gradient
+        ctx.strokeStyle = '#444';
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(0, 0);
+        ctx.moveTo(Math.cos(armA) * d.size * 0.35, Math.sin(armA) * d.size * 0.25);
         ctx.lineTo(ax, ay);
         ctx.stroke();
-        // Rotor disc
-        ctx.strokeStyle = `rgba(180,180,180,${0.3 + Math.sin(propAngle + i * 2) * 0.15})`;
-        ctx.lineWidth = 1;
+        // Joint circle
+        ctx.fillStyle = '#333';
         ctx.beginPath();
-        ctx.ellipse(ax, ay, d.size * 0.4, d.size * 0.15, propAngle + i, 0, Math.PI * 2);
+        ctx.arc(ax, ay, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        // Rotor disc — motion blur effect
+        const rotAlpha = 0.25 + Math.sin(propAngle + i * 2) * 0.1;
+        ctx.strokeStyle = `rgba(200,200,200,${rotAlpha})`;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.ellipse(ax, ay, d.size * 0.45, d.size * 0.18, propAngle + i, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.strokeStyle = '#555';
-        ctx.lineWidth = 2;
+        // Rotor fill for blur
+        ctx.fillStyle = `rgba(180,180,180,${rotAlpha * 0.3})`;
+        ctx.beginPath();
+        ctx.ellipse(ax, ay, d.size * 0.42, d.size * 0.16, propAngle + i, 0, Math.PI * 2);
+        ctx.fill();
       }
 
-      // LED indicator
+      // LED indicators — red (front) and green (rear)
       const ledBlink = Math.sin(g.elapsed * 4) > 0;
-      ctx.fillStyle = ledBlink ? '#22c55e' : '#1a5c30';
-      ctx.beginPath();
-      ctx.arc(0, -d.size * 0.15, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-
-    } else if (d.tier === 'tracker') {
-      // TRACKER: Sleek military drone — elongated body with swept wings
-      const dir = facingRight ? 1 : -1;
-      // Main body (fuselage)
-      const bodyGrad = ctx.createLinearGradient(0, -d.size * 0.3, 0, d.size * 0.3);
-      bodyGrad.addColorStop(0, '#4a4a4a');
-      bodyGrad.addColorStop(0.5, '#2a2a2a');
-      bodyGrad.addColorStop(1, '#1a1a1a');
-      ctx.fillStyle = bodyGrad;
-      ctx.beginPath();
-      ctx.moveTo(dir * d.size * 1.3, 0);  // nose
-      ctx.lineTo(dir * d.size * 0.3, -d.size * 0.25);
-      ctx.lineTo(-dir * d.size, -d.size * 0.2);
-      ctx.lineTo(-dir * d.size * 1.1, 0);
-      ctx.lineTo(-dir * d.size, d.size * 0.2);
-      ctx.lineTo(dir * d.size * 0.3, d.size * 0.25);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = '#555';
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-
-      // Wings
-      ctx.fillStyle = '#333';
-      ctx.beginPath();
-      ctx.moveTo(0, -d.size * 0.2);
-      ctx.lineTo(-dir * d.size * 0.4, -d.size * 0.9);
-      ctx.lineTo(-dir * d.size * 0.8, -d.size * 0.7);
-      ctx.lineTo(-dir * d.size * 0.3, -d.size * 0.2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(0, d.size * 0.2);
-      ctx.lineTo(-dir * d.size * 0.4, d.size * 0.9);
-      ctx.lineTo(-dir * d.size * 0.8, d.size * 0.7);
-      ctx.lineTo(-dir * d.size * 0.3, d.size * 0.2);
-      ctx.fill();
-
-      // Tail fins
-      ctx.fillStyle = '#3a3a3a';
-      ctx.beginPath();
-      ctx.moveTo(-dir * d.size * 0.9, 0);
-      ctx.lineTo(-dir * d.size * 1.2, -d.size * 0.4);
-      ctx.lineTo(-dir * d.size * 1.1, 0);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(-dir * d.size * 0.9, 0);
-      ctx.lineTo(-dir * d.size * 1.2, d.size * 0.4);
-      ctx.lineTo(-dir * d.size * 1.1, 0);
-      ctx.fill();
-
-      // Engine glow
-      ctx.fillStyle = '#ef4444';
+      // Front LED (red)
+      ctx.fillStyle = ledBlink ? '#ef4444' : '#4a1010';
       ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 6;
+      ctx.shadowBlur = ledBlink ? 6 : 0;
       ctx.beginPath();
-      ctx.ellipse(-dir * d.size * 1.05, 0, 2, 1.5, 0, 0, Math.PI * 2);
+      ctx.arc(d.size * 0.3, -d.size * 0.15, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      // Rear LED (green)
+      ctx.fillStyle = ledBlink ? '#22c55e' : '#0a3a10';
+      ctx.shadowColor = '#22c55e';
+      ctx.shadowBlur = ledBlink ? 6 : 0;
+      ctx.beginPath();
+      ctx.arc(-d.size * 0.3, -d.size * 0.15, 1.8, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      // Red targeting eye
+    } else if (d.tier === 'tracker') {
+      // TRACKER: Sleek military drone — camouflage with swept wings
+      const dir = facingRight ? 1 : -1;
+      // Main body — military olive with camo
+      const bodyGrad = ctx.createLinearGradient(0, -d.size * 0.35, 0, d.size * 0.35);
+      bodyGrad.addColorStop(0, '#3a4a2a');
+      bodyGrad.addColorStop(0.3, '#2d3a2d');
+      bodyGrad.addColorStop(0.7, '#253025');
+      bodyGrad.addColorStop(1, '#1a251a');
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.moveTo(dir * d.size * 1.4, 0);  // sharp nose
+      ctx.lineTo(dir * d.size * 0.4, -d.size * 0.28);
+      ctx.lineTo(-dir * d.size * 1.1, -d.size * 0.22);
+      ctx.lineTo(-dir * d.size * 1.2, 0);
+      ctx.lineTo(-dir * d.size * 1.1, d.size * 0.22);
+      ctx.lineTo(dir * d.size * 0.4, d.size * 0.3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#4a5a3a';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      // Camo stripes
+      ctx.fillStyle = 'rgba(60, 80, 40, 0.3)';
+      ctx.beginPath();
+      ctx.moveTo(dir * d.size * 0.2, -d.size * 0.25);
+      ctx.lineTo(-dir * d.size * 0.3, -d.size * 0.2);
+      ctx.lineTo(-dir * d.size * 0.2, d.size * 0.1);
+      ctx.lineTo(dir * d.size * 0.3, d.size * 0.15);
+      ctx.closePath();
+      ctx.fill();
+
+      // Wider swept wings
+      ctx.fillStyle = '#2d3a2d';
+      ctx.beginPath();
+      ctx.moveTo(0, -d.size * 0.22);
+      ctx.lineTo(-dir * d.size * 0.5, -d.size * 1.1);
+      ctx.lineTo(-dir * d.size * 0.9, -d.size * 0.85);
+      ctx.lineTo(-dir * d.size * 0.4, -d.size * 0.22);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(0, d.size * 0.24);
+      ctx.lineTo(-dir * d.size * 0.5, d.size * 1.1);
+      ctx.lineTo(-dir * d.size * 0.9, d.size * 0.85);
+      ctx.lineTo(-dir * d.size * 0.4, d.size * 0.24);
+      ctx.fill();
+
+      // Tail fins
+      ctx.fillStyle = '#253025';
+      ctx.beginPath();
+      ctx.moveTo(-dir * d.size, 0);
+      ctx.lineTo(-dir * d.size * 1.35, -d.size * 0.45);
+      ctx.lineTo(-dir * d.size * 1.2, 0);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-dir * d.size, 0);
+      ctx.lineTo(-dir * d.size * 1.35, d.size * 0.45);
+      ctx.lineTo(-dir * d.size * 1.2, 0);
+      ctx.fill();
+
+      // Engine exhaust with flame
       ctx.fillStyle = '#ef4444';
       ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 8;
       ctx.beginPath();
-      ctx.arc(dir * d.size * 0.8, 0, 2.5, 0, Math.PI * 2);
+      ctx.ellipse(-dir * d.size * 1.15, 0, 3, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Flame trail
+      const flameLen = 6 + Math.random() * 5;
+      ctx.fillStyle = `rgba(255, 150, 50, ${0.5 + Math.random() * 0.3})`;
+      ctx.beginPath();
+      ctx.moveTo(-dir * d.size * 1.15, -2);
+      ctx.lineTo(-dir * (d.size * 1.15 + flameLen), 0);
+      ctx.lineTo(-dir * d.size * 1.15, 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Red targeting eye — larger pulsing
+      const eyePulse = 2.5 + Math.sin(g.elapsed * 6) * 1;
+      ctx.fillStyle = '#ef4444';
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(dir * d.size * 1.0, 0, eyePulse, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
 
     } else {
-      // BOMBER: Heavy military drone — large body with bomb bay
+      // BOMBER: Massive heavy military drone — wide body with bomb bay
       const dir = facingRight ? 1 : -1;
-      // Heavy fuselage
-      const bodyGrad = ctx.createLinearGradient(0, -d.size * 0.4, 0, d.size * 0.4);
-      bodyGrad.addColorStop(0, '#3d3530');
-      bodyGrad.addColorStop(0.5, '#2a2420');
+      // Heavy fuselage — dark brown military
+      const bodyGrad = ctx.createLinearGradient(0, -d.size * 0.45, 0, d.size * 0.45);
+      bodyGrad.addColorStop(0, '#4a3d30');
+      bodyGrad.addColorStop(0.3, '#3a2f25');
+      bodyGrad.addColorStop(0.7, '#2a2018');
       bodyGrad.addColorStop(1, '#1a1510');
       ctx.fillStyle = bodyGrad;
       ctx.beginPath();
-      ctx.moveTo(dir * d.size * 1.2, 0);
-      ctx.lineTo(dir * d.size * 0.5, -d.size * 0.4);
-      ctx.lineTo(-dir * d.size * 0.8, -d.size * 0.35);
-      ctx.lineTo(-dir * d.size * 1.0, 0);
-      ctx.lineTo(-dir * d.size * 0.8, d.size * 0.4);
-      ctx.lineTo(dir * d.size * 0.5, d.size * 0.45);
+      ctx.moveTo(dir * d.size * 1.3, 0);
+      ctx.lineTo(dir * d.size * 0.6, -d.size * 0.45);
+      ctx.lineTo(-dir * d.size * 0.9, -d.size * 0.4);
+      ctx.lineTo(-dir * d.size * 1.1, 0);
+      ctx.lineTo(-dir * d.size * 0.9, d.size * 0.45);
+      ctx.lineTo(dir * d.size * 0.6, d.size * 0.5);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#4a4035';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#5a4a35';
+      ctx.lineWidth = 1.2;
       ctx.stroke();
 
-      // Wide wings
-      ctx.fillStyle = '#2a2420';
+      // Very wide wings
+      ctx.fillStyle = '#2a2018';
       ctx.beginPath();
-      ctx.moveTo(dir * d.size * 0.2, -d.size * 0.35);
-      ctx.lineTo(-dir * d.size * 0.2, -d.size * 1.3);
-      ctx.lineTo(-dir * d.size * 0.7, -d.size * 1.1);
-      ctx.lineTo(-dir * d.size * 0.5, -d.size * 0.35);
+      ctx.moveTo(dir * d.size * 0.3, -d.size * 0.4);
+      ctx.lineTo(-dir * d.size * 0.2, -d.size * 1.5);
+      ctx.lineTo(-dir * d.size * 0.8, -d.size * 1.3);
+      ctx.lineTo(-dir * d.size * 0.6, -d.size * 0.4);
       ctx.fill();
       ctx.beginPath();
-      ctx.moveTo(dir * d.size * 0.2, d.size * 0.4);
-      ctx.lineTo(-dir * d.size * 0.2, d.size * 1.3);
-      ctx.lineTo(-dir * d.size * 0.7, d.size * 1.1);
-      ctx.lineTo(-dir * d.size * 0.5, d.size * 0.4);
+      ctx.moveTo(dir * d.size * 0.3, d.size * 0.45);
+      ctx.lineTo(-dir * d.size * 0.2, d.size * 1.5);
+      ctx.lineTo(-dir * d.size * 0.8, d.size * 1.3);
+      ctx.lineTo(-dir * d.size * 0.6, d.size * 0.45);
       ctx.fill();
 
-      // Bomb bay indicator (underside glow)
+      // Bomb bay indicator — glowing underside
       const bombReady = d.bombTimer >= d.bombCooldown * 0.8;
       if (bombReady) {
-        ctx.fillStyle = 'rgba(255, 100, 0, 0.4)';
+        ctx.fillStyle = 'rgba(255, 80, 0, 0.5)';
+        ctx.shadowColor = '#ff5000';
+        ctx.shadowBlur = 10;
         ctx.beginPath();
-        ctx.ellipse(0, d.size * 0.3, d.size * 0.4, d.size * 0.15, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, d.size * 0.35, d.size * 0.5, d.size * 0.2, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.shadowBlur = 0;
       }
-
-      // Dual engines
-      ctx.fillStyle = '#f97316';
-      ctx.shadowColor = '#f97316';
-      ctx.shadowBlur = 5;
+      // Bomb bay hatch lines
+      ctx.strokeStyle = 'rgba(255, 150, 50, 0.3)';
+      ctx.lineWidth = 0.8;
+      ctx.setLineDash([2, 2]);
       ctx.beginPath();
-      ctx.ellipse(-dir * d.size * 0.95, -d.size * 0.15, 2.5, 2, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(-dir * d.size * 0.95, d.size * 0.15, 2.5, 2, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-
-      // Warning stripes
-      ctx.strokeStyle = '#f97316';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath();
-      ctx.moveTo(dir * d.size * 0.1, -d.size * 0.35);
-      ctx.lineTo(dir * d.size * 0.1, d.size * 0.4);
+      ctx.ellipse(0, d.size * 0.3, d.size * 0.4, d.size * 0.12, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Red eye
+      // Dual engines — larger with exhaust
+      for (const ey of [-d.size * 0.2, d.size * 0.2]) {
+        ctx.fillStyle = '#f97316';
+        ctx.shadowColor = '#f97316';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.ellipse(-dir * d.size * 1.05, ey, 3.5, 2.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Exhaust flame
+        const exLen = 10 + Math.random() * 8;
+        ctx.fillStyle = `rgba(249, 115, 22, ${0.5 + Math.random() * 0.3})`;
+        ctx.beginPath();
+        ctx.moveTo(-dir * d.size * 1.05, ey - 2);
+        ctx.lineTo(-dir * (d.size * 1.05 + exLen), ey);
+        ctx.lineTo(-dir * d.size * 1.05, ey + 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+
+      // Warning stripes — more prominent
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(dir * d.size * 0.15, -d.size * 0.4);
+      ctx.lineTo(dir * d.size * 0.15, d.size * 0.45);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-dir * d.size * 0.3, -d.size * 0.38);
+      ctx.lineTo(-dir * d.size * 0.3, d.size * 0.43);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Red eye — large and menacing
       ctx.fillStyle = '#ef4444';
       ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 16;
       ctx.beginPath();
-      ctx.arc(dir * d.size * 0.9, 0, 3, 0, Math.PI * 2);
+      ctx.arc(dir * d.size * 1.0, 0, 4, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
     }

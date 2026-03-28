@@ -270,7 +270,7 @@ function configureDroneByTier(d: Drone, tier: DroneTier, elapsed: number) {
   d.tier = tier;
   if (tier === 'scout') {
     d.speed = 35 + Math.min(25, elapsed * 0.08);
-    d.size = 14;
+    d.size = 18;
     d.health = 1;
     d.maxHealth = 1;
     d.aggroDelay = 2.5 + Math.random() * 1.5;
@@ -282,7 +282,7 @@ function configureDroneByTier(d: Drone, tier: DroneTier, elapsed: number) {
 
   if (tier === 'tracker') {
     d.speed = 50 + Math.min(25, elapsed * 0.06);
-    d.size = 16;
+    d.size = 22;
     d.health = 2;
     d.maxHealth = 2;
     d.aggroDelay = 1.2 + Math.random() * 1.2;
@@ -293,7 +293,7 @@ function configureDroneByTier(d: Drone, tier: DroneTier, elapsed: number) {
   }
 
   d.speed = 42 + Math.min(18, elapsed * 0.04);
-  d.size = 20;
+  d.size = 28;
   d.health = 3;
   d.maxHealth = 3;
   d.aggroDelay = 0.8 + Math.random() * 0.8;
@@ -517,19 +517,19 @@ export function update(g: GameData, input: InputState, dt: number) {
   // === Wave warnings ===
   // === Cinematic warning system ===
   const waveEvents: { time: number; id: string; text: string; sub: string; color: string; duration: number; type: 'warning' | 'upgrade' }[] = [
-    { time: 3, id: 'shrapnel_start', text: '⚠ تحذير: شظايا متساقطة!', sub: 'SHRAPNEL INCOMING', color: '#ef4444', duration: 1.5, type: 'warning' },
-    { time: g.missileStartTime, id: 'missiles', text: '⚠ تحذير: صواريخ قادمة!', sub: 'MISSILES DETECTED', color: '#dc2626', duration: 1.5, type: 'warning' },
-    { time: 75, id: 'clusters', text: '⚠ تحذير: صواريخ متشظية!', sub: 'SPLITTING MISSILES INCOMING', color: '#f43f5e', duration: 1.5, type: 'warning' },
-    { time: 85, id: 'drones_scout', text: '⚠ تحذير: طائرات استطلاع!', sub: 'SCOUT DRONES APPROACHING', color: '#ef4444', duration: 1.5, type: 'warning' },
-    { time: 115, id: 'bullet_2', text: '⬆ تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e', duration: 0.8, type: 'upgrade' },
-    { time: 125, id: 'cluster_3', text: '⚠ تحذير: تشظي ثلاثي!', sub: 'TRIPLE SPLIT MISSILES', color: '#ef4444', duration: 1.0, type: 'warning' },
-    { time: 150, id: 'drones_tracker', text: '⚠ تحذير: طائرات تتبع!', sub: 'TRACKER DRONES INBOUND', color: '#dc2626', duration: 1.5, type: 'warning' },
-    { time: 190, id: 'bullet_3', text: '⬆ تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#22c55e', duration: 0.8, type: 'upgrade' },
-    { time: 200, id: 'cluster_4', text: '⚠ تحذير: تشظي رباعي!', sub: 'QUAD SPLIT MISSILES', color: '#dc2626', duration: 1.0, type: 'warning' },
-    { time: 210, id: 'drones_bomber', text: '⚠ تحذير: قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444', duration: 1.5, type: 'warning' },
-    { time: 230, id: 'boss_warn', text: '⚠ تحذير: طائرة حربية!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626', duration: 1.5, type: 'warning' },
-    { time: 233, id: 'boss_prep', text: '⬆ تطوير: إمدادات طارئة!', sub: 'EMERGENCY SUPPLIES DROPPED', color: '#22c55e', duration: 1.0, type: 'upgrade' },
-    { time: 260, id: 'cluster_5', text: '⚠ تحذير: تشظي خماسي!', sub: 'MAX SPLIT — DANGER', color: '#991b1b', duration: 1.0, type: 'warning' },
+    { time: 3, id: 'shrapnel_start', text: '⚠ تحذير: شظايا متساقطة!', sub: 'SHRAPNEL INCOMING', color: '#ef4444', duration: 2.0, type: 'warning' },
+    { time: g.missileStartTime, id: 'missiles', text: '⚠ تحذير: صواريخ قادمة!', sub: 'MISSILES DETECTED', color: '#dc2626', duration: 2.0, type: 'warning' },
+    { time: 75, id: 'clusters', text: '⚠ تحذير: صواريخ متشظية!', sub: 'SPLITTING MISSILES INCOMING', color: '#f43f5e', duration: 2.0, type: 'warning' },
+    { time: 85, id: 'drones_scout', text: '⚠ تحذير: طائرات استطلاع!', sub: 'SCOUT DRONES APPROACHING', color: '#ef4444', duration: 2.0, type: 'warning' },
+    { time: 115, id: 'bullet_2', text: '⬆ تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e', duration: 2.0, type: 'upgrade' },
+    { time: 125, id: 'cluster_3', text: '⚠ تحذير: تشظي ثلاثي!', sub: 'TRIPLE SPLIT MISSILES', color: '#ef4444', duration: 2.0, type: 'warning' },
+    { time: 150, id: 'drones_tracker', text: '⚠ تحذير: طائرات تتبع!', sub: 'TRACKER DRONES INBOUND', color: '#dc2626', duration: 2.0, type: 'warning' },
+    { time: 190, id: 'bullet_3', text: '⬆ تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#22c55e', duration: 2.0, type: 'upgrade' },
+    { time: 200, id: 'cluster_4', text: '⚠ تحذير: تشظي رباعي!', sub: 'QUAD SPLIT MISSILES', color: '#dc2626', duration: 2.0, type: 'warning' },
+    { time: 210, id: 'drones_bomber', text: '⚠ تحذير: قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444', duration: 2.0, type: 'warning' },
+    { time: 230, id: 'boss_warn', text: '⚠ تحذير: طائرة حربية!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626', duration: 2.0, type: 'warning' },
+    { time: 233, id: 'boss_prep', text: '⬆ تطوير: إمدادات طارئة!', sub: 'EMERGENCY SUPPLIES DROPPED', color: '#22c55e', duration: 2.0, type: 'upgrade' },
+    { time: 260, id: 'cluster_5', text: '⚠ تحذير: تشظي خماسي!', sub: 'MAX SPLIT — DANGER', color: '#991b1b', duration: 2.0, type: 'warning' },
   ];
   for (const we of waveEvents) {
     if (g.elapsed >= we.time && !g.waveTriggered.has(we.id)) {
