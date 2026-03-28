@@ -19,6 +19,7 @@ const SkyfallGame: React.FC = () => {
   const lastTimeRef = useRef<number>(0);
   const [showButtons, setShowButtons] = useState(false);
   const [playerAmmo, setPlayerAmmo] = useState(0);
+  const [bulletLevel, setBulletLevel] = useState(1);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -87,6 +88,7 @@ const SkyfallGame: React.FC = () => {
       }
       if (g.state === 'playing') {
         setPlayerAmmo(g.player.ammo);
+        setBulletLevel(g.bulletLevel);
       }
 
       rafRef.current = requestAnimationFrame(loop);
@@ -211,15 +213,15 @@ const SkyfallGame: React.FC = () => {
       />
       {showButtons && (
         <>
-           {/* FIRE button — beside right arrow */}
+           {/* FIRE button — red themed with dynamic bullet icon */}
            <button
              onPointerDown={(e) => { e.preventDefault(); if (hasAmmo) { e.stopPropagation(); handleButtonDown('shoot'); } }}
              style={{
                position: 'absolute',
                left: 220, bottom: 95, width: 72, height: 56,
               borderRadius: 16,
-              border: hasAmmo ? '1.5px solid rgba(168,85,247,0.4)' : '1.5px solid rgba(220,38,38,0.3)',
-              background: hasAmmo ? 'rgba(168,85,247,0.12)' : 'rgba(220,38,38,0.06)',
+              border: hasAmmo ? '1.5px solid rgba(220,38,38,0.5)' : '1.5px solid rgba(100,100,100,0.3)',
+              background: hasAmmo ? 'rgba(220,38,38,0.12)' : 'rgba(80,80,80,0.06)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -233,18 +235,50 @@ const SkyfallGame: React.FC = () => {
               transition: 'all 0.15s ease',
             }}
           >
-            <svg width="20" height="28" viewBox="0 0 20 28" fill="none" style={{ opacity: hasAmmo ? 0.9 : 0.5 }}>
-              <rect x="4" y="12" width="12" height="14" rx="2" fill={hasAmmo ? 'rgba(168,85,247,0.8)' : 'rgba(220,38,38,0.4)'} stroke={hasAmmo ? 'rgba(200,160,255,0.5)' : 'rgba(220,38,38,0.3)'} strokeWidth="0.8" />
-              <rect x="5.5" y="14.5" width="9" height="2" rx="0.5" fill="rgba(255,255,255,0.18)" />
-              <line x1="4" y1="12" x2="16" y2="12" stroke={hasAmmo ? 'rgba(255,255,255,0.3)' : 'rgba(220,38,38,0.25)'} strokeWidth="1" />
-              <path d="M4 12 L10 3 L16 12" fill={hasAmmo ? 'rgba(200,120,255,0.9)' : 'rgba(220,80,80,0.5)'} stroke={hasAmmo ? 'rgba(220,180,255,0.5)' : 'rgba(220,38,38,0.3)'} strokeWidth="0.8" />
+            <svg width="24" height="28" viewBox="0 0 24 28" fill="none" style={{ opacity: hasAmmo ? 0.95 : 0.4 }}>
+              {bulletLevel >= 3 && (
+                <>
+                  {/* Left bullet */}
+                  <rect x="2" y="8" width="5" height="14" rx="2.5" fill={hasAmmo ? 'rgba(220,38,38,0.7)' : 'rgba(120,120,120,0.4)'} />
+                  <ellipse cx="4.5" cy="8" rx="2.5" ry="3" fill={hasAmmo ? 'rgba(255,80,80,0.9)' : 'rgba(150,150,150,0.5)'} />
+                  {/* Right bullet */}
+                  <rect x="17" y="8" width="5" height="14" rx="2.5" fill={hasAmmo ? 'rgba(220,38,38,0.7)' : 'rgba(120,120,120,0.4)'} />
+                  <ellipse cx="19.5" cy="8" rx="2.5" ry="3" fill={hasAmmo ? 'rgba(255,80,80,0.9)' : 'rgba(150,150,150,0.5)'} />
+                </>
+              )}
+              {bulletLevel >= 2 && bulletLevel < 3 && (
+                <>
+                  {/* Left bullet */}
+                  <rect x="4" y="6" width="5.5" height="16" rx="2.75" fill={hasAmmo ? 'rgba(220,38,38,0.7)' : 'rgba(120,120,120,0.4)'} />
+                  <ellipse cx="6.75" cy="6" rx="2.75" ry="3.5" fill={hasAmmo ? 'rgba(255,80,80,0.9)' : 'rgba(150,150,150,0.5)'} />
+                  {/* Right bullet */}
+                  <rect x="14.5" y="6" width="5.5" height="16" rx="2.75" fill={hasAmmo ? 'rgba(220,38,38,0.7)' : 'rgba(120,120,120,0.4)'} />
+                  <ellipse cx="17.25" cy="6" rx="2.75" ry="3.5" fill={hasAmmo ? 'rgba(255,80,80,0.9)' : 'rgba(150,150,150,0.5)'} />
+                </>
+              )}
+              {/* Center bullet (always shown) */}
+              <rect x="8.5" y={bulletLevel >= 3 ? '4' : bulletLevel >= 2 ? '22' : '5'} width="7" height={bulletLevel >= 2 ? '0' : '18'} rx="3.5" fill={hasAmmo ? 'rgba(220,38,38,0.8)' : 'rgba(120,120,120,0.4)'} />
+              {bulletLevel === 1 && (
+                <>
+                  <rect x="8.5" y="5" width="7" height="18" rx="3.5" fill={hasAmmo ? 'rgba(220,38,38,0.8)' : 'rgba(120,120,120,0.4)'} />
+                  <ellipse cx="12" cy="5" rx="3.5" ry="4" fill={hasAmmo ? 'rgba(255,80,80,0.95)' : 'rgba(150,150,150,0.5)'} />
+                  <rect x="10" y="14" width="4" height="2" rx="0.5" fill="rgba(255,255,255,0.15)" />
+                </>
+              )}
+              {bulletLevel >= 3 && (
+                <>
+                  {/* Center bullet for triple */}
+                  <rect x="8.5" y="4" width="7" height="18" rx="3.5" fill={hasAmmo ? 'rgba(220,38,38,0.85)' : 'rgba(120,120,120,0.4)'} />
+                  <ellipse cx="12" cy="4" rx="3.5" ry="4" fill={hasAmmo ? 'rgba(255,100,100,0.95)' : 'rgba(150,150,150,0.5)'} />
+                </>
+              )}
             </svg>
             <span style={{
               position: 'absolute',
               top: -6, right: -6,
               width: 22, height: 22,
               borderRadius: '50%',
-              background: hasAmmo ? 'rgba(168,85,247,0.85)' : 'rgba(220,38,38,0.75)',
+              background: hasAmmo ? 'rgba(220,38,38,0.9)' : 'rgba(100,100,100,0.75)',
               color: '#fff',
               fontSize: 11,
               fontWeight: 700,
@@ -253,7 +287,7 @@ const SkyfallGame: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'center',
               border: '1.5px solid rgba(0,0,0,0.3)',
-              boxShadow: hasAmmo ? '0 0 8px rgba(168,85,247,0.4)' : '0 0 6px rgba(220,38,38,0.3)',
+              boxShadow: hasAmmo ? '0 0 8px rgba(220,38,38,0.5)' : '0 0 4px rgba(100,100,100,0.3)',
             }}>
               {hasAmmo ? playerAmmo : '0'}
             </span>
