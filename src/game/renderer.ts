@@ -1972,15 +1972,21 @@ function renderBoss(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.restore();
 }
 
-// ─── Player Glow (ambient lighting) ──────────────────
+// ─── Player Glow (health-based ambient lighting) ─────
 function renderPlayerGlow(ctx: CanvasRenderingContext2D, g: GameData) {
   const p = g.player;
-  const glowGrad = ctx.createRadialGradient(p.pos.x, p.pos.y - 10, 5, p.pos.x, p.pos.y - 10, 60);
-  glowGrad.addColorStop(0, 'rgba(100, 150, 255, 0.04)');
-  glowGrad.addColorStop(1, 'rgba(100, 150, 255, 0)');
+  const hpRatio = p.health / p.maxHealth;
+  // Green → Yellow → Red based on health
+  const r = hpRatio > 0.5 ? Math.round((1 - hpRatio) * 2 * 200 + 50) : 250;
+  const gr = hpRatio > 0.5 ? 200 : Math.round(hpRatio * 2 * 200);
+  const b2 = hpRatio > 0.8 ? 100 : 50;
+  const pulse = 0.03 + Math.sin(g.elapsed * 3) * 0.01;
+  const glowGrad = ctx.createRadialGradient(p.pos.x, p.pos.y - 10, 5, p.pos.x, p.pos.y - 10, 55);
+  glowGrad.addColorStop(0, `rgba(${r}, ${gr}, ${b2}, ${pulse})`);
+  glowGrad.addColorStop(1, `rgba(${r}, ${gr}, ${b2}, 0)`);
   ctx.fillStyle = glowGrad;
   ctx.beginPath();
-  ctx.arc(p.pos.x, p.pos.y - 10, 60, 0, Math.PI * 2);
+  ctx.arc(p.pos.x, p.pos.y - 10, 55, 0, Math.PI * 2);
   ctx.fill();
 }
 
