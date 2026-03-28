@@ -253,9 +253,18 @@ function renderGround(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.stroke();
   }
 
-  // Ground line highlight
-  ctx.strokeStyle = 'rgba(100, 90, 70, 0.4)';
-  ctx.lineWidth = 1.5;
+  // Ground line highlight — glowing edge separating ground and sky
+  const glGrad = ctx.createLinearGradient(0, groundY - 3, 0, groundY + 3);
+  glGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  glGrad.addColorStop(0.4, 'rgba(140, 120, 80, 0.25)');
+  glGrad.addColorStop(0.5, 'rgba(180, 150, 90, 0.5)');
+  glGrad.addColorStop(0.6, 'rgba(140, 120, 80, 0.25)');
+  glGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glGrad;
+  ctx.fillRect(left, groundY - 3, totalW, 6);
+  
+  ctx.strokeStyle = 'rgba(160, 140, 100, 0.35)';
+  ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(left, groundY);
   ctx.lineTo(right, groundY);
