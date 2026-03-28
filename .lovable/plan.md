@@ -1,41 +1,41 @@
 
 
-# تنويع سرعات السقوط + تنويع أصوات الاصطدام
+# تحسين أصوات الاصطدام — جعلها واقعية وغير مزعجة
 
 ## المشكلة
-1. كل الشظايا تسقط بنفس السرعة (`350 + difficulty * 20`) وكل الصواريخ بنفس السرعة (`220 + difficulty * 15`) — لا تنوع
-2. صوت الاصطدام واحد (`sfxExplosion()`) لكل أنواع الحطام
+- `sfxImpactLight()` يستخدم `square` wave بتردد عالي (800-1400Hz) — صوت إلكتروني مزعج لا يشبه سقوط شظية
+- `sfxImpactHeavy()` يستخدم `sawtooth` بصوت عالٍ جداً (vol 0.14) ومدة طويلة — مبالغ فيه
+- كلاهما لا يشبه صوت ارتطام حقيقي بالأرض
 
-## التغييرات
+## الحل — أصوات ارتطام طبيعية
 
-### 1. `src/game/engine.ts` — تنويع السرعات
+### التغييرات في `src/game/audio.ts`:
 
-إضافة عشوائية لسرعة كل نوع عند الإنشاء:
+**`sfxImpactLight()` — شظية صغيرة تضرب الأرض:**
+- استبدال square wave → نويز قصير جداً مع فلتر lowpass (صوت "طق" خفيف)
+- تردد منخفض (200-400Hz)، مدة قصيرة (0.04s)، صوت خافت (vol 0.03)
+- يشبه حصاة تسقط على إسفلت
 
-| النوع | قبل | بعد |
-|-------|------|------|
-| shrapnel | `350 + diff*20` (ثابت) | `280 + diff*20 + random()*140` (سريع ومتنوع) |
-| missile | `220 + diff*15` (ثابت) | `160 + diff*15 + random()*100` (أبطأ، ثقيل) |
-| cluster | `180 + diff*10` (ثابت) | `140 + diff*10 + random()*80` (الأبطأ) |
-| شظايا cluster الفرعية | `300` ثابت | `250 + random()*100` |
-| قنابل الدرون | `200` ثابت | `170 + random()*60` |
+**`sfxImpactHeavy()` — صاروخ يضرب الأرض:**
+- تقليل الصوت من 0.14 → 0.06
+- تقصير المدة من 0.5s → 0.2s
+- استبدال sawtooth → sine منخفض (50Hz) + نويز lowpass قصير
+- يشبه دوي ارتطام ثقيل بدون المبالغة
 
-### 2. `src/game/audio.ts` — إضافة أصوات اصطدام متنوعة
+### الكود الجديد:
+```typescript
+export function sfxImpactLight() {
+  // Small debris hitting ground — soft thud
+  playNoise(0.04, 0.03, { type: 'lowpass', freq: 300 + Math.random() * 200 });
+  playTone(150 + Math.random() * 100, 0.03, 'sine', 0.02);
+}
 
-إضافة دالتين جديدتين:
-- **`sfxImpactLight()`**: للشظايا الصغيرة — نقرة خفيفة سريعة (تردد عالي، مدة قصيرة)
-- **`sfxImpactHeavy()`**: للصواريخ — دوي عميق (تردد منخفض، مدة أطول، نويز أكثر)
-
-تعديل `sfxExplosion()` لتصبح **`sfxImpactMedium()`** (تبقى كما هي للاستخدام العام).
-
-### 3. `src/game/engine.ts` — ربط الأصوات بالنوع
-
-عند الاصطدام (سطر 624):
+export function sfxImpactHeavy() {
+  // Heavy object hitting ground — deep thump
+  playTone(50, 0.15, 'sine', 0.06);
+  playNoise(0.12, 0.05, { type: 'lowpass', freq: 250 });
+}
 ```
-shrapnel → sfxImpactLight()
-missile  → sfxImpactHeavy()
-cluster  → sfxExplosion() (الحالي)
-```
 
-كل الاستخدامات الأخرى لـ `sfxExplosion()` (درون، رصاص، بوس) تبقى كما هي.
+ملف واحد يتغير: `src/game/audio.ts` (سطور 116-130)
 
