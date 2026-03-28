@@ -230,6 +230,9 @@ export interface GameData {
   lightningFlash: number;
   weatherIntensity: number;
   cinematicWarning: { text: string; subText: string; color: string; timer: number; duration: number } | null;
+  warningLockUntil: number;
+  pendingWaveEvents: { id: string; resolveAt: number }[];
+  activatedWaveEvents: Set<string>;
   missileStartTime: number;
 }
 
