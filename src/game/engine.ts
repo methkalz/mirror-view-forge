@@ -232,12 +232,26 @@ function spawnHazard(g: GameData, type: HazardType) {
       h.damage = 22;
       h.warningDuration = 1.2;
       break;
-    case 'cluster':
-      h.speed = 140 + g.difficulty * 10 + Math.random() * 80;
+    case 'cluster': {
+      // Horizontal flying missile
+      const fromRight = Math.random() > 0.5;
+      const startX = fromRight ? g.width + 40 : -40;
+      const flyY = g.height * (0.15 + Math.random() * 0.1);
+      h.pos = { x: startX, y: flyY };
+      h.targetPos = { x: g.width / 2, y: flyY }; // not used for ground impact
+      const baseSpeed = 400 + g.difficulty * 10 + Math.random() * 100;
+      h.clusterVelX = fromRight ? -baseSpeed : baseSpeed;
+      h.clusterStartSpeed = baseSpeed;
+      h.clusterPhase = 'flying';
+      h.clusterTimer = 0;
+      h.speed = 0;
       h.size = 14;
       h.damage = 16;
-      h.warningDuration = 1.4;
+      h.warningDuration = 0;
+      h.warningTimer = 0;
+      h.falling = true; // skip warning phase
       break;
+    }
   }
   h.warningTimer = h.warningDuration;
   // Avoid repetitive heartbeat-like beeps from frequent shrapnel spawns
