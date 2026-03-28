@@ -1261,7 +1261,7 @@ function spawnBoss(g: GameData, showWarning = true) {
   };
   sfxBossSiren();
   if (showWarning) {
-    g.cinematicWarning = { text: '⚠ GUNSHIP INCOMING!', subText: 'PREPARE FOR HEAVY ASSAULT', color: '#dc2626', timer: 1.5, duration: 1.5 };
+    g.cinematicWarning = { text: '⚠ تحذير: طائرة حربية!', subText: 'PREPARE FOR HEAVY ASSAULT', color: '#dc2626', timer: 1.5, duration: 1.5, type: 'warning' };
     g.slowMoFactor = 0.1;
   }
 }
@@ -1295,7 +1295,7 @@ function updateBoss(g: GameData, dt: number) {
     // Phase transition: 2s cooldown + warning + power-up drop
     boss.attackTimer = 2.0;
     const phaseText = newPhase === 2 ? 'PHASE 2!' : 'PHASE 3!';
-    g.cinematicWarning = { text: `⚡ ${phaseText}`, subText: 'BOSS PATTERN SHIFT', color: '#fbbf24', timer: 1.0, duration: 1.0 };
+    g.cinematicWarning = { text: `⚡ ${phaseText}`, subText: 'BOSS PATTERN SHIFT', color: '#fbbf24', timer: 1.0, duration: 1.0, type: 'warning' };
     g.slowMoFactor = 0.1;
     // Drop a random power-up as mid-fight reward
     const rewardTypes: PowerUpType[] = ['medkit', 'ammo', 'shield'];
