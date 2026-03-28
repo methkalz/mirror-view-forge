@@ -239,9 +239,9 @@ function spawnHazard(g: GameData, type: HazardType) {
       const flyY = g.height * (0.12 + Math.random() * 0.2);
       h.pos = { x: startX, y: flyY };
       h.targetPos = { x: g.width / 2, y: flyY };
-      const baseSpeed = 150 + g.difficulty * 6 + Math.random() * 50;
+      const baseSpeed = 120 + g.difficulty * 5 + Math.random() * 40;
       h.clusterVelX = fromRight ? -baseSpeed : baseSpeed;
-      h.clusterVelY = -(15 + Math.random() * 20); // gentle upward arc initially
+      h.clusterVelY = -(10 + Math.random() * 15); // gentle upward arc initially
       h.clusterStartSpeed = baseSpeed;
       h.clusterPhase = 'flying';
       h.clusterTimer = 0;
@@ -749,7 +749,7 @@ export function update(g: GameData, input: InputState, dt: number) {
 
       if (h.clusterPhase === 'flying') {
         // Decelerate but keep minimum 35% speed (heavy missile)
-        const decel = startSpd * 0.8 * dt;
+        const decel = startSpd * 0.6 * dt;
         if (h.clusterVelX! > 0) {
           h.clusterVelX = Math.max(h.clusterVelX! - decel, startSpd * 0.35);
         } else {
@@ -758,7 +758,7 @@ export function update(g: GameData, input: InputState, dt: number) {
         h.pos.x += h.clusterVelX! * g.slowMoFactor * dt;
 
         // Arc trajectory — gravity pulls missile down
-        h.clusterVelY = (h.clusterVelY || 0) + 55 * dt;
+        h.clusterVelY = (h.clusterVelY || 0) + 40 * dt;
         h.pos.y += h.clusterVelY * g.slowMoFactor * dt;
 
         // Check if slowed enough to open
