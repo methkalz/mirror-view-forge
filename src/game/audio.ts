@@ -220,10 +220,4 @@ export function sfxShoot3() {
   setTimeout(() => playTone(800, 0.04, 'square', 0.08), 35);
   setTimeout(() => playTone(600, 0.06, 'sine', 0.07), 70);
 }
-  playTone(30, 0.8, 'sawtooth', 0.15);
-  playTone(50, 0.6, 'sine', 0.12);
-  playNoise(0.8, 0.15, { type: 'lowpass', freq: 500 });
-  setTimeout(() => { playNoise(0.5, 0.1, { type: 'lowpass', freq: 300 }); playTone(25, 0.5, 'sine', 0.08); }, 200);
-  setTimeout(() => playNoise(0.4, 0.06, { type: 'bandpass', freq: 1000 }), 400);
-}
 
