@@ -2125,16 +2125,47 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillRect(barX, barY2, barW * hpRatio, barH);
   }
 
-  // Shield aura
+  // Shield aura — hexagonal energy shield
   if (p.shielded) {
     ctx.scale(scale, 1);
+    const shieldR = p.size + 12;
+    const shieldY = -16;
+    const sides = 6;
+    const shieldPulse = 0.4 + Math.sin(g.elapsed * 5) * 0.2;
+
+    // Hexagonal outline
     ctx.beginPath();
-    ctx.arc(0, -16, p.size + 12, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(96, 165, 250, ${0.4 + Math.sin(g.elapsed * 5) * 0.2})`;
-    ctx.lineWidth = 2.5;
+    for (let i = 0; i <= sides; i++) {
+      const a = (i / sides) * Math.PI * 2 - Math.PI / 2;
+      const sx = Math.cos(a) * shieldR;
+      const sy = shieldY + Math.sin(a) * shieldR;
+      if (i === 0) ctx.moveTo(sx, sy);
+      else ctx.lineTo(sx, sy);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = `rgba(96, 165, 250, ${shieldPulse + 0.2})`;
+    ctx.lineWidth = 2;
     ctx.stroke();
-    ctx.fillStyle = 'rgba(96, 165, 250, 0.08)';
+    ctx.fillStyle = `rgba(96, 165, 250, 0.06)`;
     ctx.fill();
+
+    // Energy lines inside
+    ctx.strokeStyle = `rgba(150, 200, 255, ${shieldPulse * 0.3})`;
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < sides; i++) {
+      const a = (i / sides) * Math.PI * 2 - Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(0, shieldY);
+      ctx.lineTo(Math.cos(a) * shieldR, shieldY + Math.sin(a) * shieldR);
+      ctx.stroke();
+    }
+
+    // Outer glow ring
+    ctx.strokeStyle = `rgba(96, 165, 250, ${shieldPulse * 0.15})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(0, shieldY, shieldR + 3, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
   ctx.restore();
