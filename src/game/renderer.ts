@@ -1208,17 +1208,26 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.save();
   ctx.translate(p.pos.x, p.pos.y);
 
-  // Hit flash
+  // Hit flash & shake
   const isHit = p.hitTimer > 0;
+  if (isHit) {
+    const shake = Math.sin(g.elapsed * 80) * 2;
+    ctx.translate(shake, 0);
+  }
+
   const skinColor = isHit ? '#fca5a5' : '#f0c4a0';
+  const skinHighlight = isHit ? '#fecaca' : '#fad5b5';
   const pantsColor = '#1a2f4a';
+  const pantsHighlight = '#2a4a6a';
   const shoeColor = '#1a1a1a';
+  const shoeHighlight = '#333';
 
   // Animation offsets
   let legOffset = 0;
   let armOffset = 0;
   let bodyBob = 0;
   let lean = 0;
+  let breathe = 0;
 
   if (p.anim === 'walk') {
     const cycle = Math.sin(p.animFrame * Math.PI / 2 + p.animTimer * 15);
@@ -1228,6 +1237,25 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
   } else if (p.anim === 'roll') {
     const rollProgress = 1 - p.dashTimer / 0.25;
     lean = rollProgress * Math.PI * 2;
+  } else {
+    // Idle breathing
+    breathe = Math.sin(g.elapsed * 2.5) * 0.8;
+    bodyBob = breathe;
+  }
+
+  // ─ Dust particles during roll ─
+  if (p.anim === 'roll') {
+    const dustCount = 3;
+    for (let i = 0; i < dustCount; i++) {
+      const dx = -10 - Math.random() * 15;
+      const dy = -2 + Math.random() * 6;
+      const alpha = 0.15 + Math.random() * 0.15;
+      const r = 2 + Math.random() * 3;
+      ctx.fillStyle = `rgba(180, 160, 130, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(dx, dy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   // Shadow on ground — multi-layer dynamic
@@ -1255,40 +1283,78 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.shadowOffsetX = 2;
   ctx.shadowOffsetY = 3;
 
-  // ─ Legs ─
-  ctx.lineWidth = 4.5;
+  // ─ Legs with knee joints ─
   ctx.lineCap = 'round';
-  // Back leg — pants gradient
-  const legGradBack = ctx.createLinearGradient(-3, bodyBottomY, -3, 1);
-  legGradBack.addColorStop(0, '#1a2f4a');
-  legGradBack.addColorStop(1, '#2a4a6a');
+  ctx.lineJoin = 'round';
+
+  // Back leg
+  const backKneeX = -3 - legOffset * 0.6;
+  const backKneeY = bodyBottomY + 8;
+  const backFootX = -2 - legOffset * 0.3;
+  const backFootY = -1;
+  // Thigh
+  ctx.lineWidth = 5;
+  const legGradBack = ctx.createLinearGradient(-3, bodyBottomY, backKneeX, backKneeY);
+  legGradBack.addColorStop(0, pantsColor);
+  legGradBack.addColorStop(1, pantsHighlight);
   ctx.strokeStyle = legGradBack;
   ctx.beginPath();
   ctx.moveTo(-2, bodyBottomY);
-  ctx.lineTo(-3 - legOffset, bodyBottomY + 10);
-  ctx.lineTo(-2 - legOffset * 0.5, -1);
+  ctx.lineTo(backKneeX, backKneeY);
   ctx.stroke();
-  // Shoe with shine
+  // Shin
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = pantsHighlight;
+  ctx.beginPath();
+  ctx.moveTo(backKneeX, backKneeY);
+  ctx.lineTo(backFootX, backFootY);
+  ctx.stroke();
+  // Shoe with sole
+  ctx.lineWidth = 4.5;
   ctx.strokeStyle = shoeColor;
   ctx.beginPath();
-  ctx.moveTo(-2 - legOffset * 0.5, -1);
-  ctx.lineTo(-1 - legOffset * 0.3, 1);
+  ctx.moveTo(backFootX, backFootY);
+  ctx.lineTo(backFootX + 2, 2);
+  ctx.stroke();
+  // Sole
+  ctx.strokeStyle = '#8B4513';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(backFootX - 1, 2);
+  ctx.lineTo(backFootX + 4, 2);
   ctx.stroke();
 
   // Front leg
-  const legGradFront = ctx.createLinearGradient(3, bodyBottomY, 3, 1);
-  legGradFront.addColorStop(0, '#1a2f4a');
-  legGradFront.addColorStop(1, '#2a4a6a');
+  const frontKneeX = 3 + legOffset * 0.6;
+  const frontKneeY = bodyBottomY + 8;
+  const frontFootX = 2 + legOffset * 0.3;
+  const frontFootY = -1;
+  ctx.lineWidth = 5;
+  const legGradFront = ctx.createLinearGradient(3, bodyBottomY, frontKneeX, frontKneeY);
+  legGradFront.addColorStop(0, pantsColor);
+  legGradFront.addColorStop(1, pantsHighlight);
   ctx.strokeStyle = legGradFront;
   ctx.beginPath();
   ctx.moveTo(2, bodyBottomY);
-  ctx.lineTo(3 + legOffset, bodyBottomY + 10);
-  ctx.lineTo(2 + legOffset * 0.5, -1);
+  ctx.lineTo(frontKneeX, frontKneeY);
   ctx.stroke();
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = pantsHighlight;
+  ctx.beginPath();
+  ctx.moveTo(frontKneeX, frontKneeY);
+  ctx.lineTo(frontFootX, frontFootY);
+  ctx.stroke();
+  ctx.lineWidth = 4.5;
   ctx.strokeStyle = shoeColor;
   ctx.beginPath();
-  ctx.moveTo(2 + legOffset * 0.5, -1);
-  ctx.lineTo(3 + legOffset * 0.3, 1);
+  ctx.moveTo(frontFootX, frontFootY);
+  ctx.lineTo(frontFootX + 2, 2);
+  ctx.stroke();
+  ctx.strokeStyle = '#8B4513';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(frontFootX - 1, 2);
+  ctx.lineTo(frontFootX + 4, 2);
   ctx.stroke();
 
   // ─ Torso with gradient ─
@@ -1297,7 +1363,8 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
     torsoGrad.addColorStop(0, '#ef4444');
     torsoGrad.addColorStop(1, '#dc2626');
   } else {
-    torsoGrad.addColorStop(0, '#4a90e2');
+    torsoGrad.addColorStop(0, '#5a9ae6');
+    torsoGrad.addColorStop(0.4, '#4a90e2');
     torsoGrad.addColorStop(1, '#2563eb');
   }
   ctx.fillStyle = torsoGrad;
@@ -1312,47 +1379,88 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.strokeStyle = isHit ? '#b91c1c' : '#1d4ed8';
   ctx.lineWidth = 0.8;
   ctx.stroke();
-  // Collar detail
-  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-  ctx.lineWidth = 0.6;
+
+  // Collar detail (V-neck)
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = 0.8;
   ctx.beginPath();
-  ctx.moveTo(-3, bodyTopY + 1);
-  ctx.lineTo(0, bodyTopY + 3);
-  ctx.lineTo(3, bodyTopY + 1);
+  ctx.moveTo(-4, bodyTopY + 1);
+  ctx.lineTo(0, bodyTopY + 4);
+  ctx.lineTo(4, bodyTopY + 1);
   ctx.stroke();
 
-  // ─ Arms ─
-  ctx.lineWidth = 3.5;
-  ctx.lineCap = 'round';
+  // Pockets
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = 0.6;
+  // Left pocket
+  ctx.strokeRect(-4, bodyTopY + 7, 3, 3);
+  // Right pocket
+  ctx.strokeRect(1, bodyTopY + 7, 3, 3);
+  // Pocket flaps
+  ctx.beginPath();
+  ctx.moveTo(-4, bodyTopY + 7);
+  ctx.lineTo(-1, bodyTopY + 7);
+  ctx.moveTo(1, bodyTopY + 7);
+  ctx.lineTo(4, bodyTopY + 7);
+  ctx.stroke();
+
+  // Belt
+  ctx.fillStyle = '#3a2a1a';
+  ctx.fillRect(-5.5, bodyBottomY - 2, 11, 2.5);
+  // Belt buckle
+  ctx.fillStyle = '#c0a050';
+  ctx.fillRect(-1, bodyBottomY - 1.8, 2, 2);
+
+  // ─ Arms with elbow joints ─
   const armColor = isHit ? '#ef4444' : '#3a7bd5';
-  // Back arm — sleeve
+  const armHighlight = isHit ? '#f87171' : '#5a9ae6';
+
+  // Back arm
+  const backElbowX = -8 + armOffset * 0.5;
+  const backElbowY = bodyTopY + 10;
+  const backHandX = -7 + armOffset * 0.3;
+  const backHandY = bodyTopY + 18;
+  // Sleeve (upper arm)
+  ctx.lineWidth = 4;
   ctx.strokeStyle = armColor;
   ctx.beginPath();
   ctx.moveTo(-5, bodyTopY + 3);
-  ctx.lineTo(-8 + armOffset, bodyTopY + 14);
+  ctx.lineTo(backElbowX, backElbowY);
   ctx.stroke();
-  // Back hand
-  ctx.strokeStyle = skinColor;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(-8 + armOffset, bodyTopY + 14);
-  ctx.lineTo(-7 + armOffset * 0.5, bodyTopY + 19);
-  ctx.stroke();
-
-  // Front arm — sleeve
+  // Forearm
   ctx.lineWidth = 3.5;
+  ctx.strokeStyle = armHighlight;
+  ctx.beginPath();
+  ctx.moveTo(backElbowX, backElbowY);
+  ctx.lineTo(backHandX, backHandY);
+  ctx.stroke();
+  // Hand
+  ctx.fillStyle = skinColor;
+  ctx.beginPath();
+  ctx.arc(backHandX, backHandY, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Front arm
+  const frontElbowX = 8 - armOffset * 0.5;
+  const frontElbowY = bodyTopY + 10;
+  const frontHandX = 7 - armOffset * 0.3;
+  const frontHandY = bodyTopY + 18;
+  ctx.lineWidth = 4;
   ctx.strokeStyle = armColor;
   ctx.beginPath();
   ctx.moveTo(5, bodyTopY + 3);
-  ctx.lineTo(8 - armOffset, bodyTopY + 14);
+  ctx.lineTo(frontElbowX, frontElbowY);
   ctx.stroke();
-  // Front hand
-  ctx.strokeStyle = skinColor;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 3.5;
+  ctx.strokeStyle = armHighlight;
   ctx.beginPath();
-  ctx.moveTo(8 - armOffset, bodyTopY + 14);
-  ctx.lineTo(7 - armOffset * 0.5, bodyTopY + 19);
+  ctx.moveTo(frontElbowX, frontElbowY);
+  ctx.lineTo(frontHandX, frontHandY);
   ctx.stroke();
+  ctx.fillStyle = skinColor;
+  ctx.beginPath();
+  ctx.arc(frontHandX, frontHandY, 2, 0, Math.PI * 2);
+  ctx.fill();
 
   // Reset shadow before head
   ctx.shadowColor = 'transparent';
@@ -1362,40 +1470,106 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
 
   // ─ Head with radial gradient ─
   const headGrad = ctx.createRadialGradient(0, headY - 1, 1, 0, headY, 6);
-  headGrad.addColorStop(0, isHit ? '#fecaca' : '#fad5b5');
+  headGrad.addColorStop(0, skinHighlight);
   headGrad.addColorStop(1, skinColor);
   ctx.fillStyle = headGrad;
   ctx.beginPath();
   ctx.arc(0, headY, 6, 0, Math.PI * 2);
   ctx.fill();
-  // Hair/helmet with gradient + shine
+
+  // Helmet with gradient + shine
   const helmetGrad = ctx.createLinearGradient(0, headY - 8, 0, headY);
-  helmetGrad.addColorStop(0, '#334155');
-  helmetGrad.addColorStop(0.5, '#1e293b');
+  helmetGrad.addColorStop(0, '#3d4f63');
+  helmetGrad.addColorStop(0.3, '#334155');
+  helmetGrad.addColorStop(0.6, '#1e293b');
   helmetGrad.addColorStop(1, '#0f172a');
   ctx.fillStyle = helmetGrad;
   ctx.beginPath();
-  ctx.arc(0, headY - 1.5, 6.5, Math.PI, 0);
+  ctx.arc(0, headY - 1.5, 6.8, Math.PI, 0);
   ctx.fill();
   // Helmet shine
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 1.2;
   ctx.beginPath();
   ctx.arc(-1.5, headY - 4, 3, Math.PI * 1.1, Math.PI * 1.7);
   ctx.stroke();
-  // Eye — white + pupil
+  // Helmet front logo line
+  ctx.strokeStyle = 'rgba(255,200,50,0.3)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(0, headY - 7);
+  ctx.lineTo(0, headY - 3);
+  ctx.stroke();
+  // Chin strap
+  ctx.strokeStyle = 'rgba(50,50,50,0.4)';
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(-5, headY - 2);
+  ctx.quadraticCurveTo(-4, headY + 4, -2, headY + 5);
+  ctx.stroke();
+
+  // ─ Eyes ─
+  // Left eye
   ctx.fillStyle = '#fff';
   ctx.beginPath();
-  ctx.ellipse(2.5, headY - 0.5, 1.8, 1.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(-2.2, headY - 0.5, 1.6, 1.4, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = '#111';
   ctx.beginPath();
-  ctx.arc(3, headY - 0.5, 0.9, 0, Math.PI * 2);
+  ctx.arc(-1.8, headY - 0.5, 0.8, 0, Math.PI * 2);
   ctx.fill();
+  // Right eye
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(2.5, headY - 0.5, 1.6, 1.4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(2.9, headY - 0.5, 0.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ─ Eyebrows (change with state) ─
+  ctx.strokeStyle = '#2a1a0a';
+  ctx.lineWidth = 1;
+  if (isHit) {
+    // Angry/pain eyebrows — angled inward
+    ctx.beginPath();
+    ctx.moveTo(-3.5, headY - 3);
+    ctx.lineTo(-1, headY - 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(1.5, headY - 2);
+    ctx.lineTo(4, headY - 3);
+    ctx.stroke();
+  } else {
+    // Normal eyebrows
+    ctx.beginPath();
+    ctx.moveTo(-3.5, headY - 2.5);
+    ctx.lineTo(-0.8, headY - 2.8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(1.5, headY - 2.8);
+    ctx.lineTo(4, headY - 2.5);
+    ctx.stroke();
+  }
+
+  // ─ Health bar above head ─
+  const hpRatio = p.health / p.maxHealth;
+  if (hpRatio < 1) {
+    const barW = 14;
+    const barH = 2;
+    const barX = -barW / 2;
+    const barY2 = headY - 12;
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(barX - 0.5, barY2 - 0.5, barW + 1, barH + 1);
+    const hpColor = hpRatio > 0.6 ? '#22c55e' : hpRatio > 0.3 ? '#eab308' : '#ef4444';
+    ctx.fillStyle = hpColor;
+    ctx.fillRect(barX, barY2, barW * hpRatio, barH);
+  }
 
   // Shield aura
   if (p.shielded) {
-    ctx.scale(scale, 1); // undo facing for symmetry
+    ctx.scale(scale, 1);
     ctx.beginPath();
     ctx.arc(0, -16, p.size + 12, 0, Math.PI * 2);
     ctx.strokeStyle = `rgba(96, 165, 250, ${0.4 + Math.sin(g.elapsed * 5) * 0.2})`;
