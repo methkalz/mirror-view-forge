@@ -2577,7 +2577,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   {
     const p = g.player;
     const groundY = g.height * 0.78;
-    if (p.vel.x !== 0 && Math.abs(p.pos.y - groundY) < 5) {
+    if (p.anim === 'walk' && Math.abs(p.pos.y - groundY) < 5) {
       for (let i = 0; i < 2; i++) {
         const dx = (Math.random() - 0.5) * 8;
         const dy = -Math.random() * 4;
