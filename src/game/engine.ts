@@ -233,13 +233,13 @@ function spawnHazard(g: GameData, type: HazardType) {
       h.warningDuration = 1.2;
       break;
     case 'cluster': {
-      // Horizontal flying missile
+      // Horizontal flying ballistic missile
       const fromRight = Math.random() > 0.5;
       const startX = fromRight ? g.width + 40 : -40;
-      const flyY = g.height * (0.15 + Math.random() * 0.1);
+      const flyY = g.height * (0.12 + Math.random() * 0.2);
       h.pos = { x: startX, y: flyY };
-      h.targetPos = { x: g.width / 2, y: flyY }; // not used for ground impact
-      const baseSpeed = 400 + g.difficulty * 10 + Math.random() * 100;
+      h.targetPos = { x: g.width / 2, y: flyY };
+      const baseSpeed = 300 + g.difficulty * 10 + Math.random() * 100;
       h.clusterVelX = fromRight ? -baseSpeed : baseSpeed;
       h.clusterStartSpeed = baseSpeed;
       h.clusterPhase = 'flying';
@@ -740,8 +740,8 @@ export function update(g: GameData, input: InputState, dt: number) {
       }
 
       if (h.clusterPhase === 'flying') {
-        // Decelerate gradually
-        const decel = (h.clusterStartSpeed || 400) * 0.4 * dt;
+        // Decelerate aggressively so it stops on screen
+        const decel = (h.clusterStartSpeed || 350) * 0.8 * dt;
         if (h.clusterVelX! > 0) {
           h.clusterVelX = Math.max(h.clusterVelX! - decel, (h.clusterStartSpeed || 400) * 0.25);
         } else {
@@ -750,7 +750,7 @@ export function update(g: GameData, input: InputState, dt: number) {
         h.pos.x += h.clusterVelX! * g.slowMoFactor * dt;
 
         // Check if slowed enough to open
-        if (Math.abs(h.clusterVelX!) <= (h.clusterStartSpeed || 400) * 0.28) {
+        if (Math.abs(h.clusterVelX!) <= (h.clusterStartSpeed || 350) * 0.4) {
           h.clusterPhase = 'opening';
           h.clusterTimer = 0.5;
         }
