@@ -917,12 +917,33 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.ellipse(-pu.size * 0.2, -pu.size * 0.3, pu.size * 0.5, pu.size * 0.3, -0.3, 0, Math.PI * 2);
     ctx.fill();
 
-    // Border ring
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(0, 0, pu.size, 0, Math.PI * 2);
-    ctx.stroke();
+    // Border ring — enhanced for magnet visibility
+    if (pu.type === 'magnet') {
+      // Extra contrast border for magnet
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, pu.size + 1, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, pu.size, 0, Math.PI * 2);
+      ctx.stroke();
+      // Magnetic field glow
+      const magnetPulse = 0.3 + Math.sin(g.elapsed * 5) * 0.2;
+      ctx.strokeStyle = `rgba(148,163,184,${magnetPulse})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, pu.size * 1.6, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, pu.size, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     // ── Draw icon (hand-drawn, no Unicode) ──
     ctx.save();
