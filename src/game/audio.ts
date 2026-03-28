@@ -3,6 +3,7 @@ let ambientNode: AudioBufferSourceNode | null = null;
 
 /* ── iOS Silent-Mode bypass ── */
 let iosUnmuted = false;
+let iosUnlockAudio: HTMLAudioElement | null = null;
 // Minimal valid MP3 (~150 bytes of silence)
 const SILENT_MP3 =
   'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYlPnOyAAAAAAD/+1DEAAAHAAGf9AAAIAAAMH/EAABEASBAAAACQAAAAAAAP//////////////4gIAhQAAABP/7UsQBgAeAAaX9IAAg8AA0v6QAAAAAAaQ0P/+sRBCP/X/rGBw5fWMOh0f///xjBRPqOv///5coKJ9R1////+XKCifUd';
@@ -11,12 +12,14 @@ function unmuteIOS() {
   if (iosUnmuted) return;
   iosUnmuted = true;
   try {
-    const audio = document.createElement('audio');
-    audio.setAttribute('x-webkit-airplay', 'deny');
-    audio.preload = 'auto';
-    audio.loop = true;
-    audio.src = SILENT_MP3;
-    audio.play().catch(() => {});
+    iosUnlockAudio = document.createElement('audio');
+    iosUnlockAudio.setAttribute('x-webkit-airplay', 'deny');
+    iosUnlockAudio.preload = 'auto';
+    iosUnlockAudio.playsInline = true;
+    iosUnlockAudio.loop = true;
+    iosUnlockAudio.volume = 0.001;
+    iosUnlockAudio.src = SILENT_MP3;
+    iosUnlockAudio.play().catch(() => {});
   } catch {}
 }
 
