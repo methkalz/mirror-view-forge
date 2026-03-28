@@ -239,7 +239,7 @@ function spawnHazard(g: GameData, type: HazardType) {
       const flyY = g.height * (0.12 + Math.random() * 0.2);
       h.pos = { x: startX, y: flyY };
       h.targetPos = { x: g.width / 2, y: flyY };
-      const baseSpeed = 300 + g.difficulty * 10 + Math.random() * 100;
+      const baseSpeed = 220 + g.difficulty * 8 + Math.random() * 80;
       h.clusterVelX = fromRight ? -baseSpeed : baseSpeed;
       h.clusterVelY = -(30 + Math.random() * 40); // slight upward arc initially
       h.clusterStartSpeed = baseSpeed;
@@ -297,14 +297,14 @@ function configureDroneByTier(d: Drone, tier: DroneTier, elapsed: number) {
   }
 
   if (tier === 'tracker') {
-    d.speed = 50 + Math.min(25, elapsed * 0.06);
+    d.speed = 70 + Math.min(30, elapsed * 0.07);
     d.size = 22;
     d.health = 2;
     d.maxHealth = 2;
-    d.aggroDelay = 1.2 + Math.random() * 1.2;
-    d.trackingAccuracy = 0.45 + Math.min(0.25, elapsed * 0.001);
+    d.aggroDelay = 1.0 + Math.random() * 1.0;
+    d.trackingAccuracy = 0.7 + Math.min(0.15, elapsed * 0.001);
     d.bombTimer = 0;
-    d.bombCooldown = 0;
+    d.bombCooldown = 3.5 + Math.random() * 1.5; // dive attack cooldown
     return;
   }
 
@@ -764,7 +764,7 @@ export function update(g: GameData, input: InputState, dt: number) {
         // Check if slowed enough to open
         if (Math.abs(h.clusterVelX!) <= startSpd * 0.4) {
           h.clusterPhase = 'opening';
-          h.clusterTimer = 0.5;
+          h.clusterTimer = 1.0;
         }
         // Off-screen removal
         if (h.pos.x < -100 || h.pos.x > g.width + 100 || h.pos.y > g.height + 50) {
@@ -812,11 +812,28 @@ export function update(g: GameData, input: InputState, dt: number) {
           sh.rotation = Math.random() * Math.PI * 2;
           sh.trailTimer = 0;
         }
-        // Quiet explosion and keep moving
+        // Explosion with metal debris
         h.clusterPhase = 'done';
         h.clusterTimer = 0.5;
-        addExplosion(g, h.pos, h.size * 1.5);
-        spawnParticles(g, h.pos, 5, '#888', 60, false);
+        addExplosion(g, h.pos, h.size * 1.8);
+        // Metal debris particles
+        const metalColors = ['#888', '#aaa', '#ccc', '#666', '#999', '#bbb'];
+        for (let mi = 0; mi < 18; mi++) {
+          const mc = metalColors[Math.floor(Math.random() * metalColors.length)];
+          const angle = Math.random() * Math.PI * 2;
+          const spd = 150 + Math.random() * 100;
+          const p = getFromPool<Particle>(g.particles, () => ({
+            active: false, pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
+            life: 0, maxLife: 0, color: '', size: 0, gravity: false
+          }), 200);
+          p.pos = { x: h.pos.x + (Math.random() - 0.5) * 10, y: h.pos.y + (Math.random() - 0.5) * 10 };
+          p.vel = { x: Math.cos(angle) * spd, y: Math.sin(angle) * spd - 50 };
+          p.life = 0.8 + Math.random() * 0.6;
+          p.maxLife = p.life;
+          p.color = mc;
+          p.size = 1.5 + Math.random() * 3;
+          p.gravity = true;
+        }
         sfxImpactLight();
       } else if (h.clusterPhase === 'done') {
         // Keep drifting at 40% speed until fade
@@ -1048,8 +1065,60 @@ export function update(g: GameData, input: InputState, dt: number) {
         // Gentle idle movement (patrol)
         d.pos.x += Math.sin(d.wobble * 1.5) * 20 * dt;
         d.pos.y += Math.cos(d.wobble * 1.2) * 8 * dt;
+      } else if (d.tier === 'tracker') {
+        // TRACKER: Orbital movement with dive attacks
+        d.bombTimer += dt;
+        const orbitRadius = 120;
+        const orbitSpeed = 2.0;
+        const isDiving = d.bombTimer >= d.bombCooldown;
+        
+        if (isDiving) {
+          // Dive attack — straight line toward player at double speed
+          const dx = p.pos.x - d.pos.x;
+          const dy = (p.pos.y - 20) - d.pos.y;
+          const dd = Math.sqrt(dx * dx + dy * dy);
+          if (dd > 0) {
+            d.vel.x = (dx / dd) * d.speed * 2.2;
+            d.vel.y = (dy / dd) * d.speed * 2.2;
+          }
+          d.pos.x += d.vel.x * g.slowMoFactor * dt;
+          d.pos.y += d.vel.y * g.slowMoFactor * dt;
+          
+          // Reset after passing player level or getting close
+          if (d.pos.y > p.pos.y - 10 || Math.sqrt((d.pos.x - p.pos.x) ** 2 + (d.pos.y - p.pos.y) ** 2) < 25) {
+            d.bombTimer = 0;
+            // Pull back up
+            d.vel.y = -d.speed * 0.8;
+          }
+        } else {
+          // Orbit around player
+          const orbitAngle = d.wobble * orbitSpeed;
+          const targetX = p.pos.x + Math.cos(orbitAngle) * orbitRadius;
+          const targetY = (p.pos.y - 80 - d.altitudeOffset * 0.5) + Math.sin(orbitAngle * 0.7) * 30;
+          const dx = targetX - d.pos.x;
+          const dy = targetY - d.pos.y;
+          const dd = Math.sqrt(dx * dx + dy * dy);
+          if (dd > 0) {
+            const steerForce = 150 * d.trackingAccuracy;
+            d.vel.x += (dx / dd) * steerForce * dt;
+            d.vel.y += (dy / dd) * steerForce * dt;
+          }
+          const vLen = Math.sqrt(d.vel.x * d.vel.x + d.vel.y * d.vel.y);
+          if (vLen > d.speed) {
+            d.vel.x = (d.vel.x / vLen) * d.speed;
+            d.vel.y = (d.vel.y / vLen) * d.speed;
+          }
+          d.pos.x += d.vel.x * g.slowMoFactor * dt;
+          d.pos.y += d.vel.y * g.slowMoFactor * dt;
+        }
+
+        // Keep in bounds
+        const minY = g.height * 0.08;
+        const maxY = g.height * 0.58;
+        d.pos.y = Math.max(minY, Math.min(maxY, d.pos.y));
+        d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
       } else {
-        // Active tracking with accuracy-based steering
+        // Active tracking for scout/bomber
         const dx = p.pos.x - d.pos.x;
         const targetY = d.tier === 'bomber' ? p.pos.y - 80 - d.altitudeOffset * 0.5 : p.pos.y - 30 - d.altitudeOffset * 0.5;
         const dy = targetY - d.pos.y;
