@@ -419,93 +419,160 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
         const alpha = Math.min(1, (hz.clusterTimer || 0) / 0.4);
         ctx.fillStyle = `rgba(100,90,80,${alpha * 0.4})`;
         ctx.beginPath();
-        ctx.arc(0, 0, hz.size * 2 * (1 - alpha * 0.3), 0, Math.PI * 2);
+        ctx.arc(0, 0, hz.size * 2.5 * (1 - alpha * 0.3), 0, Math.PI * 2);
         ctx.fill();
       } else {
         ctx.save();
         ctx.scale(dir, 1);
-        // Missile body — long horizontal
-        const bodyLen = hz.size * 2.5;
-        const bodyH = hz.size * 0.5;
+
+        // === Ballistic missile design ===
+        const bodyLen = hz.size * 3.5;
+        const bodyH = hz.size * 0.6;
+
+        // Main body — olive/grey military gradient
         const bodyGrad = ctx.createLinearGradient(0, -bodyH, 0, bodyH);
-        bodyGrad.addColorStop(0, '#8a8f98');
-        bodyGrad.addColorStop(0.4, '#5a5f65');
-        bodyGrad.addColorStop(1, '#3a3f45');
+        bodyGrad.addColorStop(0, '#6b7a5d');
+        bodyGrad.addColorStop(0.3, '#4a5640');
+        bodyGrad.addColorStop(0.7, '#3d4a35');
+        bodyGrad.addColorStop(1, '#2d3628');
         ctx.fillStyle = bodyGrad;
         ctx.beginPath();
-        ctx.moveTo(bodyLen, 0);
-        ctx.lineTo(bodyLen * 0.3, -bodyH);
-        ctx.lineTo(-bodyLen * 0.6, -bodyH * 0.8);
-        ctx.lineTo(-bodyLen * 0.7, 0);
-        ctx.lineTo(-bodyLen * 0.6, bodyH * 0.8);
-        ctx.lineTo(bodyLen * 0.3, bodyH);
+        ctx.moveTo(bodyLen * 0.4, 0);
+        ctx.quadraticCurveTo(bodyLen * 0.4, -bodyH, bodyLen * 0.2, -bodyH);
+        ctx.lineTo(-bodyLen * 0.55, -bodyH * 0.85);
+        ctx.lineTo(-bodyLen * 0.65, 0);
+        ctx.lineTo(-bodyLen * 0.55, bodyH * 0.85);
+        ctx.lineTo(bodyLen * 0.2, bodyH);
+        ctx.quadraticCurveTo(bodyLen * 0.4, bodyH, bodyLen * 0.4, 0);
         ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = '#9a9fa8';
-        ctx.lineWidth = 0.5;
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 1;
         ctx.stroke();
-        // Nose cone (red)
-        ctx.fillStyle = '#dc2626';
+
+        // Nose cone — long red warhead
+        const noseLen = bodyLen * 0.45;
+        const noseGrad = ctx.createLinearGradient(bodyLen * 0.4, 0, bodyLen * 0.4 + noseLen, 0);
+        noseGrad.addColorStop(0, '#991b1b');
+        noseGrad.addColorStop(0.6, '#b91c1c');
+        noseGrad.addColorStop(1, '#7f1d1d');
+        ctx.fillStyle = noseGrad;
         ctx.beginPath();
-        ctx.moveTo(bodyLen, 0);
-        ctx.lineTo(bodyLen * 0.65, -bodyH * 0.7);
-        ctx.lineTo(bodyLen * 0.65, bodyH * 0.7);
+        ctx.moveTo(bodyLen * 0.4 + noseLen, 0);
+        ctx.quadraticCurveTo(bodyLen * 0.4 + noseLen * 0.3, -bodyH * 0.15, bodyLen * 0.4, -bodyH * 0.7);
+        ctx.lineTo(bodyLen * 0.4, bodyH * 0.7);
+        ctx.quadraticCurveTo(bodyLen * 0.4 + noseLen * 0.3, bodyH * 0.15, bodyLen * 0.4 + noseLen, 0);
         ctx.closePath();
         ctx.fill();
-        // Fins
-        ctx.fillStyle = '#4b5563';
+        ctx.strokeStyle = '#450a0a';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+
+        // Warning stripes — yellow/black bands
+        for (let i = 0; i < 3; i++) {
+          const sx = bodyLen * (-0.1 + i * 0.15);
+          ctx.fillStyle = i % 2 === 0 ? 'rgba(234,179,8,0.4)' : 'rgba(0,0,0,0.3)';
+          ctx.fillRect(sx, -bodyH * 0.85, 2.5, bodyH * 1.7);
+        }
+
+        // 4 Fins — top, bottom, plus angled side fins
+        ctx.fillStyle = '#374131';
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 0.6;
+        // Top fin
         ctx.beginPath();
-        ctx.moveTo(-bodyLen * 0.5, -bodyH * 0.8);
-        ctx.lineTo(-bodyLen * 0.7, -bodyH * 2.2);
-        ctx.lineTo(-bodyLen * 0.35, -bodyH * 0.8);
+        ctx.moveTo(-bodyLen * 0.45, -bodyH * 0.85);
+        ctx.lineTo(-bodyLen * 0.65, -bodyH * 2.5);
+        ctx.lineTo(-bodyLen * 0.3, -bodyH * 0.85);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // Bottom fin
+        ctx.beginPath();
+        ctx.moveTo(-bodyLen * 0.45, bodyH * 0.85);
+        ctx.lineTo(-bodyLen * 0.65, bodyH * 2.5);
+        ctx.lineTo(-bodyLen * 0.3, bodyH * 0.85);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // Upper-side fin (smaller)
+        ctx.beginPath();
+        ctx.moveTo(-bodyLen * 0.5, -bodyH * 0.5);
+        ctx.lineTo(-bodyLen * 0.62, -bodyH * 1.6);
+        ctx.lineTo(-bodyLen * 0.38, -bodyH * 0.5);
         ctx.closePath();
         ctx.fill();
+        // Lower-side fin (smaller)
         ctx.beginPath();
-        ctx.moveTo(-bodyLen * 0.5, bodyH * 0.8);
-        ctx.lineTo(-bodyLen * 0.7, bodyH * 2.2);
-        ctx.lineTo(-bodyLen * 0.35, bodyH * 0.8);
+        ctx.moveTo(-bodyLen * 0.5, bodyH * 0.5);
+        ctx.lineTo(-bodyLen * 0.62, bodyH * 1.6);
+        ctx.lineTo(-bodyLen * 0.38, bodyH * 0.5);
         ctx.closePath();
         ctx.fill();
-        // Warning stripe
-        ctx.fillStyle = 'rgba(255,200,0,0.25)';
-        ctx.fillRect(-bodyLen * 0.1, -bodyH * 0.7, 3, bodyH * 1.4);
-        // Exhaust flame
+
+        // Exhaust nozzle
+        ctx.fillStyle = '#1e1e1e';
+        ctx.beginPath();
+        ctx.arc(-bodyLen * 0.65, 0, bodyH * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Exhaust flame (flying phase)
         if (phase === 'flying') {
-          ctx.fillStyle = '#f97316';
+          // Outer flame — orange
+          const flameLen = bodyLen * 0.6 + Math.random() * 12;
+          ctx.fillStyle = '#ea580c';
           ctx.beginPath();
-          ctx.moveTo(-bodyLen * 0.7, -bodyH * 0.4);
-          ctx.lineTo(-bodyLen * 1.2 - Math.random() * 8, 0);
-          ctx.lineTo(-bodyLen * 0.7, bodyH * 0.4);
+          ctx.moveTo(-bodyLen * 0.65, -bodyH * 0.4);
+          ctx.lineTo(-bodyLen * 0.65 - flameLen, 0);
+          ctx.lineTo(-bodyLen * 0.65, bodyH * 0.4);
           ctx.closePath();
           ctx.fill();
+          // Middle flame — yellow
           ctx.fillStyle = '#fbbf24';
           ctx.beginPath();
-          ctx.moveTo(-bodyLen * 0.7, -bodyH * 0.2);
-          ctx.lineTo(-bodyLen * 0.95 - Math.random() * 5, 0);
-          ctx.lineTo(-bodyLen * 0.7, bodyH * 0.2);
+          ctx.moveTo(-bodyLen * 0.65, -bodyH * 0.25);
+          ctx.lineTo(-bodyLen * 0.65 - flameLen * 0.65, 0);
+          ctx.lineTo(-bodyLen * 0.65, bodyH * 0.25);
+          ctx.closePath();
+          ctx.fill();
+          // Inner flame — white hot
+          ctx.fillStyle = '#fef3c7';
+          ctx.beginPath();
+          ctx.moveTo(-bodyLen * 0.65, -bodyH * 0.12);
+          ctx.lineTo(-bodyLen * 0.65 - flameLen * 0.3, 0);
+          ctx.lineTo(-bodyLen * 0.65, bodyH * 0.12);
           ctx.closePath();
           ctx.fill();
         }
-        // Opening phase: missile splitting
+
+        // Opening phase: longitudinal split with red glow
         if (phase === 'opening') {
           const openT = 1 - Math.max(0, (hz.clusterTimer || 0) / 0.5);
-          const gap = openT * bodyH * 2;
-          ctx.fillStyle = '#fbbf24';
-          ctx.globalAlpha = 0.5 + openT * 0.5;
+          const gap = openT * bodyH * 2.5;
+
+          // Internal red glow
+          ctx.fillStyle = `rgba(239,68,68,${0.3 + openT * 0.7})`;
           ctx.beginPath();
-          ctx.arc(0, 0, bodyH * 1.5 * (0.5 + openT * 0.5), 0, Math.PI * 2);
+          ctx.ellipse(0, 0, bodyLen * 0.3, bodyH * (1 + openT * 1.5), 0, 0, Math.PI * 2);
           ctx.fill();
-          ctx.globalAlpha = 1;
-          // Crack line
-          ctx.strokeStyle = '#fbbf24';
-          ctx.lineWidth = 1 + openT * 2;
+
+          // Crack lines along the body
+          ctx.strokeStyle = `rgba(251,191,36,${0.5 + openT * 0.5})`;
+          ctx.lineWidth = 1.5 + openT * 2.5;
           ctx.beginPath();
-          ctx.moveTo(-bodyLen * 0.3, -gap);
-          ctx.lineTo(bodyLen * 0.3, -gap);
-          ctx.moveTo(-bodyLen * 0.3, gap);
-          ctx.lineTo(bodyLen * 0.3, gap);
+          ctx.moveTo(-bodyLen * 0.4, -gap);
+          ctx.lineTo(bodyLen * 0.35, -gap * 0.8);
+          ctx.moveTo(-bodyLen * 0.4, gap);
+          ctx.lineTo(bodyLen * 0.35, gap * 0.8);
           ctx.stroke();
+
+          // Sparks
+          for (let i = 0; i < 3; i++) {
+            ctx.fillStyle = '#fbbf24';
+            const sparkX = (Math.random() - 0.5) * bodyLen * 0.6;
+            const sparkY = (Math.random() - 0.5) * gap * 2;
+            ctx.fillRect(sparkX, sparkY, 2, 2);
+          }
         }
+
         ctx.restore();
       }
     } else {
