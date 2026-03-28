@@ -2279,6 +2279,27 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillText(`⊕ ${p.ammo}${lvlText}`, w / 2, h - 14);
   }
 
+  // ─ Combo counter ─
+  if (g.comboCount > 1) {
+    const comboPulse = 1 + Math.sin(t * 8) * 0.08;
+    ctx.save();
+    ctx.translate(w / 2, 60);
+    ctx.scale(comboPulse, comboPulse);
+    const comboGrad = ctx.createLinearGradient(-30, -10, 30, 10);
+    comboGrad.addColorStop(0, '#fbbf24');
+    comboGrad.addColorStop(0.5, '#f59e0b');
+    comboGrad.addColorStop(1, '#d97706');
+    ctx.fillStyle = comboGrad;
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`×${g.comboMultiplier.toFixed(1)} COMBO`, 0, 0);
+    // Combo count below
+    ctx.fillStyle = 'rgba(251,191,36,0.6)';
+    ctx.font = '9px monospace';
+    ctx.fillText(`${g.comboCount} hits`, 0, 13);
+    ctx.restore();
+  }
+
   // Bullet level
   if (g.bulletLevel > 1) {
     ctx.fillStyle = g.bulletLevel >= 3 ? '#fbbf24' : '#22c55e';
@@ -2619,10 +2640,43 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillRect(0, 0, vw, vh);
   }
 
-  // Damage flash (full screen, no shake)
+  // Damage flash with chromatic aberration
   if (g.damageFlash > 0) {
     ctx.fillStyle = `rgba(200, 30, 30, ${g.damageFlash * 0.4})`;
     ctx.fillRect(0, 0, g.width, g.height);
+    // Chromatic aberration effect — shift edges
+    const abStr = Math.min(3, g.damageFlash * 6);
+    if (abStr > 0.5) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = abStr * 0.06;
+      // Red channel shift right
+      ctx.fillStyle = 'rgba(255,0,0,1)';
+      ctx.fillRect(abStr, 0, g.width, g.height);
+      // Blue channel shift left
+      ctx.fillStyle = 'rgba(0,0,255,1)';
+      ctx.fillRect(-abStr, 0, g.width, g.height);
+      ctx.restore();
+    }
+  }
+
+  // Death transition vignette
+  if (g.deathPhase === 'dying') {
+    const deathProgress = 1 - Math.max(0, g.deathTimer / 1.5);
+    // White vignette growing from edges
+    const vigAlpha = deathProgress * 0.6;
+    const cx = g.width / 2, cy = g.height / 2;
+    const r = Math.max(g.width, g.height) * 0.8;
+    const deathGrad = ctx.createRadialGradient(cx, cy, r * (1 - deathProgress * 0.5), cx, cy, r);
+    deathGrad.addColorStop(0, 'rgba(255,255,255,0)');
+    deathGrad.addColorStop(1, `rgba(255,255,255,${vigAlpha})`);
+    ctx.fillStyle = deathGrad;
+    ctx.fillRect(0, 0, g.width, g.height);
+    // Desaturation overlay
+    ctx.fillStyle = `rgba(128,128,128,${deathProgress * 0.3})`;
+    ctx.globalCompositeOperation = 'saturation';
+    ctx.fillRect(0, 0, g.width, g.height);
+    ctx.globalCompositeOperation = 'source-over';
   }
 
   // Slow-mo screen tint
