@@ -2151,15 +2151,35 @@ function renderFloatingTexts(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.globalAlpha = 1;
 }
 
-// ─── HUD ──────────────────────────────────────────────
+// ─── HUD — Polished ──────────────────────────────────
+let lastDisplayScore = 0;
+let scoreBounceTimer = 0;
+
+function drawHeartIcon(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  const s = size;
+  ctx.moveTo(x, y + s * 0.3);
+  ctx.bezierCurveTo(x, y - s * 0.1, x - s * 0.6, y - s * 0.4, x - s * 0.6, y);
+  ctx.bezierCurveTo(x - s * 0.6, y + s * 0.3, x, y + s * 0.65, x, y + s * 0.8);
+  ctx.bezierCurveTo(x, y + s * 0.65, x + s * 0.6, y + s * 0.3, x + s * 0.6, y);
+  ctx.bezierCurveTo(x + s * 0.6, y - s * 0.4, x, y - s * 0.1, x, y + s * 0.3);
+  ctx.fill();
+  ctx.restore();
+}
+
 function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
   const { width: w, height: h } = g;
   const p = g.player;
+  const t = Date.now() / 1000;
 
-  // Health bar with gradient
-  const barW = 140, barH = 12, barX = 14, barY = 14;
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-  roundRect(ctx, barX - 2, barY - 2, barW + 4, barH + 4, 3);
+  // ─ Health bar with shine sweep ─
+  const barW = 140, barH = 14, barX = 14, barY = 14;
+
+  // Background
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  roundRect(ctx, barX - 2, barY - 2, barW + 4, barH + 4, 5);
   ctx.fill();
 
   const healthRatio = p.health / p.maxHealth;
@@ -2175,38 +2195,69 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     hGrad.addColorStop(1, '#dc2626');
   }
   ctx.fillStyle = hGrad;
-  roundRect(ctx, barX, barY, barW * healthRatio, barH, 2);
+  roundRect(ctx, barX, barY, barW * healthRatio, barH, 4);
   ctx.fill();
 
-  // Health icon
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 9px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText(`♥ ${Math.ceil(p.health)}`, barX + 4, barY + barH - 2);
+  // Shine sweep effect
+  const sweepPos = ((t * 0.5) % 2) - 0.5; // -0.5 to 1.5
+  if (sweepPos > 0 && sweepPos < 1 && healthRatio > 0.1) {
+    const sweepX = barX + barW * healthRatio * sweepPos;
+    const shineGrad = ctx.createLinearGradient(sweepX - 15, 0, sweepX + 15, 0);
+    shineGrad.addColorStop(0, 'rgba(255,255,255,0)');
+    shineGrad.addColorStop(0.5, 'rgba(255,255,255,0.2)');
+    shineGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = shineGrad;
+    roundRect(ctx, barX, barY, barW * healthRatio, barH, 4);
+    ctx.fill();
+  }
 
-  // Score (right side)
+  // Heart icon
+  drawHeartIcon(ctx, barX - 1, barY + barH / 2 - 3, 6,
+    healthRatio > 0.5 ? '#22c55e' : healthRatio > 0.25 ? '#eab308' : '#ef4444');
+
+  // Health text
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.font = 'bold 8px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(`${Math.ceil(p.health)}`, barX + 8, barY + barH - 3);
+
+  // ─ Score with bounce ─
+  if (g.score !== lastDisplayScore) {
+    scoreBounceTimer = 0.3;
+    lastDisplayScore = g.score;
+  }
+  if (scoreBounceTimer > 0) scoreBounceTimer -= 0.016;
+  const scoreBounce = scoreBounceTimer > 0 ? 1 + Math.sin(scoreBounceTimer * Math.PI / 0.3) * 0.15 : 1;
+
+  ctx.save();
+  ctx.translate(w - 14, 28);
+  ctx.scale(scoreBounce, scoreBounce);
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 18px monospace';
   ctx.textAlign = 'right';
-  ctx.fillText(`${g.score}`, w - 14, 28);
+  ctx.fillText(`${g.score}`, 0, 0);
+  ctx.restore();
+
   ctx.font = '10px monospace';
-  ctx.fillStyle = '#888';
+  ctx.fillStyle = '#666';
+  ctx.textAlign = 'right';
   ctx.fillText(`HI: ${g.highScore}`, w - 14, 42);
 
-  // Wave
+  // ─ Wave ─
   ctx.fillStyle = '#fbbf24';
   ctx.font = 'bold 10px monospace';
   ctx.textAlign = 'left';
-  // Wave progress bar
   const waveNum = Math.floor(g.difficulty);
   const waveProgress = g.difficulty - waveNum;
-  ctx.fillText(`WAVE ${waveNum}`, 14, 42);
-  ctx.fillStyle = 'rgba(251, 191, 36, 0.2)';
-  ctx.fillRect(14, 46, 60, 3);
+  ctx.fillText(`WAVE ${waveNum}`, 14, 44);
+  ctx.fillStyle = 'rgba(251, 191, 36, 0.15)';
+  roundRect(ctx, 14, 48, 60, 3, 1.5);
+  ctx.fill();
   ctx.fillStyle = '#fbbf24';
-  ctx.fillRect(14, 46, 60 * waveProgress, 3);
+  roundRect(ctx, 14, 48, 60 * waveProgress, 3, 1.5);
+  ctx.fill();
 
-  // Dash indicator
+  // ─ Dash indicator ─
   if (p.dashCooldown > 0) {
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
     ctx.font = '10px monospace';
@@ -2219,63 +2270,68 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillText('ROLL ●', w - 14, h - 14);
   }
 
-  // Shield indicator moved to active effects section below
-
-  // Ammo indicator with bullet level
+  // ─ Ammo indicator (military green) ─
   if (p.ammo > 0) {
-    ctx.fillStyle = '#a855f7';
+    ctx.fillStyle = '#4a5c2a';
     ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'center';
     const lvlText = g.bulletLevel > 1 ? ` ×${g.bulletLevel}` : '';
     ctx.fillText(`⊕ ${p.ammo}${lvlText}`, w / 2, h - 14);
   }
 
-  // Bullet level indicator
+  // Bullet level
   if (g.bulletLevel > 1) {
     ctx.fillStyle = g.bulletLevel >= 3 ? '#fbbf24' : '#22c55e';
     ctx.font = '9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`SHOT LV.${g.bulletLevel}`, 14, 62);
+    ctx.fillText(`SHOT LV.${g.bulletLevel}`, 14, 64);
   }
 
-  // Active effect indicators (left side, below wave)
-  let effectY = 72;
+  // ─ Active effects with circular progress ─
+  let effectY = 76;
+  const drawCircularProgress = (cx: number, cy: number, r: number, ratio: number, color: string) => {
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio);
+    ctx.stroke();
+  };
+
   if (g.slowMoTimer > 0) {
     const blink = g.slowMoTimer < 1.5 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
     ctx.globalAlpha = blink;
+    drawCircularProgress(20, effectY - 2, 5, g.slowMoTimer / 5, '#06b6d4');
     ctx.fillStyle = '#06b6d4';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`⏳ SLOW ${g.slowMoTimer.toFixed(1)}s`, 14, effectY);
-    // Progress bar
-    ctx.fillStyle = 'rgba(6, 182, 212, 0.2)';
-    ctx.fillRect(14, effectY + 2, 60, 3);
-    ctx.fillStyle = '#06b6d4';
-    ctx.fillRect(14, effectY + 2, 60 * (g.slowMoTimer / 5), 3);
+    ctx.fillText(`SLOW ${g.slowMoTimer.toFixed(1)}s`, 30, effectY + 2);
     ctx.globalAlpha = 1;
     effectY += 18;
   }
   if (g.magnetFlashTimer > 0) {
     const blink = g.magnetFlashTimer < 0.5 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
     ctx.globalAlpha = blink;
-    ctx.fillStyle = '#e2e8f0';
+    drawCircularProgress(20, effectY - 2, 5, 1, '#94a3b8');
+    ctx.fillStyle = '#94a3b8';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`🧲 MAGNET`, 14, effectY);
+    ctx.fillText('MAGNET', 30, effectY + 2);
     ctx.globalAlpha = 1;
     effectY += 18;
   }
   if (p.shielded) {
     const blink = p.shieldTimer < 2 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
     ctx.globalAlpha = blink;
+    drawCircularProgress(20, effectY - 2, 5, p.shieldTimer / 8, '#60a5fa');
     ctx.fillStyle = '#60a5fa';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`◆ SHIELD ${p.shieldTimer.toFixed(1)}s`, 14, effectY);
-    ctx.fillStyle = 'rgba(96, 165, 250, 0.2)';
-    ctx.fillRect(14, effectY + 2, 60, 3);
-    ctx.fillStyle = '#60a5fa';
-    ctx.fillRect(14, effectY + 2, 60 * (p.shieldTimer / 8), 3);
+    ctx.fillText(`SHIELD ${p.shieldTimer.toFixed(1)}s`, 30, effectY + 2);
     ctx.globalAlpha = 1;
   }
 }
@@ -2506,6 +2562,34 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderDrones(ctx, g);
   renderBoss(ctx, g);
   renderBullets(ctx, g);
+  // Player shadow on ground
+  {
+    const p = g.player;
+    const groundY = g.height * 0.78;
+    const shadowDist = groundY - p.pos.y;
+    const shadowScale = Math.max(0.3, 1 - shadowDist * 0.003);
+    ctx.fillStyle = `rgba(0,0,0,${0.15 * shadowScale})`;
+    ctx.beginPath();
+    ctx.ellipse(p.pos.x, groundY, 12 * shadowScale, 3 * shadowScale, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Walking dust particles
+  {
+    const p = g.player;
+    const groundY = g.height * 0.78;
+    if (p.anim === 'walk' && Math.abs(p.pos.y - groundY) < 5) {
+      for (let i = 0; i < 2; i++) {
+        const dx = (Math.random() - 0.5) * 8;
+        const dy = -Math.random() * 4;
+        const sz = 1 + Math.random() * 1.5;
+        const alpha = 0.1 + Math.random() * 0.1;
+        ctx.fillStyle = `rgba(160, 140, 120, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(p.pos.x + dx, groundY + dy, sz, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
   renderPlayerGlow(ctx, g);
   renderPlayer(ctx, g);
   renderParticles(ctx, g);
@@ -2517,15 +2601,20 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   // Lightning flash
   renderLightning(ctx, g);
 
-  // Cinematic vignette overlay
+  // Dynamic vignette — intensifies with low health (red)
   {
     const { width: vw, height: vh } = g;
     const cx = vw / 2, cy = vh / 2;
     const r = Math.max(vw, vh) * 0.7;
+    const hpRatio = g.player.health / g.player.maxHealth;
+    const dangerIntensity = Math.max(0, 1 - hpRatio * 2); // 0 above 50%, up to 1 at 0%
+    const baseAlpha = 0.45 + dangerIntensity * 0.25;
+    const redTint = dangerIntensity * 0.3;
+
     const vigGrad = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r);
     vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
-    vigGrad.addColorStop(0.7, 'rgba(0,0,0,0.1)');
-    vigGrad.addColorStop(1, 'rgba(0,0,0,0.45)');
+    vigGrad.addColorStop(0.6, `rgba(${Math.round(redTint * 200)},0,0,0.08)`);
+    vigGrad.addColorStop(1, `rgba(${Math.round(redTint * 200)},0,0,${baseAlpha})`);
     ctx.fillStyle = vigGrad;
     ctx.fillRect(0, 0, vw, vh);
   }
@@ -2841,132 +2930,302 @@ function renderWaveWarnings(ctx: CanvasRenderingContext2D, g: GameData) {
   }
 }
 
-// ─── Start Screen ─────────────────────────────────────
+// ─── Start Screen — Cinematic ─────────────────────────
 export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: number, highScore: number) {
-  // Dark scene
+  const t = Date.now() / 1000;
+
+  // Dark gradient background
   const bg = ctx.createLinearGradient(0, 0, 0, h);
-  bg.addColorStop(0, '#0a0a1a');
-  bg.addColorStop(0.5, '#1a0a2e');
-  bg.addColorStop(1, '#0a0a0a');
+  bg.addColorStop(0, '#050510');
+  bg.addColorStop(0.4, '#0a0a1a');
+  bg.addColorStop(0.7, '#1a0808');
+  bg.addColorStop(1, '#050505');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
 
-  // Animated falling missiles in background
-  const t = Date.now() / 1000;
-  for (let i = 0; i < 8; i++) {
-    const mx = (w * 0.1) + (w * 0.8 / 7) * i;
-    const my = ((t * 40 + i * 100) % (h + 40)) - 20;
-    ctx.save();
-    ctx.translate(mx, my);
-    ctx.rotate(Math.PI * 0.75);
-    ctx.fillStyle = 'rgba(100, 100, 120, 0.15)';
-    ctx.fillRect(-3, -10, 6, 20);
-    ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
-    ctx.fillRect(-2, 8, 4, 8);
-    ctx.restore();
+  // Floating dust particles
+  for (let i = 0; i < 30; i++) {
+    const px = ((Math.sin(i * 73.1 + t * 0.15) * 0.5 + 0.5) * w * 1.2) - w * 0.1;
+    const py = ((Math.cos(i * 47.3 + t * 0.1) * 0.5 + 0.5) * h);
+    const sz = 1 + (i % 3) * 0.5;
+    const alpha = 0.05 + Math.sin(t * 0.5 + i * 1.7) * 0.03;
+    ctx.fillStyle = `rgba(200, 180, 150, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(px, py, sz, 0, Math.PI * 2);
+    ctx.fill();
   }
 
-  // Title
-  ctx.fillStyle = '#ef4444';
-  ctx.font = 'bold 38px monospace';
-  ctx.textAlign = 'center';
-  ctx.shadowColor = '#ef4444';
-  ctx.shadowBlur = 20;
-  ctx.fillText('SKYFALL', w / 2, h * 0.25);
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 20px monospace';
-  ctx.fillText('SURVIVAL', w / 2, h * 0.31);
+  // Red glow at bottom
+  const bottomGlow = ctx.createRadialGradient(w / 2, h, 0, w / 2, h, h * 0.5);
+  bottomGlow.addColorStop(0, 'rgba(180, 30, 20, 0.12)');
+  bottomGlow.addColorStop(1, 'rgba(180, 30, 20, 0)');
+  ctx.fillStyle = bottomGlow;
+  ctx.fillRect(0, h * 0.5, w, h * 0.5);
 
-  // Divider
-  ctx.strokeStyle = 'rgba(239, 68, 68, 0.3)';
-  ctx.lineWidth = 1;
+  // ─ SKYFALL metallic title ─
+  ctx.save();
+  ctx.textAlign = 'center';
+
+  // Embossed shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.font = 'bold 44px monospace';
+  ctx.fillText('SKYFALL', w / 2 + 2, h * 0.24 + 2);
+
+  // Metallic gradient text
+  const titleGrad = ctx.createLinearGradient(w / 2 - 100, h * 0.18, w / 2 + 100, h * 0.28);
+  titleGrad.addColorStop(0, '#c0c0c0');
+  titleGrad.addColorStop(0.3, '#f0e6d0');
+  titleGrad.addColorStop(0.5, '#ffd700');
+  titleGrad.addColorStop(0.7, '#f0e6d0');
+  titleGrad.addColorStop(1, '#c0c0c0');
+  ctx.fillStyle = titleGrad;
+  ctx.shadowColor = 'rgba(255,200,50,0.3)';
+  ctx.shadowBlur = 25;
+  ctx.fillText('SKYFALL', w / 2, h * 0.24);
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
+
+  // SURVIVAL with red pulse
+  const survPulse = 0.7 + Math.sin(t * 2.5) * 0.3;
+  const survGrad = ctx.createLinearGradient(w / 2 - 60, 0, w / 2 + 60, 0);
+  survGrad.addColorStop(0, `rgba(200, 40, 40, ${survPulse})`);
+  survGrad.addColorStop(0.5, `rgba(239, 68, 68, ${survPulse})`);
+  survGrad.addColorStop(1, `rgba(200, 40, 40, ${survPulse})`);
+  ctx.fillStyle = survGrad;
+  ctx.font = 'bold 18px monospace';
+  ctx.fillText('SURVIVAL', w / 2, h * 0.30);
+  ctx.restore();
+
+  // Animated glowing divider
+  const divPulse = 0.3 + Math.sin(t * 3) * 0.2;
+  const divGrad = ctx.createLinearGradient(w * 0.2, 0, w * 0.8, 0);
+  divGrad.addColorStop(0, 'rgba(239, 68, 68, 0)');
+  divGrad.addColorStop(0.5, `rgba(239, 68, 68, ${divPulse})`);
+  divGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+  ctx.strokeStyle = divGrad;
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(w * 0.3, h * 0.36);
-  ctx.lineTo(w * 0.7, h * 0.36);
+  ctx.moveTo(w * 0.15, h * 0.35);
+  ctx.lineTo(w * 0.85, h * 0.35);
   ctx.stroke();
 
   // Instructions
-  ctx.fillStyle = '#888';
-  ctx.font = '12px monospace';
+  ctx.fillStyle = 'rgba(180,180,180,0.6)';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'center';
   const isMobile = 'ontouchstart' in window;
   if (isMobile) {
-    ctx.fillText('Left side: Move', w / 2, h * 0.46);
-    ctx.fillText('Right side: Dodge roll', w / 2, h * 0.51);
+    ctx.fillText('Left side: Move  |  Right side: Dodge', w / 2, h * 0.42);
   } else {
-    ctx.fillText('A/D or ←/→: Move', w / 2, h * 0.46);
-    ctx.fillText('Space: Dodge Roll', w / 2, h * 0.51);
+    ctx.fillText('A/D: Move  |  Space: Dodge Roll', w / 2, h * 0.42);
   }
 
-  // Power-up legend
+  // Power-up legend with colored dots
+  const puLegend = [
+    { icon: '♥', label: 'Medkit', color: '#22c55e' },
+    { icon: '◆', label: 'Shield', color: '#60a5fa' },
+    { icon: '⚡', label: 'Intercept', color: '#f97316' },
+    { icon: '⏳', label: 'Slow-Mo', color: '#06b6d4' },
+    { icon: '🧲', label: 'Magnet', color: '#94a3b8' },
+    { icon: '⊕', label: 'Ammo', color: '#4a5c2a' },
+  ];
+  const cols = 3;
+  const colW = w * 0.7 / cols;
+  const startX = w * 0.15 + colW / 2;
   ctx.font = '10px monospace';
-  ctx.fillStyle = '#22c55e';
-  ctx.fillText('♥ Medkit', w / 2 - 90, h * 0.58);
-  ctx.fillStyle = '#60a5fa';
-  ctx.fillText('◆ Shield', w / 2, h * 0.58);
-  ctx.fillStyle = '#f97316';
-  ctx.fillText('⚡ Intercept', w / 2 + 90, h * 0.58);
-  ctx.fillStyle = '#06b6d4';
-  ctx.fillText('⏳ Slow-Mo', w / 2 - 60, h * 0.63);
-  ctx.fillStyle = '#ef4444';
-  ctx.fillText('🧲 Magnet', w / 2 + 60, h * 0.63);
+  puLegend.forEach((pu, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const px = startX + col * colW;
+    const py = h * 0.49 + row * 18;
+    // Colored dot
+    ctx.fillStyle = pu.color;
+    ctx.beginPath();
+    ctx.arc(px - 30, py - 3, 3, 0, Math.PI * 2);
+    ctx.fill();
+    // Label
+    ctx.fillStyle = 'rgba(200,200,200,0.7)';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${pu.icon} ${pu.label}`, px - 22, py);
+  });
+  ctx.textAlign = 'center';
 
   if (highScore > 0) {
     ctx.fillStyle = '#fbbf24';
-    ctx.font = '13px monospace';
-    ctx.fillText(`Best: ${highScore}`, w / 2, h * 0.70);
+    ctx.font = '12px monospace';
+    ctx.fillText(`Best: ${highScore}`, w / 2, h * 0.62);
   }
 
-  ctx.fillStyle = `rgba(255, 255, 255, ${0.4 + Math.sin(t * 3) * 0.3})`;
-  ctx.font = 'bold 16px monospace';
-  ctx.fillText(isMobile ? 'TAP TO START' : 'PRESS ENTER', w / 2, h * 0.82);
+  // Version
+  ctx.fillStyle = 'rgba(100,100,100,0.4)';
+  ctx.font = '9px monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('v1.0', w - 12, h - 10);
+  ctx.textAlign = 'center';
+
+  // ─ TAP TO START button ─
+  const btnW = 180, btnH = 38;
+  const btnX = w / 2 - btnW / 2, btnY = h * 0.78 - btnH / 2;
+  const btnPulse = 0.5 + Math.sin(t * 3) * 0.3;
+
+  // Button glow
+  ctx.shadowColor = `rgba(251, 191, 36, ${btnPulse * 0.4})`;
+  ctx.shadowBlur = 20;
+  // Button border
+  const btnBorderGrad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY + btnH);
+  btnBorderGrad.addColorStop(0, `rgba(251, 191, 36, ${0.3 + btnPulse * 0.2})`);
+  btnBorderGrad.addColorStop(0.5, `rgba(251, 191, 36, ${0.5 + btnPulse * 0.3})`);
+  btnBorderGrad.addColorStop(1, `rgba(251, 191, 36, ${0.3 + btnPulse * 0.2})`);
+  ctx.strokeStyle = btnBorderGrad;
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, btnX, btnY, btnW, btnH, 8);
+  ctx.stroke();
+  // Button fill
+  ctx.fillStyle = 'rgba(251, 191, 36, 0.06)';
+  roundRect(ctx, btnX, btnY, btnW, btnH, 8);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
+
+  // Button text
+  ctx.fillStyle = `rgba(251, 191, 36, ${0.7 + btnPulse * 0.3})`;
+  ctx.font = 'bold 15px monospace';
+  ctx.fillText(isMobile ? 'TAP TO START' : 'PRESS ENTER', w / 2, h * 0.78 + 5);
 }
 
-// ─── Game Over ────────────────────────────────────────
+// ─── Game Over — Cinematic ────────────────────────────
+// Track when game over started for animations
+let gameOverStartTime = 0;
+
 export function renderGameOver(ctx: CanvasRenderingContext2D, w: number, h: number, score: number, highScore: number, stats?: GameData['stats']) {
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+  const now = Date.now() / 1000;
+  if (gameOverStartTime === 0 || now - gameOverStartTime > 30) gameOverStartTime = now;
+  const elapsed = now - gameOverStartTime;
+
+  // Dark overlay with fade-in
+  const overlayAlpha = Math.min(0.8, elapsed * 2);
+  ctx.fillStyle = `rgba(0, 0, 0, ${overlayAlpha})`;
   ctx.fillRect(0, 0, w, h);
 
-  ctx.fillStyle = '#ef4444';
-  ctx.font = 'bold 30px monospace';
+  // Only show content after initial fade
+  if (elapsed < 0.2) return;
+
   ctx.textAlign = 'center';
+
+  // GAME OVER title — fade in at 0.2s
+  const titleAlpha = Math.min(1, (elapsed - 0.2) * 3);
+  ctx.save();
+  ctx.globalAlpha = titleAlpha;
+  ctx.fillStyle = '#ef4444';
+  ctx.font = 'bold 32px monospace';
   ctx.shadowColor = '#ef4444';
-  ctx.shadowBlur = 15;
-  ctx.fillText('GAME OVER', w / 2, h * 0.28);
+  ctx.shadowBlur = 20;
+  ctx.fillText('GAME OVER', w / 2, h * 0.22);
   ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
+  ctx.restore();
 
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 22px monospace';
-  ctx.fillText(`Score: ${score}`, w / 2, h * 0.40);
+  // Score with count-up animation — starts at 0.5s
+  if (elapsed > 0.5) {
+    const scoreAlpha = Math.min(1, (elapsed - 0.5) * 3);
+    const countUpDuration = 1.5;
+    const countProgress = Math.min(1, (elapsed - 0.5) / countUpDuration);
+    const eased = 1 - Math.pow(1 - countProgress, 3); // ease-out cubic
+    const displayScore = Math.floor(score * eased);
 
-  if (score >= highScore && highScore > 0) {
-    ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 14px monospace';
-    ctx.fillText('★ NEW HIGH SCORE ★', w / 2, h * 0.47);
-  } else {
-    ctx.fillStyle = '#888';
-    ctx.font = '12px monospace';
-    ctx.fillText(`Best: ${highScore}`, w / 2, h * 0.47);
+    ctx.save();
+    ctx.globalAlpha = scoreAlpha;
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 24px monospace';
+    ctx.fillText(`${displayScore}`, w / 2, h * 0.34);
+    ctx.fillStyle = 'rgba(150,150,150,0.6)';
+    ctx.font = '10px monospace';
+    ctx.fillText('SCORE', w / 2, h * 0.30);
+    ctx.restore();
   }
 
-  // Stats
-  if (stats) {
-    ctx.fillStyle = '#aaa';
-    ctx.font = '11px monospace';
-    const statY = h * 0.55;
-    ctx.fillText(`Time: ${Math.floor(stats.timeSurvived)}s`, w / 2, statY);
-    ctx.fillText(`Close Calls: ${stats.closeCalls}`, w / 2, statY + 18);
-    ctx.fillText(`Power-ups: ${stats.powerUpsCollected}`, w / 2, statY + 36);
-    ctx.fillText(`Drones: ${stats.dronesDestroyed}`, w / 2, statY + 54);
-    if (stats.bossesDefeated > 0) {
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillText(`Bosses: ${stats.bossesDefeated}`, w / 2, statY + 72);
+  // High score — at 0.8s
+  if (elapsed > 0.8) {
+    const hsAlpha = Math.min(1, (elapsed - 0.8) * 3);
+    ctx.save();
+    ctx.globalAlpha = hsAlpha;
+    if (score >= highScore && highScore > 0) {
+      // Golden sparkle effect for new high score
+      const sparkle = 0.7 + Math.sin(now * 6) * 0.3;
+      ctx.fillStyle = `rgba(251, 191, 36, ${sparkle})`;
+      ctx.font = 'bold 14px monospace';
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 12;
+      ctx.fillText('★ NEW HIGH SCORE ★', w / 2, h * 0.40);
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = 'transparent';
+    } else {
+      ctx.fillStyle = '#666';
+      ctx.font = '11px monospace';
+      ctx.fillText(`Best: ${highScore}`, w / 2, h * 0.40);
     }
+    ctx.restore();
   }
 
-  const t = Date.now() / 1000;
-  ctx.fillStyle = `rgba(255, 255, 255, ${0.4 + Math.sin(t * 3) * 0.3})`;
-  ctx.font = 'bold 14px monospace';
-  const isMobile = 'ontouchstart' in window;
-  ctx.fillText(isMobile ? 'TAP TO RESTART' : 'PRESS ENTER', w / 2, h * 0.85);
+  // Stat cards — staggered from 1.2s
+  if (stats && elapsed > 1.2) {
+    const cardW = Math.min(200, w - 40);
+    const cardX = (w - cardW) / 2;
+    const statItems = [
+      { icon: '⏱', label: 'Time', value: `${Math.floor(stats.timeSurvived)}s`, color: '#06b6d4' },
+      { icon: '✕', label: 'Close Calls', value: `${stats.closeCalls}`, color: '#f97316' },
+      { icon: '📦', label: 'Power-ups', value: `${stats.powerUpsCollected}`, color: '#22c55e' },
+      { icon: '💀', label: 'Drones', value: `${stats.dronesDestroyed}`, color: '#ef4444' },
+    ];
+    if (stats.bossesDefeated > 0) {
+      statItems.push({ icon: '⚔', label: 'Bosses', value: `${stats.bossesDefeated}`, color: '#fbbf24' });
+    }
+
+    statItems.forEach((st, i) => {
+      const delay = 1.2 + i * 0.2;
+      if (elapsed < delay) return;
+      const cardAlpha = Math.min(1, (elapsed - delay) * 3);
+      const slideX = (1 - Math.min(1, (elapsed - delay) * 4)) * 30;
+
+      ctx.save();
+      ctx.globalAlpha = cardAlpha;
+
+      const cy = h * 0.47 + i * 32;
+
+      // Card background
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      roundRect(ctx, cardX - slideX, cy - 10, cardW, 26, 4);
+      ctx.fill();
+      // Left accent
+      ctx.fillStyle = st.color;
+      ctx.fillRect(cardX - slideX, cy - 10, 3, 26);
+
+      // Icon + label
+      ctx.fillStyle = st.color;
+      ctx.font = '11px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${st.icon} ${st.label}`, cardX + 10 - slideX, cy + 5);
+      // Value
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(st.value, cardX + cardW - 10 - slideX, cy + 5);
+
+      ctx.restore();
+    });
+  }
+
+  // Restart prompt — at 2.5s
+  if (elapsed > 2.5) {
+    const restartAlpha = Math.min(1, (elapsed - 2.5) * 2);
+    const pulse = 0.5 + Math.sin(now * 3) * 0.3;
+    ctx.save();
+    ctx.globalAlpha = restartAlpha * pulse;
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 13px monospace';
+    ctx.textAlign = 'center';
+    const isMobile = 'ontouchstart' in window;
+    ctx.fillText(isMobile ? 'TAP TO RESTART' : 'PRESS ENTER', w / 2, h * 0.88);
+    ctx.restore();
+  }
 }
