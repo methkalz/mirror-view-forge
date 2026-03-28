@@ -2228,23 +2228,85 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillRect(0, 0, g.width, g.height);
   }
 
-  // Magnet attraction lines
+  // Magnet attraction visual effects
   if (g.magnetTimer > 0) {
     const p = g.player;
-    ctx.strokeStyle = 'rgba(239, 68, 68, 0.2)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 6]);
+    const px = p.pos.x - g.camera.x + g.screenShake.x;
+    const py = p.pos.y + g.screenShake.y;
+
+    // Magnetic field aura around player
+    const auraPhase = g.elapsed * 3;
+    const auraAlpha = 0.08 + Math.sin(auraPhase) * 0.04;
+    const auraR = 40 + Math.sin(auraPhase * 1.3) * 10;
+    const auraGrad = ctx.createRadialGradient(px, py - 15, 5, px, py - 15, auraR);
+    auraGrad.addColorStop(0, `rgba(148,163,184,${auraAlpha * 2})`);
+    auraGrad.addColorStop(0.5, `rgba(100,116,139,${auraAlpha})`);
+    auraGrad.addColorStop(1, 'rgba(100,116,139,0)');
+    ctx.fillStyle = auraGrad;
+    ctx.beginPath();
+    ctx.arc(px, py - 15, auraR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rotating magnetic field rings
+    ctx.save();
+    ctx.translate(px, py - 15);
+    for (let ring = 0; ring < 2; ring++) {
+      const ringR = 25 + ring * 18;
+      const ringAlpha = 0.15 - ring * 0.05;
+      const rotation = g.elapsed * (2 + ring * 0.7) * (ring % 2 === 0 ? 1 : -1);
+      ctx.strokeStyle = `rgba(148,163,184,${ringAlpha})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, ringR, ringR * 0.4, rotation, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Animated attraction lines to each power-up
     for (const pu of g.powerUps) {
       if (!pu.active) continue;
-      const d = Math.sqrt((pu.pos.x - p.pos.x) ** 2 + (pu.pos.y - p.pos.y) ** 2);
-      if (d < g.width * 0.5) {
+      const puX = pu.pos.x - g.camera.x + g.screenShake.x;
+      const puY = pu.pos.y + g.screenShake.y;
+      const dx = puX - px, dy = puY - (py - 15);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > g.width * 0.6 || dist < 5) continue;
+
+      const dirX = dx / dist, dirY = dy / dist;
+
+      // Animated particles flowing from powerup to player
+      const numDots = Math.floor(dist / 18);
+      for (let i = 0; i < numDots; i++) {
+        // Each dot travels along the line, phase-shifted
+        const phase = ((g.elapsed * 3 + i * 0.4) % 1);
+        const t = 1 - phase; // moving toward player
+        const dotX = px + dx * t;
+        const dotY = (py - 15) + dy * t;
+        const dotAlpha = 0.5 * Math.sin(phase * Math.PI); // fade in/out
+        const dotSize = 1.5 + (1 - phase) * 1.5; // bigger near source
+
+        ctx.fillStyle = `rgba(148,163,184,${dotAlpha})`;
         ctx.beginPath();
-        ctx.moveTo(p.pos.x - g.camera.x + g.screenShake.x, p.pos.y + g.screenShake.y);
-        ctx.lineTo(pu.pos.x - g.camera.x + g.screenShake.x, pu.pos.y + g.screenShake.y);
-        ctx.stroke();
+        ctx.arc(dotX, dotY, dotSize, 0, Math.PI * 2);
+        ctx.fill();
       }
+
+      // Subtle connecting line
+      ctx.strokeStyle = 'rgba(148,163,184,0.1)';
+      ctx.lineWidth = 0.8;
+      ctx.setLineDash([3, 8]);
+      ctx.beginPath();
+      ctx.moveTo(px, py - 15);
+      ctx.lineTo(puX, puY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Small glow at powerup end
+      const glowPulse = 0.2 + Math.sin(g.elapsed * 5) * 0.1;
+      ctx.fillStyle = `rgba(148,163,184,${glowPulse})`;
+      ctx.beginPath();
+      ctx.arc(puX, puY, 8, 0, Math.PI * 2);
+      ctx.fill();
     }
-    ctx.setLineDash([]);
   }
 
   // HUD (no shake)
