@@ -666,6 +666,18 @@ function renderExplosions(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.save();
     ctx.translate(e.pos.x, e.pos.y);
 
+    // Shockwave ring — expands fast, fades out
+    if (progress > 0.05 && progress < 0.6) {
+      const swT = (progress - 0.05) / 0.55;
+      const swRadius = e.size * (1 + swT * 5);
+      const swAlpha = (1 - swT) * 0.5;
+      ctx.strokeStyle = `rgba(255, 255, 255, ${swAlpha})`;
+      ctx.lineWidth = 2 - swT * 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, swRadius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     if (e.stage === 'flash') {
       // Bright white/yellow flash
       const flashSize = e.size * (0.5 + progress * 3);
@@ -687,6 +699,21 @@ function renderExplosions(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.beginPath();
       ctx.arc(0, 0, fbSize, 0, Math.PI * 2);
       ctx.fill();
+
+      // Shrapnel lines radiating outward
+      const lineCount = 6;
+      for (let i = 0; i < lineCount; i++) {
+        const angle = (i / lineCount) * Math.PI * 2 + e.pos.x * 0.1;
+        const lineLen = e.size * (0.5 + progress * 1.5);
+        const lineStart = e.size * 0.3 * progress;
+        const lineAlpha = (1 - progress) * 0.4;
+        ctx.strokeStyle = `rgba(255, 200, 100, ${lineAlpha})`;
+        ctx.lineWidth = 1.5 - progress;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * lineStart, Math.sin(angle) * lineStart);
+        ctx.lineTo(Math.cos(angle) * lineLen, Math.sin(angle) * lineLen);
+        ctx.stroke();
+      }
     } else {
       // Smoke ring
       const smokeSize = e.size * (1.5 + progress);
@@ -696,6 +723,21 @@ function renderExplosions(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.beginPath();
       ctx.arc(0, 0, smokeSize, 0, Math.PI * 2);
       ctx.stroke();
+
+      // Rising smoke puffs (delayed)
+      if (progress > 0.5) {
+        const smokeT = (progress - 0.5) / 0.5;
+        for (let i = 0; i < 3; i++) {
+          const sx = (i - 1) * e.size * 0.4 + Math.sin(e.pos.y + i * 2) * 3;
+          const sy = -e.size * smokeT * 1.5 - i * 5;
+          const sAlpha = (1 - smokeT) * 0.15;
+          const sSize = e.size * 0.3 + smokeT * e.size * 0.3;
+          ctx.fillStyle = `rgba(100, 90, 80, ${sAlpha})`;
+          ctx.beginPath();
+          ctx.arc(sx, sy, sSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
     }
 
     // Ground glow (dynamic lighting)
@@ -708,6 +750,18 @@ function renderExplosions(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.fillStyle = glowGrad;
       ctx.beginPath();
       ctx.arc(0, 0, glowSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Ground heat spot
+    const groundY = g.height * 0.78;
+    const groundDist = groundY - e.pos.y;
+    if (groundDist > 0 && groundDist < e.size * 5 && progress < 0.8) {
+      const heatAlpha = (1 - progress) * 0.1;
+      const heatSize = e.size * 2;
+      ctx.fillStyle = `rgba(255, 120, 30, ${heatAlpha})`;
+      ctx.beginPath();
+      ctx.ellipse(0, groundDist, heatSize, heatSize * 0.25, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -2123,7 +2177,25 @@ function renderParticles(ctx: CanvasRenderingContext2D, g: GameData) {
     const alpha = pt.life / pt.maxLife;
     ctx.globalAlpha = alpha;
     ctx.fillStyle = pt.color;
-    ctx.fillRect(pt.pos.x - pt.size / 2, pt.pos.y - pt.size / 2, pt.size, pt.size);
+    // Velocity-based trail behind particle
+    const speed = Math.sqrt(pt.vel.x * pt.vel.x + pt.vel.y * pt.vel.y);
+    if (speed > 30) {
+      const trailLen = Math.min(pt.size * 3, speed * 0.02);
+      const nx = -pt.vel.x / speed;
+      const ny = -pt.vel.y / speed;
+      ctx.globalAlpha = alpha * 0.3;
+      ctx.beginPath();
+      ctx.moveTo(pt.pos.x + nx * trailLen, pt.pos.y + ny * trailLen);
+      ctx.lineTo(pt.pos.x - pt.size * 0.3, pt.pos.y);
+      ctx.lineTo(pt.pos.x + pt.size * 0.3, pt.pos.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = alpha;
+    }
+    // Round particle instead of square
+    ctx.beginPath();
+    ctx.arc(pt.pos.x, pt.pos.y, pt.size / 2, 0, Math.PI * 2);
+    ctx.fill();
   }
   ctx.globalAlpha = 1;
 }
