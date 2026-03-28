@@ -2767,6 +2767,9 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
     }
   }
 
+  // Off-screen threat indicators
+  renderOffscreenIndicators(ctx, g);
+
   // HUD (no shake)
   renderHUD(ctx, g);
 

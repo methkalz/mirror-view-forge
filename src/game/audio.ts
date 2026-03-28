@@ -236,3 +236,14 @@ export function sfxShoot3() {
   }, 100);
 }
 
+export function sfxCombo(level: number) {
+  const baseFreq = 600 + level * 100;
+  playTone(baseFreq, 0.06, 'sine', 0.06);
+  setTimeout(() => playTone(baseFreq + 200, 0.05, 'sine', 0.05), 40);
+}
+
+export function sfxCloseCall() {
+  playTone(1000, 0.04, 'sine', 0.04);
+  setTimeout(() => playTone(1200, 0.03, 'sine', 0.03), 30);
+}
+
