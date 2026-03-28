@@ -3,7 +3,7 @@ import {
   HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning, Boss, DroneTier
 } from './types';
 import { getFromPool } from './pool';
-import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3 } from './audio';
+import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall } from './audio';
 
 const DASH_SPEED = 500;
 const DASH_DURATION = 0.25;
@@ -84,6 +84,13 @@ export function createGame(w: number, h: number): GameData {
     pendingWaveEvents: [],
     activatedWaveEvents: new Set(),
     missileStartTime: 5 + Math.random() * 5, // 5-10s random
+    hitStopTimer: 0,
+    comboCount: 0,
+    comboTimer: 0,
+    comboMultiplier: 1,
+    microSlowTimer: 0,
+    deathTimer: 0,
+    deathPhase: 'alive',
   };
 }
 
@@ -150,6 +157,13 @@ export function resetGame(g: GameData) {
   g.pendingWaveEvents = [];
   g.activatedWaveEvents = new Set();
   g.missileStartTime = 5 + Math.random() * 5;
+  g.hitStopTimer = 0;
+  g.comboCount = 0;
+  g.comboTimer = 0;
+  g.comboMultiplier = 1;
+  g.microSlowTimer = 0;
+  g.deathTimer = 0;
+  g.deathPhase = 'alive';
 }
 
 function dist(a: Vec2, b: Vec2): number {
@@ -465,18 +479,29 @@ function damagePlayer(g: GameData, dmg: number, sourcePos: Vec2) {
   p.hitTimer = 0.3;
   p.anim = 'hit';
   g.damageFlash = 0.35;
+  g.hitStopTimer = 0.06; // 60ms freeze on player hit
   // Knockback
   const kdir = sourcePos.x < p.pos.x ? 1 : -1;
   p.velocity.x += kdir * 200;
   sfxDamage();
   if (p.health <= 0) {
-    g.state = 'gameover';
-    g.stats.timeSurvived = g.elapsed;
-    if (g.score > g.highScore) {
-      g.highScore = g.score;
-      localStorage.setItem('skyfall_hi', g.score.toString());
-    }
+    // Death transition instead of instant gameover
+    g.deathPhase = 'dying';
+    g.deathTimer = 1.5;
+    g.slowMoFactor = 0.15;
+    g.hitStopTimer = 0.15; // longer freeze on death
   }
+}
+
+function incrementCombo(g: GameData) {
+  g.comboCount++;
+  g.comboTimer = 3;
+  g.comboMultiplier = Math.min(3, 1 + Math.floor(g.comboCount / 3) * 0.5);
+  if (g.comboCount > 1) sfxCombo(g.comboCount);
+}
+
+function comboScore(g: GameData, base: number): number {
+  return Math.floor(base * g.comboMultiplier);
 }
 
 function handleInterceptor(g: GameData) {
@@ -509,6 +534,51 @@ export function update(g: GameData, input: InputState, dt: number) {
   if (g.state !== 'playing') return;
 
   dt = Math.min(dt, 0.05);
+
+  // Hit stop — freeze all logic
+  if (g.hitStopTimer > 0) {
+    g.hitStopTimer -= dt;
+    return;
+  }
+
+  // Death transition
+  if (g.deathPhase === 'dying') {
+    g.deathTimer -= dt;
+    g.slowMoFactor = 0.15;
+    g.elapsed += dt * 0.15;
+    // Still update particles/explosions for visual
+    g.damageFlash = Math.max(0, g.damageFlash - dt * 0.5);
+    if (g.deathTimer <= 0) {
+      g.deathPhase = 'dead';
+      g.state = 'gameover';
+      g.stats.timeSurvived = g.elapsed;
+      if (g.score > g.highScore) {
+        g.highScore = g.score;
+        localStorage.setItem('skyfall_hi', g.score.toString());
+      }
+    }
+    return;
+  }
+
+  // Micro slow-mo (independent of power-up slow-mo)
+  if (g.microSlowTimer > 0) {
+    g.microSlowTimer -= dt;
+    if (g.slowMoTimer <= 0) {
+      g.slowMoFactor = 0.3;
+    }
+  } else if (g.slowMoTimer <= 0 && g.cinematicWarning === null) {
+    g.slowMoFactor = 1;
+  }
+
+  // Combo timer
+  if (g.comboTimer > 0) {
+    g.comboTimer -= dt;
+    if (g.comboTimer <= 0) {
+      g.comboCount = 0;
+      g.comboMultiplier = 1;
+    }
+  }
+
   g.elapsed += dt;
   g.difficulty = 1 + g.elapsed / 60;
   g.score += Math.round(dt);
@@ -897,6 +967,8 @@ export function update(g: GameData, input: InputState, dt: number) {
             g.score += bonus;
             if (distToPlayer < h.size * 1.5 + p.size + CLOSE_CALL_DIST) {
               g.stats.closeCalls++;
+              g.microSlowTimer = 0.15;
+              sfxCloseCall();
               addFloatingText(g, `Close Call! +${bonus}`, { x: p.pos.x, y: p.pos.y - 40 }, '#fbbf24');
             } else {
               addFloatingText(g, `+${bonus}`, { x: h.targetPos.x, y: h.targetPos.y - 20 }, '#aaa');
@@ -1259,11 +1331,15 @@ export function update(g: GameData, input: InputState, dt: number) {
         sfxExplosion();
         addExplosion(g, h.pos, h.size * 2);
         spawnParticles(g, h.pos, 8, '#f97316', 150);
+        incrementCombo(g);
         const distToPlayer = dist(h.pos, p.pos);
         const proximity = Math.max(0, 1 - distToPlayer / 200);
-        const bonus = Math.floor(20 + proximity * 80);
+        const bonus = comboScore(g, Math.floor(20 + proximity * 80));
         g.score += bonus;
-        addFloatingText(g, `Shot! +${bonus}`, h.pos, '#a855f7');
+        g.hitStopTimer = 0.05;
+        g.microSlowTimer = 0.2;
+        const comboText = g.comboMultiplier > 1 ? ` ×${g.comboMultiplier}` : '';
+        addFloatingText(g, `Shot! +${bonus}${comboText}`, h.pos, '#a855f7');
         hit = true;
         break;
       }
@@ -1282,13 +1358,19 @@ export function update(g: GameData, input: InputState, dt: number) {
           sfxExplosion();
           spawnParticles(g, d.pos, 15, '#f97316', 180);
           spawnParticles(g, d.pos, 8, '#555', 100);
-          const bonus = d.tier === 'bomber' ? 80 : d.tier === 'tracker' ? 50 : 30;
-          addFloatingText(g, `Shot Down! +${bonus}`, d.pos, '#a855f7');
+          incrementCombo(g);
+          const base = d.tier === 'bomber' ? 80 : d.tier === 'tracker' ? 50 : 30;
+          const bonus = comboScore(g, base);
+          const comboText = g.comboMultiplier > 1 ? ` ×${g.comboMultiplier}` : '';
+          addFloatingText(g, `Shot Down! +${bonus}${comboText}`, d.pos, '#a855f7');
           g.score += bonus;
           g.stats.dronesDestroyed++;
+          g.hitStopTimer = 0.08;
+          g.microSlowTimer = 0.2;
         } else {
           // Damaged but not destroyed — visual feedback
           addFloatingText(g, `HIT!`, b.pos, '#ff6b35');
+          g.hitStopTimer = 0.03;
         }
         hit = true;
         break;
