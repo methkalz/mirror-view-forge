@@ -114,19 +114,15 @@ export function sfxExplosion() {
 }
 
 export function sfxImpactLight() {
-  // Light shrapnel hit — quick metallic ping
-  const freq = 800 + Math.random() * 600;
-  playTone(freq, 0.06, 'square', 0.06);
-  playNoise(0.08, 0.04, { type: 'highpass', freq: 3000 });
+  // Small debris hitting ground — soft thud
+  playNoise(0.04, 0.03, { type: 'lowpass', freq: 300 + Math.random() * 200 });
+  playTone(150 + Math.random() * 100, 0.03, 'sine', 0.02);
 }
 
 export function sfxImpactHeavy() {
-  // Heavy missile hit — deep rumbling thud
-  playTone(35, 0.4, 'sawtooth', 0.14);
-  playTone(55, 0.35, 'sine', 0.1);
-  playNoise(0.5, 0.12, { type: 'lowpass', freq: 400 });
-  setTimeout(() => playNoise(0.3, 0.06, { type: 'lowpass', freq: 200 }), 100);
-  setTimeout(() => playNoise(0.2, 0.04, { type: 'bandpass', freq: 600 }), 200);
+  // Heavy object hitting ground — deep thump
+  playTone(50, 0.15, 'sine', 0.06);
+  playNoise(0.12, 0.05, { type: 'lowpass', freq: 250 });
 }
 
 export function sfxPickup() {
