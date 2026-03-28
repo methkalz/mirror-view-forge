@@ -239,9 +239,9 @@ function spawnHazard(g: GameData, type: HazardType) {
       const flyY = g.height * (0.12 + Math.random() * 0.2);
       h.pos = { x: startX, y: flyY };
       h.targetPos = { x: g.width / 2, y: flyY };
-      const baseSpeed = 220 + g.difficulty * 8 + Math.random() * 80;
+      const baseSpeed = 150 + g.difficulty * 6 + Math.random() * 50;
       h.clusterVelX = fromRight ? -baseSpeed : baseSpeed;
-      h.clusterVelY = -(30 + Math.random() * 40); // slight upward arc initially
+      h.clusterVelY = -(15 + Math.random() * 20); // gentle upward arc initially
       h.clusterStartSpeed = baseSpeed;
       h.clusterPhase = 'flying';
       h.clusterTimer = 0;
@@ -758,7 +758,7 @@ export function update(g: GameData, input: InputState, dt: number) {
         h.pos.x += h.clusterVelX! * g.slowMoFactor * dt;
 
         // Arc trajectory — gravity pulls missile down
-        h.clusterVelY = (h.clusterVelY || 0) + 90 * dt;
+        h.clusterVelY = (h.clusterVelY || 0) + 55 * dt;
         h.pos.y += h.clusterVelY * g.slowMoFactor * dt;
 
         // Check if slowed enough to open
@@ -803,9 +803,8 @@ export function update(g: GameData, input: InputState, dt: number) {
           const targetX = h.pos.x + spreadX + (Math.random() - 0.5) * 40;
           sh.targetPos = { x: targetX, y: groundY - 5 + Math.random() * 10 };
           sh.speed = 80 + Math.random() * 80; // slow falling bombs with varied speeds
-          const sizeVar = Math.random();
-          sh.size = sizeVar > 0.7 ? 9 : sizeVar > 0.3 ? 7 : 5;
-          sh.damage = sizeVar > 0.7 ? 12 : sizeVar > 0.3 ? 9 : 5;
+          sh.size = 4 + Math.random() * 1.5;
+          sh.damage = 7;
           sh.warningDuration = 0.3;
           sh.warningTimer = 0.3;
           sh.falling = false;
