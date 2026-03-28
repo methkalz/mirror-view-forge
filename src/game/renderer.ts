@@ -580,17 +580,30 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
         ctx.restore();
       }
     } else if (hz.isClusterBomb) {
-      // Cluster bomb — lit/heated metal sphere (no fire effect)
+      // Cluster bomb — small lit/heated metal sphere with light smoke
       ctx.rotate(hz.rotation);
       const s = hz.size;
 
+      // Light smoke trail above the bomb
+      const smokeTime = (g.time || 0) + hz.pos.x * 0.01;
+      for (let si = 0; si < 3; si++) {
+        const smokeY = -(s * 1.5 + si * s * 0.8);
+        const smokeX = Math.sin(smokeTime + si * 1.3) * s * 0.4;
+        const smokeAlpha = 0.12 - si * 0.035;
+        const smokeSize = s * (0.5 + si * 0.3);
+        ctx.fillStyle = `rgba(180,180,180,${Math.max(0.02, smokeAlpha)})`;
+        ctx.beginPath();
+        ctx.arc(smokeX, smokeY, smokeSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       // Subtle thin halo
-      const haloGrad = ctx.createRadialGradient(0, 0, s * 0.8, 0, 0, s * 1.4);
-      haloGrad.addColorStop(0, 'rgba(253,224,71,0.15)');
+      const haloGrad = ctx.createRadialGradient(0, 0, s * 0.8, 0, 0, s * 1.3);
+      haloGrad.addColorStop(0, 'rgba(253,224,71,0.12)');
       haloGrad.addColorStop(1, 'rgba(253,224,71,0)');
       ctx.fillStyle = haloGrad;
       ctx.beginPath();
-      ctx.arc(0, 0, s * 1.4, 0, Math.PI * 2);
+      ctx.arc(0, 0, s * 1.3, 0, Math.PI * 2);
       ctx.fill();
 
       // Main sphere — soft lemon-yellow gradient
