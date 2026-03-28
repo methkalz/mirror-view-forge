@@ -1328,11 +1328,15 @@ export function update(g: GameData, input: InputState, dt: number) {
         sfxExplosion();
         addExplosion(g, h.pos, h.size * 2);
         spawnParticles(g, h.pos, 8, '#f97316', 150);
+        incrementCombo(g);
         const distToPlayer = dist(h.pos, p.pos);
         const proximity = Math.max(0, 1 - distToPlayer / 200);
-        const bonus = Math.floor(20 + proximity * 80);
+        const bonus = comboScore(g, Math.floor(20 + proximity * 80));
         g.score += bonus;
-        addFloatingText(g, `Shot! +${bonus}`, h.pos, '#a855f7');
+        g.hitStopTimer = 0.05;
+        g.microSlowTimer = 0.2;
+        const comboText = g.comboMultiplier > 1 ? ` ×${g.comboMultiplier}` : '';
+        addFloatingText(g, `Shot! +${bonus}${comboText}`, h.pos, '#a855f7');
         hit = true;
         break;
       }
@@ -1351,13 +1355,19 @@ export function update(g: GameData, input: InputState, dt: number) {
           sfxExplosion();
           spawnParticles(g, d.pos, 15, '#f97316', 180);
           spawnParticles(g, d.pos, 8, '#555', 100);
-          const bonus = d.tier === 'bomber' ? 80 : d.tier === 'tracker' ? 50 : 30;
-          addFloatingText(g, `Shot Down! +${bonus}`, d.pos, '#a855f7');
+          incrementCombo(g);
+          const base = d.tier === 'bomber' ? 80 : d.tier === 'tracker' ? 50 : 30;
+          const bonus = comboScore(g, base);
+          const comboText = g.comboMultiplier > 1 ? ` ×${g.comboMultiplier}` : '';
+          addFloatingText(g, `Shot Down! +${bonus}${comboText}`, d.pos, '#a855f7');
           g.score += bonus;
           g.stats.dronesDestroyed++;
+          g.hitStopTimer = 0.08;
+          g.microSlowTimer = 0.2;
         } else {
           // Damaged but not destroyed — visual feedback
           addFloatingText(g, `HIT!`, b.pos, '#ff6b35');
+          g.hitStopTimer = 0.03;
         }
         hit = true;
         break;
