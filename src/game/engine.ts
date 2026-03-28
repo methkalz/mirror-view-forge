@@ -228,7 +228,8 @@ function spawnHazard(g: GameData, type: HazardType) {
       break;
   }
   h.warningTimer = h.warningDuration;
-  sfxWarning();
+  // Avoid repetitive heartbeat-like beeps from frequent shrapnel spawns
+  // warning sound disabled for regular hazard spawns to avoid repetitive heartbeat-like beeps
 }
 
 function spawnPowerUp(g: GameData) {
