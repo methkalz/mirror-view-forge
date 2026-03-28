@@ -1331,6 +1331,8 @@ export function update(g: GameData, input: InputState, dt: number) {
         sfxExplosion();
         addExplosion(g, h.pos, h.size * 2);
         spawnParticles(g, h.pos, 8, '#f97316', 150);
+        // Impact flash — white burst
+        spawnParticles(g, b.pos, 3, '#ffffff', 80, false);
         incrementCombo(g);
         const distToPlayer = dist(h.pos, p.pos);
         const proximity = Math.max(0, 1 - distToPlayer / 200);
@@ -1350,7 +1352,14 @@ export function update(g: GameData, input: InputState, dt: number) {
       if (!d.active) continue;
       if (dist(b.pos, d.pos) < d.size + b.size + 4) {
         d.health--;
+        // Knockback — push drone in bullet direction
+        const kbX = b.vel.x > 0 ? 3 : b.vel.x < 0 ? -3 : 0;
+        const kbY = b.vel.y > 0 ? 2 : -2;
+        d.pos.x += kbX;
+        d.pos.y += kbY;
         spawnParticles(g, b.pos, 6, '#f97316', 100);
+        // Impact flash
+        spawnParticles(g, b.pos, 2, '#ffffff', 60, false);
         addExplosion(g, b.pos, 8); // small hit flash
         if (d.health <= 0) {
           d.active = false;

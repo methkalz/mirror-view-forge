@@ -253,9 +253,18 @@ function renderGround(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.stroke();
   }
 
-  // Ground line highlight
-  ctx.strokeStyle = 'rgba(100, 90, 70, 0.4)';
-  ctx.lineWidth = 1.5;
+  // Ground line highlight — glowing edge separating ground and sky
+  const glGrad = ctx.createLinearGradient(0, groundY - 3, 0, groundY + 3);
+  glGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  glGrad.addColorStop(0.4, 'rgba(140, 120, 80, 0.25)');
+  glGrad.addColorStop(0.5, 'rgba(180, 150, 90, 0.5)');
+  glGrad.addColorStop(0.6, 'rgba(140, 120, 80, 0.25)');
+  glGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glGrad;
+  ctx.fillRect(left, groundY - 3, totalW, 6);
+  
+  ctx.strokeStyle = 'rgba(160, 140, 100, 0.35)';
+  ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(left, groundY);
   ctx.lineTo(right, groundY);
@@ -271,12 +280,35 @@ function renderCraters(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.beginPath();
     ctx.ellipse(c.pos.x, c.pos.y, c.size, c.size * 0.4, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Ring
-    ctx.strokeStyle = `rgba(80, 60, 30, ${alpha * 0.5})`;
-    ctx.lineWidth = 1.5;
+    // Raised rim — lighter edge
+    ctx.strokeStyle = `rgba(120, 100, 60, ${alpha * 0.35})`;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(c.pos.x, c.pos.y, c.size * 1.2, c.size * 0.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(c.pos.x, c.pos.y, c.size * 1.15, c.size * 0.45, 0, 0, Math.PI * 2);
     ctx.stroke();
+    // Outer ring
+    ctx.strokeStyle = `rgba(80, 60, 30, ${alpha * 0.4})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(c.pos.x, c.pos.y, c.size * 1.3, c.size * 0.55, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // Cracks extending from crater
+    ctx.strokeStyle = `rgba(60, 45, 25, ${alpha * 0.25})`;
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i < 4; i++) {
+      const crackAngle = (i / 4) * Math.PI * 2 + c.pos.x * 0.05;
+      const crackLen = c.size * (0.8 + Math.sin(c.pos.y + i * 3) * 0.3);
+      ctx.beginPath();
+      ctx.moveTo(
+        c.pos.x + Math.cos(crackAngle) * c.size * 0.9,
+        c.pos.y + Math.sin(crackAngle) * c.size * 0.35
+      );
+      ctx.lineTo(
+        c.pos.x + Math.cos(crackAngle) * (c.size + crackLen),
+        c.pos.y + Math.sin(crackAngle) * (c.size * 0.4 + crackLen * 0.3)
+      );
+      ctx.stroke();
+    }
   }
 }
 
@@ -666,6 +698,18 @@ function renderExplosions(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.save();
     ctx.translate(e.pos.x, e.pos.y);
 
+    // Shockwave ring — expands fast, fades out
+    if (progress > 0.05 && progress < 0.6) {
+      const swT = (progress - 0.05) / 0.55;
+      const swRadius = e.size * (1 + swT * 5);
+      const swAlpha = (1 - swT) * 0.5;
+      ctx.strokeStyle = `rgba(255, 255, 255, ${swAlpha})`;
+      ctx.lineWidth = 2 - swT * 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, swRadius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     if (e.stage === 'flash') {
       // Bright white/yellow flash
       const flashSize = e.size * (0.5 + progress * 3);
@@ -687,6 +731,21 @@ function renderExplosions(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.beginPath();
       ctx.arc(0, 0, fbSize, 0, Math.PI * 2);
       ctx.fill();
+
+      // Shrapnel lines radiating outward
+      const lineCount = 6;
+      for (let i = 0; i < lineCount; i++) {
+        const angle = (i / lineCount) * Math.PI * 2 + e.pos.x * 0.1;
+        const lineLen = e.size * (0.5 + progress * 1.5);
+        const lineStart = e.size * 0.3 * progress;
+        const lineAlpha = (1 - progress) * 0.4;
+        ctx.strokeStyle = `rgba(255, 200, 100, ${lineAlpha})`;
+        ctx.lineWidth = 1.5 - progress;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(angle) * lineStart, Math.sin(angle) * lineStart);
+        ctx.lineTo(Math.cos(angle) * lineLen, Math.sin(angle) * lineLen);
+        ctx.stroke();
+      }
     } else {
       // Smoke ring
       const smokeSize = e.size * (1.5 + progress);
@@ -696,6 +755,21 @@ function renderExplosions(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.beginPath();
       ctx.arc(0, 0, smokeSize, 0, Math.PI * 2);
       ctx.stroke();
+
+      // Rising smoke puffs (delayed)
+      if (progress > 0.5) {
+        const smokeT = (progress - 0.5) / 0.5;
+        for (let i = 0; i < 3; i++) {
+          const sx = (i - 1) * e.size * 0.4 + Math.sin(e.pos.y + i * 2) * 3;
+          const sy = -e.size * smokeT * 1.5 - i * 5;
+          const sAlpha = (1 - smokeT) * 0.15;
+          const sSize = e.size * 0.3 + smokeT * e.size * 0.3;
+          ctx.fillStyle = `rgba(100, 90, 80, ${sAlpha})`;
+          ctx.beginPath();
+          ctx.arc(sx, sy, sSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
     }
 
     // Ground glow (dynamic lighting)
@@ -708,6 +782,18 @@ function renderExplosions(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.fillStyle = glowGrad;
       ctx.beginPath();
       ctx.arc(0, 0, glowSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Ground heat spot
+    const groundY = g.height * 0.78;
+    const groundDist = groundY - e.pos.y;
+    if (groundDist > 0 && groundDist < e.size * 5 && progress < 0.8) {
+      const heatAlpha = (1 - progress) * 0.1;
+      const heatSize = e.size * 2;
+      ctx.fillStyle = `rgba(255, 120, 30, ${heatAlpha})`;
+      ctx.beginPath();
+      ctx.ellipse(0, groundDist, heatSize, heatSize * 0.25, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -1005,6 +1091,18 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
 
     ctx.save();
     ctx.globalAlpha = fadeAlpha;
+
+    // Power-up ground shadow
+    const groundY = g.height * 0.78;
+    const shadowY = groundY - pu.pos.y;
+    if (shadowY > 0 && pu.parachuting) {
+      const sShrink = Math.max(0.3, 1 - shadowY * 0.003);
+      ctx.fillStyle = `rgba(0,0,0,${0.1 * sShrink})`;
+      ctx.beginPath();
+      ctx.ellipse(pu.pos.x, groundY, 10 * sShrink, 3 * sShrink, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     ctx.translate(pu.pos.x, pu.pos.y);
     const bob = Math.sin(pu.bobTimer * 3) * 3;
     ctx.translate(0, bob);
@@ -2071,16 +2169,47 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillRect(barX, barY2, barW * hpRatio, barH);
   }
 
-  // Shield aura
+  // Shield aura — hexagonal energy shield
   if (p.shielded) {
     ctx.scale(scale, 1);
+    const shieldR = p.size + 12;
+    const shieldY = -16;
+    const sides = 6;
+    const shieldPulse = 0.4 + Math.sin(g.elapsed * 5) * 0.2;
+
+    // Hexagonal outline
     ctx.beginPath();
-    ctx.arc(0, -16, p.size + 12, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(96, 165, 250, ${0.4 + Math.sin(g.elapsed * 5) * 0.2})`;
-    ctx.lineWidth = 2.5;
+    for (let i = 0; i <= sides; i++) {
+      const a = (i / sides) * Math.PI * 2 - Math.PI / 2;
+      const sx = Math.cos(a) * shieldR;
+      const sy = shieldY + Math.sin(a) * shieldR;
+      if (i === 0) ctx.moveTo(sx, sy);
+      else ctx.lineTo(sx, sy);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = `rgba(96, 165, 250, ${shieldPulse + 0.2})`;
+    ctx.lineWidth = 2;
     ctx.stroke();
-    ctx.fillStyle = 'rgba(96, 165, 250, 0.08)';
+    ctx.fillStyle = `rgba(96, 165, 250, 0.06)`;
     ctx.fill();
+
+    // Energy lines inside
+    ctx.strokeStyle = `rgba(150, 200, 255, ${shieldPulse * 0.3})`;
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < sides; i++) {
+      const a = (i / sides) * Math.PI * 2 - Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(0, shieldY);
+      ctx.lineTo(Math.cos(a) * shieldR, shieldY + Math.sin(a) * shieldR);
+      ctx.stroke();
+    }
+
+    // Outer glow ring
+    ctx.strokeStyle = `rgba(96, 165, 250, ${shieldPulse * 0.15})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(0, shieldY, shieldR + 3, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
   ctx.restore();
@@ -2092,26 +2221,44 @@ function renderBullets(ctx: CanvasRenderingContext2D, g: GameData) {
     if (!b.active) continue;
     ctx.save();
     ctx.translate(b.pos.x, b.pos.y);
-    // Glow
-    ctx.fillStyle = 'rgba(251, 191, 36, 0.3)';
+
+    // Gradient trail based on velocity
+    const speed = Math.sqrt(b.vel.x * b.vel.x + b.vel.y * b.vel.y);
+    const nx = b.vel.x / speed;
+    const ny = b.vel.y / speed;
+    const trailLen = Math.min(20, speed * 0.025);
+
+    // Long gradient trail
+    const trailGrad = ctx.createLinearGradient(0, 0, -nx * trailLen, -ny * trailLen);
+    trailGrad.addColorStop(0, 'rgba(251, 191, 36, 0.6)');
+    trailGrad.addColorStop(0.4, 'rgba(251, 191, 36, 0.15)');
+    trailGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+    ctx.strokeStyle = trailGrad;
+    ctx.lineWidth = b.size * 1.2;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.arc(0, 0, b.size * 3, 0, Math.PI * 2);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-nx * trailLen, -ny * trailLen);
+    ctx.stroke();
+
+    // Glow
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.25)';
+    ctx.beginPath();
+    ctx.arc(0, 0, b.size * 2.5, 0, Math.PI * 2);
     ctx.fill();
-    // Bullet tracer
+
+    // Bullet core — bright yellow
     ctx.fillStyle = '#fbbf24';
     ctx.beginPath();
-    ctx.ellipse(0, 0, b.size * 0.8, b.size * 2, 0, 0, Math.PI * 2);
+    ctx.arc(0, 0, b.size * 0.8, 0, Math.PI * 2);
     ctx.fill();
-    // Core
+
+    // White hot center
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.ellipse(0, 0, b.size * 0.3, b.size * 1, 0, 0, Math.PI * 2);
+    ctx.arc(0, 0, b.size * 0.3, 0, Math.PI * 2);
     ctx.fill();
-    // Trail
-    ctx.fillStyle = 'rgba(251, 191, 36, 0.15)';
-    ctx.beginPath();
-    ctx.ellipse(0, b.size * 4, b.size * 0.5, b.size * 5, 0, 0, Math.PI * 2);
-    ctx.fill();
+
     ctx.restore();
   }
 }
@@ -2123,7 +2270,25 @@ function renderParticles(ctx: CanvasRenderingContext2D, g: GameData) {
     const alpha = pt.life / pt.maxLife;
     ctx.globalAlpha = alpha;
     ctx.fillStyle = pt.color;
-    ctx.fillRect(pt.pos.x - pt.size / 2, pt.pos.y - pt.size / 2, pt.size, pt.size);
+    // Velocity-based trail behind particle
+    const speed = Math.sqrt(pt.vel.x * pt.vel.x + pt.vel.y * pt.vel.y);
+    if (speed > 30) {
+      const trailLen = Math.min(pt.size * 3, speed * 0.02);
+      const nx = -pt.vel.x / speed;
+      const ny = -pt.vel.y / speed;
+      ctx.globalAlpha = alpha * 0.3;
+      ctx.beginPath();
+      ctx.moveTo(pt.pos.x + nx * trailLen, pt.pos.y + ny * trailLen);
+      ctx.lineTo(pt.pos.x - pt.size * 0.3, pt.pos.y);
+      ctx.lineTo(pt.pos.x + pt.size * 0.3, pt.pos.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = alpha;
+    }
+    // Round particle instead of square
+    ctx.beginPath();
+    ctx.arc(pt.pos.x, pt.pos.y, pt.size / 2, 0, Math.PI * 2);
+    ctx.fill();
   }
   ctx.globalAlpha = 1;
 }
@@ -2270,16 +2435,43 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillText('ROLL ●', w - 14, h - 14);
   }
 
-  // ─ Ammo indicator (military green) ─
+  // ─ Ammo indicator (visual bullet icons) ─
   if (p.ammo > 0) {
-    ctx.fillStyle = '#4a5c2a';
-    ctx.font = 'bold 11px monospace';
-    ctx.textAlign = 'center';
-    const lvlText = g.bulletLevel > 1 ? ` ×${g.bulletLevel}` : '';
-    ctx.fillText(`⊕ ${p.ammo}${lvlText}`, w / 2, h - 14);
+    const maxDisplay = Math.min(p.ammo, 20);
+    const iconSize = 3;
+    const iconGap = 7;
+    const totalIconW = maxDisplay * iconGap;
+    const startX = w / 2 - totalIconW / 2;
+    const iconY = h - 16;
+    for (let i = 0; i < maxDisplay; i++) {
+      const ix = startX + i * iconGap;
+      // Bullet icon — small rectangle with rounded tip
+      ctx.fillStyle = '#d4a017';
+      ctx.beginPath();
+      ctx.roundRect(ix - iconSize * 0.4, iconY - iconSize, iconSize * 0.8, iconSize * 1.8, 1);
+      ctx.fill();
+      // Tip
+      ctx.fillStyle = '#a04510';
+      ctx.beginPath();
+      ctx.arc(ix, iconY - iconSize, iconSize * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (p.ammo > 20) {
+      ctx.fillStyle = '#4a5c2a';
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`+${p.ammo - 20}`, startX + totalIconW + 3, iconY + 2);
+    }
+    // Level indicator
+    if (g.bulletLevel > 1) {
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`×${g.bulletLevel}`, w / 2, iconY + 12);
+    }
   }
 
-  // ─ Combo counter ─
+  // ─ Combo counter with sparks ─
   if (g.comboCount > 1) {
     const comboPulse = 1 + Math.sin(t * 8) * 0.08;
     ctx.save();
@@ -2297,6 +2489,26 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = 'rgba(251,191,36,0.6)';
     ctx.font = '9px monospace';
     ctx.fillText(`${g.comboCount} hits`, 0, 13);
+
+    // Gold sparks around combo counter at ×2+
+    if (g.comboMultiplier >= 2) {
+      for (let i = 0; i < 4; i++) {
+        const sparkAngle = t * 3 + i * Math.PI / 2;
+        const sparkR = 30 + Math.sin(t * 5 + i) * 5;
+        const sx = Math.cos(sparkAngle) * sparkR;
+        const sy = Math.sin(sparkAngle) * sparkR * 0.4;
+        const sAlpha = 0.4 + Math.sin(t * 8 + i * 1.5) * 0.3;
+        ctx.fillStyle = `rgba(251, 191, 36, ${sAlpha})`;
+        ctx.beginPath();
+        const ss = 2;
+        ctx.moveTo(sx, sy - ss * 2);
+        ctx.lineTo(sx + ss * 0.4, sy);
+        ctx.lineTo(sx, sy + ss * 2);
+        ctx.lineTo(sx - ss * 0.4, sy);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
     ctx.restore();
   }
 
@@ -2655,6 +2867,23 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
         ctx.arc(p.pos.x + dx, groundY + dy, sz, 0, Math.PI * 2);
         ctx.fill();
       }
+    }
+  }
+  // Motion trail during dash
+  {
+    const p = g.player;
+    if (p.isDashing) {
+      const trailCount = 4;
+      for (let i = 1; i <= trailCount; i++) {
+        const trailX = p.pos.x - p.velocity.x * 0.008 * i;
+        const trailAlpha = 0.15 - i * 0.035;
+        ctx.globalAlpha = Math.max(0, trailAlpha);
+        ctx.fillStyle = '#4a90e2';
+        ctx.beginPath();
+        ctx.ellipse(trailX, p.pos.y - 12, 6, 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
   }
   renderPlayerGlow(ctx, g);
@@ -3210,6 +3439,39 @@ export function renderGameOver(ctx: CanvasRenderingContext2D, w: number, h: numb
   ctx.fillStyle = `rgba(0, 0, 0, ${overlayAlpha})`;
   ctx.fillRect(0, 0, w, h);
 
+  // Cracked screen effect — white cracks from center
+  if (elapsed > 0.1 && elapsed < 2.0) {
+    const crackAlpha = Math.min(0.4, (elapsed - 0.1) * 0.8) * Math.max(0, 1 - (elapsed - 0.5) / 1.5);
+    ctx.strokeStyle = `rgba(255, 255, 255, ${crackAlpha})`;
+    ctx.lineWidth = 1.5;
+    const cx = w / 2, cy = h / 2;
+    // Generate deterministic cracks from center
+    for (let i = 0; i < 8; i++) {
+      const baseAngle = (i / 8) * Math.PI * 2 + 0.3;
+      const len = Math.min(w, h) * (0.2 + Math.sin(i * 3.7) * 0.15);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      let px = cx, py = cy;
+      const segments = 4;
+      for (let s = 0; s < segments; s++) {
+        const t = (s + 1) / segments;
+        const jitter = (Math.sin(i * 7 + s * 5.1) * 0.3);
+        const nx = cx + Math.cos(baseAngle + jitter) * len * t;
+        const ny = cy + Math.sin(baseAngle + jitter) * len * t;
+        ctx.lineTo(nx, ny);
+        px = nx; py = ny;
+        // Branch crack
+        if (s === 2 && i % 2 === 0) {
+          ctx.moveTo(px, py);
+          const branchAngle = baseAngle + (Math.sin(i * 2.3) > 0 ? 0.5 : -0.5);
+          ctx.lineTo(px + Math.cos(branchAngle) * len * 0.2, py + Math.sin(branchAngle) * len * 0.2);
+          ctx.moveTo(px, py);
+        }
+      }
+      ctx.stroke();
+    }
+  }
+
   // Only show content after initial fade
   if (elapsed < 0.2) return;
 
@@ -3318,17 +3580,34 @@ export function renderGameOver(ctx: CanvasRenderingContext2D, w: number, h: numb
     });
   }
 
-  // Restart prompt — at 2.5s
+  // Restart prompt — at 2.5s with prominent border
   if (elapsed > 2.5) {
     const restartAlpha = Math.min(1, (elapsed - 2.5) * 2);
     const pulse = 0.5 + Math.sin(now * 3) * 0.3;
+    const isMobile = 'ontouchstart' in window;
+    const btnText = isMobile ? 'TAP TO RESTART' : 'PRESS ENTER';
+    const btnW = 170, btnH = 34;
+    const btnX = w / 2 - btnW / 2, btnY = h * 0.85 - btnH / 2;
+
     ctx.save();
-    ctx.globalAlpha = restartAlpha * pulse;
+    ctx.globalAlpha = restartAlpha;
+
+    // Button border with pulse
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + pulse * 0.4})`;
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, btnX, btnY, btnW, btnH, 6);
+    ctx.stroke();
+    // Subtle fill
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.03 + pulse * 0.02})`;
+    roundRect(ctx, btnX, btnY, btnW, btnH, 6);
+    ctx.fill();
+
+    // Text
+    ctx.globalAlpha = restartAlpha * (0.6 + pulse * 0.4);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 13px monospace';
     ctx.textAlign = 'center';
-    const isMobile = 'ontouchstart' in window;
-    ctx.fillText(isMobile ? 'TAP TO RESTART' : 'PRESS ENTER', w / 2, h * 0.88);
+    ctx.fillText(btnText, w / 2, h * 0.85 + 5);
     ctx.restore();
   }
 }
