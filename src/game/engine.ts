@@ -3,7 +3,7 @@ import {
   HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning, Boss
 } from './types';
 import { getFromPool } from './pool';
-import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, updateHeartbeat, stopHeartbeat } from './audio';
+import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder } from './audio';
 
 const DASH_SPEED = 500;
 const DASH_DURATION = 0.25;
@@ -137,7 +137,7 @@ export function resetGame(g: GameData) {
   g.lightningTimer = 0;
   g.lightningFlash = 0;
   g.weatherIntensity = 0;
-  stopHeartbeat();
+  
 }
 
 function dist(a: Vec2, b: Vec2): number {
@@ -1117,8 +1117,6 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
   if (g.lightningFlash > 0) g.lightningFlash -= dt * 3;
 
-  // === Heartbeat ===
-  updateHeartbeat(g.difficulty);
 
   // === Boss ===
   g.bossTimer -= dt;

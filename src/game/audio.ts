@@ -114,15 +114,13 @@ export function sfxExplosion() {
 }
 
 export function sfxImpactLight() {
-  // Small debris hitting ground — soft thud
-  playNoise(0.04, 0.03, { type: 'lowpass', freq: 300 + Math.random() * 200 });
-  playTone(150 + Math.random() * 100, 0.03, 'sine', 0.02);
+  playNoise(0.05, 0.06, { type: 'lowpass', freq: 250 + Math.random() * 300 });
+  playTone(120 + Math.random() * 80, 0.04, 'sine', 0.04);
 }
 
 export function sfxImpactHeavy() {
-  // Heavy object hitting ground — deep thump
-  playTone(50, 0.15, 'sine', 0.06);
-  playNoise(0.12, 0.05, { type: 'lowpass', freq: 250 });
+  playTone(45, 0.18, 'sine', 0.10);
+  playNoise(0.14, 0.08, { type: 'lowpass', freq: 200 });
 }
 
 export function sfxPickup() {
@@ -206,40 +204,3 @@ export function sfxBossExplosion() {
   setTimeout(() => playNoise(0.4, 0.06, { type: 'bandpass', freq: 1000 }), 400);
 }
 
-let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
-let heartbeatGain: GainNode | null = null;
-
-export function updateHeartbeat(difficulty: number) {
-  if (difficulty < 2) {
-    stopHeartbeat();
-    return;
-  }
-  if (!heartbeatInterval) {
-    startHeartbeat(difficulty);
-  }
-}
-
-function startHeartbeat(difficulty: number) {
-  if (heartbeatInterval) return;
-  const beat = () => {
-    try {
-      const ctx = getCtx();
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = 40;
-      const vol = Math.min(0.06, 0.02 + (difficulty - 2) * 0.01);
-      g.gain.setValueAtTime(vol, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-      osc.connect(g).connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.15);
-    } catch {}
-  };
-  const rate = Math.max(300, 800 - (difficulty - 2) * 100);
-  heartbeatInterval = setInterval(beat, rate);
-}
-
-export function stopHeartbeat() {
-  if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
-}
