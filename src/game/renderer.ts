@@ -2146,26 +2146,44 @@ function renderBullets(ctx: CanvasRenderingContext2D, g: GameData) {
     if (!b.active) continue;
     ctx.save();
     ctx.translate(b.pos.x, b.pos.y);
-    // Glow
-    ctx.fillStyle = 'rgba(251, 191, 36, 0.3)';
+
+    // Gradient trail based on velocity
+    const speed = Math.sqrt(b.vel.x * b.vel.x + b.vel.y * b.vel.y);
+    const nx = b.vel.x / speed;
+    const ny = b.vel.y / speed;
+    const trailLen = Math.min(20, speed * 0.025);
+
+    // Long gradient trail
+    const trailGrad = ctx.createLinearGradient(0, 0, -nx * trailLen, -ny * trailLen);
+    trailGrad.addColorStop(0, 'rgba(251, 191, 36, 0.6)');
+    trailGrad.addColorStop(0.4, 'rgba(251, 191, 36, 0.15)');
+    trailGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+    ctx.strokeStyle = trailGrad;
+    ctx.lineWidth = b.size * 1.2;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.arc(0, 0, b.size * 3, 0, Math.PI * 2);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-nx * trailLen, -ny * trailLen);
+    ctx.stroke();
+
+    // Glow
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.25)';
+    ctx.beginPath();
+    ctx.arc(0, 0, b.size * 2.5, 0, Math.PI * 2);
     ctx.fill();
-    // Bullet tracer
+
+    // Bullet core — bright yellow
     ctx.fillStyle = '#fbbf24';
     ctx.beginPath();
-    ctx.ellipse(0, 0, b.size * 0.8, b.size * 2, 0, 0, Math.PI * 2);
+    ctx.arc(0, 0, b.size * 0.8, 0, Math.PI * 2);
     ctx.fill();
-    // Core
+
+    // White hot center
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.ellipse(0, 0, b.size * 0.3, b.size * 1, 0, 0, Math.PI * 2);
+    ctx.arc(0, 0, b.size * 0.3, 0, Math.PI * 2);
     ctx.fill();
-    // Trail
-    ctx.fillStyle = 'rgba(251, 191, 36, 0.15)';
-    ctx.beginPath();
-    ctx.ellipse(0, b.size * 4, b.size * 0.5, b.size * 5, 0, 0, Math.PI * 2);
-    ctx.fill();
+
     ctx.restore();
   }
 }
