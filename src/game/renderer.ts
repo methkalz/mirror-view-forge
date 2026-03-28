@@ -764,7 +764,7 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     shield:      { base: '#60a5fa', light: '#93c5fd', dark: '#2563eb' },
     ammo:        { base: '#a855f7', light: '#c084fc', dark: '#7e22ce' },
     slowmo:      { base: '#06b6d4', light: '#22d3ee', dark: '#0e7490' },
-    magnet:      { base: '#ef4444', light: '#f87171', dark: '#b91c1c' },
+    magnet:      { base: '#9ca3af', light: '#d1d5db', dark: '#6b7280' },
     airstrike:   { base: '#fbbf24', light: '#fcd34d', dark: '#b45309' },
     interceptor: { base: '#f97316', light: '#fb923c', dark: '#c2410c' },
   };
@@ -789,74 +789,96 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
 
     const cols = puColors[pu.type] || puColors.medkit;
 
-    // ── Professional Parachute ──
+    // ── Professional 3D Parachute ──
     if (pu.parachuting) {
-      const cW = 26, cH = 16;
-      const cY = -28; // canopy center Y
+      const cW = 32, cH = 20;
+      const cY = -32;
       const panels = 8;
-      const sway = Math.sin(pu.bobTimer * 2) * 0.06;
+      const sway = Math.sin(pu.bobTimer * 1.8) * 0.05;
+      const billow = Math.sin(pu.bobTimer * 3.5) * 1.5;
       ctx.save();
       ctx.rotate(sway);
 
-      // Canopy panels with alternating colors
+      // Canopy panels with 3D shading
       for (let i = 0; i < panels; i++) {
         const startA = Math.PI + (i / panels) * Math.PI;
         const endA = Math.PI + ((i + 1) / panels) * Math.PI;
-        const panelColor = i % 2 === 0 ? cols.light : cols.dark;
-        ctx.fillStyle = panelColor;
-        ctx.globalAlpha = fadeAlpha * 0.75;
+        const midA = (startA + endA) / 2;
+        const lightFactor = 0.5 + Math.cos(midA - Math.PI * 1.5) * 0.5;
+        const r = parseInt(cols.base.slice(1, 3), 16);
+        const gr = parseInt(cols.base.slice(3, 5), 16);
+        const b = parseInt(cols.base.slice(5, 7), 16);
+        const lr = Math.min(255, r + lightFactor * 60);
+        const lg = Math.min(255, gr + lightFactor * 60);
+        const lb = Math.min(255, b + lightFactor * 60);
+        ctx.fillStyle = `rgb(${lr},${lg},${lb})`;
+        ctx.globalAlpha = fadeAlpha * 0.8;
         ctx.beginPath();
-        ctx.ellipse(0, cY, cW, cH, 0, startA, endA);
+        ctx.ellipse(0, cY + billow * 0.3, cW, cH + billow, 0, startA, endA);
         ctx.lineTo(0, cY);
         ctx.closePath();
         ctx.fill();
       }
       ctx.globalAlpha = fadeAlpha;
 
-      // Canopy outline + highlight
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      // Wrinkle lines between panels
+      ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+      ctx.lineWidth = 0.6;
+      for (let i = 1; i < panels; i++) {
+        const a = Math.PI + (i / panels) * Math.PI;
+        const rx = Math.cos(a) * cW;
+        const ry = Math.sin(a) * (cH + billow) + cY + billow * 0.3;
+        ctx.beginPath();
+        ctx.moveTo(rx, ry);
+        ctx.lineTo(0, cY);
+        ctx.stroke();
+      }
+
+      // Canopy outline
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)';
       ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.ellipse(0, cY, cW, cH, 0, Math.PI, 0);
+      ctx.ellipse(0, cY + billow * 0.3, cW, cH + billow, 0, Math.PI, 0);
       ctx.stroke();
 
-      // Top highlight arc (3D effect)
-      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-      ctx.lineWidth = 2;
+      // Specular highlight on top
+      const specGrad = ctx.createRadialGradient(-cW * 0.2, cY - cH * 0.3, 0, -cW * 0.2, cY - cH * 0.3, cW * 0.5);
+      specGrad.addColorStop(0, 'rgba(255,255,255,0.35)');
+      specGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = specGrad;
       ctx.beginPath();
-      ctx.ellipse(0, cY - 2, cW * 0.6, cH * 0.5, 0, Math.PI + 0.4, -0.4);
-      ctx.stroke();
+      ctx.ellipse(-cW * 0.2, cY - cH * 0.1, cW * 0.45, cH * 0.4, -0.2, 0, Math.PI * 2);
+      ctx.fill();
 
       // Inner shadow under canopy
-      const shadowGrad = ctx.createLinearGradient(0, cY, 0, cY + cH * 0.6);
-      shadowGrad.addColorStop(0, 'rgba(0,0,0,0.2)');
+      const shadowGrad = ctx.createLinearGradient(0, cY, 0, cY + cH * 0.7);
+      shadowGrad.addColorStop(0, 'rgba(0,0,0,0.25)');
       shadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = shadowGrad;
       ctx.beginPath();
-      ctx.ellipse(0, cY + 2, cW * 0.9, cH * 0.35, 0, 0, Math.PI);
+      ctx.ellipse(0, cY + 3, cW * 0.85, cH * 0.35, 0, 0, Math.PI);
       ctx.fill();
 
-      // Bezier curve strings (4 strings with natural drape)
-      ctx.strokeStyle = 'rgba(220,215,205,0.65)';
-      ctx.lineWidth = 0.8;
-      const stringAttach = [
-        { cx: -cW * 0.85, cy: cY + 2 },
-        { cx: -cW * 0.35, cy: cY + cH * 0.4 },
-        { cx: cW * 0.35, cy: cY + cH * 0.4 },
-        { cx: cW * 0.85, cy: cY + 2 },
-      ];
-      for (const sa of stringAttach) {
+      // 6 strings with natural drape
+      ctx.strokeStyle = 'rgba(200,195,185,0.6)';
+      ctx.lineWidth = 0.7;
+      const stringPoints = [-0.92, -0.58, -0.22, 0.22, 0.58, 0.92];
+      for (const frac of stringPoints) {
+        const a = Math.PI + (frac + 1) * 0.5 * Math.PI;
+        const sx = Math.cos(a) * cW;
+        const sy = Math.sin(a) * (cH + billow) + cY + billow * 0.3;
+        const drape = 4 + Math.abs(frac) * 3;
         ctx.beginPath();
-        ctx.moveTo(sa.cx, sa.cy);
+        ctx.moveTo(sx, sy);
         ctx.bezierCurveTo(
-          sa.cx * 0.6, sa.cy + 10,
-          sa.cx > 0 ? 3 : -3, -8,
+          sx * 0.5, sy + drape,
+          frac > 0 ? 2 : -2, -10,
           0, -4
         );
         ctx.stroke();
       }
 
-      ctx.restore(); // restore sway rotation
+      ctx.restore();
     }
 
     // ── Pulse ring ──
