@@ -2423,16 +2423,43 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillText('ROLL ●', w - 14, h - 14);
   }
 
-  // ─ Ammo indicator (military green) ─
+  // ─ Ammo indicator (visual bullet icons) ─
   if (p.ammo > 0) {
-    ctx.fillStyle = '#4a5c2a';
-    ctx.font = 'bold 11px monospace';
-    ctx.textAlign = 'center';
-    const lvlText = g.bulletLevel > 1 ? ` ×${g.bulletLevel}` : '';
-    ctx.fillText(`⊕ ${p.ammo}${lvlText}`, w / 2, h - 14);
+    const maxDisplay = Math.min(p.ammo, 20);
+    const iconSize = 3;
+    const iconGap = 7;
+    const totalIconW = maxDisplay * iconGap;
+    const startX = w / 2 - totalIconW / 2;
+    const iconY = h - 16;
+    for (let i = 0; i < maxDisplay; i++) {
+      const ix = startX + i * iconGap;
+      // Bullet icon — small rectangle with rounded tip
+      ctx.fillStyle = '#d4a017';
+      ctx.beginPath();
+      ctx.roundRect(ix - iconSize * 0.4, iconY - iconSize, iconSize * 0.8, iconSize * 1.8, 1);
+      ctx.fill();
+      // Tip
+      ctx.fillStyle = '#a04510';
+      ctx.beginPath();
+      ctx.arc(ix, iconY - iconSize, iconSize * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (p.ammo > 20) {
+      ctx.fillStyle = '#4a5c2a';
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`+${p.ammo - 20}`, startX + totalIconW + 3, iconY + 2);
+    }
+    // Level indicator
+    if (g.bulletLevel > 1) {
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`×${g.bulletLevel}`, w / 2, iconY + 12);
+    }
   }
 
-  // ─ Combo counter ─
+  // ─ Combo counter with sparks ─
   if (g.comboCount > 1) {
     const comboPulse = 1 + Math.sin(t * 8) * 0.08;
     ctx.save();
@@ -2450,6 +2477,26 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = 'rgba(251,191,36,0.6)';
     ctx.font = '9px monospace';
     ctx.fillText(`${g.comboCount} hits`, 0, 13);
+
+    // Gold sparks around combo counter at ×2+
+    if (g.comboMultiplier >= 2) {
+      for (let i = 0; i < 4; i++) {
+        const sparkAngle = t * 3 + i * Math.PI / 2;
+        const sparkR = 30 + Math.sin(t * 5 + i) * 5;
+        const sx = Math.cos(sparkAngle) * sparkR;
+        const sy = Math.sin(sparkAngle) * sparkR * 0.4;
+        const sAlpha = 0.4 + Math.sin(t * 8 + i * 1.5) * 0.3;
+        ctx.fillStyle = `rgba(251, 191, 36, ${sAlpha})`;
+        ctx.beginPath();
+        const ss = 2;
+        ctx.moveTo(sx, sy - ss * 2);
+        ctx.lineTo(sx + ss * 0.4, sy);
+        ctx.lineTo(sx, sy + ss * 2);
+        ctx.lineTo(sx - ss * 0.4, sy);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
     ctx.restore();
   }
 
