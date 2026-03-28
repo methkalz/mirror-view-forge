@@ -440,7 +440,8 @@ export function update(g: GameData, input: InputState, dt: number) {
   ];
   const waveEvents = cinematicEvents;
   for (const we of waveEvents) {
-    if (g.elapsed >= we.time - 5 && !g.waveTriggered.has(we.id)) {
+    const triggerTime = we.cinematic ? we.time : we.time - 5;
+    if (g.elapsed >= triggerTime && !g.waveTriggered.has(we.id)) {
       g.waveTriggered.add(we.id);
       // Cinematic warning: full-screen centered with slow-mo
       if (we.cinematic) {
