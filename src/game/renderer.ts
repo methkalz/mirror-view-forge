@@ -424,6 +424,10 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
       } else {
         ctx.save();
         ctx.scale(dir, 1);
+        // Rotate missile based on vertical velocity for arc effect
+        const velY = hz.clusterVelY || 0;
+        const arcAngle = Math.atan2(velY, Math.abs(hz.clusterVelX || 300)) * dir;
+        ctx.rotate(arcAngle);
 
         // === Ballistic missile design ===
         const bodyLen = hz.size * 3.5;
