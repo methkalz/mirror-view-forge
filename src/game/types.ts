@@ -229,6 +229,8 @@ export interface GameData {
   lightningTimer: number;
   lightningFlash: number;
   weatherIntensity: number;
+  cinematicWarning: { text: string; subText: string; color: string; timer: number; duration: number } | null;
+  missileStartTime: number;
 }
 
 export interface InputState {

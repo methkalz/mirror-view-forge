@@ -1207,7 +1207,7 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
   const p = g.player;
   ctx.save();
   ctx.translate(p.pos.x, p.pos.y);
-  const S = 1.3; // scale factor for bigger character
+  const S = 1.6; // scale factor for bigger character
   ctx.scale(S, S);
 
   // Hit flash & shake
@@ -2069,6 +2069,9 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
 
   // Wave warnings (cinematic banner at top)
   renderWaveWarnings(ctx, g);
+
+  // Cinematic warning overlay (center screen + blur + slow-mo)
+  renderCinematicWarning(ctx, g);
 }
 
 // ─── Wave Warning Banners ─────────────────────────────
