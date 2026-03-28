@@ -78,7 +78,7 @@ export function createGame(w: number, h: number): GameData {
     lightningFlash: 0,
     weatherIntensity: 0,
     cinematicWarning: null,
-    missileStartTime: 15 + Math.random() * 10, // 15-25s random
+    missileStartTime: 5 + Math.random() * 5, // 5-10s random
   };
 }
 
@@ -140,7 +140,7 @@ export function resetGame(g: GameData) {
   g.lightningFlash = 0;
   g.weatherIntensity = 0;
   g.cinematicWarning = null;
-  g.missileStartTime = 15 + Math.random() * 10;
+  g.missileStartTime = 5 + Math.random() * 5;
 }
 
 function dist(a: Vec2, b: Vec2): number {
@@ -426,14 +426,14 @@ export function update(g: GameData, input: InputState, dt: number) {
   const cinematicEvents: { time: number; id: string; text: string; sub: string; color: string; cinematic: boolean }[] = [
     { time: 3, id: 'shrapnel_start', text: '⚠ شظايا متساقطة!', sub: 'SHRAPNEL INCOMING', color: '#f97316', cinematic: true },
     { time: g.missileStartTime, id: 'missiles', text: '⚠ صواريخ قادمة!', sub: 'MISSILES DETECTED', color: '#ef4444', cinematic: true },
-    { time: 85, id: 'clusters', text: '⚠ صواريخ متشظية!', sub: 'SPLITTING MISSILES INCOMING', color: '#f43f5e', cinematic: true },
-    { time: 85, id: 'drones_scout', text: '⚠ طائرات استطلاع!', sub: 'SCOUT DRONES APPROACHING', color: '#60a5fa', cinematic: true },
+    { time: 80, id: 'clusters', text: '⚠ صواريخ متشظية!', sub: 'SPLITTING MISSILES INCOMING', color: '#f43f5e', cinematic: true },
+    { time: 90, id: 'drones_scout', text: '⚠ طائرات استطلاع!', sub: 'SCOUT DRONES APPROACHING', color: '#60a5fa', cinematic: true },
     { time: 120, id: 'bullet_2', text: '⬆ تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e', cinematic: false },
     { time: 145, id: 'cluster_3', text: '⚠ تشظي ثلاثي!', sub: 'TRIPLE SPLIT MISSILES', color: '#f43f5e', cinematic: false },
-    { time: 145, id: 'drones_tracker', text: '⚠ طائرات تتبع!', sub: 'TRACKER DRONES INBOUND', color: '#a855f7', cinematic: true },
+    { time: 155, id: 'drones_tracker', text: '⚠ طائرات تتبع!', sub: 'TRACKER DRONES INBOUND', color: '#a855f7', cinematic: true },
     { time: 200, id: 'bullet_3', text: '⬆ تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#fbbf24', cinematic: false },
     { time: 205, id: 'cluster_4', text: '⚠ تشظي رباعي!', sub: 'QUAD SPLIT MISSILES', color: '#dc2626', cinematic: false },
-    { time: 205, id: 'drones_bomber', text: '⚠ قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444', cinematic: true },
+    { time: 215, id: 'drones_bomber', text: '⚠ قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444', cinematic: true },
     { time: 235, id: 'boss_warn', text: '🔴 طائرة حربية!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626', cinematic: true },
     { time: 235, id: 'boss_prep', text: '📦 إمدادات طارئة!', sub: 'EMERGENCY SUPPLIES DROPPED', color: '#22c55e', cinematic: false },
     { time: 265, id: 'cluster_5', text: '💀 تشظي خماسي!', sub: 'MAX SPLIT — DANGER', color: '#991b1b', cinematic: false },
@@ -442,6 +442,8 @@ export function update(g: GameData, input: InputState, dt: number) {
   for (const we of waveEvents) {
     const triggerTime = we.cinematic ? we.time : we.time - 5;
     if (g.elapsed >= triggerTime && !g.waveTriggered.has(we.id)) {
+      // Don't trigger a new cinematic if one is already active
+      if (we.cinematic && g.cinematicWarning) continue;
       g.waveTriggered.add(we.id);
       // Cinematic warning: full-screen centered with slow-mo
       if (we.cinematic) {
