@@ -739,18 +739,20 @@ export function update(g: GameData, input: InputState, dt: number) {
         addSmokeTrail(g, { x: h.pos.x, y: h.pos.y }, h.size * 0.5);
       }
 
+      const startSpd = h.clusterStartSpeed || 350;
+
       if (h.clusterPhase === 'flying') {
-        // Decelerate aggressively so it stops on screen
-        const decel = (h.clusterStartSpeed || 350) * 0.8 * dt;
+        // Decelerate but keep minimum 35% speed (heavy missile)
+        const decel = startSpd * 0.8 * dt;
         if (h.clusterVelX! > 0) {
-          h.clusterVelX = Math.max(h.clusterVelX! - decel, (h.clusterStartSpeed || 400) * 0.25);
+          h.clusterVelX = Math.max(h.clusterVelX! - decel, startSpd * 0.35);
         } else {
-          h.clusterVelX = Math.min(h.clusterVelX! + decel, -(h.clusterStartSpeed || 400) * 0.25);
+          h.clusterVelX = Math.min(h.clusterVelX! + decel, -startSpd * 0.35);
         }
         h.pos.x += h.clusterVelX! * g.slowMoFactor * dt;
 
         // Check if slowed enough to open
-        if (Math.abs(h.clusterVelX!) <= (h.clusterStartSpeed || 350) * 0.4) {
+        if (Math.abs(h.clusterVelX!) <= startSpd * 0.4) {
           h.clusterPhase = 'opening';
           h.clusterTimer = 0.5;
         }
@@ -760,14 +762,17 @@ export function update(g: GameData, input: InputState, dt: number) {
         }
       } else if (h.clusterPhase === 'opening') {
         h.clusterTimer! -= dt;
-        // Slow drift
-        h.pos.x += (h.clusterVelX! * 0.3) * g.slowMoFactor * dt;
+        // Keep moving at 60% speed during opening
+        h.pos.x += (h.clusterVelX! * 0.6) * g.slowMoFactor * dt;
         if (h.clusterTimer! <= 0) {
           h.clusterPhase = 'releasing';
           h.clusterTimer = 0.1;
         }
       } else if (h.clusterPhase === 'releasing') {
-        // Release bombs downward with varied sizes
+        // Keep moving at 50% speed while releasing
+        h.pos.x += (h.clusterVelX! * 0.5) * g.slowMoFactor * dt;
+
+        // Release glowing bombs downward
         let splitCount = 2;
         if (g.activatedWaveEvents.has('cluster_3')) splitCount = 3;
         if (g.activatedWaveEvents.has('cluster_4')) splitCount = 4;
@@ -781,11 +786,11 @@ export function update(g: GameData, input: InputState, dt: number) {
             rotation: 0, trailTimer: 0
           }));
           sh.type = 'shrapnel';
+          sh.isClusterBomb = true;
           sh.pos = { x: h.pos.x + spreadX, y: h.pos.y + 10 };
           const targetX = h.pos.x + spreadX + (Math.random() - 0.5) * 40;
           sh.targetPos = { x: targetX, y: groundY - 5 + Math.random() * 10 };
           sh.speed = 200 + Math.random() * 150;
-          // Varied sizes and damage
           const sizeVar = Math.random();
           sh.size = sizeVar > 0.7 ? 9 : sizeVar > 0.3 ? 7 : 5;
           sh.damage = sizeVar > 0.7 ? 12 : sizeVar > 0.3 ? 9 : 5;
@@ -795,13 +800,15 @@ export function update(g: GameData, input: InputState, dt: number) {
           sh.rotation = Math.random() * Math.PI * 2;
           sh.trailTimer = 0;
         }
-        // Quiet explosion and remove
+        // Quiet explosion and keep moving
         h.clusterPhase = 'done';
-        h.clusterTimer = 0.4;
+        h.clusterTimer = 0.5;
         addExplosion(g, h.pos, h.size * 1.5);
         spawnParticles(g, h.pos, 5, '#888', 60, false);
         sfxImpactLight();
       } else if (h.clusterPhase === 'done') {
+        // Keep drifting at 40% speed until fade
+        h.pos.x += (h.clusterVelX! * 0.4) * g.slowMoFactor * dt;
         h.clusterTimer! -= dt;
         if (h.clusterTimer! <= 0) {
           h.active = false;
