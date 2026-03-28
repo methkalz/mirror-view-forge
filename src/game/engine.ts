@@ -590,6 +590,7 @@ export function update(g: GameData, input: InputState, dt: number) {
     input.shoot = false;
     p.ammo--;
     p.shootTimer = 0.3;
+    p.velocity.x += p.facingRight ? -60 : 60;
     const baseX = p.pos.x + (p.facingRight ? 10 : -10);
     const baseY = p.pos.y - 20;
     const angles = g.bulletLevel === 1 ? [0] : g.bulletLevel === 2 ? [-0.1, 0.1] : [-0.15, 0, 0.15];
