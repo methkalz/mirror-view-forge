@@ -343,8 +343,14 @@ function queueWaveEvent(
   const resolveDelay = 2 + Math.random() * 3;
   const resolveAt = g.elapsed + resolveDelay;
 
+  // Cooldown after warning disappears before next warning can appear
+  // Early events (shrapnel/missiles): 3-6s gap, all others: 7s minimum
+  const isEarlyEvent = event.id === 'shrapnel_start' || event.id === 'missiles';
+  const cooldownGap = isEarlyEvent ? (3 + Math.random() * 3) : 7;
+  const lockEnd = g.elapsed + event.duration + resolveDelay + cooldownGap;
+
   g.waveTriggered.add(event.id);
-  g.warningLockUntil = resolveAt;
+  g.warningLockUntil = lockEnd;
   g.pendingWaveEvents.push({ id: event.id, resolveAt });
 
   g.cinematicWarning = {
