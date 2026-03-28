@@ -3439,6 +3439,39 @@ export function renderGameOver(ctx: CanvasRenderingContext2D, w: number, h: numb
   ctx.fillStyle = `rgba(0, 0, 0, ${overlayAlpha})`;
   ctx.fillRect(0, 0, w, h);
 
+  // Cracked screen effect — white cracks from center
+  if (elapsed > 0.1 && elapsed < 2.0) {
+    const crackAlpha = Math.min(0.4, (elapsed - 0.1) * 0.8) * Math.max(0, 1 - (elapsed - 0.5) / 1.5);
+    ctx.strokeStyle = `rgba(255, 255, 255, ${crackAlpha})`;
+    ctx.lineWidth = 1.5;
+    const cx = w / 2, cy = h / 2;
+    // Generate deterministic cracks from center
+    for (let i = 0; i < 8; i++) {
+      const baseAngle = (i / 8) * Math.PI * 2 + 0.3;
+      const len = Math.min(w, h) * (0.2 + Math.sin(i * 3.7) * 0.15);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      let px = cx, py = cy;
+      const segments = 4;
+      for (let s = 0; s < segments; s++) {
+        const t = (s + 1) / segments;
+        const jitter = (Math.sin(i * 7 + s * 5.1) * 0.3);
+        const nx = cx + Math.cos(baseAngle + jitter) * len * t;
+        const ny = cy + Math.sin(baseAngle + jitter) * len * t;
+        ctx.lineTo(nx, ny);
+        px = nx; py = ny;
+        // Branch crack
+        if (s === 2 && i % 2 === 0) {
+          ctx.moveTo(px, py);
+          const branchAngle = baseAngle + (Math.sin(i * 2.3) > 0 ? 0.5 : -0.5);
+          ctx.lineTo(px + Math.cos(branchAngle) * len * 0.2, py + Math.sin(branchAngle) * len * 0.2);
+          ctx.moveTo(px, py);
+        }
+      }
+      ctx.stroke();
+    }
+  }
+
   // Only show content after initial fade
   if (elapsed < 0.2) return;
 
