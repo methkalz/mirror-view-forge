@@ -84,6 +84,13 @@ export function createGame(w: number, h: number): GameData {
     pendingWaveEvents: [],
     activatedWaveEvents: new Set(),
     missileStartTime: 5 + Math.random() * 5, // 5-10s random
+    hitStopTimer: 0,
+    comboCount: 0,
+    comboTimer: 0,
+    comboMultiplier: 1,
+    microSlowTimer: 0,
+    deathTimer: 0,
+    deathPhase: 'alive',
   };
 }
 
