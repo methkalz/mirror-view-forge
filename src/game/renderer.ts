@@ -761,28 +761,48 @@ function drawShieldIcon(ctx: CanvasRenderingContext2D, s: number) {
 }
 
 function drawAmmoIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // Bullet shape — golden metallic
-  const bh = s * 0.9, bw = s * 0.35;
-  const bg = ctx.createLinearGradient(-bw, 0, bw, 0);
-  bg.addColorStop(0, '#92710a');
-  bg.addColorStop(0.3, '#fbbf24');
-  bg.addColorStop(0.6, '#f59e0b');
-  bg.addColorStop(1, '#92710a');
-  ctx.fillStyle = bg;
-  // Casing
-  ctx.beginPath();
-  ctx.roundRect(-bw, -bh * 0.3, bw * 2, bh * 0.8, 2);
-  ctx.fill();
-  // Tip
-  ctx.fillStyle = '#b45309';
-  ctx.beginPath();
-  ctx.moveTo(-bw * 0.8, -bh * 0.3);
-  ctx.quadraticCurveTo(0, -bh, bw * 0.8, -bh * 0.3);
-  ctx.closePath();
-  ctx.fill();
-  // Highlight
-  ctx.fillStyle = 'rgba(255,255,255,0.3)';
-  ctx.fillRect(-bw * 0.15, -bh * 0.25, bw * 0.3, bh * 0.65);
+  // Crossed bullets — military style
+  const bh = s * 0.55, bw = s * 0.18;
+  for (let side = -1; side <= 1; side += 2) {
+    ctx.save();
+    ctx.rotate(side * 0.4);
+    // Casing
+    const bg = ctx.createLinearGradient(-bw, 0, bw, 0);
+    bg.addColorStop(0, '#7a6008');
+    bg.addColorStop(0.3, '#d4a017');
+    bg.addColorStop(0.5, '#f0c040');
+    bg.addColorStop(0.7, '#d4a017');
+    bg.addColorStop(1, '#7a6008');
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    ctx.roundRect(-bw, -bh * 0.15, bw * 2, bh * 0.85, 1.5);
+    ctx.fill();
+    // Belt groove
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(-bw, bh * 0.5);
+    ctx.lineTo(bw, bh * 0.5);
+    ctx.stroke();
+    // Tip
+    ctx.fillStyle = '#a04510';
+    ctx.beginPath();
+    ctx.moveTo(-bw * 0.7, -bh * 0.15);
+    ctx.quadraticCurveTo(0, -bh, bw * 0.7, -bh * 0.15);
+    ctx.closePath();
+    ctx.fill();
+    // Tip highlight
+    ctx.fillStyle = 'rgba(255,220,150,0.35)';
+    ctx.beginPath();
+    ctx.moveTo(-bw * 0.15, -bh * 0.15);
+    ctx.quadraticCurveTo(0, -bh * 0.85, bw * 0.15, -bh * 0.15);
+    ctx.closePath();
+    ctx.fill();
+    // Casing highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillRect(-bw * 0.1, -bh * 0.1, bw * 0.2, bh * 0.55);
+    ctx.restore();
+  }
 }
 
 function drawSlowMoIcon(ctx: CanvasRenderingContext2D, s: number, elapsed: number) {
@@ -964,7 +984,7 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
   const puColors: Record<string, { base: string; light: string; dark: string }> = {
     medkit:      { base: '#22c55e', light: '#4ade80', dark: '#15803d' },
     shield:      { base: '#60a5fa', light: '#93c5fd', dark: '#2563eb' },
-    ammo:        { base: '#a855f7', light: '#c084fc', dark: '#7e22ce' },
+    ammo:        { base: '#4a5c2a', light: '#6b7d3a', dark: '#2d3a1a' },
     slowmo:      { base: '#06b6d4', light: '#22d3ee', dark: '#0e7490' },
     magnet:      { base: '#b91c1c', light: '#ef4444', dark: '#7f1d1d' },
     airstrike:   { base: '#fbbf24', light: '#fcd34d', dark: '#b45309' },
@@ -1001,25 +1021,51 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.save();
       ctx.rotate(sway);
 
-      // Canopy panels with 3D shading
+      // Canopy panels with 3D shading — military camo for ammo
+      const camoColors = ['#4a5c2a', '#6b7d3a', '#8b7d5a', '#5c4a2a', '#3d4a2a', '#7a6b3a', '#5a6b3a', '#6b5a2a'];
       for (let i = 0; i < panels; i++) {
         const startA = Math.PI + (i / panels) * Math.PI;
         const endA = Math.PI + ((i + 1) / panels) * Math.PI;
         const midA = (startA + endA) / 2;
         const lightFactor = 0.5 + Math.cos(midA - Math.PI * 1.5) * 0.5;
-        const r = parseInt(cols.base.slice(1, 3), 16);
-        const gr = parseInt(cols.base.slice(3, 5), 16);
-        const b = parseInt(cols.base.slice(5, 7), 16);
-        const lr = Math.min(255, r + lightFactor * 60);
-        const lg = Math.min(255, gr + lightFactor * 60);
-        const lb = Math.min(255, b + lightFactor * 60);
-        ctx.fillStyle = `rgb(${lr},${lg},${lb})`;
+        if (pu.type === 'ammo') {
+          // Military camo pattern
+          const cc = camoColors[i % camoColors.length];
+          const cr = parseInt(cc.slice(1, 3), 16);
+          const cg = parseInt(cc.slice(3, 5), 16);
+          const cb = parseInt(cc.slice(5, 7), 16);
+          ctx.fillStyle = `rgb(${Math.min(255, cr + lightFactor * 30)},${Math.min(255, cg + lightFactor * 30)},${Math.min(255, cb + lightFactor * 30)})`;
+        } else {
+          const r = parseInt(cols.base.slice(1, 3), 16);
+          const gr = parseInt(cols.base.slice(3, 5), 16);
+          const b = parseInt(cols.base.slice(5, 7), 16);
+          const lr = Math.min(255, r + lightFactor * 60);
+          const lg = Math.min(255, gr + lightFactor * 60);
+          const lb = Math.min(255, b + lightFactor * 60);
+          ctx.fillStyle = `rgb(${lr},${lg},${lb})`;
+        }
         ctx.globalAlpha = fadeAlpha * 0.8;
         ctx.beginPath();
         ctx.ellipse(0, cY + billow * 0.3, cW, cH + billow, 0, startA, endA);
         ctx.lineTo(0, cY);
         ctx.closePath();
         ctx.fill();
+      }
+      // Military star on ammo parachute
+      if (pu.type === 'ammo') {
+        ctx.globalAlpha = fadeAlpha * 0.6;
+        ctx.fillStyle = '#e5e5d0';
+        ctx.beginPath();
+        const starX = 0, starY = cY - cH * 0.15, starR = 5;
+        for (let i = 0; i < 5; i++) {
+          const a = -Math.PI / 2 + (i * Math.PI * 2) / 5;
+          const a2 = a + Math.PI / 5;
+          ctx.lineTo(starX + Math.cos(a) * starR, starY + Math.sin(a) * starR);
+          ctx.lineTo(starX + Math.cos(a2) * starR * 0.4, starY + Math.sin(a2) * starR * 0.4);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = fadeAlpha;
       }
       ctx.globalAlpha = fadeAlpha;
 
@@ -1103,21 +1149,77 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.arc(0, 0, pu.size * 2.8, 0, Math.PI * 2);
     ctx.fill();
 
-    // ── Item circle background with gradient ──
-    const bgGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, pu.size);
-    bgGrad.addColorStop(0, cols.light);
-    bgGrad.addColorStop(0.7, cols.base);
-    bgGrad.addColorStop(1, cols.dark);
-    ctx.fillStyle = bgGrad;
-    ctx.beginPath();
-    ctx.arc(0, 0, pu.size, 0, Math.PI * 2);
-    ctx.fill();
+    // ── Item background ──
+    if (pu.type === 'ammo') {
+      // Military ammo crate
+      const crW = pu.size * 1.3, crH = pu.size * 1.0;
+      // Main crate body
+      const crateGrad = ctx.createLinearGradient(0, -crH, 0, crH);
+      crateGrad.addColorStop(0, '#5a6b30');
+      crateGrad.addColorStop(0.5, '#3d4a1e');
+      crateGrad.addColorStop(1, '#2d3a14');
+      ctx.fillStyle = crateGrad;
+      ctx.beginPath();
+      ctx.roundRect(-crW, -crH, crW * 2, crH * 2, 3);
+      ctx.fill();
+      // Metal edges
+      ctx.strokeStyle = '#8a8a6a';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(-crW, -crH, crW * 2, crH * 2);
+      // Corner reinforcements
+      const cornerSize = 4;
+      ctx.fillStyle = '#6a6a5a';
+      [[-crW, -crH], [crW - cornerSize, -crH], [-crW, crH - cornerSize], [crW - cornerSize, crH - cornerSize]].forEach(([cx, cy]) => {
+        ctx.fillRect(cx, cy, cornerSize, cornerSize);
+      });
+      // Handle on top
+      ctx.strokeStyle = '#9a9a7a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-crW * 0.35, -crH);
+      ctx.quadraticCurveTo(0, -crH - 5, crW * 0.35, -crH);
+      ctx.stroke();
+      // Front latch
+      ctx.fillStyle = '#aaa080';
+      ctx.fillRect(-2, crH * 0.3, 4, 5);
+      ctx.fillStyle = '#c0b890';
+      ctx.fillRect(-1.5, crH * 0.35, 3, 2);
+      // Horizontal strap
+      ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-crW, 0);
+      ctx.lineTo(crW, 0);
+      ctx.stroke();
+      // Star marking
+      ctx.fillStyle = 'rgba(200,200,180,0.3)';
+      ctx.beginPath();
+      const sR = crH * 0.35;
+      for (let i = 0; i < 5; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI * 2) / 5;
+        const a2 = a + Math.PI / 5;
+        ctx.lineTo(Math.cos(a) * sR, Math.sin(a) * sR - 1);
+        ctx.lineTo(Math.cos(a2) * sR * 0.4, Math.sin(a2) * sR * 0.4 - 1);
+      }
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      // Default circle for other power-ups
+      const bgGrad = ctx.createRadialGradient(-2, -2, 0, 0, 0, pu.size);
+      bgGrad.addColorStop(0, cols.light);
+      bgGrad.addColorStop(0.7, cols.base);
+      bgGrad.addColorStop(1, cols.dark);
+      ctx.fillStyle = bgGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, pu.size, 0, Math.PI * 2);
+      ctx.fill();
 
-    // Glossy highlight
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.beginPath();
-    ctx.ellipse(-pu.size * 0.2, -pu.size * 0.3, pu.size * 0.5, pu.size * 0.3, -0.3, 0, Math.PI * 2);
-    ctx.fill();
+      // Glossy highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.beginPath();
+      ctx.ellipse(-pu.size * 0.2, -pu.size * 0.3, pu.size * 0.5, pu.size * 0.3, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Border ring — enhanced for magnet visibility
     if (pu.type === 'magnet') {
