@@ -358,6 +358,21 @@ function queueWaveEvent(
 function applyWaveEvent(g: GameData, id: string) {
   g.activatedWaveEvents.add(id);
 
+  if (id === 'shrapnel_start') {
+    spawnHazard(g, 'shrapnel');
+    return;
+  }
+
+  if (id === 'missiles') {
+    spawnHazard(g, 'missile');
+    return;
+  }
+
+  if (id === 'clusters') {
+    spawnHazard(g, 'cluster');
+    return;
+  }
+
   if (id === 'bullet_2') {
     g.bulletLevel = Math.max(g.bulletLevel, 2);
     return;
