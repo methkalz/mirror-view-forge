@@ -2080,8 +2080,9 @@ function renderCinematicWarning(ctx: CanvasRenderingContext2D, g: GameData) {
 
   const { width: w, height: h } = g;
   const progress = 1 - cw.timer / cw.duration;
+  const isWarning = cw.type === 'warning';
 
-  // Fade: quick in (0.15), hold, quick out (last 0.2)
+  // Fade: quick in (0.1), hold, quick out (last 0.2)
   let alpha = 1;
   if (progress < 0.1) alpha = progress / 0.1;
   else if (progress > 0.8) alpha = (1 - progress) / 0.2;
@@ -2089,13 +2090,13 @@ function renderCinematicWarning(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.save();
   ctx.globalAlpha = alpha;
 
-  // Dark overlay (simulates blur)
+  // Dark overlay
   ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
   ctx.fillRect(0, 0, w, h);
 
-  // Glowing border lines at top and bottom of warning area
+  // Glowing band
   const centerY = h * 0.45;
-  const bandH = 80;
+  const bandH = 100;
   const borderGrad = ctx.createLinearGradient(0, centerY - bandH / 2, 0, centerY + bandH / 2);
   borderGrad.addColorStop(0, `${cw.color}00`);
   borderGrad.addColorStop(0.15, `${cw.color}33`);
@@ -2105,7 +2106,7 @@ function renderCinematicWarning(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.fillStyle = borderGrad;
   ctx.fillRect(0, centerY - bandH / 2, w, bandH);
 
-  // Top and bottom border lines
+  // Border lines
   ctx.strokeStyle = cw.color;
   ctx.lineWidth = 1.5;
   ctx.globalAlpha = alpha * 0.6;
@@ -2119,19 +2120,94 @@ function renderCinematicWarning(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.stroke();
   ctx.globalAlpha = alpha;
 
+  // === Icon above text ===
+  const iconY = centerY - 28;
+  const pulse = 0.8 + 0.2 * Math.sin(progress * Math.PI * 6);
+
+  if (isWarning) {
+    // Warning triangle with exclamation mark
+    const triSize = 20;
+    ctx.save();
+    ctx.translate(w / 2, iconY);
+    ctx.scale(pulse, pulse);
+
+    // Triangle glow
+    ctx.shadowColor = cw.color;
+    ctx.shadowBlur = 18;
+
+    // Triangle outline
+    ctx.beginPath();
+    ctx.moveTo(0, -triSize);
+    ctx.lineTo(-triSize * 0.9, triSize * 0.6);
+    ctx.lineTo(triSize * 0.9, triSize * 0.6);
+    ctx.closePath();
+    ctx.fillStyle = cw.color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Inner darker triangle
+    ctx.beginPath();
+    ctx.moveTo(0, -triSize * 0.6);
+    ctx.lineTo(-triSize * 0.55, triSize * 0.35);
+    ctx.lineTo(triSize * 0.55, triSize * 0.35);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fill();
+
+    // Exclamation mark
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('!', 0, 2);
+
+    ctx.restore();
+  } else {
+    // Upgrade arrow icon
+    const arrowSize = 16;
+    ctx.save();
+    ctx.translate(w / 2, iconY);
+    ctx.scale(pulse, pulse);
+
+    // Arrow glow
+    ctx.shadowColor = cw.color;
+    ctx.shadowBlur = 18;
+
+    // Upward arrow
+    ctx.beginPath();
+    ctx.moveTo(0, -arrowSize);
+    ctx.lineTo(-arrowSize * 0.7, 0);
+    ctx.lineTo(-arrowSize * 0.25, 0);
+    ctx.lineTo(-arrowSize * 0.25, arrowSize * 0.7);
+    ctx.lineTo(arrowSize * 0.25, arrowSize * 0.7);
+    ctx.lineTo(arrowSize * 0.25, 0);
+    ctx.lineTo(arrowSize * 0.7, 0);
+    ctx.closePath();
+    ctx.fillStyle = cw.color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
   // Main text
   ctx.fillStyle = '#fff';
-  ctx.font = 'bold 28px monospace';
+  ctx.font = 'bold 26px monospace';
   ctx.textAlign = 'center';
   ctx.shadowColor = cw.color;
   ctx.shadowBlur = 20;
-  ctx.fillText(cw.text, w / 2, centerY - 2);
+  ctx.fillText(cw.text, w / 2, centerY + 8);
 
   // Sub text
   ctx.shadowBlur = 8;
   ctx.fillStyle = cw.color;
-  ctx.font = 'bold 13px monospace';
-  ctx.fillText(cw.subText, w / 2, centerY + 22);
+  ctx.font = 'bold 12px monospace';
+  ctx.fillText(cw.subText, w / 2, centerY + 28);
 
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';

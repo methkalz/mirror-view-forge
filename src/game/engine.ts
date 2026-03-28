@@ -336,7 +336,7 @@ function spawnDrone(g: GameData, forcedTier?: DroneTier) {
 
 function queueWaveEvent(
   g: GameData,
-  event: { id: string; text: string; sub: string; color: string; duration: number }
+  event: { id: string; text: string; sub: string; color: string; duration: number; type: 'warning' | 'upgrade' }
 ) {
   const resolveDelay = 2 + Math.random() * 3;
   const resolveAt = g.elapsed + resolveDelay;
@@ -351,6 +351,7 @@ function queueWaveEvent(
     color: event.color,
     timer: event.duration,
     duration: event.duration,
+    type: event.type,
   };
   g.slowMoFactor = 0.1;
 }
