@@ -549,13 +549,13 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
 
         // Opening phase: longitudinal split with red glow
         if (phase === 'opening') {
-          const openT = 1 - Math.max(0, (hz.clusterTimer || 0) / 0.5);
+          const openT = 1 - Math.max(0, (hz.clusterTimer || 0) / 1.0);
           const gap = openT * bodyH * 2.5;
 
           // Internal red glow
           ctx.fillStyle = `rgba(239,68,68,${0.3 + openT * 0.7})`;
           ctx.beginPath();
-          ctx.ellipse(0, 0, bodyLen * 0.3, bodyH * (1 + openT * 1.5), 0, 0, Math.PI * 2);
+          ctx.ellipse(0, 0, bodyLen * 0.3, Math.max(0.1, bodyH * (1 + openT * 1.5)), 0, 0, Math.PI * 2);
           ctx.fill();
 
           // Crack lines along the body
