@@ -497,6 +497,7 @@ function incrementCombo(g: GameData) {
   g.comboCount++;
   g.comboTimer = 3;
   g.comboMultiplier = Math.min(3, 1 + Math.floor(g.comboCount / 3) * 0.5);
+  if (g.comboCount > 1) sfxCombo(g.comboCount);
 }
 
 function comboScore(g: GameData, base: number): number {
