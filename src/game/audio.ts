@@ -204,20 +204,35 @@ export function sfxBossExplosion() {
 }
 
 export function sfxShoot1() {
-  playTone(800, 0.06, 'square', 0.1);
-  playNoise(0.04, 0.06, { type: 'highpass', freq: 2000 });
+  // Realistic pistol: sharp crack + low thud
+  playNoise(0.08, 0.15, { type: 'highpass', freq: 3000 });
+  playTone(150, 0.1, 'sine', 0.12);
+  playTone(80, 0.08, 'sine', 0.06);
 }
 
 export function sfxShoot2() {
-  playTone(900, 0.05, 'square', 0.1);
-  playNoise(0.06, 0.08, { type: 'highpass', freq: 1800 });
-  setTimeout(() => playTone(700, 0.05, 'square', 0.08), 40);
+  // Double shot: two rapid cracks with deeper bass
+  playNoise(0.09, 0.18, { type: 'highpass', freq: 2800 });
+  playTone(120, 0.12, 'sine', 0.14);
+  playTone(70, 0.1, 'sine', 0.08);
+  setTimeout(() => {
+    playNoise(0.07, 0.14, { type: 'highpass', freq: 3200 });
+    playTone(130, 0.1, 'sine', 0.1);
+  }, 60);
 }
 
 export function sfxShoot3() {
-  playTone(1000, 0.05, 'square', 0.1);
-  playNoise(0.08, 0.1, { type: 'highpass', freq: 1500 });
-  setTimeout(() => playTone(800, 0.04, 'square', 0.08), 35);
-  setTimeout(() => playTone(600, 0.06, 'sine', 0.07), 70);
+  // Triple burst: dense cracks with heavy bass rumble
+  playNoise(0.1, 0.2, { type: 'highpass', freq: 2500 });
+  playTone(100, 0.15, 'sine', 0.16);
+  playTone(60, 0.12, 'sine', 0.1);
+  setTimeout(() => {
+    playNoise(0.08, 0.16, { type: 'highpass', freq: 3000 });
+    playTone(110, 0.1, 'sine', 0.12);
+  }, 50);
+  setTimeout(() => {
+    playNoise(0.07, 0.14, { type: 'highpass', freq: 3400 });
+    playTone(90, 0.08, 'sine', 0.1);
+  }, 100);
 }
 
