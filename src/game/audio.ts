@@ -108,19 +108,18 @@ function startAmbient() {
 }
 
 export function sfxExplosion() {
-  // Cluster bomb — softer, less harsh
-  playTone(50, 0.15, 'sine', 0.05);
-  playNoise(0.2, 0.04, { type: 'lowpass', freq: 400 });
+  playTone(40, 0.15, 'sine', 0.03);
+  playNoise(0.12, 0.025, { type: 'lowpass', freq: 250 });
 }
 
 export function sfxImpactLight() {
-  playNoise(0.05, 0.09, { type: 'lowpass', freq: 250 + Math.random() * 300 });
-  playTone(120 + Math.random() * 80, 0.04, 'sine', 0.06);
+  playNoise(0.05, 0.12, { type: 'lowpass', freq: 250 + Math.random() * 300 });
+  playTone(120 + Math.random() * 80, 0.04, 'sine', 0.08);
 }
 
 export function sfxImpactHeavy() {
-  playTone(45, 0.18, 'sine', 0.14);
-  playNoise(0.14, 0.10, { type: 'lowpass', freq: 200 });
+  playTone(45, 0.18, 'sine', 0.18);
+  playNoise(0.14, 0.13, { type: 'lowpass', freq: 200 });
 }
 
 export function sfxPickup() {
