@@ -808,36 +808,52 @@ function drawSlowMoIcon(ctx: CanvasRenderingContext2D, s: number, elapsed: numbe
 }
 
 function drawMagnetIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // U-shaped magnet with high contrast
-  const w = s * 0.7, h = s * 0.8, t = s * 0.28;
-  // White outline for visibility
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 1.5;
-  // Left pole (red)
-  ctx.fillStyle = '#dc2626';
-  ctx.fillRect(-w, -h * 0.5, t, h);
-  ctx.strokeRect(-w, -h * 0.5, t, h);
-  // Right pole (blue)
-  ctx.fillStyle = '#2563eb';
-  ctx.fillRect(w - t, -h * 0.5, t, h);
-  ctx.strokeRect(w - t, -h * 0.5, t, h);
-  // Curved bottom
-  ctx.strokeStyle = '#d4d4d8';
+  // Large horseshoe magnet — red left pole, blue right pole, silver arc
+  const w = s * 0.8, h = s * 0.9, t = s * 0.32;
+  
+  // Silver curved bottom (horseshoe base)
+  const arcGrad = ctx.createLinearGradient(-w, h * 0.3, w, h * 0.3);
+  arcGrad.addColorStop(0, '#c0c0c0');
+  arcGrad.addColorStop(0.5, '#f0f0f0');
+  arcGrad.addColorStop(1, '#c0c0c0');
+  ctx.strokeStyle = arcGrad;
   ctx.lineWidth = t;
-  ctx.lineCap = 'butt';
+  ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.arc(0, h * 0.5, w - t / 2, 0, Math.PI);
+  ctx.arc(0, h * 0.35, w - t / 2, 0, Math.PI);
   ctx.stroke();
   // White outline on curve
   ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.arc(0, h * 0.5, w + 1, 0, Math.PI);
+  ctx.arc(0, h * 0.35, w + 2, 0, Math.PI);
   ctx.stroke();
-  // Tips with white markers
+  
+  // Left pole (red)
+  ctx.fillStyle = '#dc2626';
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.5;
+  ctx.fillRect(-w, -h * 0.45, t, h * 0.8);
+  ctx.strokeRect(-w, -h * 0.45, t, h * 0.8);
+  // Right pole (blue)
+  ctx.fillStyle = '#2563eb';
+  ctx.fillRect(w - t, -h * 0.45, t, h * 0.8);
+  ctx.strokeRect(w - t, -h * 0.45, t, h * 0.8);
+  
+  // White tip markers (N/S)
   ctx.fillStyle = '#f8fafc';
-  ctx.fillRect(-w, -h * 0.5, t, t * 0.6);
-  ctx.fillRect(w - t, -h * 0.5, t, t * 0.6);
+  ctx.fillRect(-w + 1, -h * 0.45, t - 2, t * 0.5);
+  ctx.fillRect(w - t + 1, -h * 0.45, t - 2, t * 0.5);
+  
+  // Field lines between poles
+  ctx.strokeStyle = 'rgba(100,180,255,0.4)';
+  ctx.lineWidth = 0.8;
+  for (let i = 0; i < 3; i++) {
+    const arcR = s * 0.2 + i * s * 0.15;
+    ctx.beginPath();
+    ctx.arc(0, -h * 0.2, arcR, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.stroke();
+  }
 }
 
 function drawAirstrikeIcon(ctx: CanvasRenderingContext2D, s: number) {
@@ -937,7 +953,7 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     shield:      { base: '#60a5fa', light: '#93c5fd', dark: '#2563eb' },
     ammo:        { base: '#a855f7', light: '#c084fc', dark: '#7e22ce' },
     slowmo:      { base: '#06b6d4', light: '#22d3ee', dark: '#0e7490' },
-    magnet:      { base: '#e2e8f0', light: '#f1f5f9', dark: '#94a3b8' },
+    magnet:      { base: '#b91c1c', light: '#ef4444', dark: '#7f1d1d' },
     airstrike:   { base: '#fbbf24', light: '#fcd34d', dark: '#b45309' },
     interceptor: { base: '#f97316', light: '#fb923c', dark: '#c2410c' },
   };
@@ -1103,10 +1119,11 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.beginPath();
       ctx.arc(0, 0, pu.size, 0, Math.PI * 2);
       ctx.stroke();
-      // Magnetic field glow
-      const magnetPulse = 0.3 + Math.sin(g.elapsed * 5) * 0.2;
-      ctx.strokeStyle = `rgba(148,163,184,${magnetPulse})`;
-      ctx.lineWidth = 2;
+      // Magnetic field glow — alternating red/blue
+      const magnetPulse = 0.35 + Math.sin(g.elapsed * 5) * 0.25;
+      const magnetHue = Math.sin(g.elapsed * 3) > 0 ? '220,60,60' : '60,60,220';
+      ctx.strokeStyle = `rgba(${magnetHue},${magnetPulse})`;
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
       ctx.arc(0, 0, pu.size * 1.6, 0, Math.PI * 2);
       ctx.stroke();
@@ -1267,92 +1284,106 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.shadowBlur = 0;
 
     } else if (d.tier === 'tracker') {
-      // TRACKER: Sleek military drone — camouflage with swept wings
+      // TRACKER: Stealth recon drone — dark metallic with delta wings
       const dir = facingRight ? 1 : -1;
-      // Main body — military olive with camo
-      const bodyGrad = ctx.createLinearGradient(0, -d.size * 0.35, 0, d.size * 0.35);
-      bodyGrad.addColorStop(0, '#3a4a2a');
-      bodyGrad.addColorStop(0.3, '#2d3a2d');
-      bodyGrad.addColorStop(0.7, '#253025');
-      bodyGrad.addColorStop(1, '#1a251a');
+      const isDiving = d.bombTimer >= d.bombCooldown * 0.8;
+      
+      // Sleek dark fuselage — long and thin
+      const bodyGrad = ctx.createLinearGradient(0, -d.size * 0.25, 0, d.size * 0.25);
+      bodyGrad.addColorStop(0, '#2a2a2e');
+      bodyGrad.addColorStop(0.3, '#1a1a1e');
+      bodyGrad.addColorStop(0.7, '#222228');
+      bodyGrad.addColorStop(1, '#18181c');
       ctx.fillStyle = bodyGrad;
       ctx.beginPath();
-      ctx.moveTo(dir * d.size * 1.4, 0);  // sharp nose
-      ctx.lineTo(dir * d.size * 0.4, -d.size * 0.28);
-      ctx.lineTo(-dir * d.size * 1.1, -d.size * 0.22);
+      ctx.moveTo(dir * d.size * 1.5, 0);  // sharp nose
+      ctx.lineTo(dir * d.size * 0.5, -d.size * 0.18);
+      ctx.lineTo(-dir * d.size * 1.0, -d.size * 0.15);
       ctx.lineTo(-dir * d.size * 1.2, 0);
-      ctx.lineTo(-dir * d.size * 1.1, d.size * 0.22);
-      ctx.lineTo(dir * d.size * 0.4, d.size * 0.3);
+      ctx.lineTo(-dir * d.size * 1.0, d.size * 0.15);
+      ctx.lineTo(dir * d.size * 0.5, d.size * 0.18);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#4a5a3a';
-      ctx.lineWidth = 0.8;
+      // Metallic sheen
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 0.5;
       ctx.stroke();
 
-      // Camo stripes
-      ctx.fillStyle = 'rgba(60, 80, 40, 0.3)';
+      // Delta wings — sharp triangular swept back
+      ctx.fillStyle = '#1e1e22';
       ctx.beginPath();
-      ctx.moveTo(dir * d.size * 0.2, -d.size * 0.25);
-      ctx.lineTo(-dir * d.size * 0.3, -d.size * 0.2);
-      ctx.lineTo(-dir * d.size * 0.2, d.size * 0.1);
-      ctx.lineTo(dir * d.size * 0.3, d.size * 0.15);
-      ctx.closePath();
+      ctx.moveTo(dir * d.size * 0.1, -d.size * 0.15);
+      ctx.lineTo(-dir * d.size * 0.6, -d.size * 1.2);
+      ctx.lineTo(-dir * d.size * 1.0, -d.size * 0.8);
+      ctx.lineTo(-dir * d.size * 0.5, -d.size * 0.15);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(dir * d.size * 0.1, d.size * 0.15);
+      ctx.lineTo(-dir * d.size * 0.6, d.size * 1.2);
+      ctx.lineTo(-dir * d.size * 1.0, d.size * 0.8);
+      ctx.lineTo(-dir * d.size * 0.5, d.size * 0.15);
       ctx.fill();
 
-      // Wider swept wings
-      ctx.fillStyle = '#2d3a2d';
+      // V-tail
+      ctx.fillStyle = '#252528';
       ctx.beginPath();
-      ctx.moveTo(0, -d.size * 0.22);
-      ctx.lineTo(-dir * d.size * 0.5, -d.size * 1.1);
-      ctx.lineTo(-dir * d.size * 0.9, -d.size * 0.85);
-      ctx.lineTo(-dir * d.size * 0.4, -d.size * 0.22);
+      ctx.moveTo(-dir * d.size * 0.9, -d.size * 0.12);
+      ctx.lineTo(-dir * d.size * 1.4, -d.size * 0.5);
+      ctx.lineTo(-dir * d.size * 1.25, -d.size * 0.1);
       ctx.fill();
       ctx.beginPath();
-      ctx.moveTo(0, d.size * 0.24);
-      ctx.lineTo(-dir * d.size * 0.5, d.size * 1.1);
-      ctx.lineTo(-dir * d.size * 0.9, d.size * 0.85);
-      ctx.lineTo(-dir * d.size * 0.4, d.size * 0.24);
+      ctx.moveTo(-dir * d.size * 0.9, d.size * 0.12);
+      ctx.lineTo(-dir * d.size * 1.4, d.size * 0.5);
+      ctx.lineTo(-dir * d.size * 1.25, d.size * 0.1);
       ctx.fill();
 
-      // Tail fins
-      ctx.fillStyle = '#253025';
+      // Green phosphor camera lens at nose
+      const camPulse = 2.5 + Math.sin(g.elapsed * 4) * 0.8;
+      ctx.fillStyle = '#22ff44';
+      ctx.shadowColor = '#22ff44';
+      ctx.shadowBlur = 10;
       ctx.beginPath();
-      ctx.moveTo(-dir * d.size, 0);
-      ctx.lineTo(-dir * d.size * 1.35, -d.size * 0.45);
-      ctx.lineTo(-dir * d.size * 1.2, 0);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(-dir * d.size, 0);
-      ctx.lineTo(-dir * d.size * 1.35, d.size * 0.45);
-      ctx.lineTo(-dir * d.size * 1.2, 0);
-      ctx.fill();
-
-      // Engine exhaust with flame
-      ctx.fillStyle = '#ef4444';
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 8;
-      ctx.beginPath();
-      ctx.ellipse(-dir * d.size * 1.15, 0, 3, 2, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // Flame trail
-      const flameLen = 6 + Math.random() * 5;
-      ctx.fillStyle = `rgba(255, 150, 50, ${0.5 + Math.random() * 0.3})`;
-      ctx.beginPath();
-      ctx.moveTo(-dir * d.size * 1.15, -2);
-      ctx.lineTo(-dir * (d.size * 1.15 + flameLen), 0);
-      ctx.lineTo(-dir * d.size * 1.15, 2);
+      ctx.arc(dir * d.size * 1.35, 0, camPulse, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      // Red targeting eye — larger pulsing
-      const eyePulse = 2.5 + Math.sin(g.elapsed * 6) * 1;
-      ctx.fillStyle = '#ef4444';
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 14;
+      // Wingtip warning lights (blinking red)
+      const ledOn = Math.sin(g.elapsed * 6) > 0;
+      if (ledOn) {
+        ctx.fillStyle = '#ef4444';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 5;
+        ctx.beginPath();
+        ctx.arc(-dir * d.size * 0.7, -d.size * 1.05, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(-dir * d.size * 0.7, d.size * 1.05, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      // Stealth exhaust — faint blue glow
+      ctx.fillStyle = 'rgba(100,150,255,0.3)';
+      ctx.shadowColor = 'rgba(100,150,255,0.5)';
+      ctx.shadowBlur = 6;
       ctx.beginPath();
-      ctx.arc(dir * d.size * 1.0, 0, eyePulse, 0, Math.PI * 2);
+      ctx.ellipse(-dir * d.size * 1.15, 0, 2.5, 1.5, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
+
+      // Laser tracking line when diving
+      if (isDiving) {
+        const laserEndX = (g.player.pos.x - d.pos.x);
+        const laserEndY = (g.player.pos.y - d.pos.y);
+        ctx.strokeStyle = 'rgba(34,255,68,0.35)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(dir * d.size * 1.35, 0);
+        ctx.lineTo(laserEndX, laserEndY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
 
     } else {
       // BOMBER: Massive heavy military drone — wide body with bomb bay
