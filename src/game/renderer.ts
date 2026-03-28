@@ -646,23 +646,34 @@ function drawSlowMoIcon(ctx: CanvasRenderingContext2D, s: number, elapsed: numbe
 }
 
 function drawMagnetIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // U-shaped magnet
+  // U-shaped magnet with high contrast
   const w = s * 0.7, h = s * 0.8, t = s * 0.28;
+  // White outline for visibility
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.5;
   // Left pole (red)
-  ctx.fillStyle = '#ef4444';
+  ctx.fillStyle = '#dc2626';
   ctx.fillRect(-w, -h * 0.5, t, h);
+  ctx.strokeRect(-w, -h * 0.5, t, h);
   // Right pole (blue)
-  ctx.fillStyle = '#3b82f6';
+  ctx.fillStyle = '#2563eb';
   ctx.fillRect(w - t, -h * 0.5, t, h);
+  ctx.strokeRect(w - t, -h * 0.5, t, h);
   // Curved bottom
-  ctx.strokeStyle = '#a1a1aa';
+  ctx.strokeStyle = '#d4d4d8';
   ctx.lineWidth = t;
   ctx.lineCap = 'butt';
   ctx.beginPath();
   ctx.arc(0, h * 0.5, w - t / 2, 0, Math.PI);
   ctx.stroke();
-  // Tips
-  ctx.fillStyle = '#d4d4d8';
+  // White outline on curve
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(0, h * 0.5, w + 1, 0, Math.PI);
+  ctx.stroke();
+  // Tips with white markers
+  ctx.fillStyle = '#f8fafc';
   ctx.fillRect(-w, -h * 0.5, t, t * 0.6);
   ctx.fillRect(w - t, -h * 0.5, t, t * 0.6);
 }
@@ -764,7 +775,7 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     shield:      { base: '#60a5fa', light: '#93c5fd', dark: '#2563eb' },
     ammo:        { base: '#a855f7', light: '#c084fc', dark: '#7e22ce' },
     slowmo:      { base: '#06b6d4', light: '#22d3ee', dark: '#0e7490' },
-    magnet:      { base: '#94a3b8', light: '#cbd5e1', dark: '#64748b' },
+    magnet:      { base: '#e2e8f0', light: '#f1f5f9', dark: '#94a3b8' },
     airstrike:   { base: '#fbbf24', light: '#fcd34d', dark: '#b45309' },
     interceptor: { base: '#f97316', light: '#fb923c', dark: '#c2410c' },
   };
@@ -1936,17 +1947,13 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.globalAlpha = 1;
     effectY += 18;
   }
-  if (g.magnetTimer > 0) {
-    const blink = g.magnetTimer < 2 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
+  if (g.magnetFlashTimer > 0) {
+    const blink = g.magnetFlashTimer < 0.5 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
     ctx.globalAlpha = blink;
-    ctx.fillStyle = '#ef4444';
+    ctx.fillStyle = '#e2e8f0';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`🧲 MAGNET ${g.magnetTimer.toFixed(1)}s`, 14, effectY);
-    ctx.fillStyle = 'rgba(239, 68, 68, 0.2)';
-    ctx.fillRect(14, effectY + 2, 60, 3);
-    ctx.fillStyle = '#ef4444';
-    ctx.fillRect(14, effectY + 2, 60 * (g.magnetTimer / 8), 3);
+    ctx.fillText(`🧲 MAGNET`, 14, effectY);
     ctx.globalAlpha = 1;
     effectY += 18;
   }
@@ -2229,7 +2236,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   }
 
   // Magnet attraction visual effects
-  if (g.magnetTimer > 0) {
+  if (g.magnetFlashTimer > 0) {
     const p = g.player;
     const px = p.pos.x - g.camera.x + g.screenShake.x;
     const py = p.pos.y + g.screenShake.y;
