@@ -47,6 +47,7 @@ export interface Hazard {
   warningDuration: number;
   falling: boolean;
   splitDone?: boolean;
+  isClusterBomb?: boolean;
   rotation: number;
   trailTimer: number;
   // Cluster missile phases
