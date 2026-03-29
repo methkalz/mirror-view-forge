@@ -1492,9 +1492,8 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
         ctx.fill();
       }
 
-      // "OTLOP" label on body — always readable (not mirrored)
+      // "OTLOP" label on body — always readable (never mirrored)
       ctx.save();
-      ctx.scale(dir, 1); // undo the parent scale so text is never flipped
       ctx.fillStyle = '#fff';
       ctx.font = `bold ${Math.max(7, sz * 0.22)}px monospace`;
       ctx.textAlign = 'center';
