@@ -3895,23 +3895,40 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.ellipse(rearWX - 2, -10, 5, 3, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // ── Driver (detailed character) — leaning forward in riding pose ──
+  // ── Headlight ground pool (cone of light on ground) ──
+  if (showLight) {
+    ctx.save();
+    const groundPoolGrad = ctx.createRadialGradient(frontWX + 15, 4, 2, frontWX + 15, 4, 20);
+    groundPoolGrad.addColorStop(0, 'rgba(255,255,200,0.15)');
+    groundPoolGrad.addColorStop(0.5, 'rgba(255,255,180,0.06)');
+    groundPoolGrad.addColorStop(1, 'rgba(255,255,150,0)');
+    ctx.fillStyle = groundPoolGrad;
+    ctx.beginPath();
+    ctx.ellipse(frontWX + 15, 4, 20, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ── Driver (blue helmet with goggles, waving during dismount) ──
   const engineBob = Math.sin(g.elapsed * 12) * 0.3;
+  const driverIsWaving = passengerDismounting; // driver waves while player dismounts
   drawCharacter(ctx, {
     x: 2, y: -18,
     scale: 0.5,
     sitting: true,
     facingRight: true,
-    isDriver: true,
-    helmetColor: '#dc2626',
+    isDriver: !driverIsWaving, // when waving, don't use driver grip pose
+    helmetColor: '#2563eb',
     bodyBob: engineBob,
     armOffset: 0,
     legOffset: 0,
     isHit: false,
     elapsed: g.elapsed,
+    isWaving: driverIsWaving,
+    hasGoggles: true,
   });
 
-  // ── Passenger (player riding behind driver — between driver and box) ──
+  // ── Passenger (player — red helmet, grey/blue jacket) ──
   if (showPassenger && !passengerDismounting) {
     drawCharacter(ctx, {
       x: -6, y: -18,
@@ -3919,7 +3936,7 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
       sitting: true,
       facingRight: true,
       isDriver: false,
-      helmetColor: '#334155',
+      helmetColor: '#dc2626',
       bodyBob: engineBob,
       armOffset: 0,
       legOffset: 0,
@@ -3991,7 +4008,7 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
       sitting: isSitting,
       facingRight: true,
       isDriver: false,
-      helmetColor: '#334155',
+      helmetColor: '#dc2626',
       bodyBob: 0,
       armOffset: 0,
       legOffset: legAnim,
