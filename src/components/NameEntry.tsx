@@ -39,13 +39,10 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   const hasName = name.trim().length > 0;
 
   useEffect(() => {
-    const init = async () => {
-      await loadAudioSettings();
-      startMenuMusic();
-      musicStarted.current = true;
-    };
-    const timer = setTimeout(init, 300);
-    return () => { clearTimeout(timer); stopMenuMusic(); };
+    // Audio already preloaded by GameLoader, just start menu music
+    startMenuMusic();
+    musicStarted.current = true;
+    return () => { stopMenuMusic(); };
   }, []);
 
   // Spark particles
