@@ -3975,6 +3975,56 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
     ctx.fill();
   }
 
+  // ── Tail Light (enhanced braking glow) ──
+  const isBraking = bike.phase === 'idle' || bike.speed < 30;
+  const brakeAlpha = isBraking ? (0.7 + Math.sin(g.elapsed * 4) * 0.2) : 0.5;
+  const brakeGlowSize = isBraking ? 7 : 4;
+  ctx.fillStyle = `rgba(255,0,0,${brakeAlpha * 0.2})`;
+  ctx.beginPath();
+  ctx.ellipse(rearWX - 2, -10, brakeGlowSize, brakeGlowSize * 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = `rgba(255,20,20,${brakeAlpha * 0.4})`;
+  ctx.beginPath();
+  ctx.ellipse(rearWX - 2, -10, 4, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = `rgba(255,50,30,${brakeAlpha})`;
+  ctx.beginPath();
+  ctx.ellipse(rearWX - 2, -10, 2.5, 1.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = `rgba(255,150,150,${brakeAlpha * 0.4})`;
+  ctx.beginPath();
+  ctx.ellipse(rearWX - 1.5, -11, 1, 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Ground Reflection (faint inverted ghost) ──
+  ctx.save();
+  ctx.translate(0, 10);
+  ctx.scale(1, -0.15);
+  ctx.globalAlpha = 0.06;
+  // Just draw a simplified reflection silhouette
+  ctx.fillStyle = '#222';
+  ctx.beginPath();
+  ctx.ellipse(0, -10, 30, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // ── Heat Shimmer (above engine during idle) ──
+  if (bike.phase === 'idle') {
+    ctx.save();
+    ctx.globalAlpha = 0.04;
+    for (let h = 0; h < 5; h++) {
+      const hx = -6 + h * 3 + Math.sin(g.elapsed * 4 + h * 1.5) * 1.5;
+      const hy = -12 - h * 2 + Math.sin(g.elapsed * 3 + h) * 1;
+      ctx.fillStyle = 'rgba(255,200,100,0.3)';
+      ctx.beginPath();
+      ctx.ellipse(hx, hy, 2, 1.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
   // ── Driver (blue helmet with goggles, waving during dismount) ──
   const engineBob = Math.sin(g.elapsed * 12) * 0.3;
   const driverIsWaving = passengerDismounting; // driver waves while player dismounts
