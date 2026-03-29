@@ -3553,19 +3553,33 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.scale(2.4, 2.4);
   ctx.translate(bike.shakeOffset.x, bike.shakeOffset.y);
 
-  // Exhaust smoke
+  // Exhaust smoke — denser when leaving
   if (bike.phase === 'idle' || bike.phase === 'leaving' || bike.phase === 'entering') {
-    const smokeCount = bike.phase === 'idle' ? 3 : 5;
+    const isLeaving = bike.phase === 'leaving';
+    const smokeCount = isLeaving ? 10 : (bike.phase === 'idle' ? 3 : 5);
     for (let i = 0; i < smokeCount; i++) {
-      const age = (g.elapsed * 2 + i * 0.7) % 2;
-      const sx = -28 - age * 10;
-      const sy = -4 - age * 14;
-      const sr = 2 + age * 4;
-      const sa = Math.max(0, 0.3 - age * 0.15);
-      ctx.fillStyle = `rgba(150,150,150,${sa})`;
+      const age = (g.elapsed * (isLeaving ? 3 : 2) + i * 0.5) % 2;
+      const sx = -28 - age * (isLeaving ? 16 : 10);
+      const sy = -4 - age * (isLeaving ? 10 : 14);
+      const sr = 2 + age * (isLeaving ? 6 : 4);
+      const sa = Math.max(0, (isLeaving ? 0.4 : 0.3) - age * 0.15);
+      ctx.fillStyle = `rgba(${isLeaving ? '120,120,130' : '150,150,150'},${sa})`;
       ctx.beginPath();
       ctx.arc(sx, sy, sr, 0, Math.PI * 2);
       ctx.fill();
+    }
+    // Extra dark exhaust puffs when leaving
+    if (isLeaving) {
+      for (let i = 0; i < 4; i++) {
+        const age = (g.elapsed * 4 + i * 1.1) % 1.5;
+        const sx = -30 - age * 20;
+        const sy = -2 - age * 6;
+        const sr = 3 + age * 5;
+        ctx.fillStyle = `rgba(60,60,70,${Math.max(0, 0.25 - age * 0.18)})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 
