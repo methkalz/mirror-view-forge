@@ -122,6 +122,9 @@ export function createGame(w: number, h: number): GameData {
     cameraFocusX: w / 2,
     cameraFocusY: h * GROUND_RATIO,
     bikeZoomTimer: 0,
+    waveEndSlowMo: 0,
+    waveFinale: false,
+    activeHazardCount: 0,
   };
 }
 
@@ -221,6 +224,9 @@ export function resetGame(g: GameData) {
   g.selectedUpgrade = null;
   g.cardsShownTimer = 0;
   g.waveElapsed = 0;
+  g.waveEndSlowMo = 0;
+  g.waveFinale = false;
+  g.activeHazardCount = 0;
 }
 
 function dist(a: Vec2, b: Vec2): number {
