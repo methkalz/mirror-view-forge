@@ -313,6 +313,27 @@ const Admin: React.FC = () => {
         {tab === 'leaderboard' && (
           <LeaderboardPanel leaders={leaders} onDelete={handleDeleteEntry} onClearAll={handleClearAll} isDesktop={isDesktop} />
         )}
+
+        {/* Floating Save Bar */}
+        {hasPending && (
+          <div style={{
+            position: 'fixed', bottom: 0, left: isMobile ? 0 : sidebarWidth, right: 0,
+            padding: '14px 24px', background: 'rgba(10,15,26,0.95)', backdropFilter: 'blur(12px)',
+            borderTop: '1px solid rgba(59,130,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, zIndex: 60,
+          }}>
+            <span style={{ fontSize: 12, color: 'rgba(148,163,184,0.6)', marginRight: 8 }}>
+              ⚠️ {Object.keys(pendingChanges).length} unsaved change{Object.keys(pendingChanges).length > 1 ? 's' : ''}
+            </span>
+            <button onClick={discardChanges} style={btnGhost}>Discard</button>
+            <button onClick={saveAllChanges} disabled={saving} style={{
+              padding: '10px 28px', borderRadius: 10, border: 'none', cursor: 'pointer',
+              background: 'rgba(59,130,246,0.25)', color: '#60a5fa', fontSize: 13, fontWeight: 700,
+              boxShadow: '0 0 20px rgba(59,130,246,0.15)',
+            }}>
+              {saving ? '⏳ Saving...' : '💾 Save Changes'}
+            </button>
+          </div>
+        )}
       </main>
     </div>
   );
