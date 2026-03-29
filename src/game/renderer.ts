@@ -49,11 +49,20 @@ function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
   const totalW = right - left;
 
   if (bgLoaded) {
-    // Draw the background image covering the full visible area
-    // Use cover-style: fill height, tile horizontally with parallax
+    // "Cover" scaling: ensure the image covers the full viewport without repeating
     const imgAspect = bgImage.width / bgImage.height;
-    const drawH = h;
-    const drawW = drawH * imgAspect;
+    const screenAspect = w / h;
+
+    let drawW: number, drawH: number;
+    if (imgAspect > screenAspect) {
+      // Image is wider than screen — fit to height
+      drawH = h;
+      drawW = drawH * imgAspect;
+    } else {
+      // Screen is wider than image — fit to width
+      drawW = w;
+      drawH = drawW / imgAspect;
+    }
 
     // Parallax: image moves slower than camera
     const parallax = 0.3;
@@ -65,7 +74,8 @@ function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
 
     for (let tile = startTile; tile <= endTile; tile++) {
       const drawX = tile * drawW - imgOffset;
-      ctx.drawImage(bgImage, drawX, 0, drawW, drawH);
+      const drawY = h - drawH; // align to bottom
+      ctx.drawImage(bgImage, drawX, drawY, drawW, drawH);
     }
   } else {
     // Fallback: solid dark color while loading
