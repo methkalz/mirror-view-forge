@@ -764,17 +764,19 @@ export function applyUpgrade(g: GameData, cardId: string) {
 function spawnDeliveryBike(g: GameData) {
   const fromRight = Math.random() > 0.5;
   const groundY = g.height * GROUND_RATIO;
-  const speed = 200 + Math.random() * 150;
+  const speed = 140 + Math.random() * 80; // slower for better visibility
   const dropX = g.width * (0.2 + Math.random() * 0.6);
   g.deliveryBike = {
     active: true,
-    pos: { x: fromRight ? g.width + 60 : -60, y: groundY },
+    pos: { x: fromRight ? g.width + 100 : -100, y: groundY },
     speed: fromRight ? -speed : speed,
     facingRight: !fromRight,
     phase: 'entering',
     dropX,
     dropped: false,
     wheelAnim: 0,
+    idleTimer: 0,
+    shakeOffset: { x: 0, y: 0 },
   };
 }
 
@@ -818,20 +820,37 @@ function updateDeliveryBike(g: GameData, dt: number) {
       pu.bobTimer = 0;
       pu.groundTimer = -999; // Don't expire during rest
     }
-    // Brief pause then leave
-    bike.phase = 'leaving';
-    const leaveDir = bike.facingRight ? 1 : -1;
-    bike.speed = leaveDir * 50; // start slow
+    // Transition to idle (promotional stop)
+    bike.phase = 'idle';
+    bike.idleTimer = 2.5;
+    bike.speed = 0;
+  } else if (bike.phase === 'idle') {
+    // Promotional stop — stronger engine vibration
+    bike.idleTimer -= dt;
+    const t = g.elapsed * 35;
+    bike.shakeOffset.x = Math.sin(t) * 0.8 + Math.sin(t * 1.7) * 0.5;
+    bike.shakeOffset.y = Math.sin(t * 1.3) * 1.2 + Math.cos(t * 2.1) * 0.6;
+    if (bike.idleTimer <= 0) {
+      bike.phase = 'leaving';
+      const leaveDir = bike.facingRight ? 1 : -1;
+      bike.speed = leaveDir * 40;
+    }
   } else if (bike.phase === 'leaving') {
     // Accelerate away
     const accel = bike.facingRight ? 500 : -500;
     bike.speed += accel * dt;
     bike.pos.x += bike.speed * dt;
-    // Remove when off screen
-    if (bike.pos.x < -80 || bike.pos.x > g.width + 80) {
+    if (bike.pos.x < -120 || bike.pos.x > g.width + 120) {
       bike.active = false;
       g.deliveryBike = null;
     }
+  }
+
+  // Engine vibration during movement (lighter than idle)
+  if (bike && bike.active && bike.phase !== 'idle') {
+    const t = g.elapsed * 25;
+    bike.shakeOffset.x = Math.sin(t) * 0.4;
+    bike.shakeOffset.y = Math.sin(t * 1.5) * 0.3;
   }
 }
 

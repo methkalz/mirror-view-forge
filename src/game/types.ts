@@ -230,10 +230,12 @@ export interface DeliveryBike {
   pos: Vec2;
   speed: number;
   facingRight: boolean;
-  phase: 'entering' | 'slowing' | 'dropping' | 'leaving';
+  phase: 'entering' | 'slowing' | 'dropping' | 'idle' | 'leaving';
   dropX: number;
   dropped: boolean;
   wheelAnim: number;
+  idleTimer: number;
+  shakeOffset: Vec2;
 }
 
 export interface UpgradeCard {
