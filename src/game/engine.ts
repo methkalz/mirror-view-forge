@@ -816,6 +816,9 @@ function queueWaveEvent(
     type: event.type,
   };
   g.slowMoFactor = 0.1;
+  // Play different sound based on event type
+  if (event.type === 'warning') sfxWarningAlert();
+  else if (event.type === 'upgrade') sfxUpgradeAlert();
 }
 
 function applyWaveEvent(g: GameData, id: string) {
@@ -1001,6 +1004,7 @@ export function applyUpgrade(g: GameData, cardId: string) {
     case 'pickup_range': p.pickupRange += 2.5; break;
     case 'bullet_dmg': p.bulletDamage += 1; break;
   }
+  sfxUpgradeSelect();
   g.selectedUpgrade = cardId;
   // Transition to bike phase instead of directly starting next wave
   g.wavePhase = 'bike';
@@ -1145,6 +1149,7 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
       g.slowMoFactor = 1;
       // Now enter clearing
       g.wavePhase = 'clearing';
+      sfxWaveComplete();
       // Force-clear hazards immediately
       for (const h of g.hazards) {
         if (h.active) {
@@ -1205,6 +1210,7 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         g.upgradeCards = generateUpgradeCards(g);
         g.cardsShownTimer = 0;
         g.selectedUpgrade = null;
+        sfxLevelUp();
       } else {
         startNextWave(g);
       }
