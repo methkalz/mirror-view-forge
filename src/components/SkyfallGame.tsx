@@ -2,11 +2,12 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { GameData, InputState } from '@/game/types';
 import { createGame, resetGame, update, updateIntro } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
-import { resumeAudio, stopMenuMusic } from '@/game/audio';
-import { fetchGameConfig, fetchLeaderboard, submitScore, type RemoteGameConfig, type LeaderboardEntry } from '@/game/config';
+import { resumeAudio, stopMenuMusic, loadAudioSettings } from '@/game/audio';
+import { fetchGameConfig, fetchLeaderboard, submitScore, fetchAudioConfig, fetchWaveConfigs, type RemoteGameConfig, type LeaderboardEntry } from '@/game/config';
 import { supabase } from '@/integrations/supabase/client';
 import NameEntry from './NameEntry';
 import Leaderboard from './Leaderboard';
+import LoadingScreen from './LoadingScreen';
 
 const SkyfallGame: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -26,6 +27,11 @@ const SkyfallGame: React.FC = () => {
   const [playerAmmo, setPlayerAmmo] = useState(0);
   const [bulletLevel, setBulletLevel] = useState(1);
 
+  // Loading state
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingText, setLoadingText] = useState('INITIALIZING');
+
   // LiveOps state — always show name entry on mount (different player may use same device)
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('skyfall_name') || '');
   const [showNameEntry, setShowNameEntry] = useState(true);
@@ -35,13 +41,36 @@ const SkyfallGame: React.FC = () => {
   const remoteConfigRef = useRef<RemoteGameConfig | null>(null);
   const scoreSubmittedRef = useRef(false);
 
-  // Load leaderboard on mount + presence tracking
+  // Load all resources on mount
   useEffect(() => {
-    fetchLeaderboard().then(setLeaderboard);
-    fetchGameConfig().then(cfg => {
+    let cancelled = false;
+    const loadAll = async () => {
+      // Step 1: Config
+      setLoadingText('LOADING CONFIG');
+      setLoadingProgress(10);
+      const [cfg, lb] = await Promise.all([fetchGameConfig(), fetchLeaderboard()]);
+      if (cancelled) return;
       setRemoteConfig(cfg);
       remoteConfigRef.current = cfg;
-    });
+      setLeaderboard(lb);
+      setLoadingProgress(35);
+
+      // Step 2: Audio settings + preload
+      setLoadingText('LOADING AUDIO');
+      setLoadingProgress(45);
+      await loadAudioSettings();
+      if (cancelled) return;
+      setLoadingProgress(85);
+
+      // Step 3: Wave configs
+      setLoadingText('PREPARING BATTLE');
+      setLoadingProgress(90);
+      await fetchWaveConfigs();
+      if (cancelled) return;
+      setLoadingProgress(100);
+    };
+
+    loadAll();
 
     // Track online presence
     const channel = supabase.channel('online-players', { config: { presence: { key: `player_${Date.now()}_${Math.random().toString(36).slice(2)}` } } });
@@ -50,7 +79,7 @@ const SkyfallGame: React.FC = () => {
         await channel.track({ online_at: new Date().toISOString() });
       }
     });
-    return () => { supabase.removeChannel(channel); };
+    return () => { cancelled = true; supabase.removeChannel(channel); };
   }, []);
 
   const handleNameSubmit = useCallback((name: string) => {
@@ -287,6 +316,19 @@ const SkyfallGame: React.FC = () => {
   };
 
   const hasAmmo = playerAmmo > 0;
+
+  // Loading screen
+  if (isLoading) {
+    return (
+      <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' }}>
+        <LoadingScreen
+          loadingProgress={loadingProgress}
+          loadingText={loadingText}
+          onComplete={() => setIsLoading(false)}
+        />
+      </div>
+    );
+  }
 
   // Name entry screen
   if (showNameEntry) {
