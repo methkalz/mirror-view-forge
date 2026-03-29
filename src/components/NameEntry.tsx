@@ -58,7 +58,7 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
     document.addEventListener('touchstart', tryStart, { passive: true });
     document.addEventListener('keydown', tryStart, { passive: true });
 
-    return () => { cleanup(); stopMenuMusic(); };
+    return () => { cleanup(); };
   }, []);
 
   // Spark particles
@@ -123,7 +123,6 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
     const trimmed = name.trim();
     if (!trimmed) { setShake(true); setTimeout(() => setShake(false), 500); return; }
     setFadeOut(true);
-    stopMenuMusic();
     setTimeout(() => onSubmit(trimmed.slice(0, 20)), 400);
   }, [name, onSubmit]);
 

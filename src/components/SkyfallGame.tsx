@@ -84,7 +84,6 @@ const SkyfallGame: React.FC = () => {
   const handleNameSubmit = useCallback((name: string) => {
     setPlayerName(name);
     localStorage.setItem('skyfall_name', name);
-    stopMenuMusic();
     setShowNameEntry(false);
   }, []);
 
@@ -187,8 +186,12 @@ const SkyfallGame: React.FC = () => {
       }
 
       if (g.state !== prevState) {
+        const wasStart = prevState === 'start';
         prevState = g.state;
         setShowButtons(g.state === 'playing');
+        if (wasStart && g.state === 'intro') {
+          stopMenuMusic();
+        }
         if (g.state === 'start') {
           setGameOverData(null);
           scoreSubmittedRef.current = false;
