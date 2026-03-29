@@ -1,4 +1,4 @@
-import { GameData, Player } from './types';
+import { GameData, Player, FirePool, GasCloud } from './types';
 import bgCityUrl from '../assets/bg-city.jpeg';
 
 // ─── Background Image ─────────────────────────────────
