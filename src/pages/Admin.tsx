@@ -208,6 +208,11 @@ const Admin: React.FC = () => {
         </div>
       )}
 
+      {/* BRANDING TAB */}
+      {tab === 'branding' && config && (
+        <BrandingPanel config={config} onSave={saveConfig} inputStyle={inputStyle} labelStyle={labelStyle} btnStyle={btnStyle} sectionStyle={sectionStyle} />
+      )}
+
       {/* WAVES TAB */}
       {tab === 'waves' && (
         <div style={sectionStyle}>
