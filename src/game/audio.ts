@@ -792,12 +792,14 @@ export function stopMenuMusic() {
     try {
       if (gain) {
         const ctx = getCtx();
-        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+        gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.15);
         setTimeout(() => {
-          try { node.stop(); } catch {}
-        }, 600);
+          try { node.stop(); node.disconnect(); } catch {}
+        }, 200);
       } else {
         node.stop();
+        node.disconnect();
       }
     } catch { /* already stopped */ }
   }
