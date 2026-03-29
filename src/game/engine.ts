@@ -1038,6 +1038,7 @@ export function update(g: GameData, input: InputState, dt: number) {
       switch (pu.type) {
         case 'medkit':
           p.health = Math.min(p.maxHealth, p.health + 30);
+          p.dashCooldown = 0; // instant dash recharge
           addFloatingText(g, '+30 HP', { x: p.pos.x, y: p.pos.y - 40 }, '#22c55e');
           spawnParticles(g, p.pos, 8, '#22c55e', 80);
           break;
@@ -1053,6 +1054,7 @@ export function update(g: GameData, input: InputState, dt: number) {
           break;
         case 'ammo':
           p.ammo = Math.min(30, p.ammo + 8);
+          p.dashCooldown = 0; // instant dash recharge
           addFloatingText(g, '+8 Ammo', { x: p.pos.x, y: p.pos.y - 40 }, '#a855f7');
           spawnParticles(g, p.pos, 8, '#a855f7', 80);
           break;
