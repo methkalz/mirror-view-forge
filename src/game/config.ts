@@ -289,6 +289,7 @@ export async function updateGameConfig(config: Partial<RemoteGameConfig>): Promi
   if (config.gameSubtitle !== undefined) mapped.game_subtitle = config.gameSubtitle;
   if (config.developerName !== undefined) mapped.developer_name = config.developerName;
   if (config.developerUrl !== undefined) mapped.developer_url = config.developerUrl;
+  if (config.showTitle !== undefined) mapped.show_title = config.showTitle;
 
   const { data: rows } = await supabase.from('game_config').select('id').limit(1);
   if (!rows || rows.length === 0) return false;
