@@ -3243,38 +3243,53 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
     ctx.restore();
     ctx.restore();
   } else if (isDriver) {
-    // Side-view: one arm visible reaching forward to handlebar, other arm hint behind body
-    // Far arm hint (behind torso)
+    // Side-view: bent-elbow arm reaching to handlebar with proper joint articulation
+    // Far arm hint (behind torso — darker, partially hidden)
     ctx.lineWidth = 3;
     ctx.strokeStyle = '#2a5a9a';
     ctx.beginPath();
     ctx.moveTo(2, bodyTopY + 4);
-    ctx.quadraticCurveTo(8, bodyTopY, 14, bodyTopY - 6);
+    ctx.quadraticCurveTo(6, bodyTopY + 1, 10, bodyTopY - 3);
     ctx.stroke();
+    // Far gloved hand
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.arc(10, bodyTopY - 3, 1.8, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Near arm — upper arm from shoulder, elbow bend, forearm to handlebar grip
+    // Near arm — shoulder → bent elbow (~120°) → forearm → grip on handlebar
+    // Upper arm: shoulder to elbow
+    const shoulderX = 4, shoulderY = bodyTopY + 3;
+    const elbowX = 10, elbowY = bodyTopY + 1;
+    const handleX = 16, handleY = bodyTopY - 9;
+    
     ctx.lineWidth = 4.5;
     ctx.strokeStyle = armColor;
     ctx.beginPath();
-    ctx.moveTo(4, bodyTopY + 3);
-    ctx.quadraticCurveTo(9, bodyTopY - 1, 12, bodyTopY - 5);
+    ctx.moveTo(shoulderX, shoulderY);
+    ctx.lineTo(elbowX, elbowY);
     ctx.stroke();
-    // Forearm
+    // Elbow joint highlight
+    ctx.fillStyle = armHighlight;
+    ctx.beginPath();
+    ctx.arc(elbowX, elbowY, 2, 0, Math.PI * 2);
+    ctx.fill();
+    // Forearm: elbow to handlebar grip (bent upward)
     ctx.lineWidth = 4;
     ctx.strokeStyle = armHighlight;
     ctx.beginPath();
-    ctx.moveTo(12, bodyTopY - 5);
-    ctx.lineTo(16, bodyTopY - 9);
+    ctx.moveTo(elbowX, elbowY);
+    ctx.quadraticCurveTo(elbowX + 2, elbowY - 5, handleX, handleY);
     ctx.stroke();
     // Gloved hand gripping handlebar
     ctx.fillStyle = '#2a2a2a';
     ctx.beginPath();
-    ctx.arc(16, bodyTopY - 9, 2.5, 0, Math.PI * 2);
+    ctx.arc(handleX, handleY, 2.5, 0, Math.PI * 2);
     ctx.fill();
     // Knuckle detail
     ctx.fillStyle = '#444';
     ctx.beginPath();
-    ctx.arc(16, bodyTopY - 10, 1, 0, Math.PI * 2);
+    ctx.arc(handleX, handleY - 1, 1, 0, Math.PI * 2);
     ctx.fill();
   } else if (holdingDriver) {
     // Passenger side-view: near arm reaches forward to driver's back, far arm on grab rail behind
