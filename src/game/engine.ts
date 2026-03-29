@@ -1066,7 +1066,7 @@ export function update(g: GameData, input: InputState, dt: number) {
     p.isDashing = true;
     p.dashTimer = DASH_DURATION;
     p.dashDir = { x: moveX > 0 ? 1 : -1, y: 0 };
-    p.dashCooldown = DASH_COOLDOWN;
+    p.dashCooldown = p.dashCooldownBase;
     p.anim = 'roll';
     p.animFrame = 0;
     sfxDash();
