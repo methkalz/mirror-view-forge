@@ -25,6 +25,9 @@ const Admin: React.FC = () => {
   // Leaderboard state
   const [leaders, setLeaders] = useState<LeaderboardEntry[]>([]);
 
+  // Audio state
+  const [audioEntries, setAudioEntries] = useState<AudioConfigEntry[]>([]);
+
   // Auth check
   useEffect(() => {
     const check = async () => {
