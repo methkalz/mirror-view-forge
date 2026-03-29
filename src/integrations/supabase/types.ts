@@ -20,8 +20,11 @@ export type Database = {
           category: string
           enabled: boolean
           id: string
+          interval_seconds: number | null
           label: string
           label_ar: string
+          max_concurrent: number
+          play_mode: string
           sound_key: string
           updated_at: string
           volume: number
@@ -31,8 +34,11 @@ export type Database = {
           category: string
           enabled?: boolean
           id?: string
+          interval_seconds?: number | null
           label: string
           label_ar?: string
+          max_concurrent?: number
+          play_mode?: string
           sound_key: string
           updated_at?: string
           volume?: number
@@ -42,13 +48,51 @@ export type Database = {
           category?: string
           enabled?: boolean
           id?: string
+          interval_seconds?: number | null
           label?: string
           label_ar?: string
+          max_concurrent?: number
+          play_mode?: string
           sound_key?: string
           updated_at?: string
           volume?: number
         }
         Relationships: []
+      }
+      audio_files: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_url: string
+          id: string
+          sort_order: number
+          sound_config_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_url: string
+          id?: string
+          sort_order?: number
+          sound_config_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_url?: string
+          id?: string
+          sort_order?: number
+          sound_config_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_files_sound_config_id_fkey"
+            columns: ["sound_config_id"]
+            isOneToOne: false
+            referencedRelation: "audio_config"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       game_config: {
         Row: {

@@ -1,50 +1,104 @@
-import { fetchAudioConfig, type AudioConfigEntry } from './config';
+import { fetchAudioConfig, type AudioConfigEntry, type AudioFileEntry, type PlayMode } from './config';
 
 let audioCtx: AudioContext | null = null;
 let ambientNode: AudioBufferSourceNode | null = null;
 
 // ─── Remote audio settings cache ───
-let audioSettings: Map<string, { volume: number; enabled: boolean; audioUrl: string | null }> = new Map();
+interface SoundSetting {
+  volume: number;
+  enabled: boolean;
+  audioUrl: string | null;
+  playMode: PlayMode;
+  intervalSeconds: number | null;
+  maxConcurrent: number;
+  files: AudioFileEntry[];
+}
+let audioSettings: Map<string, SoundSetting> = new Map();
 let settingsLoaded = false;
-// ─── Preloaded audio buffers cache ───
+// ─── Preloaded audio buffers cache (key = url) ───
 const audioBufferCache: Map<string, AudioBuffer> = new Map();
+// ─── Sequential playback index per sound key ───
+const sequentialIndex: Map<string, number> = new Map();
+// ─── Periodic ambient timers ───
+const periodicTimers: Map<string, ReturnType<typeof setInterval>> = new Map();
 
 export async function loadAudioSettings() {
   try {
     const entries = await fetchAudioConfig();
     audioSettings.clear();
     for (const e of entries) {
-      audioSettings.set(e.soundKey, { volume: e.volume, enabled: e.enabled, audioUrl: e.audioUrl });
+      audioSettings.set(e.soundKey, {
+        volume: e.volume,
+        enabled: e.enabled,
+        audioUrl: e.audioUrl,
+        playMode: e.playMode,
+        intervalSeconds: e.intervalSeconds,
+        maxConcurrent: e.maxConcurrent,
+        files: e.files,
+      });
     }
     settingsLoaded = true;
-    // Preload custom audio files in background
-    preloadCustomAudio();
+    preloadAllAudio();
   } catch {
     settingsLoaded = false;
   }
 }
 
-async function preloadCustomAudio() {
+async function preloadAllAudio() {
   const ctx = getCtx();
-  for (const [key, s] of audioSettings) {
-    if (s.audioUrl && !audioBufferCache.has(key)) {
+  const urlsToLoad = new Set<string>();
+
+  for (const [, s] of audioSettings) {
+    if (s.audioUrl) urlsToLoad.add(s.audioUrl);
+    for (const f of s.files) urlsToLoad.add(f.fileUrl);
+  }
+
+  await Promise.allSettled(
+    Array.from(urlsToLoad).map(async url => {
+      if (audioBufferCache.has(url)) return;
       try {
-        const resp = await fetch(s.audioUrl);
+        const resp = await fetch(url);
         const buf = await resp.arrayBuffer();
         const decoded = await ctx.decodeAudioData(buf);
-        audioBufferCache.set(key, decoded);
-      } catch {
-        // Failed to preload — will use synthesized fallback
-      }
+        audioBufferCache.set(url, decoded);
+      } catch { /* skip */ }
+    })
+  );
+}
+
+function pickFileUrl(key: string): string | null {
+  const s = audioSettings.get(key);
+  if (!s) return null;
+
+  // If multi-file
+  if (s.files.length > 0) {
+    const mode = s.playMode;
+    if (mode === 'random') {
+      return s.files[Math.floor(Math.random() * s.files.length)].fileUrl;
+    } else if (mode === 'sequential') {
+      const idx = (sequentialIndex.get(key) || 0) % s.files.length;
+      sequentialIndex.set(key, idx + 1);
+      return s.files[idx].fileUrl;
+    } else {
+      // single or loop: use first file
+      return s.files[0].fileUrl;
     }
   }
+
+  // Fallback to legacy single audioUrl
+  return s.audioUrl || null;
 }
 
 function playCustomAudio(key: string): boolean {
   const s = audioSettings.get(key);
-  if (!s?.audioUrl) return false;
-  const buffer = audioBufferCache.get(key);
+  if (!s) return false;
+
+  const url = pickFileUrl(key);
+  if (!url) return false;
+
+  const buffer = audioBufferCache.get(url);
   if (!buffer) return false;
+
   const ctx = getCtx();
   const src = ctx.createBufferSource();
   src.buffer = buffer;
@@ -153,8 +207,10 @@ function playNoise(duration: number, vol = 0.08, filter?: { type: BiquadFilterTy
 function startAmbient() {
   if (ambientNode) return;
   if (!isSoundEnabled('ambient')) return;
-  // Try custom ambient audio (looped)
-  const customBuf = audioBufferCache.get('ambient');
+
+  // Try custom multi-file ambient (looped)
+  const url = pickFileUrl('ambient');
+  const customBuf = url ? audioBufferCache.get(url) : null;
   if (customBuf) {
     const ctx = getCtx();
     ambientNode = ctx.createBufferSource();
@@ -166,6 +222,8 @@ function startAmbient() {
     ambientNode.start();
     return;
   }
+
+  // Fallback: synthesized wind
   const ctx = getCtx();
   const bufferSize = ctx.sampleRate * 2;
   const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -544,31 +602,53 @@ export function sfxUpgradeSelect() {
   setTimeout(() => playTone(1000, 0.08, 'sine', 0.07 * v), 50);
 }
 
-// ─── Periodic Ambient Sounds ───
-
-let ambientPeriodicTimer: ReturnType<typeof setInterval> | null = null;
+// ─── Dynamic Periodic Ambient System ───
 
 export function startPeriodicAmbient() {
-  if (ambientPeriodicTimer) return;
-  ambientPeriodicTimer = setInterval(() => {
-    // Random distant effects
-    const r = Math.random();
-    if (r < 0.3) {
-      sfxDistantExplosion();
-    } else if (r < 0.5) {
-      sfxWindGust();
-    } else if (r < 0.7) {
-      sfxDistantSiren();
+  stopPeriodicAmbient();
+
+  // Start periodic timers for sounds with intervalSeconds set
+  for (const [key, s] of audioSettings) {
+    if (s.intervalSeconds && s.intervalSeconds > 0 && s.enabled) {
+      const ms = s.intervalSeconds * 1000;
+      const timer = setInterval(() => {
+        if (!isSoundEnabled(key)) return;
+        // Try custom audio first
+        if (!playCustomAudio(key)) {
+          // Fallback to synthesized
+          const sfxFn = periodicFallbacks[key];
+          if (sfxFn) sfxFn();
+        }
+      }, ms + Math.random() * ms * 0.5);
+      periodicTimers.set(key, timer);
     }
-  }, 8000 + Math.random() * 12000);
+  }
+
+  // Legacy fallback: if no periodic sounds configured, use default random ambient
+  if (periodicTimers.size === 0) {
+    const timer = setInterval(() => {
+      const r = Math.random();
+      if (r < 0.3) sfxDistantExplosion();
+      else if (r < 0.5) sfxWindGust();
+      else if (r < 0.7) sfxDistantSiren();
+    }, 8000 + Math.random() * 12000);
+    periodicTimers.set('_legacy', timer);
+  }
 }
 
 export function stopPeriodicAmbient() {
-  if (ambientPeriodicTimer) {
-    clearInterval(ambientPeriodicTimer);
-    ambientPeriodicTimer = null;
+  for (const [key, timer] of periodicTimers) {
+    clearInterval(timer);
   }
+  periodicTimers.clear();
 }
+
+// Register periodic fallbacks after functions are defined (populated below)
+const periodicFallbacks: Record<string, (() => void)> = {
+  distantExplosion: () => { sfxDistantExplosion(); },
+  windGust: () => { sfxWindGust(); },
+  distantSiren: () => { sfxDistantSiren(); },
+};
 
 export function sfxDistantExplosion() {
   if (!isSoundEnabled('distantExplosion')) return;
