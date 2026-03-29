@@ -295,6 +295,10 @@ const CATEGORY_META: Record<string, { icon: string; label: string; labelAr: stri
   player: { icon: '🏃', label: 'Player', labelAr: 'اللاعب', color: '#a78bfa' },
   powerups: { icon: '⚡', label: 'Power-ups', labelAr: 'تعزيزات', color: '#34d399' },
   boss: { icon: '👹', label: 'Boss', labelAr: 'الزعيم', color: '#f472b6' },
+  motorcycle: { icon: '🏍️', label: 'Motorcycle', labelAr: 'الدراجة النارية', color: '#f59e0b' },
+  warnings: { icon: '⚠️', label: 'Warnings & Upgrades', labelAr: 'تحذيرات وتطويرات', color: '#eab308' },
+  gamestate: { icon: '🎮', label: 'Game State', labelAr: 'حالة اللعبة', color: '#60a5fa' },
+  ui: { icon: '🖱️', label: 'UI Sounds', labelAr: 'أصوات الواجهة', color: '#94a3b8' },
 };
 
 const AudioPanel: React.FC<{
