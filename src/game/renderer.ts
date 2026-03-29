@@ -2972,13 +2972,16 @@ interface CharacterOptions {
   holdingDriver?: boolean;
   isShooting?: boolean;
   shootTimer?: number;
+  isWaving?: boolean;
+  hasGoggles?: boolean;
+  lookingBack?: boolean;
 }
 
 function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
   const {
     x, y, scale, sitting, facingRight, isDriver, helmetColor,
     bodyBob, armOffset, legOffset, isHit, elapsed,
-    holdingDriver, isShooting, shootTimer,
+    holdingDriver, isShooting, shootTimer, isWaving, hasGoggles, lookingBack,
   } = opts;
 
   ctx.save();
@@ -3175,7 +3178,62 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
   const armColor = isHit ? '#ef4444' : '#3a7bd5';
   const armHighlight = isHit ? '#f87171' : '#5a9ae6';
 
-  if (isDriver) {
+  if (isWaving) {
+    // Waving arm — one arm raised in a confident wave/salute
+    const waveAngle = Math.sin(elapsed * 4) * 0.15; // subtle wave oscillation
+    // Back arm relaxed at side
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = armColor;
+    ctx.beginPath();
+    ctx.moveTo(-5, bodyTopY + 3);
+    ctx.lineTo(-8, bodyTopY + 12);
+    ctx.stroke();
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = armHighlight;
+    ctx.beginPath();
+    ctx.moveTo(-8, bodyTopY + 12);
+    ctx.lineTo(-6, bodyTopY + 18);
+    ctx.stroke();
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(-6, bodyTopY + 18, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Front arm — raised up waving
+    ctx.save();
+    ctx.translate(5, bodyTopY + 3);
+    ctx.rotate(-0.8 + waveAngle);
+    // Upper arm
+    ctx.lineWidth = 4.5;
+    ctx.strokeStyle = armColor;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, -12);
+    ctx.stroke();
+    // Forearm
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = armHighlight;
+    ctx.beginPath();
+    ctx.moveTo(0, -12);
+    ctx.lineTo(3, -20);
+    ctx.stroke();
+    // Open hand (waving)
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(3, -20, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Fingers spread
+    ctx.strokeStyle = skinColor;
+    ctx.lineWidth = 1;
+    for (let f = 0; f < 3; f++) {
+      const fa = -0.4 + f * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(3, -21);
+      ctx.lineTo(3 + Math.cos(fa) * 4, -20 + Math.sin(fa) * -4);
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else if (isDriver) {
     // Side-view: one arm visible reaching forward to handlebar, other arm hint behind body
     // Far arm hint (behind torso)
     ctx.lineWidth = 3;
@@ -3396,13 +3454,51 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
   ctx.moveTo(0, headY - 7);
   ctx.lineTo(0, headY - 3);
   ctx.stroke();
-  // Chin strap
+   // Chin strap
   ctx.strokeStyle = 'rgba(50,50,50,0.4)';
   ctx.lineWidth = 0.7;
   ctx.beginPath();
   ctx.moveTo(-5, headY - 2);
   ctx.quadraticCurveTo(-4, headY + 4, -2, headY + 5);
   ctx.stroke();
+
+  // ── Goggles (if enabled) ──
+  if (hasGoggles) {
+    // Goggle strap across helmet
+    ctx.strokeStyle = 'rgba(80,60,40,0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, headY - 1, 6.2, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.stroke();
+    // Left lens
+    ctx.fillStyle = 'rgba(180,220,255,0.5)';
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.ellipse(-2.5, headY - 3.5, 2.5, 1.8, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Right lens
+    ctx.beginPath();
+    ctx.ellipse(2.5, headY - 3.5, 2.5, 1.8, -0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Lens reflection
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(-2, headY - 4, 1, 0.6, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(3, headY - 4, 1, 0.6, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    // Bridge between lenses
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(-0.5, headY - 3.5);
+    ctx.lineTo(0.5, headY - 3.5);
+    ctx.stroke();
+  }
 
   // ── Eyes ──
   ctx.fillStyle = '#fff';
@@ -3457,19 +3553,33 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.scale(2.4, 2.4);
   ctx.translate(bike.shakeOffset.x, bike.shakeOffset.y);
 
-  // Exhaust smoke
+  // Exhaust smoke — denser when leaving
   if (bike.phase === 'idle' || bike.phase === 'leaving' || bike.phase === 'entering') {
-    const smokeCount = bike.phase === 'idle' ? 3 : 5;
+    const isLeaving = bike.phase === 'leaving';
+    const smokeCount = isLeaving ? 10 : (bike.phase === 'idle' ? 3 : 5);
     for (let i = 0; i < smokeCount; i++) {
-      const age = (g.elapsed * 2 + i * 0.7) % 2;
-      const sx = -28 - age * 10;
-      const sy = -4 - age * 14;
-      const sr = 2 + age * 4;
-      const sa = Math.max(0, 0.3 - age * 0.15);
-      ctx.fillStyle = `rgba(150,150,150,${sa})`;
+      const age = (g.elapsed * (isLeaving ? 3 : 2) + i * 0.5) % 2;
+      const sx = -28 - age * (isLeaving ? 16 : 10);
+      const sy = -4 - age * (isLeaving ? 10 : 14);
+      const sr = 2 + age * (isLeaving ? 6 : 4);
+      const sa = Math.max(0, (isLeaving ? 0.4 : 0.3) - age * 0.15);
+      ctx.fillStyle = `rgba(${isLeaving ? '120,120,130' : '150,150,150'},${sa})`;
       ctx.beginPath();
       ctx.arc(sx, sy, sr, 0, Math.PI * 2);
       ctx.fill();
+    }
+    // Extra dark exhaust puffs when leaving
+    if (isLeaving) {
+      for (let i = 0; i < 4; i++) {
+        const age = (g.elapsed * 4 + i * 1.1) % 1.5;
+        const sx = -30 - age * 20;
+        const sy = -2 - age * 6;
+        const sr = 3 + age * 5;
+        ctx.fillStyle = `rgba(60,60,70,${Math.max(0, 0.25 - age * 0.18)})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 
@@ -3799,23 +3909,40 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.ellipse(rearWX - 2, -10, 5, 3, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // ── Driver (detailed character) — leaning forward in riding pose ──
+  // ── Headlight ground pool (cone of light on ground) ──
+  if (showLight) {
+    ctx.save();
+    const groundPoolGrad = ctx.createRadialGradient(frontWX + 15, 4, 2, frontWX + 15, 4, 20);
+    groundPoolGrad.addColorStop(0, 'rgba(255,255,200,0.15)');
+    groundPoolGrad.addColorStop(0.5, 'rgba(255,255,180,0.06)');
+    groundPoolGrad.addColorStop(1, 'rgba(255,255,150,0)');
+    ctx.fillStyle = groundPoolGrad;
+    ctx.beginPath();
+    ctx.ellipse(frontWX + 15, 4, 20, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ── Driver (blue helmet with goggles, waving during dismount) ──
   const engineBob = Math.sin(g.elapsed * 12) * 0.3;
+  const driverIsWaving = passengerDismounting; // driver waves while player dismounts
   drawCharacter(ctx, {
     x: 2, y: -18,
     scale: 0.5,
     sitting: true,
     facingRight: true,
-    isDriver: true,
-    helmetColor: '#dc2626',
+    isDriver: !driverIsWaving, // when waving, don't use driver grip pose
+    helmetColor: '#2563eb',
     bodyBob: engineBob,
     armOffset: 0,
     legOffset: 0,
     isHit: false,
     elapsed: g.elapsed,
+    isWaving: driverIsWaving,
+    hasGoggles: true,
   });
 
-  // ── Passenger (player riding behind driver — between driver and box) ──
+  // ── Passenger (player — red helmet, grey/blue jacket) ──
   if (showPassenger && !passengerDismounting) {
     drawCharacter(ctx, {
       x: -6, y: -18,
@@ -3823,7 +3950,7 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
       sitting: true,
       facingRight: true,
       isDriver: false,
-      helmetColor: '#334155',
+      helmetColor: '#dc2626',
       bodyBob: engineBob,
       armOffset: 0,
       legOffset: 0,
@@ -3895,7 +4022,7 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
       sitting: isSitting,
       facingRight: true,
       isDriver: false,
-      helmetColor: '#334155',
+      helmetColor: '#dc2626',
       bodyBob: 0,
       armOffset: 0,
       legOffset: legAnim,
@@ -3914,7 +4041,7 @@ function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
   renderMotorcycle(ctx, bike, g, false, false, 0);
 }
 
-// ─── Intro Bike + Passenger ──────────────────────────
+// ─── Intro Bike + Passenger + Farewell Scene ──────────────────────────
 function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
   const bike = g.introBike;
   if (!bike || !bike.active) return;
@@ -3924,6 +4051,33 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
   const dismountProg = isDismounting ? Math.min(1, g.introTimer / 1.0) : 0;
 
   renderMotorcycle(ctx, bike, g, showPassenger, isDismounting, dismountProg);
+
+  // Panel 2: Player standing alone, waving farewell as bike leaves
+  if (g.introPhase === 'bikeLeave') {
+    const p = g.player;
+    ctx.save();
+    ctx.translate(p.pos.x, p.pos.y);
+    const playerScale = 1.6; // match in-game player scale
+    ctx.scale(playerScale, playerScale);
+    // Player faces left (looking at departing bike)
+    ctx.scale(-1, 1);
+    drawCharacter(ctx, {
+      x: 0, y: -12,
+      scale: 0.7,
+      sitting: false,
+      facingRight: true,
+      isDriver: false,
+      helmetColor: '#dc2626',
+      bodyBob: 0,
+      armOffset: 0,
+      legOffset: 0,
+      isHit: false,
+      elapsed: g.elapsed,
+      isWaving: true,
+      lookingBack: false,
+    });
+    ctx.restore();
+  }
 }
 
 // ─── Water Bottle Icon ────────────────────────────────
@@ -4231,8 +4385,8 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.globalAlpha = 1;
     }
   }
-  // Don't render player separately when riding on intro bike (hide during all phases except bikeLeave/done)
-  const hidePlayer = g.state === 'intro' && g.introPhase !== 'bikeLeave' && g.introPhase !== 'done';
+  // Don't render player separately during intro — renderIntroBike handles all character rendering
+  const hidePlayer = g.state === 'intro' && g.introPhase !== 'done';
   if (!hidePlayer) {
     renderPlayerGlow(ctx, g);
     renderPlayer(ctx, g);
