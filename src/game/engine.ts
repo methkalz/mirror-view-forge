@@ -311,11 +311,12 @@ export function updateIntro(g: GameData, dt: number) {
       bike.shakeOffset = { x: vibeX, y: vibeY };
       g.cameraFocusX = bike.pos.x;
 
-      // Camera shake on brake impact (first few frames)
+      // Camera shake on brake impact — stronger, exponential decay
       if (g.introTimer < dt * 2) {
-        g.screenShake = { x: (Math.random() - 0.5) * 3, y: (Math.random() - 0.5) * 1.5 };
-      } else if (g.introTimer < 0.15) {
-        g.screenShake = { x: g.screenShake.x * 0.7, y: g.screenShake.y * 0.7 };
+        g.screenShake = { x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 2 };
+      } else if (g.introTimer < 0.2) {
+        const decay = Math.pow(0.85, (g.introTimer / dt));
+        g.screenShake = { x: g.screenShake.x * decay, y: g.screenShake.y * decay };
       } else {
         g.screenShake = { x: 0, y: 0 };
       }
