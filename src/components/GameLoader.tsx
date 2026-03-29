@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 
 interface GameLoaderProps {
   onLoaded: () => void;
-  progress: number; // 0-100
+  progress: number;
 }
 
 const GameLoader: React.FC<GameLoaderProps> = ({ onLoaded, progress }) => {
@@ -10,15 +10,23 @@ const GameLoader: React.FC<GameLoaderProps> = ({ onLoaded, progress }) => {
   const [fadeOut, setFadeOut] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
+  const [dots, setDots] = useState('');
 
-  // Smooth progress animation
+  // Animated dots
   useEffect(() => {
-    const target = progress;
+    const interval = setInterval(() => {
+      setDots(prev => prev.length >= 3 ? '' : prev + '.');
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Smooth progress
+  useEffect(() => {
     const interval = setInterval(() => {
       setDisplayProgress(prev => {
-        const diff = target - prev;
-        if (Math.abs(diff) < 0.5) return target;
-        return prev + diff * 0.15;
+        const diff = progress - prev;
+        if (Math.abs(diff) < 0.5) return progress;
+        return prev + diff * 0.12;
       });
     }, 30);
     return () => clearInterval(interval);
@@ -29,56 +37,96 @@ const GameLoader: React.FC<GameLoaderProps> = ({ onLoaded, progress }) => {
     if (progress >= 100) {
       const timer = setTimeout(() => {
         setFadeOut(true);
-        setTimeout(onLoaded, 600);
-      }, 400);
+        setTimeout(onLoaded, 700);
+      }, 500);
       return () => clearTimeout(timer);
     }
   }, [progress, onLoaded]);
 
-  // Particle background
+  // Particle ring + floating particles
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    const resize = () => { canvas.width = window.innerWidth * 2; canvas.height = window.innerHeight * 2; canvas.style.width = window.innerWidth + 'px'; canvas.style.height = window.innerHeight + 'px'; };
     resize();
     window.addEventListener('resize', resize);
 
     interface Particle {
       x: number; y: number; vx: number; vy: number;
-      size: number; alpha: number; hue: number;
+      size: number; alpha: number; hue: number; speed: number;
     }
 
-    const particles: Particle[] = Array.from({ length: 40 }, () => ({
+    const particles: Particle[] = Array.from({ length: 50 }, () => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * 0.5,
-      vy: -(0.3 + Math.random() * 0.8),
-      size: 1 + Math.random() * 2,
-      alpha: 0.2 + Math.random() * 0.5,
-      hue: 10 + Math.random() * 25,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: -(0.2 + Math.random() * 0.6),
+      size: 0.5 + Math.random() * 1.5,
+      alpha: 0.15 + Math.random() * 0.35,
+      hue: 5 + Math.random() * 30,
+      speed: 0.5 + Math.random(),
     }));
+
+    let startTime = Date.now();
 
     const animate = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
 
-      for (const p of particles) {
-        p.x += p.vx + Math.sin(Date.now() * 0.001 + p.y * 0.01) * 0.2;
-        p.y += p.vy;
-        if (p.y < -10) { p.y = canvas.height + 10; p.x = Math.random() * canvas.width; }
+      const elapsed = (Date.now() - startTime) * 0.001;
 
-        const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 3);
-        glow.addColorStop(0, `hsla(${p.hue}, 100%, 70%, ${p.alpha * 0.5})`);
-        glow.addColorStop(1, `hsla(${p.hue}, 100%, 50%, 0)`);
-        ctx.fillStyle = glow;
-        ctx.fillRect(p.x - p.size * 3, p.y - p.size * 3, p.size * 6, p.size * 6);
+      // Draw orbital ring
+      const cx = w / 2;
+      const cy = h / 2 - 60;
+      const ringRadius = 90;
+
+      for (let i = 0; i < 3; i++) {
+        const angle = elapsed * (0.8 + i * 0.3) + i * (Math.PI * 2 / 3);
+        const ox = cx + Math.cos(angle) * ringRadius;
+        const oy = cy + Math.sin(angle) * ringRadius * 0.35;
+        const orbitGlow = ctx.createRadialGradient(ox, oy, 0, ox, oy, 12);
+        orbitGlow.addColorStop(0, `hsla(${10 + i * 8}, 100%, 70%, 0.7)`);
+        orbitGlow.addColorStop(0.5, `hsla(${10 + i * 8}, 100%, 50%, 0.2)`);
+        orbitGlow.addColorStop(1, 'transparent');
+        ctx.fillStyle = orbitGlow;
+        ctx.fillRect(ox - 12, oy - 12, 24, 24);
 
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * 0.5, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${p.hue}, 100%, 85%, ${p.alpha})`;
+        ctx.arc(ox, oy, 2, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${15 + i * 8}, 100%, 90%, 0.9)`;
         ctx.fill();
       }
+
+      // Draw faint ring path
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, ringRadius, ringRadius * 0.35, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(220,38,38,0.06)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Floating particles
+      for (const p of particles) {
+        p.x += p.vx + Math.sin(elapsed * 0.5 + p.y * 0.005) * 0.15;
+        p.y += p.vy * p.speed;
+        if (p.y < -10) { p.y = h + 10; p.x = Math.random() * w; }
+        if (p.x < -10) p.x = w + 10;
+        if (p.x > w + 10) p.x = -10;
+
+        const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 4);
+        glow.addColorStop(0, `hsla(${p.hue}, 100%, 75%, ${p.alpha * 0.4})`);
+        glow.addColorStop(1, 'transparent');
+        ctx.fillStyle = glow;
+        ctx.fillRect(p.x - p.size * 4, p.y - p.size * 4, p.size * 8, p.size * 8);
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${p.hue}, 100%, 88%, ${p.alpha * 0.8})`;
+        ctx.fill();
+      }
+
       rafRef.current = requestAnimationFrame(animate);
     };
     rafRef.current = requestAnimationFrame(animate);
@@ -91,79 +139,126 @@ const GameLoader: React.FC<GameLoaderProps> = ({ onLoaded, progress }) => {
     <div style={{
       position: 'absolute', inset: 0, zIndex: 60,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      background: 'radial-gradient(ellipse at 50% 40%, rgba(10,15,30,0.97) 0%, #000 100%)',
+      background: 'radial-gradient(ellipse at 50% 35%, rgba(15,10,25,0.98) 0%, #000 100%)',
       opacity: fadeOut ? 0 : 1,
-      transition: 'opacity 0.6s ease',
+      transition: 'opacity 0.7s ease',
     }}>
       <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
 
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32 }}>
-        {/* Pulsing icon */}
-        <div style={{
-          fontSize: 48,
-          animation: 'loaderPulse 2s ease-in-out infinite',
-          filter: 'drop-shadow(0 0 20px rgba(220,38,38,0.4))',
-        }}>
-          ☄️
+      <div style={{
+        position: 'relative', zIndex: 1,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 40,
+      }}>
+        {/* Pulsing meteor icon with glow ring */}
+        <div style={{ position: 'relative' }}>
+          <div style={{
+            position: 'absolute', inset: -20,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(220,38,38,0.12) 0%, transparent 70%)',
+            animation: 'ringPulse 2.5s ease-in-out infinite',
+          }} />
+          <div style={{
+            fontSize: 52,
+            animation: 'loaderFloat 3s ease-in-out infinite',
+            filter: 'drop-shadow(0 0 24px rgba(220,38,38,0.5)) drop-shadow(0 0 60px rgba(220,38,38,0.15))',
+          }}>
+            ☄️
+          </div>
         </div>
 
-        {/* Progress bar container */}
+        {/* Progress section */}
         <div style={{
-          width: 'min(280px, 70vw)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+          width: 'min(300px, 75vw)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
         }}>
-          {/* Bar track */}
-          <div style={{
-            width: '100%', height: 4, borderRadius: 2,
-            background: 'rgba(255,255,255,0.06)',
-            overflow: 'hidden',
-            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.4)',
-          }}>
-            {/* Bar fill */}
+          {/* Track with glow */}
+          <div style={{ width: '100%', position: 'relative' }}>
+            {/* Glow behind bar */}
             <div style={{
-              height: '100%',
-              width: `${displayProgress}%`,
-              borderRadius: 2,
-              background: 'linear-gradient(90deg, rgba(153,27,27,0.8) 0%, rgba(220,38,38,0.9) 60%, rgba(248,113,113,0.95) 100%)',
-              boxShadow: '0 0 12px rgba(220,38,38,0.5), 0 0 4px rgba(220,38,38,0.8)',
-              transition: 'width 0.1s linear',
+              position: 'absolute', top: -6, left: 0, right: 0, height: 16,
+              background: `linear-gradient(90deg, transparent 0%, rgba(220,38,38,${0.15 * displayProgress / 100}) ${displayProgress}%, transparent ${displayProgress + 5}%)`,
+              filter: 'blur(8px)',
+              borderRadius: 8,
+              pointerEvents: 'none',
             }} />
+            <div style={{
+              width: '100%', height: 3, borderRadius: 2,
+              background: 'rgba(255,255,255,0.04)',
+              overflow: 'hidden',
+              position: 'relative',
+            }}>
+              <div style={{
+                height: '100%',
+                width: `${displayProgress}%`,
+                borderRadius: 2,
+                background: 'linear-gradient(90deg, rgba(127,29,29,0.7) 0%, rgba(220,38,38,0.85) 50%, rgba(252,165,165,0.95) 100%)',
+                boxShadow: '0 0 8px rgba(220,38,38,0.6)',
+                transition: 'width 0.08s linear',
+              }} />
+            </div>
           </div>
 
-          {/* Percentage */}
-          <span style={{
-            fontFamily: "'Tajawal', system-ui, sans-serif",
-            fontSize: 13,
-            fontWeight: 600,
-            color: 'rgba(148,163,184,0.7)',
-            letterSpacing: 3,
+          {/* Percentage with monospace feel */}
+          <div style={{
+            display: 'flex', alignItems: 'baseline', gap: 6,
           }}>
-            {rounded}%
-          </span>
+            <span style={{
+              fontFamily: "'Tajawal', system-ui, sans-serif",
+              fontSize: 28,
+              fontWeight: 300,
+              color: 'rgba(248,250,252,0.8)',
+              letterSpacing: 2,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {rounded}
+            </span>
+            <span style={{
+              fontFamily: "'Tajawal', system-ui, sans-serif",
+              fontSize: 12,
+              fontWeight: 400,
+              color: 'rgba(148,163,184,0.5)',
+            }}>
+              %
+            </span>
+          </div>
         </div>
 
-        {/* Loading text */}
-        <p style={{
-          fontFamily: "'Tajawal', system-ui, sans-serif",
-          fontSize: 12,
-          color: 'rgba(100,116,139,0.5)',
-          letterSpacing: 4,
-          textTransform: 'uppercase',
-          animation: 'subtitleFlicker 3s ease-in-out infinite',
+        {/* Loading text — Arabic */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          direction: 'rtl',
         }}>
-          جاري التحميل
-        </p>
+          <span style={{
+            fontFamily: "'Tajawal', sans-serif",
+            fontSize: 14,
+            fontWeight: 500,
+            color: 'rgba(148,163,184,0.45)',
+            letterSpacing: 1,
+          }}>
+            جارٍ التحميل
+          </span>
+          <span style={{
+            fontFamily: "monospace",
+            fontSize: 14,
+            color: 'rgba(148,163,184,0.35)',
+            width: 20,
+            display: 'inline-block',
+            textAlign: 'left',
+          }}>
+            {dots}
+          </span>
+        </div>
       </div>
 
       <style>{`
-        @keyframes loaderPulse {
-          0%, 100% { transform: scale(1); opacity: 0.8; }
-          50% { transform: scale(1.12); opacity: 1; }
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap');
+        @keyframes loaderFloat {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-8px) scale(1.05); }
         }
-        @keyframes subtitleFlicker {
-          0%, 100% { opacity: 0.5; }
-          50% { opacity: 0.8; }
-          70% { opacity: 0.4; }
+        @keyframes ringPulse {
+          0%, 100% { transform: scale(1); opacity: 0.6; }
+          50% { transform: scale(1.3); opacity: 1; }
         }
       `}</style>
     </div>
