@@ -43,7 +43,7 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
     const startOnGesture = () => {
       if (!musicStarted.current) {
         musicStarted.current = true;
-        resumeAudioCtx();
+        resumeAudio();
         startMenuMusic();
       }
     };
