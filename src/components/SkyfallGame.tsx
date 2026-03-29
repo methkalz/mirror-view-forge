@@ -317,6 +317,19 @@ const SkyfallGame: React.FC = () => {
 
   const hasAmmo = playerAmmo > 0;
 
+  // Loading screen
+  if (isLoading) {
+    return (
+      <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' }}>
+        <LoadingScreen
+          loadingProgress={loadingProgress}
+          loadingText={loadingText}
+          onComplete={() => setIsLoading(false)}
+        />
+      </div>
+    );
+  }
+
   // Name entry screen
   if (showNameEntry) {
     return (
