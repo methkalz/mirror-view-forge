@@ -46,10 +46,11 @@ const Admin: React.FC = () => {
   }, [navigate]);
 
   const loadAll = useCallback(async () => {
-    const [c, w, l] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard()]);
+    const [c, w, l, a] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard(), fetchAudioConfig()]);
     setConfig(c);
     setWaves(w);
     setLeaders(l);
+    setAudioEntries(a);
   }, []);
 
   useEffect(() => { if (isAdmin) loadAll(); }, [isAdmin, loadAll]);
