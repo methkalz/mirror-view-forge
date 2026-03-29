@@ -3296,7 +3296,477 @@ function renderOffscreenIndicators(ctx: CanvasRenderingContext2D, g: GameData) {
   }
 }
 
-// ─── Delivery Bike (Realistic Motorcycle) ─────────────
+// ─── Shared Character Drawing ────────────────────────
+interface CharacterOptions {
+  x: number;
+  y: number;
+  scale: number;
+  sitting: boolean;
+  facingRight: boolean;
+  isDriver: boolean;
+  helmetColor: string;
+  bodyBob: number;
+  armOffset: number;
+  legOffset: number;
+  isHit: boolean;
+  elapsed: number;
+  holdingDriver?: boolean;
+  isShooting?: boolean;
+  shootTimer?: number;
+}
+
+function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
+  const {
+    x, y, scale, sitting, facingRight, isDriver, helmetColor,
+    bodyBob, armOffset, legOffset, isHit, elapsed,
+    holdingDriver, isShooting, shootTimer,
+  } = opts;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+
+  const dir = facingRight ? 1 : -1;
+  ctx.scale(dir, 1);
+
+  const skinColor = isHit ? '#fca5a5' : '#f0c4a0';
+  const skinHighlight = isHit ? '#fecaca' : '#fad5b5';
+  const pantsColor = '#1a2f4a';
+  const pantsHighlight = '#2a4a6a';
+  const shoeColor = '#1a1a1a';
+
+  const headY = -32 + bodyBob;
+  const bodyTopY = -24 + bodyBob;
+  const bodyBottomY = -8 + bodyBob;
+
+  // Body shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.25)';
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 3;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // ── Legs ──
+  if (sitting) {
+    // Bent legs for sitting on bike
+    // Back leg bent under
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = pantsColor;
+    ctx.beginPath();
+    ctx.moveTo(-2, bodyBottomY);
+    ctx.lineTo(-6, bodyBottomY + 6);
+    ctx.stroke();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = pantsHighlight;
+    ctx.beginPath();
+    ctx.moveTo(-6, bodyBottomY + 6);
+    ctx.lineTo(-8, bodyBottomY + 12);
+    ctx.stroke();
+    // Shoe
+    ctx.lineWidth = 4.5;
+    ctx.strokeStyle = shoeColor;
+    ctx.beginPath();
+    ctx.moveTo(-8, bodyBottomY + 12);
+    ctx.lineTo(-6, bodyBottomY + 14);
+    ctx.stroke();
+
+    // Front leg bent forward
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = pantsColor;
+    ctx.beginPath();
+    ctx.moveTo(2, bodyBottomY);
+    ctx.lineTo(6, bodyBottomY + 6);
+    ctx.stroke();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = pantsHighlight;
+    ctx.beginPath();
+    ctx.moveTo(6, bodyBottomY + 6);
+    ctx.lineTo(8, bodyBottomY + 12);
+    ctx.stroke();
+    ctx.lineWidth = 4.5;
+    ctx.strokeStyle = shoeColor;
+    ctx.beginPath();
+    ctx.moveTo(8, bodyBottomY + 12);
+    ctx.lineTo(10, bodyBottomY + 14);
+    ctx.stroke();
+  } else {
+    // Standing legs with animation
+    const backKneeX = -3 - legOffset * 0.6;
+    const backKneeY = bodyBottomY + 8;
+    const backFootX = -2 - legOffset * 0.3;
+    const backFootY = -1;
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = pantsColor;
+    ctx.beginPath();
+    ctx.moveTo(-2, bodyBottomY);
+    ctx.lineTo(backKneeX, backKneeY);
+    ctx.stroke();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = pantsHighlight;
+    ctx.beginPath();
+    ctx.moveTo(backKneeX, backKneeY);
+    ctx.lineTo(backFootX, backFootY);
+    ctx.stroke();
+    ctx.lineWidth = 4.5;
+    ctx.strokeStyle = shoeColor;
+    ctx.beginPath();
+    ctx.moveTo(backFootX, backFootY);
+    ctx.lineTo(backFootX + 2, 2);
+    ctx.stroke();
+    // Sole
+    ctx.strokeStyle = '#8B4513';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(backFootX - 1, 2);
+    ctx.lineTo(backFootX + 4, 2);
+    ctx.stroke();
+
+    // Front leg
+    const frontKneeX = 3 + legOffset * 0.6;
+    const frontKneeY = bodyBottomY + 8;
+    const frontFootX = 2 + legOffset * 0.3;
+    const frontFootY = -1;
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = pantsColor;
+    ctx.beginPath();
+    ctx.moveTo(2, bodyBottomY);
+    ctx.lineTo(frontKneeX, frontKneeY);
+    ctx.stroke();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = pantsHighlight;
+    ctx.beginPath();
+    ctx.moveTo(frontKneeX, frontKneeY);
+    ctx.lineTo(frontFootX, frontFootY);
+    ctx.stroke();
+    ctx.lineWidth = 4.5;
+    ctx.strokeStyle = shoeColor;
+    ctx.beginPath();
+    ctx.moveTo(frontFootX, frontFootY);
+    ctx.lineTo(frontFootX + 2, 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#8B4513';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(frontFootX - 1, 2);
+    ctx.lineTo(frontFootX + 4, 2);
+    ctx.stroke();
+  }
+
+  // ── Torso with gradient ──
+  const torsoGrad = ctx.createLinearGradient(0, bodyTopY, 0, bodyBottomY);
+  if (isHit) {
+    torsoGrad.addColorStop(0, '#ef4444');
+    torsoGrad.addColorStop(1, '#dc2626');
+  } else {
+    torsoGrad.addColorStop(0, '#5a9ae6');
+    torsoGrad.addColorStop(0.4, '#4a90e2');
+    torsoGrad.addColorStop(1, '#2563eb');
+  }
+  ctx.fillStyle = torsoGrad;
+  ctx.beginPath();
+  ctx.moveTo(-6, bodyTopY);
+  ctx.lineTo(6, bodyTopY);
+  ctx.lineTo(5, bodyBottomY);
+  ctx.lineTo(-5, bodyBottomY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = isHit ? '#b91c1c' : '#1d4ed8';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+
+  // V-neck collar
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(-4, bodyTopY + 1);
+  ctx.lineTo(0, bodyTopY + 4);
+  ctx.lineTo(4, bodyTopY + 1);
+  ctx.stroke();
+
+  // Pockets
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = 0.6;
+  ctx.strokeRect(-4, bodyTopY + 7, 3, 3);
+  ctx.strokeRect(1, bodyTopY + 7, 3, 3);
+
+  // Belt
+  ctx.fillStyle = '#3a2a1a';
+  ctx.fillRect(-5.5, bodyBottomY - 2, 11, 2.5);
+  // Belt buckle
+  ctx.fillStyle = '#c0a050';
+  ctx.fillRect(-1, bodyBottomY - 1.8, 2, 2);
+
+  // ── Arms ──
+  const armColor = isHit ? '#ef4444' : '#3a7bd5';
+  const armHighlight = isHit ? '#f87171' : '#5a9ae6';
+
+  if (isDriver) {
+    // Back arm relaxed
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = armColor;
+    ctx.beginPath();
+    ctx.moveTo(-5, bodyTopY + 3);
+    ctx.lineTo(-8, bodyTopY + 10);
+    ctx.stroke();
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = armHighlight;
+    ctx.beginPath();
+    ctx.moveTo(-8, bodyTopY + 10);
+    ctx.lineTo(-7, bodyTopY + 18);
+    ctx.stroke();
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(-7, bodyTopY + 18, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Front arm reaching to handlebar
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = armColor;
+    ctx.beginPath();
+    ctx.moveTo(5, bodyTopY + 3);
+    ctx.lineTo(10, bodyTopY - 2);
+    ctx.stroke();
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = armHighlight;
+    ctx.beginPath();
+    ctx.moveTo(10, bodyTopY - 2);
+    ctx.lineTo(14, bodyTopY - 6);
+    ctx.stroke();
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(14, bodyTopY - 6, 2, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (holdingDriver) {
+    // Both arms reaching forward to hold driver's back
+    for (const side of [-1, 1]) {
+      const sx = side * 5;
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = armColor;
+      ctx.beginPath();
+      ctx.moveTo(sx, bodyTopY + 3);
+      ctx.lineTo(sx + 3, bodyTopY + 8);
+      ctx.stroke();
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = armHighlight;
+      ctx.beginPath();
+      ctx.moveTo(sx + 3, bodyTopY + 8);
+      ctx.lineTo(sx + 6, bodyTopY + 5);
+      ctx.stroke();
+      ctx.fillStyle = skinColor;
+      ctx.beginPath();
+      ctx.arc(sx + 6, bodyTopY + 5, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (isShooting && shootTimer && shootTimer > 0) {
+    // Shooting arm raised with pistol
+    const shoulderX = 5, shoulderY = bodyTopY + 3;
+    const elbowX = 10, elbowY = bodyTopY - 4;
+    const handX = 12, handY = bodyTopY - 14;
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = armColor;
+    ctx.beginPath();
+    ctx.moveTo(shoulderX, shoulderY);
+    ctx.lineTo(elbowX, elbowY);
+    ctx.stroke();
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = armHighlight;
+    ctx.beginPath();
+    ctx.moveTo(elbowX, elbowY);
+    ctx.lineTo(handX, handY);
+    ctx.stroke();
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(handX, handY, 2, 0, Math.PI * 2);
+    ctx.fill();
+    // Pistol
+    ctx.save();
+    ctx.translate(handX, handY);
+    ctx.rotate(-0.15);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(-1.2, -9, 2.4, 7);
+    ctx.fillStyle = '#333';
+    ctx.fillRect(-2, -2, 4, 4);
+    ctx.fillStyle = '#555';
+    ctx.fillRect(-2.5, 1, 5, 2);
+    ctx.restore();
+    // Muzzle flash
+    if (shootTimer > 0.22) {
+      ctx.save();
+      ctx.translate(handX, handY - 10);
+      ctx.fillStyle = '#fbbf24';
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(0, -6);
+      ctx.lineTo(-3, 0);
+      ctx.lineTo(3, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      ctx.arc(0, -2, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+
+    // Back arm normal
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = armColor;
+    ctx.beginPath();
+    ctx.moveTo(-5, bodyTopY + 3);
+    ctx.lineTo(-8 + armOffset * 0.5, bodyTopY + 10);
+    ctx.stroke();
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = armHighlight;
+    ctx.beginPath();
+    ctx.moveTo(-8 + armOffset * 0.5, bodyTopY + 10);
+    ctx.lineTo(-7 + armOffset * 0.3, bodyTopY + 18);
+    ctx.stroke();
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(-7 + armOffset * 0.3, bodyTopY + 18, 2, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // Normal relaxed arms
+    // Back arm
+    const backElbowX = -8 + armOffset * 0.5;
+    const backElbowY = bodyTopY + 10;
+    const backHandX = -7 + armOffset * 0.3;
+    const backHandY = bodyTopY + 18;
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = armColor;
+    ctx.beginPath();
+    ctx.moveTo(-5, bodyTopY + 3);
+    ctx.lineTo(backElbowX, backElbowY);
+    ctx.stroke();
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = armHighlight;
+    ctx.beginPath();
+    ctx.moveTo(backElbowX, backElbowY);
+    ctx.lineTo(backHandX, backHandY);
+    ctx.stroke();
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(backHandX, backHandY, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Front arm
+    const frontElbowX = 8 - armOffset * 0.5;
+    const frontElbowY = bodyTopY + 10;
+    const frontHandX = 7 - armOffset * 0.3;
+    const frontHandY = bodyTopY + 18;
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = armColor;
+    ctx.beginPath();
+    ctx.moveTo(5, bodyTopY + 3);
+    ctx.lineTo(frontElbowX, frontElbowY);
+    ctx.stroke();
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = armHighlight;
+    ctx.beginPath();
+    ctx.moveTo(frontElbowX, frontElbowY);
+    ctx.lineTo(frontHandX, frontHandY);
+    ctx.stroke();
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(frontHandX, frontHandY, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Reset shadow before head
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+
+  // ── Head ──
+  const headGrad = ctx.createRadialGradient(0, headY - 1, 1, 0, headY, 6);
+  headGrad.addColorStop(0, skinHighlight);
+  headGrad.addColorStop(1, skinColor);
+  ctx.fillStyle = headGrad;
+  ctx.beginPath();
+  ctx.arc(0, headY, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Helmet with gradient + shine
+  const hDark = helmetColor;
+  const helmetGrad = ctx.createLinearGradient(0, headY - 8, 0, headY);
+  // Derive lighter/darker shades from base color
+  helmetGrad.addColorStop(0, hDark);
+  helmetGrad.addColorStop(0.5, hDark);
+  helmetGrad.addColorStop(1, '#0f172a');
+  ctx.fillStyle = helmetGrad;
+  ctx.beginPath();
+  ctx.arc(0, headY - 1.5, 6.8, Math.PI, 0);
+  ctx.fill();
+  // Helmet shine
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(-1.5, headY - 4, 3, Math.PI * 1.1, Math.PI * 1.7);
+  ctx.stroke();
+  // Helmet logo line
+  ctx.strokeStyle = 'rgba(255,200,50,0.3)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(0, headY - 7);
+  ctx.lineTo(0, headY - 3);
+  ctx.stroke();
+  // Chin strap
+  ctx.strokeStyle = 'rgba(50,50,50,0.4)';
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(-5, headY - 2);
+  ctx.quadraticCurveTo(-4, headY + 4, -2, headY + 5);
+  ctx.stroke();
+
+  // ── Eyes ──
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(-2.2, headY - 0.5, 1.6, 1.4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(-1.8, headY - 0.5, 0.8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(2.5, headY - 0.5, 1.6, 1.4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(2.9, headY - 0.5, 0.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Eyebrows ──
+  ctx.strokeStyle = '#2a1a0a';
+  ctx.lineWidth = 1;
+  if (isHit) {
+    ctx.beginPath();
+    ctx.moveTo(-3.5, headY - 3);
+    ctx.lineTo(-1, headY - 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(1.5, headY - 2);
+    ctx.lineTo(4, headY - 3);
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(-3.5, headY - 2.5);
+    ctx.lineTo(-0.8, headY - 2.8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(1.5, headY - 2.8);
+    ctx.lineTo(4, headY - 2.5);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+
 function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: number; y: number }; facingRight: boolean; wheelAnim: number; shakeOffset: { x: number; y: number }; phase: string; speed: number }, g: GameData, showPassenger: boolean = false, passengerDismounting: boolean = false, dismountProgress: number = 0) {
   ctx.save();
   ctx.translate(bike.pos.x, bike.pos.y);
