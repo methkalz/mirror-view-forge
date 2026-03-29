@@ -3257,11 +3257,11 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
     ctx.arc(10, bodyTopY - 3, 1.8, 0, Math.PI * 2);
     ctx.fill();
 
-    // Near arm — shoulder → bent elbow (~120°) → forearm → grip on handlebar
+    // Near arm — shoulder → bent elbow (~120°) → forearm → grip on handlebar (inward)
     // Upper arm: shoulder to elbow
     const shoulderX = 4, shoulderY = bodyTopY + 3;
-    const elbowX = 10, elbowY = bodyTopY + 1;
-    const handleX = 16, handleY = bodyTopY - 9;
+    const elbowX = 8, elbowY = bodyTopY + 1;
+    const handleX = 5, handleY = bodyTopY - 9;
     
     ctx.lineWidth = 4.5;
     ctx.strokeStyle = armColor;
@@ -3915,20 +3915,20 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.fill();
   ctx.stroke();
 
-  // ── Handlebar (with mirrors) ──
+  // ── Handlebar (with mirrors) — curves INWARD toward driver ──
   ctx.strokeStyle = '#666';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(10, -18);
-  ctx.quadraticCurveTo(13, -22, 16, -24);
+  ctx.quadraticCurveTo(8, -22, 5, -24);
   ctx.stroke();
   // Grips (rubber)
   ctx.strokeStyle = '#222';
   ctx.lineWidth = 3.5;
   ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(15, -25);
-  ctx.lineTo(17, -26);
+  ctx.moveTo(5, -24);
+  ctx.lineTo(4, -25.5);
   ctx.stroke();
   ctx.lineCap = 'butt';
   // Mirror
@@ -3936,7 +3936,7 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.strokeStyle = '#555';
   ctx.lineWidth = 0.5;
   ctx.beginPath();
-  ctx.ellipse(18, -27, 2, 1.2, -0.3, 0, Math.PI * 2);
+  ctx.ellipse(3, -26.5, 2, 1.2, 0.3, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
@@ -4134,19 +4134,9 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.ellipse(tailX + 0.5, tailY - 0.8, 0.8, 0.4, 0.3, 0, Math.PI * 2);
   ctx.fill();
 
-  // ── Wet Asphalt Reflection (dynamic ground reflection) ──
+  // ── Wet Asphalt Reflection (red only — no white/yellow behind bike) ──
   ctx.save();
   ctx.translate(0, 10);
-  // Headlight reflection on wet ground
-  const reflectFlicker = 0.85 + Math.sin(g.elapsed * 6) * 0.15;
-  const refGrad = ctx.createRadialGradient(frontWX + 10, 4, 2, frontWX + 10, 4, 35);
-  refGrad.addColorStop(0, `rgba(255,255,200,${0.07 * reflectFlicker})`);
-  refGrad.addColorStop(0.5, `rgba(255,255,180,${0.03 * reflectFlicker})`);
-  refGrad.addColorStop(1, 'rgba(255,255,150,0)');
-  ctx.fillStyle = refGrad;
-  ctx.beginPath();
-  ctx.ellipse(frontWX + 10, 4, 35, 6, 0, 0, Math.PI * 2);
-  ctx.fill();
   // Tail light reflection (red)
   const tailRefAlpha = isBrakingNow ? 0.06 : 0.03;
   const tailRefGrad = ctx.createRadialGradient(rearWX - 2, 4, 1, rearWX - 2, 4, 15);
@@ -4248,105 +4238,9 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
     });
   }
 
-  // ── 4-Phase Professional Dismount: Anticipation → Arc → Gravity (BACKWARD) → Landing ──
-  if (passengerDismounting) {
-    const dp = dismountProgress;
-    let dismountX: number, dismountY: number, finalScale: number, isSitting: boolean, legAnim: number, bodyTilt: number;
-    
-    if (dp < 0.15) {
-      // Phase 0: ANTICIPATION — weight shift, bike tilts, passenger prepares
-      const t = dp / 0.15;
-      const ease = t * t;
-      dismountX = -6 - ease * 0.5; // shift LEFT (toward back)
-      dismountY = -18 - ease * 0.5;
-      finalScale = 0.5;
-      isSitting = true;
-      legAnim = ease * 1;
-      bodyTilt = -ease * 0.08; // lean back (negative = toward back of bike)
-    } else if (dp < 0.40) {
-      // Phase 1: ARC LEG SWING — leg arcs BACKWARD over seat
-      const t = (dp - 0.15) / 0.25;
-      const ease = t * t * (3 - 2 * t);
-      dismountX = -6.5 - ease * 4; // moving left/backward
-      const arcY = Math.sin(t * Math.PI) * -6;
-      dismountY = -18.5 + arcY + ease * 1;
-      finalScale = 0.5 + ease * 0.05;
-      isSitting = t < 0.4;
-      legAnim = 1 + ease * 10;
-      bodyTilt = -0.08 - ease * 0.15; // lean backward as counterbalance
-    } else if (dp < 0.70) {
-      // Phase 2: GRAVITY DROP — parabolic descent BEHIND bike
-      const t = (dp - 0.40) / 0.30;
-      const ease = t * t * (3 - 2 * t);
-      // Parabolic jump arc: up briefly then fall
-      const jumpArc = Math.sin(t * Math.PI * 0.6) * -4;
-      const gravityPull = t * t * 8;
-      dismountX = -10.5 - ease * 12; // continue moving backward
-      dismountY = -17.5 + jumpArc + gravityPull;
-      finalScale = 0.55 + ease * 0.1;
-      isSitting = false;
-      legAnim = 11 - ease * 7;
-      bodyTilt = -0.23 * (1 - ease * 1.8); // tilt reduces as landing approaches
-    } else {
-      // Phase 3: LANDING — knee bend (squat absorb) + bounce + dust
-      const t = (dp - 0.70) / 0.30;
-      const easeOut = 1 - (1 - t) * (1 - t);
-      // Squat absorb: knees compress then spring up
-      const squatDepth = t < 0.4 ? Math.sin(t / 0.4 * Math.PI * 0.5) * 4 : 
-                         t < 0.7 ? 4 * (1 - (t - 0.4) / 0.3) : 
-                         Math.sin((t - 0.7) / 0.3 * Math.PI) * -1.5;
-      dismountX = -22.5 + easeOut * 2;
-      dismountY = -9 + squatDepth;
-      finalScale = 0.65 + easeOut * 0.05;
-      isSitting = false;
-      legAnim = 4 * (1 - easeOut) + (squatDepth > 2 ? 2 : 0);
-      bodyTilt = 0;
-
-      // Physics-based landing dust burst (fan-shaped)
-      if (t > 0.05 && t < 0.5) {
-        const burstT = (t - 0.05) / 0.45;
-        const particleCount = 12;
-        for (let i = 0; i < particleCount; i++) {
-          const angle = -Math.PI * 0.8 + (i / particleCount) * Math.PI * 0.8;
-          const speed = 2.5 + i * 0.6;
-          const pAge = burstT;
-          const friction = Math.pow(0.92, pAge * 15);
-          const gravity = pAge * pAge * 2;
-          const px = dismountX + Math.cos(angle) * speed * pAge * 4 * friction;
-          const py = dismountY + 14 + Math.sin(angle) * speed * pAge * 3 * friction + gravity;
-          const pSize = (1.8 + i * 0.3) * (1 + pAge * 1.2) * Math.max(0, 1 - pAge * 0.7);
-          const pAlpha = Math.max(0, 0.4 * (1 - pAge * 1.1));
-          const brownBase = 160 + Math.round(i * 3);
-          const greyShift = Math.round(pAge * 30);
-          ctx.fillStyle = `rgba(${brownBase - greyShift},${brownBase - 15 - greyShift},${brownBase - 35 - greyShift},${pAlpha})`;
-          ctx.beginPath();
-          ctx.ellipse(px, py, pSize * 1.4, pSize * 0.6, angle * 0.3, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-    }
-
-    ctx.save();
-    if (bodyTilt) {
-      ctx.translate(dismountX, dismountY);
-      ctx.rotate(bodyTilt);
-      ctx.translate(-dismountX, -dismountY);
-    }
-    drawCharacter(ctx, {
-      x: dismountX, y: dismountY,
-      scale: finalScale,
-      sitting: isSitting,
-      facingRight: true,
-      isDriver: false,
-      helmetColor: '#334155',
-      bodyBob: 0,
-      armOffset: dp > 0.40 && dp < 0.70 ? Math.sin(dp * 8) * 3 : 0,
-      legOffset: legAnim,
-      isHit: false,
-      elapsed: g.elapsed,
-    });
-    ctx.restore();
-  }
+  // ── Simple Dismount: smooth slide off behind bike — no animations, no dust ──
+  // NOTE: dismounting character is drawn BEFORE the bike (see renderIntroBike)
+  // so this block is now empty — the character is drawn in renderIntroBike before renderMotorcycle
 
   ctx.restore();
 }
