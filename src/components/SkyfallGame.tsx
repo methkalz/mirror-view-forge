@@ -30,12 +30,16 @@ const SkyfallGame: React.FC = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [gameOverData, setGameOverData] = useState<{ score: number; rank: number | null; waves: number } | null>(null);
   const [remoteConfig, setRemoteConfig] = useState<RemoteGameConfig | null>(null);
+  const remoteConfigRef = useRef<RemoteGameConfig | null>(null);
   const scoreSubmittedRef = useRef(false);
 
   // Load leaderboard on mount
   useEffect(() => {
     fetchLeaderboard().then(setLeaderboard);
-    fetchGameConfig().then(setRemoteConfig);
+    fetchGameConfig().then(cfg => {
+      setRemoteConfig(cfg);
+      remoteConfigRef.current = cfg;
+    });
   }, []);
 
   // Check if name already exists
