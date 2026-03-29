@@ -22,7 +22,7 @@ const sequentialIndex: Map<string, number> = new Map();
 // ─── Periodic ambient timers ───
 const periodicTimers: Map<string, ReturnType<typeof setInterval>> = new Map();
 
-export async function loadAudioSettings() {
+export async function loadAudioSettings(onProgress?: (pct: number) => void) {
   try {
     const entries = await fetchAudioConfig();
     audioSettings.clear();
@@ -38,13 +38,13 @@ export async function loadAudioSettings() {
       });
     }
     settingsLoaded = true;
-    preloadAllAudio();
+    await preloadAllAudio(onProgress);
   } catch {
     settingsLoaded = false;
   }
 }
 
-async function preloadAllAudio() {
+async function preloadAllAudio(onProgress?: (pct: number) => void) {
   const ctx = getCtx();
   const urlsToLoad = new Set<string>();
 
@@ -53,15 +53,25 @@ async function preloadAllAudio() {
     for (const f of s.files) urlsToLoad.add(f.fileUrl);
   }
 
+  const urls = Array.from(urlsToLoad);
+  const total = urls.length;
+  let loaded = 0;
+
   await Promise.allSettled(
-    Array.from(urlsToLoad).map(async url => {
-      if (audioBufferCache.has(url)) return;
+    urls.map(async url => {
+      if (audioBufferCache.has(url)) {
+        loaded++;
+        onProgress?.(loaded / Math.max(total, 1));
+        return;
+      }
       try {
         const resp = await fetch(url);
         const buf = await resp.arrayBuffer();
         const decoded = await ctx.decodeAudioData(buf);
         audioBufferCache.set(url, decoded);
       } catch { /* skip */ }
+      loaded++;
+      onProgress?.(loaded / Math.max(total, 1));
     })
   );
 }
