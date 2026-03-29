@@ -751,10 +751,24 @@ const AudioPanel: React.FC<{
               return (
                 <div key={item.id} style={{ padding: '12px 16px 12px 24px', borderTop: '1px solid rgba(255,255,255,0.03)', opacity: item.enabled ? 1 : 0.4, transition: 'opacity 0.2s' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    {/* Quick play button */}
+                    <button
+                      onClick={e => { e.stopPropagation(); item.files.length > 0 ? handlePreview(item.files[0].fileUrl) : null; }}
+                      style={{
+                        ...smallBtn(item.files.length > 0 ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.04)',
+                          item.files.length > 0 ? '#93c5fd' : 'rgba(148,163,184,0.25)'),
+                        fontSize: 12, padding: '4px 6px', flexShrink: 0,
+                        cursor: item.files.length > 0 ? 'pointer' : 'default',
+                      }}
+                      title={item.files.length > 0 ? 'Preview sound' : 'Synthesized (built-in)'}
+                    >▶</button>
                     <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => setExpandedItem(isOpen ? null : item.id)}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>
                         {item.label}
-                        {item.files.length > 0 && <span style={{ fontSize: 9, color: meta.color, marginLeft: 6 }}>🎵×{item.files.length}</span>}
+                        {item.files.length > 0
+                          ? <span style={{ fontSize: 9, color: meta.color, marginLeft: 6 }}>🎵×{item.files.length}</span>
+                          : <span style={{ fontSize: 9, color: 'rgba(148,163,184,0.25)', marginLeft: 6 }}>synth</span>
+                        }
                       </div>
                       <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.3)' }}>{item.labelAr}</div>
                     </div>
