@@ -3560,55 +3560,78 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   const dir = bike.facingRight ? 1 : -1;
   ctx.scale(dir, 1);
   ctx.scale(2.4, 2.4);
-  ctx.translate(bike.shakeOffset.x, bike.shakeOffset.y);
 
-  // ── Realistic Exhaust Puffs (multi-circle deformed, wind-driven) ──
+  // Suspension physics: front fork compresses on braking
+  const isBrakingNow = bike.phase === 'idle' || bike.speed < 50;
+  const suspTarget = isBrakingNow ? -1.5 : 0;
+  const suspCompress = suspTarget; // simplified spring
+  const rearSuspCompress = suspTarget * 0.4; // rear reacts less
+
+  ctx.translate(bike.shakeOffset.x, bike.shakeOffset.y + suspCompress * 0.3);
+
+  // ── Advanced Exhaust with Vortex Turbulence ──
   if (bike.phase === 'idle' || bike.phase === 'leaving' || bike.phase === 'entering') {
     const isLeaving = bike.phase === 'leaving';
-    const puffCount = isLeaving ? 8 : (bike.phase === 'idle' ? 4 : 6);
+    const puffCount = isLeaving ? 10 : (bike.phase === 'idle' ? 5 : 7);
     for (let i = 0; i < puffCount; i++) {
       const age = (g.elapsed * (isLeaving ? 2.5 : 1.5) + i * 0.6) % 2.5;
       const friction = Math.pow(0.92, age * 10);
-      const baseVx = isLeaving ? -18 : -8;
+      const baseVx = isLeaving ? -20 : -8;
       const baseVy = isLeaving ? -6 : -8;
-      const windDrift = Math.sin(g.elapsed * 2 + i * 1.3) * 2;
+      // Vortex turbulence: local swirl offset
+      const seedAngle = i * 2.3 + g.elapsed * 0.5;
+      const vortex = Math.sin(age * 5 + seedAngle) * 2;
+      const vortexY = Math.cos(age * 4 + seedAngle) * 1.5;
+      const windDrift = Math.sin(g.elapsed * 2 + i * 1.3) * 2 + vortex;
       const sx = -28 + baseVx * age * friction + windDrift;
-      const sy = -5 + baseVy * age * friction + Math.sin(g.elapsed * 3 + i) * 1.5;
-      const scaleX = 1 + age * 0.8; // puffs stretch horizontally with age
-      const baseR = 2 + age * (isLeaving ? 5 : 3.5);
+      const sy = -5 + baseVy * age * friction + Math.sin(g.elapsed * 3 + i) * 1.5 + vortexY;
+      const scaleX = 1 + age * 1.0;
+      const baseR = 2 + age * (isLeaving ? 5.5 : 3.5);
       const lifeAlpha = Math.max(0, 1 - age / 2.5);
-      // Color ages: white-grey → dark grey → transparent
-      const grey = Math.round(180 - age * 50);
-      const alpha = lifeAlpha * (isLeaving ? 0.35 : 0.25);
-      // Each puff = 3 overlapping circles for organic shape
+      // 4-stage color: bright white → white-grey → grey-brown → transparent
+      const ageRatio = age / 2.5;
+      let r: number, gr: number, b: number;
+      if (ageRatio < 0.2) {
+        r = 220; gr = 220; b = 225; // bright white
+      } else if (ageRatio < 0.5) {
+        r = 200 - (ageRatio - 0.2) * 130; gr = 200 - (ageRatio - 0.2) * 140; b = 210 - (ageRatio - 0.2) * 160;
+      } else if (ageRatio < 0.8) {
+        r = 160 - (ageRatio - 0.5) * 100; gr = 155 - (ageRatio - 0.5) * 120; b = 160 - (ageRatio - 0.5) * 140;
+      } else {
+        r = 130; gr = 119; b = 118;
+      }
+      const alpha = lifeAlpha * (isLeaving ? 0.38 : 0.28);
+      // Each puff = 4 overlapping circles for organic turbulent shape
       ctx.save();
       ctx.translate(sx, sy);
       ctx.scale(scaleX, 1);
-      for (let c = 0; c < 3; c++) {
-        const cx = Math.cos(c * 2.1 + i) * baseR * 0.3;
-        const cy = Math.sin(c * 2.1 + i) * baseR * 0.25;
-        const cr = baseR * (0.6 + c * 0.15);
-        ctx.fillStyle = `rgba(${grey},${grey},${grey + 10},${alpha * (1 - c * 0.15)})`;
+      for (let c = 0; c < 4; c++) {
+        const cx2 = Math.cos(c * 1.6 + i + age * 2) * baseR * 0.35;
+        const cy2 = Math.sin(c * 1.6 + i + age * 1.5) * baseR * 0.3;
+        const cr = baseR * (0.55 + c * 0.12);
+        ctx.fillStyle = `rgba(${Math.round(r)},${Math.round(gr)},${Math.round(b)},${alpha * (1 - c * 0.12)})`;
         ctx.beginPath();
-        ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+        ctx.arc(cx2, cy2, cr, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
     }
   }
 
-  // ── Physics-Based Dust Particles ──
+  // ── Physics-Based Dust with Skid on Braking ──
   if (Math.abs(bike.speed) > 30) {
-    const dustCount = Math.min(8, Math.floor(Math.abs(bike.speed) / 40));
+    const isDecelerating = bike.phase === 'entering' && bike.speed < 200;
+    const dustCount = Math.min(10, Math.floor(Math.abs(bike.speed) / 35) + (isDecelerating ? 3 : 0));
     for (let i = 0; i < dustCount; i++) {
       const seed = (g.elapsed * 3 + i * 1.7) % 2;
-      const friction = Math.pow(0.95, seed * 15);
+      const friction = Math.pow(0.93, seed * 15);
       const vx = -(3 + i * 1.2) * friction;
       const vy = -(2 + Math.sin(i * 2.3) * 2) * friction;
+      const gravity = seed * seed * 1.5;
       const dx = -20 + vx * seed * 4;
-      const dy = 0 + vy * seed * 3;
+      const dy = 0 + vy * seed * 3 + gravity;
       const dustSize = (1.5 + i * 0.4) * (1 + seed * 0.5);
-      const dustAlpha = Math.max(0, 0.25 - seed * 0.12);
+      const dustAlpha = Math.max(0, 0.28 - seed * 0.14);
       const rotation = seed * (i * 0.8);
       const brown = 140 + Math.round(i * 5);
       ctx.save();
@@ -3616,46 +3639,100 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
       ctx.rotate(rotation);
       ctx.fillStyle = `rgba(${brown},${brown - 20},${brown - 40},${dustAlpha})`;
       ctx.beginPath();
-      ctx.ellipse(0, 0, dustSize * 1.2, dustSize * 0.8, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, dustSize * 1.3, dustSize * 0.7, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
   }
 
-  // ── Wheels ──
+  // ── Wheels with suspension + treads + rotation blur ──
   const wheelR = 8;
   const wheelY = 0;
   const frontWX = 22, rearWX = -20;
+  const frontWY = wheelY + suspCompress; // front fork compressed
+  const rearWY = wheelY + rearSuspCompress;
 
-  // Tire outer
-  for (const wx of [frontWX, rearWX]) {
+  const highSpeed = Math.abs(bike.speed) > 150;
+
+  for (const [wx, wy] of [[frontWX, frontWY], [rearWX, rearWY]] as [number, number][]) {
+    // Tire outer
     ctx.strokeStyle = '#1a1a1a';
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.arc(wx, wheelY, wheelR, 0, Math.PI * 2);
+    ctx.arc(wx, wy, wheelR, 0, Math.PI * 2);
     ctx.stroke();
-    // Rim
-    ctx.strokeStyle = '#666';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(wx, wheelY, wheelR - 3, 0, Math.PI * 2);
-    ctx.stroke();
-    // Spokes
-    ctx.strokeStyle = '#888';
-    ctx.lineWidth = 0.7;
-    for (let i = 0; i < 6; i++) {
-      const a = bike.wheelAnim + i * Math.PI / 3;
+
+    // Tire tread marks (grooves on rubber)
+    ctx.strokeStyle = 'rgba(60,60,60,0.5)';
+    ctx.lineWidth = 0.8;
+    for (let t = 0; t < 12; t++) {
+      const tAngle = bike.wheelAnim + t * Math.PI / 6;
+      const innerR = wheelR - 1.8;
+      const outerR = wheelR + 0.5;
       ctx.beginPath();
-      ctx.moveTo(wx + Math.cos(a) * 2, wheelY + Math.sin(a) * 2);
-      ctx.lineTo(wx + Math.cos(a) * (wheelR - 3), wheelY + Math.sin(a) * (wheelR - 3));
+      ctx.moveTo(wx + Math.cos(tAngle) * innerR, wy + Math.sin(tAngle) * innerR);
+      ctx.lineTo(wx + Math.cos(tAngle) * outerR, wy + Math.sin(tAngle) * outerR);
       ctx.stroke();
     }
-    // Hub
-    ctx.fillStyle = '#555';
+
+    // Rim
+    ctx.strokeStyle = '#777';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(wx, wheelY, 2, 0, Math.PI * 2);
+    ctx.arc(wx, wy, wheelR - 3, 0, Math.PI * 2);
+    ctx.stroke();
+
+    if (highSpeed) {
+      // Rotation blur — replace spokes with motion arc
+      ctx.strokeStyle = 'rgba(150,150,150,0.15)';
+      ctx.lineWidth = wheelR - 4;
+      ctx.beginPath();
+      ctx.arc(wx, wy, (wheelR - 3) / 2 + 1, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      // Spokes (visible at low speed)
+      ctx.strokeStyle = '#888';
+      ctx.lineWidth = 0.7;
+      for (let i = 0; i < 6; i++) {
+        const a = bike.wheelAnim + i * Math.PI / 3;
+        ctx.beginPath();
+        ctx.moveTo(wx + Math.cos(a) * 2, wy + Math.sin(a) * 2);
+        ctx.lineTo(wx + Math.cos(a) * (wheelR - 3), wy + Math.sin(a) * (wheelR - 3));
+        ctx.stroke();
+      }
+    }
+
+    // Hub (chrome)
+    ctx.fillStyle = '#666';
+    ctx.beginPath();
+    ctx.arc(wx, wy, 2, 0, Math.PI * 2);
+    ctx.fill();
+    // Hub highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.beginPath();
+    ctx.arc(wx - 0.5, wy - 0.5, 1, 0, Math.PI * 2);
     ctx.fill();
   }
+
+  // ── Fork tubes (visual suspension) ──
+  ctx.strokeStyle = '#777';
+  ctx.lineWidth = 1.5;
+  // Front fork
+  ctx.beginPath();
+  ctx.moveTo(frontWX - 2, -12);
+  ctx.lineTo(frontWX - 1, frontWY - wheelR + 1);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(frontWX + 1, -11);
+  ctx.lineTo(frontWX + 2, frontWY - wheelR + 1);
+  ctx.stroke();
+  // Chrome fork highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(frontWX - 1.5, -12);
+  ctx.lineTo(frontWX - 0.5, frontWY - wheelR + 2);
+  ctx.stroke();
 
   // ── Fenders ──
   ctx.strokeStyle = '#333';
@@ -3957,6 +4034,23 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
     ctx.fill();
     ctx.restore();
     
+    // ── Enhanced Bloom Layers (3 extra radial layers) ──
+    const bloomLayers = [
+      { r: 20, alpha: 0.06 },
+      { r: 35, alpha: 0.035 },
+      { r: 50, alpha: 0.018 },
+    ];
+    for (const bl of bloomLayers) {
+      const bGrad = ctx.createRadialGradient(hlX, hlY, 0, hlX, hlY, bl.r);
+      bGrad.addColorStop(0, `rgba(255,255,220,${bl.alpha * flickerIntensity})`);
+      bGrad.addColorStop(0.5, `rgba(255,255,200,${bl.alpha * 0.4 * flickerIntensity})`);
+      bGrad.addColorStop(1, 'rgba(255,255,180,0)');
+      ctx.fillStyle = bGrad;
+      ctx.beginPath();
+      ctx.arc(hlX, hlY, bl.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
     // ── Headlight Lens (multi-layer glow) ──
     // Outer glow
     ctx.fillStyle = `rgba(255,255,200,${0.08 * flickerIntensity})`;
@@ -4005,29 +4099,72 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.ellipse(rearWX - 1.5, -11, 1, 0.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // ── Ground Reflection (faint inverted ghost) ──
+  // ── Wet Asphalt Reflection (dynamic ground reflection) ──
   ctx.save();
   ctx.translate(0, 10);
-  ctx.scale(1, -0.15);
-  ctx.globalAlpha = 0.06;
-  // Just draw a simplified reflection silhouette
+  // Headlight reflection on wet ground
+  const reflectFlicker = 0.85 + Math.sin(g.elapsed * 6) * 0.15;
+  const refGrad = ctx.createRadialGradient(frontWX + 10, 4, 2, frontWX + 10, 4, 35);
+  refGrad.addColorStop(0, `rgba(255,255,200,${0.07 * reflectFlicker})`);
+  refGrad.addColorStop(0.5, `rgba(255,255,180,${0.03 * reflectFlicker})`);
+  refGrad.addColorStop(1, 'rgba(255,255,150,0)');
+  ctx.fillStyle = refGrad;
+  ctx.beginPath();
+  ctx.ellipse(frontWX + 10, 4, 35, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Tail light reflection (red)
+  const tailRefAlpha = isBrakingNow ? 0.06 : 0.03;
+  const tailRefGrad = ctx.createRadialGradient(rearWX - 2, 4, 1, rearWX - 2, 4, 15);
+  tailRefGrad.addColorStop(0, `rgba(255,30,20,${tailRefAlpha})`);
+  tailRefGrad.addColorStop(1, 'rgba(255,0,0,0)');
+  ctx.fillStyle = tailRefGrad;
+  ctx.beginPath();
+  ctx.ellipse(rearWX - 2, 4, 15, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Silhouette ghost (faint inverted)
+  ctx.scale(1, -0.12);
+  ctx.globalAlpha = 0.05;
   ctx.fillStyle = '#222';
   ctx.beginPath();
   ctx.ellipse(0, -10, 30, 12, 0, 0, Math.PI * 2);
   ctx.fill();
+  // Sine wave ripple on reflection
+  ctx.globalAlpha = 0.03;
+  for (let r = 0; r < 3; r++) {
+    const rx = Math.sin(g.elapsed * 1.5 + r * 2) * 3;
+    ctx.beginPath();
+    ctx.ellipse(rx, -8 + r * 4, 25 - r * 5, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.globalAlpha = 1;
   ctx.restore();
 
-  // ── Heat Shimmer (above engine during idle) ──
+  // ── Dynamic Shadow (from overhead street light) ──
+  ctx.save();
+  ctx.globalAlpha = 0.08;
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  // Long shadow stretching to the right-back
+  ctx.moveTo(-25, 5);
+  ctx.lineTo(-40, 12);
+  ctx.lineTo(10, 12);
+  ctx.lineTo(25, 5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // ── Heat Shimmer (above engine during idle) — enhanced ──
   if (bike.phase === 'idle') {
     ctx.save();
-    ctx.globalAlpha = 0.04;
-    for (let h = 0; h < 5; h++) {
-      const hx = -6 + h * 3 + Math.sin(g.elapsed * 4 + h * 1.5) * 1.5;
-      const hy = -12 - h * 2 + Math.sin(g.elapsed * 3 + h) * 1;
-      ctx.fillStyle = 'rgba(255,200,100,0.3)';
+    ctx.globalAlpha = 0.06;
+    for (let h = 0; h < 8; h++) {
+      const hx = -6 + h * 2.5 + Math.sin(g.elapsed * 5 + h * 1.5) * 1.5;
+      const hy = -14 - h * 1.8 + Math.sin(g.elapsed * 3.5 + h) * 1;
+      const hSize = 1.5 + Math.sin(g.elapsed * 4 + h * 0.7) * 0.5;
+      ctx.fillStyle = `rgba(255,200,100,${0.15 + Math.sin(g.elapsed * 6 + h) * 0.08})`;
       ctx.beginPath();
-      ctx.ellipse(hx, hy, 2, 1.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(hx, hy, hSize * 1.3, hSize, g.elapsed * 0.5 + h, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -4035,14 +4172,19 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   }
 
   // ── Driver (blue helmet with goggles, waving during dismount) ──
-  const engineBob = Math.sin(g.elapsed * 12) * 0.3;
-  const driverIsWaving = passengerDismounting; // driver waves while player dismounts
+  const engineBob = Math.sin(g.elapsed * 12) * 0.3 + Math.sin(g.elapsed * 19) * 0.1;
+  const driverIsWaving = passengerDismounting;
+  
+  // Bike weight relief: bounce up slightly when passenger gets off
+  const weightRelief = passengerDismounting && dismountProgress > 0.65 
+    ? Math.sin((dismountProgress - 0.65) / 0.35 * Math.PI) * -1.2 : 0;
+  
   drawCharacter(ctx, {
-    x: 2, y: -18,
+    x: 2, y: -18 + weightRelief,
     scale: 0.5,
     sitting: true,
     facingRight: true,
-    isDriver: !driverIsWaving, // when waving, don't use driver grip pose
+    isDriver: !driverIsWaving,
     helmetColor: '#2563eb',
     bodyBob: engineBob,
     armOffset: 0,
@@ -4071,66 +4213,81 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
     });
   }
 
-  // ── Dismounting passenger — physics-based 3-phase with gravity ──
+  // ── 4-Phase Professional Dismount: Anticipation → Arc → Gravity → Landing ──
   if (passengerDismounting) {
     const dp = dismountProgress;
     let dismountX: number, dismountY: number, finalScale: number, isSitting: boolean, legAnim: number, bodyTilt: number;
     
-    if (dp < 0.25) {
-      // Phase 1: Lean forward, swing leg BACK over seat with cubic bezier easing
-      const t = dp / 0.25;
-      const ease = t * t * t; // cubic ease-in for natural weight shift
-      dismountX = -6 + ease * 1; // slight forward lean
-      dismountY = -18 - ease * 2; // lift body slightly as leg swings
+    if (dp < 0.15) {
+      // Phase 0: ANTICIPATION — weight shift, bike tilts, passenger prepares
+      const t = dp / 0.15;
+      const ease = t * t; // slow start
+      dismountX = -6 + ease * 0.5;
+      dismountY = -18 - ease * 0.5; // slight lift
       finalScale = 0.5;
       isSitting = true;
-      legAnim = ease * 8; // leg swings back higher
-      bodyTilt = ease * 0.2; // more pronounced forward lean
-    } else if (dp < 0.55) {
-      // Phase 2: Body lift with parabolic gravity — pushes off seat with arms
-      const t = (dp - 0.25) / 0.3;
+      legAnim = ease * 1; // subtle leg prep
+      bodyTilt = ease * 0.08; // tiny forward lean
+    } else if (dp < 0.40) {
+      // Phase 1: ARC LEG SWING — leg arcs over seat in bezier path
+      const t = (dp - 0.15) / 0.25;
       const ease = t * t * (3 - 2 * t); // smoothstep
-      // Parabolic arc: up then gravity pulls down
-      const jumpArc = Math.sin(t * Math.PI) * -5; // parabolic up arc
-      dismountX = -5 - ease * 8; // slide backward
-      dismountY = -18 + jumpArc + ease * 2;
-      finalScale = 0.5 + ease * 0.12;
-      isSitting = t < 0.3;
-      legAnim = 8 - ease * 5;
-      bodyTilt = 0.2 * (1 - ease * 1.5); // tilt decreases
-    } else {
-      // Phase 3: Landing with knee bend (squat absorb) + bounce
-      const t = (dp - 0.55) / 0.45;
-      const easeOut = 1 - (1 - t) * (1 - t); // ease out
-      // Gravity curve: accelerate downward
-      const gravityDrop = 0.5 * 9.8 * t * t * 2;
-      // Squat absorb: overshoot 2px then settle
-      const squat = t < 0.6 ? Math.sin(t / 0.6 * Math.PI) * 3 : Math.sin((t - 0.6) / 0.4 * Math.PI * 0.5) * 1;
-      // Bounce: subtle overshoot
-      const bounce = t > 0.7 ? Math.sin((t - 0.7) / 0.3 * Math.PI) * -1.5 : 0;
-      dismountX = -13 + easeOut * 3;
-      dismountY = -16 + Math.min(gravityDrop, 22) + squat + bounce;
-      finalScale = 0.62 + easeOut * 0.08;
+      dismountX = -5.5 + ease * 2;
+      // Arc up over the seat then back down
+      const arcY = Math.sin(t * Math.PI) * -6; // arc trajectory
+      dismountY = -18.5 + arcY + ease * 1;
+      finalScale = 0.5 + ease * 0.05;
+      isSitting = t < 0.4;
+      legAnim = 1 + ease * 10; // big leg swing over seat
+      bodyTilt = 0.08 + ease * 0.15; // lean back as counterbalance
+    } else if (dp < 0.70) {
+      // Phase 2: GRAVITY DROP — parabolic descent with counter-balance arms
+      const t = (dp - 0.40) / 0.30;
+      const ease = t * t * (3 - 2 * t);
+      // Parabolic gravity: up briefly then fall
+      const jumpArc = Math.sin(t * Math.PI * 0.6) * -4;
+      const gravityPull = t * t * 8;
+      dismountX = -3.5 - ease * 10;
+      dismountY = -17.5 + jumpArc + gravityPull;
+      finalScale = 0.55 + ease * 0.1;
       isSitting = false;
-      legAnim = 3 * (1 - easeOut);
+      legAnim = 11 - ease * 7; // legs come together
+      bodyTilt = 0.23 * (1 - ease * 1.8); // tilt reduces
+    } else {
+      // Phase 3: LANDING — knee bend (squat absorb) + bounce + dust
+      const t = (dp - 0.70) / 0.30;
+      const easeOut = 1 - (1 - t) * (1 - t);
+      // Squat absorb: knees compress then spring up
+      const squatDepth = t < 0.4 ? Math.sin(t / 0.4 * Math.PI * 0.5) * 4 : 
+                         t < 0.7 ? 4 * (1 - (t - 0.4) / 0.3) : 
+                         Math.sin((t - 0.7) / 0.3 * Math.PI) * -1.5; // bounce overshoot
+      dismountX = -13.5 + easeOut * 3;
+      dismountY = -9 + squatDepth;
+      finalScale = 0.65 + easeOut * 0.05;
+      isSitting = false;
+      legAnim = 4 * (1 - easeOut) + (squatDepth > 2 ? 2 : 0); // knee bend visual
       bodyTilt = 0;
 
-      // Physics-based landing dust burst
-      if (t > 0.5 && t < 0.9) {
-        const burstT = (t - 0.5) / 0.4;
-        const particleCount = 10;
+      // Physics-based landing dust burst (fan-shaped)
+      if (t > 0.05 && t < 0.5) {
+        const burstT = (t - 0.05) / 0.45;
+        const particleCount = 12;
         for (let i = 0; i < particleCount; i++) {
-          const angle = -Math.PI + (i / particleCount) * Math.PI; // semicircle upward
-          const speed = 3 + i * 0.5;
+          const angle = -Math.PI * 0.8 + (i / particleCount) * Math.PI * 0.8;
+          const speed = 2.5 + i * 0.6;
           const pAge = burstT;
-          const px = dismountX + Math.cos(angle) * speed * pAge * 3;
-          const py = dismountY + 14 + Math.sin(angle) * speed * pAge * 2;
-          const pSize = (2 + i * 0.3) * (1 + pAge * 0.8) * (1 - pAge * 0.5);
-          const pAlpha = Math.max(0, 0.35 * (1 - pAge));
-          const brown = 150 + Math.round(i * 3);
-          ctx.fillStyle = `rgba(${brown},${brown - 15},${brown - 35},${pAlpha})`;
+          const friction = Math.pow(0.92, pAge * 15);
+          const gravity = pAge * pAge * 2;
+          const px = dismountX + Math.cos(angle) * speed * pAge * 4 * friction;
+          const py = dismountY + 14 + Math.sin(angle) * speed * pAge * 3 * friction + gravity;
+          const pSize = (1.8 + i * 0.3) * (1 + pAge * 1.2) * Math.max(0, 1 - pAge * 0.7);
+          const pAlpha = Math.max(0, 0.4 * (1 - pAge * 1.1));
+          // Color gradient: tan → grey → transparent
+          const brownBase = 160 + Math.round(i * 3);
+          const greyShift = Math.round(pAge * 30);
+          ctx.fillStyle = `rgba(${brownBase - greyShift},${brownBase - 15 - greyShift},${brownBase - 35 - greyShift},${pAlpha})`;
           ctx.beginPath();
-          ctx.ellipse(px, py, pSize * 1.3, pSize * 0.7, angle * 0.3, 0, Math.PI * 2);
+          ctx.ellipse(px, py, pSize * 1.4, pSize * 0.6, angle * 0.3, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -4150,7 +4307,7 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
       isDriver: false,
       helmetColor: '#dc2626',
       bodyBob: 0,
-      armOffset: 0,
+      armOffset: dp > 0.40 && dp < 0.70 ? Math.sin(dp * 8) * 3 : 0, // counter-balance arms
       legOffset: legAnim,
       isHit: false,
       elapsed: g.elapsed,
@@ -4174,19 +4331,28 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
 
   const showPassenger = g.introPhase === 'bikeEnter' || g.introPhase === 'bikeStop';
   const isDismounting = g.introPhase === 'playerDismount';
-  const dismountProg = isDismounting ? Math.min(1, g.introTimer / 1.4) : 0;
+  const dismountProg = isDismounting ? Math.min(1, g.introTimer / 1.8) : 0;
 
   renderMotorcycle(ctx, bike, g, showPassenger, isDismounting, dismountProg);
 
   // Panel 2: Player standing alone, waving farewell as bike leaves
   if (g.introPhase === 'bikeLeave') {
     const p = g.player;
+    const bikeDist = bike.pos.x - p.pos.x;
     ctx.save();
     ctx.translate(p.pos.x, p.pos.y);
-    const playerScale = 1.6; // match in-game player scale
+    const playerScale = 1.6;
     ctx.scale(playerScale, playerScale);
     // Player faces left (looking at departing bike)
     ctx.scale(-1, 1);
+    
+    // Body leans 5° toward departing bike
+    const leanAngle = Math.min(0.09, bikeDist * 0.0003);
+    ctx.rotate(leanAngle);
+    
+    // Head tracks the bike (extra rotation)
+    const headTrack = Math.min(0.18, bikeDist * 0.0005);
+    
     drawCharacter(ctx, {
       x: 0, y: -12,
       scale: 0.7,
@@ -4451,7 +4617,40 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
 
   ctx.translate(g.screenShake.x - g.camera.x, g.screenShake.y);
 
+  // ── Ground Fog during intro ──
+  const isIntro = g.state === 'intro' && g.introPhase !== 'done';
+
   renderBackground(ctx, g);
+  
+  // ── Live flickering windows during intro ──
+  if (isIntro) {
+    const groundY = g.height * 0.78;
+    const camX = g.camera.x;
+    ctx.save();
+    for (let i = 0; i < 8; i++) {
+      const wx = ((i * 157 + 40) % 600) + Math.floor(camX / 600) * 600;
+      const wy = groundY - 60 - (i * 43) % 120;
+      const winSize = 4 + (i % 3) * 2;
+      const flicker = Math.sin(g.elapsed * (1.5 + i * 0.7) + i * 3.1);
+      const isOn = flicker > -0.3;
+      if (isOn) {
+        const colors = ['rgba(255,200,100,', 'rgba(100,180,255,', 'rgba(180,255,150,', 'rgba(255,150,100,'];
+        const color = colors[i % colors.length];
+        // Window glow
+        ctx.fillStyle = `${color}${0.08 + flicker * 0.04})`;
+        ctx.fillRect(wx - winSize / 2, wy - winSize / 2, winSize, winSize * 1.3);
+        // Ground light spill
+        const spillGrad = ctx.createRadialGradient(wx, groundY, 0, wx, groundY, 20 + winSize * 3);
+        spillGrad.addColorStop(0, `${color}${0.03 + flicker * 0.015})`);
+        spillGrad.addColorStop(1, `${color}0)`);
+        ctx.fillStyle = spillGrad;
+        ctx.beginPath();
+        ctx.ellipse(wx, groundY + 2, 20 + winSize * 2, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
   renderCraters(ctx, g);
   renderAmbient(ctx, g);
   renderWarnings(ctx, g);
@@ -4521,7 +4720,37 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderRain(ctx, g);
   renderFloatingTexts(ctx, g);
 
+  // ── Ground fog during intro ──
+  if (isIntro) {
+    const groundY = g.height * 0.78;
+    const camX = g.camera.x;
+    ctx.save();
+    ctx.globalAlpha = 0.06;
+    const fogWave = Math.sin(g.elapsed * 0.5) * 3;
+    const fogGrad = ctx.createLinearGradient(0, groundY - 5, 0, groundY + 15);
+    fogGrad.addColorStop(0, 'rgba(150,160,180,0)');
+    fogGrad.addColorStop(0.3, 'rgba(150,160,180,1)');
+    fogGrad.addColorStop(0.7, 'rgba(130,140,160,0.6)');
+    fogGrad.addColorStop(1, 'rgba(130,140,160,0)');
+    ctx.fillStyle = fogGrad;
+    ctx.fillRect(camX - 200, groundY - 5 + fogWave, g.width + 400, 20);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
   ctx.restore();
+
+  // ── Letterbox Bars during intro ──
+  if (isIntro) {
+    const barH = 20;
+    const introProgress = g.introPhase === 'bikeLeave' ? Math.min(1, g.introTimer / 1.5) : 0;
+    const barAlpha = 1 - introProgress;
+    if (barAlpha > 0.01) {
+      ctx.fillStyle = `rgba(0,0,0,${barAlpha * 0.85})`;
+      ctx.fillRect(0, 0, g.width, barH);
+      ctx.fillRect(0, g.height - barH, g.width, barH);
+    }
+  }
 
   // Lightning flash
   renderLightning(ctx, g);
