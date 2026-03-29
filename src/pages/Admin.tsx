@@ -48,11 +48,12 @@ const Admin: React.FC = () => {
   }, [navigate]);
 
   const loadAll = useCallback(async () => {
-    const [c, w, l, a] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard(), fetchAudioConfig()]);
+    const [c, w, l, a, an] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard(), fetchAudioConfig(), fetchAnalytics()]);
     setConfig(c);
     setWaves(w);
     setLeaders(l);
     setAudioEntries(a);
+    setAnalytics(an);
   }, []);
 
   useEffect(() => { if (isAdmin) loadAll(); }, [isAdmin, loadAll]);
@@ -138,6 +139,7 @@ const Admin: React.FC = () => {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
         {([
+          { key: 'analytics' as const, icon: '📊', label: 'Analytics' },
           { key: 'config' as const, icon: '🎮', label: 'Config' },
           { key: 'waves' as const, icon: '🌊', label: 'Waves' },
           { key: 'audio' as const, icon: '🔊', label: 'Audio' },
