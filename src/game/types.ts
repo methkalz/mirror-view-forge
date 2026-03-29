@@ -6,9 +6,9 @@ export interface Vec2 {
 export type GameState = 'start' | 'playing' | 'gameover';
 
 export type HazardType = 'shrapnel' | 'missile' | 'cluster';
-export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike';
+export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike' | 'gasmask' | 'extinguisher';
 export type DroneState = 'entering' | 'tracking' | 'bombing';
-export type DroneTier = 'scout' | 'tracker' | 'bomber' | 'cargo';
+export type DroneTier = 'scout' | 'tracker' | 'bomber' | 'cargo' | 'incendiary' | 'chemical';
 export type PlayerAnim = 'idle' | 'walk' | 'roll' | 'hit';
 
 export interface Player {
@@ -33,6 +33,8 @@ export interface Player {
   groundY: number;
   ammo: number;
   shootTimer: number;
+  gasMaskTimer: number;
+  extinguisherTimer: number;
 }
 
 export interface Hazard {
@@ -132,6 +134,24 @@ export interface Drone {
   colorHue: number; // unique hue shift for visual distinction
   cargoType?: PowerUpType; // for cargo drones
   label?: string; // label drawn on cargo drone
+  fireDropTimer?: number; // for incendiary drones
+  gasDropTimer?: number; // for chemical drones
+}
+
+export interface FirePool {
+  pos: Vec2;
+  size: number;
+  life: number;
+  maxLife: number;
+  damagePerSec: number;
+}
+
+export interface GasCloud {
+  pos: Vec2;
+  size: number;
+  life: number;
+  maxLife: number;
+  damagePerSec: number;
 }
 
 export interface Cloud {
@@ -255,6 +275,10 @@ export interface GameData {
   deathPhase: 'alive' | 'dying' | 'dead';
   firstAmmoDropped: boolean;
   cargoTimer: number;
+  firePools: FirePool[];
+  gasClouds: GasCloud[];
+  incendiaryTimer: number;
+  chemicalTimer: number;
 }
 
 export interface InputState {

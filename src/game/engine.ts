@@ -1,6 +1,7 @@
 import {
   GameData, InputState, Hazard, PowerUp, Particle, Vec2, Crater, FloatingText, Drone, Bullet,
-  HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning, Boss, DroneTier
+  HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning, Boss, DroneTier,
+  FirePool, GasCloud
 } from './types';
 import { getFromPool } from './pool';
 import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall } from './audio';
@@ -39,6 +40,8 @@ export function createGame(w: number, h: number): GameData {
       groundY,
       ammo: 0,
       shootTimer: 0,
+      gasMaskTimer: 0,
+      extinguisherTimer: 0,
     },
     hazards: [],
     powerUps: [],
@@ -93,6 +96,10 @@ export function createGame(w: number, h: number): GameData {
     deathPhase: 'alive',
     firstAmmoDropped: false,
     cargoTimer: 120,
+    firePools: [],
+    gasClouds: [],
+    incendiaryTimer: 160,
+    chemicalTimer: 200,
   };
 }
 
@@ -119,6 +126,8 @@ export function resetGame(g: GameData) {
   g.player.hitTimer = 0;
   g.player.ammo = 0;
   g.player.shootTimer = 0;
+  g.player.gasMaskTimer = 0;
+  g.player.extinguisherTimer = 0;
   g.hazards.forEach(h => h.active = false);
   g.powerUps.forEach(p => p.active = false);
   g.particles.forEach(p => p.active = false);
@@ -168,6 +177,10 @@ export function resetGame(g: GameData) {
   g.deathPhase = 'alive';
   g.firstAmmoDropped = false;
   g.cargoTimer = 120;
+  g.firePools = [];
+  g.gasClouds = [];
+  g.incendiaryTimer = 160;
+  g.chemicalTimer = 200;
 }
 
 function dist(a: Vec2, b: Vec2): number {
@@ -402,6 +415,62 @@ function spawnCargoDrone(g: GameData) {
   d.label = 'OTLOP';
 }
 
+function spawnIncendiaryDrone(g: GameData) {
+  const d = getFromPool<Drone>(g.drones, () => ({
+    active: false, pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
+    speed: 0, size: 0, health: 0, maxHealth: 0, state: 'entering' as const, entryTarget: { x: 0, y: 0 },
+    tier: 'scout' as const, bombTimer: 0, bombCooldown: 0, hoverTimer: 0,
+    aggroDelay: 0, trackingAccuracy: 0, wobble: 0, altitudeOffset: 0, colorHue: 0
+  }), 10);
+  const side = Math.random() < 0.5 ? 0 : 1;
+  d.pos = { x: side === 0 ? -20 : g.width + 20, y: g.height * 0.15 + Math.random() * g.height * 0.15 };
+  d.entryTarget = { x: g.width * 0.2 + Math.random() * g.width * 0.6, y: g.height * 0.2 + Math.random() * g.height * 0.1 };
+  d.state = 'entering';
+  d.vel = { x: 0, y: 0 };
+  d.speed = 50 + Math.min(20, g.elapsed * 0.05);
+  d.size = 24;
+  d.health = 2;
+  d.maxHealth = 2;
+  d.tier = 'incendiary';
+  d.hoverTimer = 0;
+  d.aggroDelay = 1.5 + Math.random() * 1.0;
+  d.trackingAccuracy = 0.5;
+  d.bombTimer = 0;
+  d.bombCooldown = 3.5 + Math.random() * 2;
+  d.wobble = Math.random() * Math.PI * 2;
+  d.altitudeOffset = 0;
+  d.colorHue = 15; // orange-red
+  d.fireDropTimer = 0;
+}
+
+function spawnChemicalDrone(g: GameData) {
+  const d = getFromPool<Drone>(g.drones, () => ({
+    active: false, pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
+    speed: 0, size: 0, health: 0, maxHealth: 0, state: 'entering' as const, entryTarget: { x: 0, y: 0 },
+    tier: 'scout' as const, bombTimer: 0, bombCooldown: 0, hoverTimer: 0,
+    aggroDelay: 0, trackingAccuracy: 0, wobble: 0, altitudeOffset: 0, colorHue: 0
+  }), 10);
+  const side = Math.random() < 0.5 ? 0 : 1;
+  d.pos = { x: side === 0 ? -20 : g.width + 20, y: g.height * 0.12 + Math.random() * g.height * 0.15 };
+  d.entryTarget = { x: g.width * 0.2 + Math.random() * g.width * 0.6, y: g.height * 0.18 + Math.random() * g.height * 0.1 };
+  d.state = 'entering';
+  d.vel = { x: 0, y: 0 };
+  d.speed = 35 + Math.min(15, g.elapsed * 0.04);
+  d.size = 24;
+  d.health = 2;
+  d.maxHealth = 2;
+  d.tier = 'chemical';
+  d.hoverTimer = 0;
+  d.aggroDelay = 1.0 + Math.random() * 1.0;
+  d.trackingAccuracy = 0.4;
+  d.bombTimer = 0;
+  d.bombCooldown = 4.0 + Math.random() * 2;
+  d.wobble = Math.random() * Math.PI * 2;
+  d.altitudeOffset = 0;
+  d.colorHue = 120; // green
+  d.gasDropTimer = 0;
+}
+
 function queueWaveEvent(
   g: GameData,
   event: { id: string; text: string; sub: string; color: string; duration: number; type: 'warning' | 'upgrade' }
@@ -485,6 +554,49 @@ function applyWaveEvent(g: GameData, id: string) {
       pu.bobTimer = 0;
       pu.groundTimer = 0;
     }
+    return;
+  }
+
+  if (id === 'extinguisher_prep') {
+    const pu = getFromPool<PowerUp>(g.powerUps, () => ({
+      active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
+      parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
+    }), 20);
+    pu.type = 'extinguisher';
+    pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
+    pu.size = 14;
+    pu.parachuting = true;
+    pu.fallSpeed = 30;
+    pu.bobTimer = 0;
+    pu.groundTimer = 0;
+    return;
+  }
+
+  if (id === 'gasmask_prep') {
+    const pu = getFromPool<PowerUp>(g.powerUps, () => ({
+      active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
+      parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
+    }), 20);
+    pu.type = 'gasmask';
+    pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
+    pu.size = 14;
+    pu.parachuting = true;
+    pu.fallSpeed = 30;
+    pu.bobTimer = 0;
+    pu.groundTimer = 0;
+    return;
+  }
+
+  if (id === 'drones_incendiary') {
+    g.incendiaryTimer = Math.min(g.incendiaryTimer, 2 + Math.random() * 3);
+    spawnIncendiaryDrone(g);
+    return;
+  }
+
+  if (id === 'drones_chemical') {
+    g.chemicalTimer = Math.min(g.chemicalTimer, 2 + Math.random() * 3);
+    spawnChemicalDrone(g);
+    return;
   }
 }
 
@@ -659,6 +771,10 @@ export function update(g: GameData, input: InputState, dt: number) {
     { time: 230, id: 'boss_warn', text: '⚠ تحذير: طائرة حربية!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626', duration: 2.0, type: 'warning' },
     { time: 233, id: 'boss_prep', text: '⬆ تطوير: إمدادات طارئة!', sub: 'EMERGENCY SUPPLIES DROPPED', color: '#22c55e', duration: 2.0, type: 'upgrade' },
     { time: 260, id: 'cluster_5', text: '⚠ تحذير: تشظي خماسي!', sub: 'MAX SPLIT — DANGER', color: '#991b1b', duration: 2.0, type: 'warning' },
+    { time: 155, id: 'extinguisher_prep', text: '⬆ إمدادات: طفاية حريق!', sub: 'FIRE EXTINGUISHER DROPPED', color: '#f97316', duration: 2.0, type: 'upgrade' },
+    { time: 160, id: 'drones_incendiary', text: '⚠ تحذير: طائرات حارقة!', sub: 'INCENDIARY DRONES — FIRE HAZARD', color: '#ea580c', duration: 2.0, type: 'warning' },
+    { time: 195, id: 'gasmask_prep', text: '⬆ إمدادات: كمامة غاز!', sub: 'GAS MASK DROPPED', color: '#16a34a', duration: 2.0, type: 'upgrade' },
+    { time: 200, id: 'drones_chemical', text: '⚠ تحذير: طائرات كيميائية!', sub: 'CHEMICAL DRONES — TOXIC GAS', color: '#15803d', duration: 2.0, type: 'warning' },
   ];
   for (const we of waveEvents) {
     if (g.elapsed >= we.time && !g.waveTriggered.has(we.id)) {
@@ -1142,6 +1258,21 @@ export function update(g: GameData, input: InputState, dt: number) {
           }
           break;
         }
+        case 'extinguisher': {
+          // Extinguish all fire pools + 8s immunity
+          addFloatingText(g, 'EXTINGUISHER!', { x: p.pos.x, y: p.pos.y - 40 }, '#f97316');
+          spawnParticles(g, p.pos, 10, '#f97316', 90);
+          p.extinguisherTimer = 8;
+          // Clear all active fire pools
+          g.firePools.length = 0;
+          break;
+        }
+        case 'gasmask': {
+          addFloatingText(g, 'GAS MASK!', { x: p.pos.x, y: p.pos.y - 40 }, '#16a34a');
+          spawnParticles(g, p.pos, 10, '#16a34a', 90);
+          p.gasMaskTimer = 15;
+          break;
+        }
       }
     }
   }
@@ -1154,6 +1285,68 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (g.cargoTimer <= 0) {
       g.cargoTimer = 60 + Math.random() * 30;
       spawnCargoDrone(g);
+    }
+  }
+
+  // === Incendiary Drones ===
+  if (g.activatedWaveEvents.has('drones_incendiary')) {
+    g.incendiaryTimer -= dt;
+    if (g.incendiaryTimer <= 0) {
+      g.incendiaryTimer = 25 + Math.random() * 15;
+      spawnIncendiaryDrone(g);
+    }
+  }
+
+  // === Chemical Drones ===
+  if (g.activatedWaveEvents.has('drones_chemical')) {
+    g.chemicalTimer -= dt;
+    if (g.chemicalTimer <= 0) {
+      g.chemicalTimer = 30 + Math.random() * 20;
+      spawnChemicalDrone(g);
+    }
+  }
+
+  // === Player protection timers ===
+  if (p.gasMaskTimer > 0) p.gasMaskTimer -= dt;
+  if (p.extinguisherTimer > 0) p.extinguisherTimer -= dt;
+
+  // === Update Fire Pools ===
+  for (let i = g.firePools.length - 1; i >= 0; i--) {
+    const fp = g.firePools[i];
+    fp.life -= dt;
+    if (fp.life <= 0) { g.firePools.splice(i, 1); continue; }
+    // Damage player if standing in fire (unless extinguisher active)
+    if (p.extinguisherTimer <= 0 && dist(p.pos, fp.pos) < fp.size + p.size) {
+      const fireDmg = fp.damagePerSec * dt;
+      p.health = Math.max(0, p.health - fireDmg);
+      if (Math.random() < 0.2) addFloatingText(g, '🔥', { x: p.pos.x, y: p.pos.y - 30 }, '#f97316');
+      if (p.health <= 0 && g.deathPhase === 'alive') {
+        g.deathPhase = 'dying';
+        g.deathTimer = 1.5;
+        g.slowMoFactor = 0.15;
+        g.hitStopTimer = Math.max(g.hitStopTimer, 0.15);
+      }
+    }
+  }
+
+  // === Update Gas Clouds ===
+  for (let i = g.gasClouds.length - 1; i >= 0; i--) {
+    const gc = g.gasClouds[i];
+    gc.life -= dt;
+    if (gc.life <= 0) { g.gasClouds.splice(i, 1); continue; }
+    // Damage + slow player if in gas (unless gas mask active)
+    if (p.gasMaskTimer <= 0 && dist(p.pos, gc.pos) < gc.size + p.size) {
+      const gasDmg = gc.damagePerSec * dt;
+      p.health = Math.max(0, p.health - gasDmg);
+      // Slow movement by 50%
+      p.velocity.x *= (1 - 0.5 * dt * 5); // smooth slow
+      if (Math.random() < 0.15) addFloatingText(g, '☣', { x: p.pos.x, y: p.pos.y - 30 }, '#16a34a');
+      if (p.health <= 0 && g.deathPhase === 'alive') {
+        g.deathPhase = 'dying';
+        g.deathTimer = 1.5;
+        g.slowMoFactor = 0.15;
+        g.hitStopTimer = Math.max(g.hitStopTimer, 0.15);
+      }
     }
   }
 
@@ -1182,6 +1375,121 @@ export function update(g: GameData, input: InputState, dt: number) {
       // Remove when off-screen
       if ((d.vel.x > 0 && d.pos.x > g.width + 80) || (d.vel.x < 0 && d.pos.x < -80)) {
         d.active = false;
+      }
+      continue;
+    }
+
+    // === Incendiary drone: track player and drop fire ===
+    if (d.tier === 'incendiary') {
+      if (d.state === 'entering') {
+        const dx = d.entryTarget.x - d.pos.x;
+        const dy = d.entryTarget.y - d.pos.y;
+        const dd = Math.sqrt(dx * dx + dy * dy);
+        if (dd < 5) { d.state = 'tracking'; d.hoverTimer = d.aggroDelay; }
+        else { d.pos.x += (dx / dd) * d.speed * 2 * dt; d.pos.y += (dy / dd) * d.speed * 2 * dt; }
+      } else {
+        if (d.hoverTimer > 0) {
+          d.hoverTimer -= dt;
+          d.pos.x += Math.sin(d.wobble * 1.5) * 20 * dt;
+          d.pos.y += Math.cos(d.wobble * 1.2) * 8 * dt;
+        } else {
+          // Track player
+          const dx = p.pos.x - d.pos.x;
+          const targetY = p.pos.y - 70;
+          const dy = targetY - d.pos.y;
+          const dd = Math.sqrt(dx * dx + dy * dy);
+          if (dd > 0) {
+            d.vel.x += (dx / dd) * 80 * d.trackingAccuracy * dt;
+            d.vel.y += (dy / dd) * 80 * d.trackingAccuracy * dt;
+            const vLen = Math.sqrt(d.vel.x * d.vel.x + d.vel.y * d.vel.y);
+            if (vLen > d.speed) { d.vel.x = (d.vel.x / vLen) * d.speed; d.vel.y = (d.vel.y / vLen) * d.speed; }
+          }
+          d.pos.x += d.vel.x * g.slowMoFactor * dt;
+          d.pos.y += d.vel.y * g.slowMoFactor * dt;
+          d.pos.y = Math.max(g.height * 0.08, Math.min(g.height * 0.5, d.pos.y));
+          d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
+
+          // Drop firebomb when above player
+          d.bombTimer += dt;
+          if (d.bombTimer >= d.bombCooldown && Math.abs(d.pos.x - p.pos.x) < 50) {
+            d.bombTimer = 0;
+            const groundY = g.height * GROUND_RATIO;
+            const fireX = d.pos.x + (Math.random() - 0.5) * 20;
+            g.firePools.push({
+              pos: { x: fireX, y: groundY - 2 },
+              size: 40 + Math.random() * 20,
+              life: 4 + Math.random() * 2,
+              maxLife: 6,
+              damagePerSec: 3,
+            });
+            addFloatingText(g, '🔥', { x: d.pos.x, y: d.pos.y + 15 }, '#f97316');
+            spawnParticles(g, { x: fireX, y: groundY }, 8, '#f97316', 100);
+            addExplosion(g, { x: fireX, y: groundY }, 15);
+          }
+        }
+        // Collision with player (kamikaze)
+        if (dist(d.pos, p.pos) < d.size + p.size) {
+          damagePlayer(g, 10, d.pos);
+          spawnParticles(g, d.pos, 12, '#f97316', 120);
+          addExplosion(g, d.pos, 20);
+          d.active = false;
+        }
+      }
+      continue;
+    }
+
+    // === Chemical drone: track player and drop gas ===
+    if (d.tier === 'chemical') {
+      if (d.state === 'entering') {
+        const dx = d.entryTarget.x - d.pos.x;
+        const dy = d.entryTarget.y - d.pos.y;
+        const dd = Math.sqrt(dx * dx + dy * dy);
+        if (dd < 5) { d.state = 'tracking'; d.hoverTimer = d.aggroDelay; }
+        else { d.pos.x += (dx / dd) * d.speed * 2 * dt; d.pos.y += (dy / dd) * d.speed * 2 * dt; }
+      } else {
+        if (d.hoverTimer > 0) {
+          d.hoverTimer -= dt;
+          d.pos.x += Math.sin(d.wobble * 1.2) * 15 * dt;
+          d.pos.y += Math.cos(d.wobble * 0.9) * 6 * dt;
+        } else {
+          const dx = p.pos.x - d.pos.x;
+          const targetY = p.pos.y - 80;
+          const dy = targetY - d.pos.y;
+          const dd = Math.sqrt(dx * dx + dy * dy);
+          if (dd > 0) {
+            d.vel.x += (dx / dd) * 60 * d.trackingAccuracy * dt;
+            d.vel.y += (dy / dd) * 60 * d.trackingAccuracy * dt;
+            const vLen = Math.sqrt(d.vel.x * d.vel.x + d.vel.y * d.vel.y);
+            if (vLen > d.speed) { d.vel.x = (d.vel.x / vLen) * d.speed; d.vel.y = (d.vel.y / vLen) * d.speed; }
+          }
+          d.pos.x += d.vel.x * g.slowMoFactor * dt;
+          d.pos.y += d.vel.y * g.slowMoFactor * dt;
+          d.pos.y = Math.max(g.height * 0.08, Math.min(g.height * 0.5, d.pos.y));
+          d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
+
+          // Drop gas canister
+          d.bombTimer += dt;
+          if (d.bombTimer >= d.bombCooldown && Math.abs(d.pos.x - p.pos.x) < 60) {
+            d.bombTimer = 0;
+            const groundY = g.height * GROUND_RATIO;
+            const gasX = d.pos.x + (Math.random() - 0.5) * 30;
+            g.gasClouds.push({
+              pos: { x: gasX, y: groundY - 2 },
+              size: 50 + Math.random() * 20,
+              life: 5 + Math.random() * 3,
+              maxLife: 8,
+              damagePerSec: 2,
+            });
+            addFloatingText(g, '☣', { x: d.pos.x, y: d.pos.y + 15 }, '#16a34a');
+            spawnParticles(g, { x: gasX, y: groundY }, 6, '#16a34a', 80);
+          }
+        }
+        if (dist(d.pos, p.pos) < d.size + p.size) {
+          damagePlayer(g, 8, d.pos);
+          spawnParticles(g, d.pos, 12, '#16a34a', 120);
+          addExplosion(g, d.pos, 20);
+          d.active = false;
+        }
       }
       continue;
     }
