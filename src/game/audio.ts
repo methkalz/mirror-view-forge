@@ -317,3 +317,243 @@ export function sfxCloseCall() {
   setTimeout(() => playTone(1200, 0.03, 'sine', 0.03 * v), 30);
 }
 
+// ─── Motorcycle Sounds ───
+
+export function sfxBikeEngine() {
+  if (!isSoundEnabled('bikeEngine')) return;
+  const v = getSoundVolume('bikeEngine', 1);
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(80, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(120, ctx.currentTime + 0.3);
+  osc.frequency.linearRampToValueAtTime(90, ctx.currentTime + 0.8);
+  gain.gain.setValueAtTime(0.06 * v, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.1 * v, ctx.currentTime + 0.3);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+  const bq = ctx.createBiquadFilter();
+  bq.type = 'lowpass';
+  bq.frequency.value = 300;
+  osc.connect(bq).connect(gain).connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 1.2);
+  // Add rumble
+  playNoise(0.8, 0.04 * v, { type: 'lowpass', freq: 150 });
+}
+
+export function sfxBikeBrake() {
+  if (!isSoundEnabled('bikeBrake')) return;
+  const v = getSoundVolume('bikeBrake', 1);
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(110, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.6);
+  gain.gain.setValueAtTime(0.08 * v, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+  const bq = ctx.createBiquadFilter();
+  bq.type = 'lowpass';
+  bq.frequency.value = 250;
+  osc.connect(bq).connect(gain).connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.6);
+  // Tire screech
+  playNoise(0.3, 0.06 * v, { type: 'highpass', freq: 2000 });
+}
+
+export function sfxBikeIdle() {
+  if (!isSoundEnabled('bikeIdle')) return;
+  const v = getSoundVolume('bikeIdle', 1);
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.value = 55;
+  gain.gain.setValueAtTime(0.04 * v, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
+  const bq = ctx.createBiquadFilter();
+  bq.type = 'lowpass';
+  bq.frequency.value = 200;
+  osc.connect(bq).connect(gain).connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 2);
+}
+
+export function sfxBikeDepart() {
+  if (!isSoundEnabled('bikeDepart')) return;
+  const v = getSoundVolume('bikeDepart', 1);
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(60, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(200, ctx.currentTime + 0.8);
+  osc.frequency.linearRampToValueAtTime(350, ctx.currentTime + 1.5);
+  gain.gain.setValueAtTime(0.07 * v, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.12 * v, ctx.currentTime + 0.5);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
+  const bq = ctx.createBiquadFilter();
+  bq.type = 'lowpass';
+  bq.frequency.value = 400;
+  osc.connect(bq).connect(gain).connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 2);
+  playNoise(1.5, 0.05 * v, { type: 'lowpass', freq: 200 });
+}
+
+// ─── Wave & Game State Sounds ───
+
+export function sfxWarningAlert() {
+  if (!isSoundEnabled('warningAlert')) return;
+  const v = getSoundVolume('warningAlert', 1);
+  playTone(600, 0.12, 'square', 0.06 * v);
+  setTimeout(() => playTone(500, 0.12, 'square', 0.05 * v), 150);
+  setTimeout(() => playTone(600, 0.1, 'square', 0.06 * v), 300);
+}
+
+export function sfxUpgradeAlert() {
+  if (!isSoundEnabled('upgradeAlert')) return;
+  const v = getSoundVolume('upgradeAlert', 1);
+  playTone(500, 0.08, 'sine', 0.06 * v);
+  setTimeout(() => playTone(700, 0.08, 'sine', 0.06 * v), 80);
+  setTimeout(() => playTone(900, 0.08, 'sine', 0.06 * v), 160);
+  setTimeout(() => playTone(1100, 0.06, 'sine', 0.05 * v), 240);
+}
+
+export function sfxWaveComplete() {
+  if (!isSoundEnabled('waveComplete')) return;
+  const v = getSoundVolume('waveComplete', 1);
+  playTone(400, 0.15, 'sine', 0.08 * v);
+  setTimeout(() => playTone(500, 0.12, 'sine', 0.07 * v), 100);
+  setTimeout(() => playTone(600, 0.12, 'sine', 0.07 * v), 200);
+  setTimeout(() => playTone(800, 0.2, 'sine', 0.09 * v), 300);
+}
+
+export function sfxLevelUp() {
+  if (!isSoundEnabled('levelUp')) return;
+  const v = getSoundVolume('levelUp', 1);
+  playTone(400, 0.1, 'sine', 0.08 * v);
+  setTimeout(() => playTone(600, 0.1, 'sine', 0.08 * v), 100);
+  setTimeout(() => playTone(800, 0.1, 'sine', 0.08 * v), 200);
+  setTimeout(() => playTone(1000, 0.15, 'sine', 0.1 * v), 300);
+  setTimeout(() => playTone(1200, 0.2, 'sine', 0.08 * v), 400);
+}
+
+export function sfxGameOver() {
+  if (!isSoundEnabled('gameOver')) return;
+  const v = getSoundVolume('gameOver', 1);
+  playTone(400, 0.3, 'sawtooth', 0.1 * v);
+  setTimeout(() => playTone(300, 0.3, 'sawtooth', 0.08 * v), 200);
+  setTimeout(() => playTone(200, 0.4, 'sawtooth', 0.06 * v), 400);
+  setTimeout(() => playTone(100, 0.6, 'sine', 0.05 * v), 600);
+}
+
+export function sfxGameStart() {
+  if (!isSoundEnabled('gameStart')) return;
+  const v = getSoundVolume('gameStart', 1);
+  playTone(300, 0.1, 'sine', 0.06 * v);
+  setTimeout(() => playTone(500, 0.1, 'sine', 0.07 * v), 80);
+  setTimeout(() => playTone(700, 0.15, 'sine', 0.08 * v), 160);
+}
+
+export function sfxUpgradeSelect() {
+  if (!isSoundEnabled('upgradeSelect')) return;
+  const v = getSoundVolume('upgradeSelect', 1);
+  playTone(800, 0.06, 'sine', 0.06 * v);
+  setTimeout(() => playTone(1000, 0.08, 'sine', 0.07 * v), 50);
+}
+
+// ─── Periodic Ambient Sounds ───
+
+let ambientPeriodicTimer: ReturnType<typeof setInterval> | null = null;
+
+export function startPeriodicAmbient() {
+  if (ambientPeriodicTimer) return;
+  ambientPeriodicTimer = setInterval(() => {
+    // Random distant effects
+    const r = Math.random();
+    if (r < 0.3) {
+      sfxDistantExplosion();
+    } else if (r < 0.5) {
+      sfxWindGust();
+    } else if (r < 0.7) {
+      sfxDistantSiren();
+    }
+  }, 8000 + Math.random() * 12000);
+}
+
+export function stopPeriodicAmbient() {
+  if (ambientPeriodicTimer) {
+    clearInterval(ambientPeriodicTimer);
+    ambientPeriodicTimer = null;
+  }
+}
+
+export function sfxDistantExplosion() {
+  if (!isSoundEnabled('distantExplosion')) return;
+  const v = getSoundVolume('distantExplosion', 1);
+  playNoise(0.4, 0.03 * v, { type: 'lowpass', freq: 150 });
+  playTone(25, 0.5, 'sine', 0.02 * v);
+}
+
+export function sfxWindGust() {
+  if (!isSoundEnabled('windGust')) return;
+  const v = getSoundVolume('windGust', 1);
+  const ctx = getCtx();
+  const bufferSize = Math.floor(ctx.sampleRate * 1.5);
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < bufferSize; i++) {
+    last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02;
+    data[i] = last * 4;
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.001, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.04 * v, ctx.currentTime + 0.4);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+  const bq = ctx.createBiquadFilter();
+  bq.type = 'bandpass';
+  bq.frequency.value = 600;
+  src.connect(bq).connect(gain).connect(ctx.destination);
+  src.start();
+}
+
+export function sfxDistantSiren() {
+  if (!isSoundEnabled('distantSiren')) return;
+  const v = getSoundVolume('distantSiren', 1);
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(300, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(500, ctx.currentTime + 1);
+  osc.frequency.linearRampToValueAtTime(300, ctx.currentTime + 2);
+  gain.gain.setValueAtTime(0.001, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.015 * v, ctx.currentTime + 0.5);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 2);
+}
+
+// ─── UI Sounds ───
+
+export function sfxButtonClick() {
+  if (!isSoundEnabled('buttonClick')) return;
+  const v = getSoundVolume('buttonClick', 1);
+  playTone(800, 0.03, 'sine', 0.04 * v);
+}
+
+export function sfxScoreSubmit() {
+  if (!isSoundEnabled('scoreSubmit')) return;
+  const v = getSoundVolume('scoreSubmit', 1);
+  playTone(600, 0.08, 'sine', 0.06 * v);
+  setTimeout(() => playTone(800, 0.06, 'sine', 0.05 * v), 60);
+  setTimeout(() => playTone(1000, 0.08, 'sine', 0.06 * v), 120);
+}
+
