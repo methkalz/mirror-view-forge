@@ -1069,8 +1069,8 @@ export function update(g: GameData, input: InputState, dt: number) {
     { time: 230, id: 'boss_warn', text: '⚠ تحذير: طائرة حربية!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626', duration: 2.0, type: 'warning' },
     { time: 233, id: 'boss_prep', text: '⬆ تطوير: إمدادات طارئة!', sub: 'EMERGENCY SUPPLIES DROPPED', color: '#22c55e', duration: 2.0, type: 'upgrade' },
     { time: 260, id: 'cluster_5', text: '⚠ تحذير: تشظي خماسي!', sub: 'MAX SPLIT — DANGER', color: '#991b1b', duration: 2.0, type: 'warning' },
-    { time: 155, id: 'extinguisher_prep', text: '⬆ إمدادات: طفاية حريق!', sub: 'FIRE EXTINGUISHER DROPPED', color: '#f97316', duration: 2.0, type: 'upgrade' },
-    { time: 160, id: 'drones_incendiary', text: '⚠ تحذير: طائرات حارقة!', sub: 'INCENDIARY DRONES — FIRE HAZARD', color: '#ea580c', duration: 2.0, type: 'warning' },
+    { time: 240, id: 'extinguisher_prep', text: '⬆ إمدادات: طفاية حريق!', sub: 'FIRE EXTINGUISHER DROPPED', color: '#f97316', duration: 2.0, type: 'upgrade' },
+    { time: 245, id: 'drones_incendiary', text: '⚠ تحذير: طائرات حارقة!', sub: 'INCENDIARY DRONES — FIRE HAZARD', color: '#ea580c', duration: 2.0, type: 'warning' },
     { time: 195, id: 'gasmask_prep', text: '⬆ إمدادات: كمامة غاز!', sub: 'GAS MASK DROPPED', color: '#16a34a', duration: 2.0, type: 'upgrade' },
     { time: 200, id: 'drones_chemical', text: '⚠ تحذير: طائرات كيميائية!', sub: 'CHEMICAL DRONES — TOXIC GAS', color: '#15803d', duration: 2.0, type: 'warning' },
   ];
