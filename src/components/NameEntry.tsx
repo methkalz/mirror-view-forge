@@ -362,7 +362,19 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           </div>
         </div>
 
-        {/* Developer credit */}
+        {/* Audio hint for mobile */}
+        {audioHint && (
+          <p style={{
+            marginTop: 16,
+            fontFamily: "'Tajawal', system-ui, sans-serif",
+            fontSize: 12,
+            color: 'rgba(220,38,38,0.6)',
+            letterSpacing: 1,
+            animation: 'subtitleFlicker 2s ease-in-out infinite',
+          }}>
+            🔊 انقر لتفعيل الصوت
+          </p>
+        )}
         <div style={{ marginTop: 36, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 40, height: 1,
