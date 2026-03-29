@@ -850,6 +850,63 @@ const AudioPanel: React.FC<{
           </div>
         );
       })}
+
+      {/* Add New Sound */}
+      <div style={{ marginTop: 16, padding: '16px 18px', borderRadius: 14, border: '1px dashed rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.01)' }}>
+        {!addingSound ? (
+          <button onClick={() => setAddingSound(true)} style={{ ...btnPrimary, width: '100%', textAlign: 'center', justifyContent: 'center', display: 'flex' }}>
+            ➕ Add New Sound
+          </button>
+        ) : (
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, color: '#e2e8f0' }}>New Sound Entry</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ ...labelStyle, fontSize: 10 }}>Sound Key (unique)</label>
+                <input value={newSoundKey} onChange={e => setNewSoundKey(e.target.value)} placeholder="e.g. laserBlast" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ ...labelStyle, fontSize: 10 }}>Category</label>
+                <select value={newSoundCategory} onChange={e => setNewSoundCategory(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                  {Object.entries(CATEGORY_META).map(([k, v]) => (
+                    <option key={k} value={k}>{v.icon} {v.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ ...labelStyle, fontSize: 10 }}>Label (EN)</label>
+                <input value={newSoundLabel} onChange={e => setNewSoundLabel(e.target.value)} placeholder="Laser Blast" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ ...labelStyle, fontSize: 10 }}>Label (AR)</label>
+                <input value={newSoundLabelAr} onChange={e => setNewSoundLabelAr(e.target.value)} placeholder="ليزر" style={inputStyle} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                disabled={!newSoundKey.trim() || !newSoundLabel.trim()}
+                onClick={async () => {
+                  const entry = await createAudioEntry({
+                    soundKey: newSoundKey.trim(),
+                    category: newSoundCategory,
+                    label: newSoundLabel.trim(),
+                    labelAr: newSoundLabelAr.trim(),
+                  });
+                  if (entry) {
+                    setEntries(prev => [...prev, entry]);
+                    setNewSoundKey(''); setNewSoundLabel(''); setNewSoundLabelAr('');
+                    setAddingSound(false);
+                  }
+                }}
+                style={{ ...btnPrimary, opacity: (!newSoundKey.trim() || !newSoundLabel.trim()) ? 0.4 : 1 }}
+              >
+                Create
+              </button>
+              <button onClick={() => setAddingSound(false)} style={btnGhost}>Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
