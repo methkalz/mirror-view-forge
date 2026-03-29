@@ -185,3 +185,52 @@ export async function deleteWaveConfig(waveNumber: number): Promise<boolean> {
   const { error } = await supabase.from('wave_configs').delete().eq('wave_number', waveNumber);
   return !error;
 }
+
+// ─── Audio Config ───
+
+export interface AudioConfigEntry {
+  id: string;
+  soundKey: string;
+  category: string;
+  label: string;
+  labelAr: string;
+  volume: number;
+  enabled: boolean;
+}
+
+export async function fetchAudioConfig(): Promise<AudioConfigEntry[]> {
+  try {
+    const { data, error } = await supabase
+      .from('audio_config')
+      .select('*')
+      .order('category', { ascending: true });
+    if (error || !data) return [];
+    return data.map(r => ({
+      id: r.id,
+      soundKey: r.sound_key,
+      category: r.category,
+      label: r.label,
+      labelAr: r.label_ar,
+      volume: r.volume,
+      enabled: r.enabled,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function updateAudioEntry(id: string, updates: { volume?: number; enabled?: boolean }): Promise<boolean> {
+  const mapped: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (updates.volume !== undefined) mapped.volume = updates.volume;
+  if (updates.enabled !== undefined) mapped.enabled = updates.enabled;
+  const { error } = await supabase.from('audio_config').update(mapped).eq('id', id);
+  return !error;
+}
+
+export async function updateAudioCategory(category: string, updates: { volume?: number; enabled?: boolean }): Promise<boolean> {
+  const mapped: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (updates.volume !== undefined) mapped.volume = updates.volume;
+  if (updates.enabled !== undefined) mapped.enabled = updates.enabled;
+  const { error } = await supabase.from('audio_config').update(mapped).eq('category', category);
+  return !error;
+}
