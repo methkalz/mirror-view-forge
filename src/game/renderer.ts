@@ -4371,8 +4371,8 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.globalAlpha = 1;
     }
   }
-  // Don't render player separately when riding on intro bike (hide during all phases except bikeLeave/done)
-  const hidePlayer = g.state === 'intro' && g.introPhase !== 'bikeLeave' && g.introPhase !== 'done';
+  // Don't render player separately during intro — renderIntroBike handles all character rendering
+  const hidePlayer = g.state === 'intro' && g.introPhase !== 'done';
   if (!hidePlayer) {
     renderPlayerGlow(ctx, g);
     renderPlayer(ctx, g);
