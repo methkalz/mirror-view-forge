@@ -39,10 +39,26 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   const hasName = name.trim().length > 0;
 
   useEffect(() => {
-    // Audio already preloaded by GameLoader, just start menu music
+    // Try immediately (works if user already interacted)
     startMenuMusic();
     musicStarted.current = true;
-    return () => { stopMenuMusic(); };
+
+    // Fallback: start on first user interaction (browser autoplay policy)
+    const tryStart = () => {
+      if (!musicStarted.current) return;
+      startMenuMusic();
+      cleanup();
+    };
+    const cleanup = () => {
+      document.removeEventListener('click', tryStart);
+      document.removeEventListener('touchstart', tryStart);
+      document.removeEventListener('keydown', tryStart);
+    };
+    document.addEventListener('click', tryStart, { passive: true });
+    document.addEventListener('touchstart', tryStart, { passive: true });
+    document.addEventListener('keydown', tryStart, { passive: true });
+
+    return () => { cleanup(); stopMenuMusic(); };
   }, []);
 
   // Spark particles
