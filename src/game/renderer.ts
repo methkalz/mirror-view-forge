@@ -4062,51 +4062,66 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
     });
   }
 
-  // ── Dismounting passenger — 3-phase: leg swing back → slide off → land ──
+  // ── Dismounting passenger — physics-based 3-phase with gravity ──
   if (passengerDismounting) {
     const dp = dismountProgress;
     let dismountX: number, dismountY: number, finalScale: number, isSitting: boolean, legAnim: number, bodyTilt: number;
     
-    if (dp < 0.3) {
-      // Phase 1: Swing leg BACK over the seat — character stays seated, far leg lifts behind
-      const t = dp / 0.3;
-      const ease = t * t; // ease in
-      dismountX = -6;
-      dismountY = -18;
+    if (dp < 0.25) {
+      // Phase 1: Lean forward, swing leg BACK over seat with cubic bezier easing
+      const t = dp / 0.25;
+      const ease = t * t * t; // cubic ease-in for natural weight shift
+      dismountX = -6 + ease * 1; // slight forward lean
+      dismountY = -18 - ease * 2; // lift body slightly as leg swings
       finalScale = 0.5;
       isSitting = true;
-      legAnim = ease * 6; // leg lifts back
-      bodyTilt = ease * 0.15; // slight forward lean as leg swings
-    } else if (dp < 0.65) {
-      // Phase 2: Slide off seat sideways — body lifts and moves backward off bike
-      const t = (dp - 0.3) / 0.35;
+      legAnim = ease * 8; // leg swings back higher
+      bodyTilt = ease * 0.2; // more pronounced forward lean
+    } else if (dp < 0.55) {
+      // Phase 2: Body lift with parabolic gravity — pushes off seat with arms
+      const t = (dp - 0.25) / 0.3;
       const ease = t * t * (3 - 2 * t); // smoothstep
-      dismountX = -6 - ease * 6; // move backward (toward rear)
-      dismountY = -18 + ease * 4; // lift up slightly then come down
-      finalScale = 0.5 + ease * 0.1;
-      isSitting = t < 0.4;
-      legAnim = 6 - ease * 4;
-      bodyTilt = 0.15 * (1 - ease);
+      // Parabolic arc: up then gravity pulls down
+      const jumpArc = Math.sin(t * Math.PI) * -5; // parabolic up arc
+      dismountX = -5 - ease * 8; // slide backward
+      dismountY = -18 + jumpArc + ease * 2;
+      finalScale = 0.5 + ease * 0.12;
+      isSitting = t < 0.3;
+      legAnim = 8 - ease * 5;
+      bodyTilt = 0.2 * (1 - ease * 1.5); // tilt decreases
     } else {
-      // Phase 3: Land on ground and straighten up
-      const t = (dp - 0.65) / 0.35;
-      const ease = 1 - (1 - t) * (1 - t); // ease out
-      dismountX = -12 + ease * 2;
-      dismountY = -14 + ease * 8; // come down to ground level
-      finalScale = 0.6 + ease * 0.1;
+      // Phase 3: Landing with knee bend (squat absorb) + bounce
+      const t = (dp - 0.55) / 0.45;
+      const easeOut = 1 - (1 - t) * (1 - t); // ease out
+      // Gravity curve: accelerate downward
+      const gravityDrop = 0.5 * 9.8 * t * t * 2;
+      // Squat absorb: overshoot 2px then settle
+      const squat = t < 0.6 ? Math.sin(t / 0.6 * Math.PI) * 3 : Math.sin((t - 0.6) / 0.4 * Math.PI * 0.5) * 1;
+      // Bounce: subtle overshoot
+      const bounce = t > 0.7 ? Math.sin((t - 0.7) / 0.3 * Math.PI) * -1.5 : 0;
+      dismountX = -13 + easeOut * 3;
+      dismountY = -16 + Math.min(gravityDrop, 22) + squat + bounce;
+      finalScale = 0.62 + easeOut * 0.08;
       isSitting = false;
-      legAnim = 2 * (1 - ease);
+      legAnim = 3 * (1 - easeOut);
       bodyTilt = 0;
 
-      // Dust particles on landing
-      if (t > 0.7) {
-        const dustAlpha = (t - 0.7) / 0.3;
-        for (let i = 0; i < 3; i++) {
-          const dx = dismountX - 2 + i * 2;
-          const dy = dismountY + 14;
-          ctx.fillStyle = `rgba(160,140,110,${0.3 * (1 - dustAlpha)})`;
+      // Physics-based landing dust burst
+      if (t > 0.5 && t < 0.9) {
+        const burstT = (t - 0.5) / 0.4;
+        const particleCount = 10;
+        for (let i = 0; i < particleCount; i++) {
+          const angle = -Math.PI + (i / particleCount) * Math.PI; // semicircle upward
+          const speed = 3 + i * 0.5;
+          const pAge = burstT;
+          const px = dismountX + Math.cos(angle) * speed * pAge * 3;
+          const py = dismountY + 14 + Math.sin(angle) * speed * pAge * 2;
+          const pSize = (2 + i * 0.3) * (1 + pAge * 0.8) * (1 - pAge * 0.5);
+          const pAlpha = Math.max(0, 0.35 * (1 - pAge));
+          const brown = 150 + Math.round(i * 3);
+          ctx.fillStyle = `rgba(${brown},${brown - 15},${brown - 35},${pAlpha})`;
           ctx.beginPath();
-          ctx.arc(dx, dy, 1.5 + dustAlpha * 2, 0, Math.PI * 2);
+          ctx.ellipse(px, py, pSize * 1.3, pSize * 0.7, angle * 0.3, 0, 0, Math.PI * 2);
           ctx.fill();
         }
       }
