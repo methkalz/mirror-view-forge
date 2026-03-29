@@ -554,6 +554,49 @@ function applyWaveEvent(g: GameData, id: string) {
       pu.bobTimer = 0;
       pu.groundTimer = 0;
     }
+    return;
+  }
+
+  if (id === 'extinguisher_prep') {
+    const pu = getFromPool<PowerUp>(g.powerUps, () => ({
+      active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
+      parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
+    }), 20);
+    pu.type = 'extinguisher';
+    pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
+    pu.size = 14;
+    pu.parachuting = true;
+    pu.fallSpeed = 30;
+    pu.bobTimer = 0;
+    pu.groundTimer = 0;
+    return;
+  }
+
+  if (id === 'gasmask_prep') {
+    const pu = getFromPool<PowerUp>(g.powerUps, () => ({
+      active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
+      parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
+    }), 20);
+    pu.type = 'gasmask';
+    pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
+    pu.size = 14;
+    pu.parachuting = true;
+    pu.fallSpeed = 30;
+    pu.bobTimer = 0;
+    pu.groundTimer = 0;
+    return;
+  }
+
+  if (id === 'drones_incendiary') {
+    g.incendiaryTimer = Math.min(g.incendiaryTimer, 2 + Math.random() * 3);
+    spawnIncendiaryDrone(g);
+    return;
+  }
+
+  if (id === 'drones_chemical') {
+    g.chemicalTimer = Math.min(g.chemicalTimer, 2 + Math.random() * 3);
+    spawnChemicalDrone(g);
+    return;
   }
 }
 
