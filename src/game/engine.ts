@@ -402,13 +402,27 @@ export function updateIntro(g: GameData, dt: number) {
       g.cameraFocusX = g.player.pos.x;
 
       if (bike.pos.x > g.width + 100) {
-        g.introPhase = 'done';
+        g.introPhase = 'playerWait';
         g.introTimer = 0;
         g.introBike = null;
+        // Random wait 3-5 seconds before warning
+        g.introWaitDuration = 3 + Math.random() * 2;
+      }
+      break;
+    }
+    case 'playerWait': {
+      g.introTimer += dt;
+      // Player stands idle, facing right
+      g.player.anim = 'idle';
+      g.cameraFocusX = g.player.pos.x;
+
+      if (g.introTimer >= (g.introWaitDuration || 4)) {
+        g.introPhase = 'done';
+        g.introTimer = 0;
         g.state = 'playing';
         g.cameraZoomTarget = 1.0;
         g.cameraZoom = 1.0;
-        g.player.facingRight = true; // reset facing for gameplay
+        g.player.facingRight = true;
       }
       break;
     }

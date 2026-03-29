@@ -4,7 +4,7 @@ export interface Vec2 {
 }
 
 export type GameState = 'start' | 'intro' | 'playing' | 'gameover';
-export type IntroPhase = 'bikeEnter' | 'bikeStop' | 'playerDismount' | 'bikeLeave' | 'done';
+export type IntroPhase = 'bikeEnter' | 'bikeStop' | 'playerDismount' | 'bikeLeave' | 'playerWait' | 'done';
 
 export type HazardType = 'shrapnel' | 'missile' | 'cluster';
 export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike' | 'gasmask' | 'extinguisher' | 'water';
