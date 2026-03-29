@@ -139,7 +139,7 @@ function initClouds(): Cloud[] {
 
 export function resetGame(g: GameData) {
   const groundY = g.height * GROUND_RATIO;
-  g.state = 'playing';
+  g.state = 'intro';
   g.player.pos = { x: g.width / 2, y: groundY };
   g.player.groundY = groundY;
   g.player.health = 100;
