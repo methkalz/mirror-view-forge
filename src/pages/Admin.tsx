@@ -1,17 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import {
   fetchGameConfig, updateGameConfig, fetchLeaderboard, deleteLeaderboardEntry, clearLeaderboard,
   fetchWaveConfigs, upsertWaveConfig, deleteWaveConfig,
-  type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry,
+  fetchAudioConfig, updateAudioEntry, updateAudioCategory,
+  type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry,
 } from '@/game/config';
 
 const Admin: React.FC = () => {
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'config' | 'waves' | 'leaderboard'>('config');
+  const [tab, setTab] = useState<'config' | 'waves' | 'leaderboard' | 'audio'>('config');
 
   // Config state
   const [config, setConfig] = useState<RemoteGameConfig | null>(null);
