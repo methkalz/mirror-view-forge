@@ -909,32 +909,99 @@ function updateDeliveryBike(g: GameData, dt: number) {
   }
 }
 
-function updateWaveSystem(g: GameData, input: InputState, dt: number) {
-  if (g.wavePhase === 'active') {
-    g.waveTimer -= dt;
-    if (g.waveTimer <= 0) {
-      // Start clearing phase
-      g.wavePhase = 'clearing';
-      // Stop spawning — drones fly away
-      for (const d of g.drones) {
-        if (d.active && d.tier !== 'cargo') {
-          // Force drones to leave
-          const exitDir = d.pos.x < g.width / 2 ? -1 : 1;
-          d.vel.x = exitDir * d.speed * 3;
-          d.vel.y = -d.speed;
+function startNextWave(g: GameData) {
+  g.waveNumber++;
+  g.levelNumber = Math.floor((g.waveNumber - 1) / 3) + 1;
+  g.waveTimer = 60 + Math.random() * 10;
+  g.waveElapsed = 0;
+  g.waveFinale = false;
+  g.wavePhase = 'active';
+
+  // Apply recipe settings for this wave
+  const recipe = getWaveRecipe(g.waveNumber);
+  g.bulletLevel = Math.max(g.bulletLevel, recipe.bulletLevel);
+
+  // Queue wave warnings for new threats
+  const warnings = WAVE_WARNINGS[g.waveNumber];
+  if (warnings) {
+    for (const w of warnings) {
+      if (!g.waveTriggered.has(w.id)) {
+        // Delay warnings by phaseInDelay
+        const delay = recipe.phaseInDelay || 0;
+        if (delay > 0) {
+          // Will be triggered later by wave elapsed check
+        } else {
+          queueWaveEvent(g, { ...w, duration: 2.0 });
         }
       }
     }
+  }
+}
+
+function updateWaveSystem(g: GameData, input: InputState, dt: number) {
+  // === Wave End Slow-Mo ===
+  if (g.waveEndSlowMo > 0) {
+    g.waveEndSlowMo -= dt;
+    g.slowMoFactor = 0.2;
+    // Player moves at 0.7x during slow-mo (feels powerful)
+    if (g.waveEndSlowMo <= 0) {
+      g.slowMoFactor = 1;
+      // Now enter clearing
+      g.wavePhase = 'clearing';
+      // Force-clear hazards immediately
+      for (const h of g.hazards) {
+        if (h.active) {
+          addExplosion(g, h.pos, h.size * 1.5);
+          h.active = false;
+          g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
+        }
+      }
+      // Force drones to leave at 5x speed
+      for (const d of g.drones) {
+        if (d.active && d.tier !== 'cargo') {
+          const exitDir = d.pos.x < g.width / 2 ? -1 : 1;
+          d.vel.x = exitDir * d.speed * 5;
+          d.vel.y = -d.speed * 2;
+        }
+      }
+    }
+    return;
+  }
+
+  if (g.wavePhase === 'active') {
+    g.waveTimer -= dt;
+
+    // Wave Finale — last 5 seconds
+    if (g.waveTimer <= 5 && !g.waveFinale) {
+      g.waveFinale = true;
+    }
+
+    if (g.waveTimer <= 0) {
+      g.waveFinale = false;
+      // Cinematic slow-mo transition
+      g.waveEndSlowMo = 2.0;
+      g.slowMoFactor = 0.2;
+      return;
+    }
   } else if (g.wavePhase === 'clearing') {
-    // Force-clear all parachuting powerups, fire pools, gas clouds
+    // Force-clear all powerups, fire pools, gas clouds
     for (const pu of g.powerUps) { if (pu.active) pu.active = false; }
     g.firePools.length = 0;
     g.gasClouds.length = 0;
 
-    // Wait for all hazards & drones to clear
-    const activeHazards = g.hazards.filter(h => h.active).length;
+    // Force-clear drones that left screen
+    for (const d of g.drones) {
+      if (d.active && d.tier !== 'cargo') {
+        if (d.pos.x < -60 || d.pos.x > g.width + 60 || d.pos.y < -60) {
+          d.active = false;
+        }
+      }
+    }
+
+    // Check if scene is clear
     const activeDrones = g.drones.filter(d => d.active && d.tier !== 'cargo').length;
-    if (activeHazards === 0 && activeDrones === 0) {
+    if (g.activeHazardCount <= 0 && activeDrones === 0) {
+      g.activeHazardCount = 0; // safety reset
       // Only show cards+bike at end of level (every 3 waves)
       if (g.waveNumber % 3 === 0) {
         g.wavePhase = 'cards';
@@ -942,20 +1009,7 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         g.cardsShownTimer = 0;
         g.selectedUpgrade = null;
       } else {
-        // Skip to next wave directly
-        g.wavePhase = 'active';
-        g.waveNumber++;
-        g.levelNumber = Math.floor((g.waveNumber - 1) / 3) + 1;
-        g.waveTimer = 60 + Math.random() * 10;
-        g.waveElapsed = 0;
-      }
-    }
-    // Force-clear drones that refuse to leave after 5s
-    for (const d of g.drones) {
-      if (d.active && d.tier !== 'cargo') {
-        if (d.pos.x < -60 || d.pos.x > g.width + 60 || d.pos.y < -60) {
-          d.active = false;
-        }
+        startNextWave(g);
       }
     }
   } else if (g.wavePhase === 'cards') {
@@ -965,7 +1019,6 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
     if (input.cardClick && g.upgradeCards.length > 0) {
       const { x, y } = input.cardClick;
       input.cardClick = null;
-      // Check which card was clicked — use same dimensions as renderer
       const cardW = 130, cardH = 185, gap = 12;
       const totalW = g.upgradeCards.length * cardW + (g.upgradeCards.length - 1) * gap;
       const startX = (g.width - totalW) / 2;
@@ -979,7 +1032,7 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
       }
     }
 
-    // Auto-select after 7s if player hasn't chosen
+    // Auto-select after 10s
     if (g.cardsShownTimer > 10 && g.upgradeCards.length > 0) {
       const randomCard = g.upgradeCards[Math.floor(Math.random() * g.upgradeCards.length)];
       applyUpgrade(g, randomCard.id);
@@ -987,34 +1040,27 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
   } else if (g.wavePhase === 'bike') {
     updateDeliveryBike(g, dt);
 
-    // Track bike focus point
     if (g.deliveryBike && g.deliveryBike.active) {
       g.cameraFocusX += (g.deliveryBike.pos.x - g.cameraFocusX) * 0.08;
       g.cameraFocusY += (g.deliveryBike.pos.y - 20 - g.cameraFocusY) * 0.08;
     }
 
-    // Zoom timer countdown
     if (g.bikeZoomTimer > 0) {
       g.bikeZoomTimer -= dt;
       if (g.bikeZoomTimer <= 0) {
-        g.cameraZoomTarget = 1.0; // zoom back out
+        g.cameraZoomTarget = 1.0;
       }
     }
 
-    // Smooth zoom lerp
     g.cameraZoom += (g.cameraZoomTarget - g.cameraZoom) * 0.04;
     if (Math.abs(g.cameraZoom - g.cameraZoomTarget) < 0.005) g.cameraZoom = g.cameraZoomTarget;
 
-    // When bike is done (left the screen), start next wave
+    // When bike leaves, start next wave
     if (!g.deliveryBike || !g.deliveryBike.active) {
       g.cameraZoom = 1.0;
       g.cameraZoomTarget = 1.0;
-      g.wavePhase = 'active';
-      g.waveNumber++;
-      g.levelNumber = Math.floor((g.waveNumber - 1) / 3) + 1;
-      g.waveTimer = 60 + Math.random() * 10;
-      g.waveElapsed = 0;
       g.selectedUpgrade = null;
+      startNextWave(g);
     }
   }
 }
