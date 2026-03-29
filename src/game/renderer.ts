@@ -4601,7 +4601,40 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
 
   ctx.translate(g.screenShake.x - g.camera.x, g.screenShake.y);
 
+  // ── Ground Fog during intro ──
+  const isIntro = g.state === 'intro' && g.introPhase !== 'done';
+
   renderBackground(ctx, g);
+  
+  // ── Live flickering windows during intro ──
+  if (isIntro) {
+    const groundY = g.height * 0.78;
+    const camX = g.camera.x;
+    ctx.save();
+    for (let i = 0; i < 8; i++) {
+      const wx = ((i * 157 + 40) % 600) + Math.floor(camX / 600) * 600;
+      const wy = groundY - 60 - (i * 43) % 120;
+      const winSize = 4 + (i % 3) * 2;
+      const flicker = Math.sin(g.elapsed * (1.5 + i * 0.7) + i * 3.1);
+      const isOn = flicker > -0.3;
+      if (isOn) {
+        const colors = ['rgba(255,200,100,', 'rgba(100,180,255,', 'rgba(180,255,150,', 'rgba(255,150,100,'];
+        const color = colors[i % colors.length];
+        // Window glow
+        ctx.fillStyle = `${color}${0.08 + flicker * 0.04})`;
+        ctx.fillRect(wx - winSize / 2, wy - winSize / 2, winSize, winSize * 1.3);
+        // Ground light spill
+        const spillGrad = ctx.createRadialGradient(wx, groundY, 0, wx, groundY, 20 + winSize * 3);
+        spillGrad.addColorStop(0, `${color}${0.03 + flicker * 0.015})`);
+        spillGrad.addColorStop(1, `${color}0)`);
+        ctx.fillStyle = spillGrad;
+        ctx.beginPath();
+        ctx.ellipse(wx, groundY + 2, 20 + winSize * 2, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
   renderCraters(ctx, g);
   renderAmbient(ctx, g);
   renderWarnings(ctx, g);
@@ -4671,7 +4704,37 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderRain(ctx, g);
   renderFloatingTexts(ctx, g);
 
+  // ── Ground fog during intro ──
+  if (isIntro) {
+    const groundY = g.height * 0.78;
+    const camX = g.camera.x;
+    ctx.save();
+    ctx.globalAlpha = 0.06;
+    const fogWave = Math.sin(g.elapsed * 0.5) * 3;
+    const fogGrad = ctx.createLinearGradient(0, groundY - 5, 0, groundY + 15);
+    fogGrad.addColorStop(0, 'rgba(150,160,180,0)');
+    fogGrad.addColorStop(0.3, 'rgba(150,160,180,1)');
+    fogGrad.addColorStop(0.7, 'rgba(130,140,160,0.6)');
+    fogGrad.addColorStop(1, 'rgba(130,140,160,0)');
+    ctx.fillStyle = fogGrad;
+    ctx.fillRect(camX - 200, groundY - 5 + fogWave, g.width + 400, 20);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
   ctx.restore();
+
+  // ── Letterbox Bars during intro ──
+  if (isIntro) {
+    const barH = 20;
+    const introProgress = g.introPhase === 'bikeLeave' ? Math.min(1, g.introTimer / 1.5) : 0;
+    const barAlpha = 1 - introProgress;
+    if (barAlpha > 0.01) {
+      ctx.fillStyle = `rgba(0,0,0,${barAlpha * 0.85})`;
+      ctx.fillRect(0, 0, g.width, barH);
+      ctx.fillRect(0, g.height - barH, g.width, barH);
+    }
+  }
 
   // Lightning flash
   renderLightning(ctx, g);
