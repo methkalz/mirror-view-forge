@@ -3178,7 +3178,62 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
   const armColor = isHit ? '#ef4444' : '#3a7bd5';
   const armHighlight = isHit ? '#f87171' : '#5a9ae6';
 
-  if (isDriver) {
+  if (isWaving) {
+    // Waving arm — one arm raised in a confident wave/salute
+    const waveAngle = Math.sin(elapsed * 4) * 0.15; // subtle wave oscillation
+    // Back arm relaxed at side
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = armColor;
+    ctx.beginPath();
+    ctx.moveTo(-5, bodyTopY + 3);
+    ctx.lineTo(-8, bodyTopY + 12);
+    ctx.stroke();
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = armHighlight;
+    ctx.beginPath();
+    ctx.moveTo(-8, bodyTopY + 12);
+    ctx.lineTo(-6, bodyTopY + 18);
+    ctx.stroke();
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(-6, bodyTopY + 18, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Front arm — raised up waving
+    ctx.save();
+    ctx.translate(5, bodyTopY + 3);
+    ctx.rotate(-0.8 + waveAngle);
+    // Upper arm
+    ctx.lineWidth = 4.5;
+    ctx.strokeStyle = armColor;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, -12);
+    ctx.stroke();
+    // Forearm
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = armHighlight;
+    ctx.beginPath();
+    ctx.moveTo(0, -12);
+    ctx.lineTo(3, -20);
+    ctx.stroke();
+    // Open hand (waving)
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(3, -20, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Fingers spread
+    ctx.strokeStyle = skinColor;
+    ctx.lineWidth = 1;
+    for (let f = 0; f < 3; f++) {
+      const fa = -0.4 + f * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(3, -21);
+      ctx.lineTo(3 + Math.cos(fa) * 4, -20 + Math.sin(fa) * -4);
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else if (isDriver) {
     // Side-view: one arm visible reaching forward to handlebar, other arm hint behind body
     // Far arm hint (behind torso)
     ctx.lineWidth = 3;
