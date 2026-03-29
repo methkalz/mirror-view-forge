@@ -637,6 +637,11 @@ const AudioPanel: React.FC<{
   const [library, setLibrary] = useState<{ name: string; url: string }[]>([]);
   const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [addingSound, setAddingSound] = useState(false);
+  const [newSoundKey, setNewSoundKey] = useState('');
+  const [newSoundLabel, setNewSoundLabel] = useState('');
+  const [newSoundLabelAr, setNewSoundLabelAr] = useState('');
+  const [newSoundCategory, setNewSoundCategory] = useState('ambient');
 
   const loadLibrary = useCallback(async () => { setLibrary(await listAudioLibrary()); }, []);
 
