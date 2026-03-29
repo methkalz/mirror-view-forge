@@ -32,6 +32,8 @@ const SkyfallGame: React.FC = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [gameOverData, setGameOverData] = useState<{ score: number; rank: number | null; waves: number } | null>(null);
   const [remoteConfig, setRemoteConfig] = useState<RemoteGameConfig | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(0);
   const remoteConfigRef = useRef<RemoteGameConfig | null>(null);
   const scoreSubmittedRef = useRef(false);
 
