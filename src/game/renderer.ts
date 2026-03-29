@@ -3868,15 +3868,25 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = vigGrad;
     ctx.fillRect(0, 0, g.width, g.height);
 
-    // Chromatic aberration effect
-    const abStr = 2 * (1 - progress);
-    if (abStr > 0.3) {
+    // Chromatic Aberration — ease in/out with slow-mo timer (time "bends")
+    // Bell curve: peaks at progress=0.5, fades at edges
+    const abEase = Math.sin(progress * Math.PI); // 0→1→0 smooth bell
+    const maxOffset = 3; // peak pixel offset
+    const abOffset = abEase * maxOffset;
+    if (abOffset > 0.2) {
       ctx.save();
-      ctx.globalAlpha = abStr * 0.04;
-      ctx.fillStyle = 'rgba(255,0,0,1)';
-      ctx.fillRect(abStr, 0, g.width, g.height);
-      ctx.fillStyle = 'rgba(0,0,255,1)';
-      ctx.fillRect(-abStr, 0, g.width, g.height);
+      // Red channel shift right
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = abEase * 0.06;
+      ctx.fillStyle = 'rgba(255,30,30,1)';
+      ctx.fillRect(abOffset, 0, g.width, g.height);
+      // Blue channel shift left
+      ctx.fillStyle = 'rgba(30,30,255,1)';
+      ctx.fillRect(-abOffset, 0, g.width, g.height);
+      // Green channel subtle vertical shift
+      ctx.globalAlpha = abEase * 0.03;
+      ctx.fillStyle = 'rgba(30,255,30,1)';
+      ctx.fillRect(0, abOffset * 0.5, g.width, g.height);
       ctx.restore();
     }
 
