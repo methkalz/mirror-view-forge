@@ -3179,8 +3179,11 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
   const armHighlight = isHit ? '#f87171' : '#5a9ae6';
 
   if (isWaving) {
-    // Waving arm — one arm raised in a confident wave/salute
-    const waveAngle = Math.sin(elapsed * 4) * 0.15; // subtle wave oscillation
+    // Organic wave — dual oscillation for natural feel
+    const waveBase = Math.sin(elapsed * 3) * 0.7 + Math.sin(elapsed * 7) * 0.3;
+    const wristWave = Math.sin(elapsed * 5 + 0.5) * 0.25;
+    const shoulderLift = Math.sin(elapsed * 3) * 1.5; // subtle shoulder rise
+    
     // Back arm relaxed at side
     ctx.lineWidth = 4;
     ctx.strokeStyle = armColor;
@@ -3199,10 +3202,10 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
     ctx.arc(-6, bodyTopY + 18, 2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Front arm — raised up waving
+    // Front arm — raised up waving with shoulder + wrist articulation
     ctx.save();
-    ctx.translate(5, bodyTopY + 3);
-    ctx.rotate(-0.8 + waveAngle);
+    ctx.translate(5, bodyTopY + 3 - shoulderLift);
+    ctx.rotate(-0.85 + waveBase * 0.18); // shoulder rotation
     // Upper arm
     ctx.lineWidth = 4.5;
     ctx.strokeStyle = armColor;
@@ -3210,28 +3213,34 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
     ctx.moveTo(0, 0);
     ctx.lineTo(0, -12);
     ctx.stroke();
-    // Forearm
+    // Forearm with wrist rotation
+    ctx.save();
+    ctx.translate(0, -12);
+    ctx.rotate(wristWave); // wrist articulation
     ctx.lineWidth = 4;
     ctx.strokeStyle = armHighlight;
     ctx.beginPath();
-    ctx.moveTo(0, -12);
-    ctx.lineTo(3, -20);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(3, -8);
     ctx.stroke();
-    // Open hand (waving)
+    // Open hand
     ctx.fillStyle = skinColor;
     ctx.beginPath();
-    ctx.arc(3, -20, 2.5, 0, Math.PI * 2);
+    ctx.arc(3, -8, 2.5, 0, Math.PI * 2);
     ctx.fill();
-    // Fingers spread
+    // Fingers that open/close with phase offset
     ctx.strokeStyle = skinColor;
     ctx.lineWidth = 1;
-    for (let f = 0; f < 3; f++) {
-      const fa = -0.4 + f * 0.4;
+    for (let f = 0; f < 4; f++) {
+      const fingerPhase = Math.sin(elapsed * 5 + f * 0.8) * 0.3;
+      const fa = -0.5 + f * 0.35 + fingerPhase;
+      const fingerLen = 3 + (f === 1 || f === 2 ? 1 : 0); // middle fingers longer
       ctx.beginPath();
-      ctx.moveTo(3, -21);
-      ctx.lineTo(3 + Math.cos(fa) * 4, -20 + Math.sin(fa) * -4);
+      ctx.moveTo(3, -9);
+      ctx.lineTo(3 + Math.cos(fa) * fingerLen, -8 + Math.sin(fa) * -fingerLen);
       ctx.stroke();
     }
+    ctx.restore();
     ctx.restore();
   } else if (isDriver) {
     // Side-view: one arm visible reaching forward to handlebar, other arm hint behind body
@@ -3553,45 +3562,63 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.scale(2.4, 2.4);
   ctx.translate(bike.shakeOffset.x, bike.shakeOffset.y);
 
-  // Exhaust smoke — denser when leaving
+  // ── Realistic Exhaust Puffs (multi-circle deformed, wind-driven) ──
   if (bike.phase === 'idle' || bike.phase === 'leaving' || bike.phase === 'entering') {
     const isLeaving = bike.phase === 'leaving';
-    const smokeCount = isLeaving ? 10 : (bike.phase === 'idle' ? 3 : 5);
-    for (let i = 0; i < smokeCount; i++) {
-      const age = (g.elapsed * (isLeaving ? 3 : 2) + i * 0.5) % 2;
-      const sx = -28 - age * (isLeaving ? 16 : 10);
-      const sy = -4 - age * (isLeaving ? 10 : 14);
-      const sr = 2 + age * (isLeaving ? 6 : 4);
-      const sa = Math.max(0, (isLeaving ? 0.4 : 0.3) - age * 0.15);
-      ctx.fillStyle = `rgba(${isLeaving ? '120,120,130' : '150,150,150'},${sa})`;
-      ctx.beginPath();
-      ctx.arc(sx, sy, sr, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // Extra dark exhaust puffs when leaving
-    if (isLeaving) {
-      for (let i = 0; i < 4; i++) {
-        const age = (g.elapsed * 4 + i * 1.1) % 1.5;
-        const sx = -30 - age * 20;
-        const sy = -2 - age * 6;
-        const sr = 3 + age * 5;
-        ctx.fillStyle = `rgba(60,60,70,${Math.max(0, 0.25 - age * 0.18)})`;
+    const puffCount = isLeaving ? 8 : (bike.phase === 'idle' ? 4 : 6);
+    for (let i = 0; i < puffCount; i++) {
+      const age = (g.elapsed * (isLeaving ? 2.5 : 1.5) + i * 0.6) % 2.5;
+      const friction = Math.pow(0.92, age * 10);
+      const baseVx = isLeaving ? -18 : -8;
+      const baseVy = isLeaving ? -6 : -8;
+      const windDrift = Math.sin(g.elapsed * 2 + i * 1.3) * 2;
+      const sx = -28 + baseVx * age * friction + windDrift;
+      const sy = -5 + baseVy * age * friction + Math.sin(g.elapsed * 3 + i) * 1.5;
+      const scaleX = 1 + age * 0.8; // puffs stretch horizontally with age
+      const baseR = 2 + age * (isLeaving ? 5 : 3.5);
+      const lifeAlpha = Math.max(0, 1 - age / 2.5);
+      // Color ages: white-grey → dark grey → transparent
+      const grey = Math.round(180 - age * 50);
+      const alpha = lifeAlpha * (isLeaving ? 0.35 : 0.25);
+      // Each puff = 3 overlapping circles for organic shape
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.scale(scaleX, 1);
+      for (let c = 0; c < 3; c++) {
+        const cx = Math.cos(c * 2.1 + i) * baseR * 0.3;
+        const cy = Math.sin(c * 2.1 + i) * baseR * 0.25;
+        const cr = baseR * (0.6 + c * 0.15);
+        ctx.fillStyle = `rgba(${grey},${grey},${grey + 10},${alpha * (1 - c * 0.15)})`;
         ctx.beginPath();
-        ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+        ctx.arc(cx, cy, cr, 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.restore();
     }
   }
 
-  // Dust particles when moving
+  // ── Physics-Based Dust Particles ──
   if (Math.abs(bike.speed) > 30) {
-    for (let i = 0; i < 4; i++) {
-      const dx = -20 - Math.random() * 16;
-      const dy = -Math.random() * 4;
-      ctx.fillStyle = `rgba(160,140,120,${0.15 + Math.random() * 0.15})`;
+    const dustCount = Math.min(8, Math.floor(Math.abs(bike.speed) / 40));
+    for (let i = 0; i < dustCount; i++) {
+      const seed = (g.elapsed * 3 + i * 1.7) % 2;
+      const friction = Math.pow(0.95, seed * 15);
+      const vx = -(3 + i * 1.2) * friction;
+      const vy = -(2 + Math.sin(i * 2.3) * 2) * friction;
+      const dx = -20 + vx * seed * 4;
+      const dy = 0 + vy * seed * 3;
+      const dustSize = (1.5 + i * 0.4) * (1 + seed * 0.5);
+      const dustAlpha = Math.max(0, 0.25 - seed * 0.12);
+      const rotation = seed * (i * 0.8);
+      const brown = 140 + Math.round(i * 5);
+      ctx.save();
+      ctx.translate(dx, dy);
+      ctx.rotate(rotation);
+      ctx.fillStyle = `rgba(${brown},${brown - 20},${brown - 40},${dustAlpha})`;
       ctx.beginPath();
-      ctx.arc(dx, dy, 2 + Math.random() * 3, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, dustSize * 1.2, dustSize * 0.8, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
     }
   }
 
@@ -3867,59 +3894,143 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.fillText('OTLOP', boxCenterX, boxCenterY);
   ctx.restore();
 
-  // ── Headlight (oval with reflection glow) ──
-  const showLight = bike.phase === 'idle'
-    ? Math.sin(g.elapsed * 6) > 0
-    : true;
+  // ── Volumetric Headlight System ──
+  const flickerIntensity = 0.85 + Math.sin(g.elapsed * 8) * 0.1 + Math.sin(g.elapsed * 13) * 0.05;
+  const showLight = bike.phase === 'idle' ? flickerIntensity > 0.82 : true;
   if (showLight) {
-    // Outer glow
-    ctx.fillStyle = 'rgba(255,255,200,0.1)';
+    const hlX = frontWX + 5;
+    const hlY = -10;
+    
+    // ── Volumetric Light Cone (triangle from headlight forward) ──
+    ctx.save();
+    const coneLen = 50;
+    const coneAngle = 0.22; // ~25° half-angle
+    const coneGrad = ctx.createLinearGradient(hlX, hlY, hlX + coneLen, hlY);
+    coneGrad.addColorStop(0, `rgba(255,255,200,${0.12 * flickerIntensity})`);
+    coneGrad.addColorStop(0.4, `rgba(255,255,180,${0.06 * flickerIntensity})`);
+    coneGrad.addColorStop(1, 'rgba(255,255,150,0)');
+    ctx.fillStyle = coneGrad;
     ctx.beginPath();
-    ctx.ellipse(frontWX + 5, -10, 12, 8, 0.1, 0, Math.PI * 2);
+    ctx.moveTo(hlX + 3, hlY);
+    ctx.lineTo(hlX + coneLen, hlY - Math.sin(coneAngle) * coneLen);
+    ctx.lineTo(hlX + coneLen, hlY + Math.sin(coneAngle) * coneLen + 8);
+    ctx.closePath();
+    ctx.fill();
+    
+    // ── Light Rays (oscillating thin lines inside cone) ──
+    for (let r = 0; r < 4; r++) {
+      const rayAngle = (r - 1.5) * 0.08 + Math.sin(g.elapsed * 1.5 + r * 2) * 0.03;
+      const rayLen = 35 + r * 8;
+      const rayAlpha = (0.06 + Math.sin(g.elapsed * 2 + r * 1.7) * 0.03) * flickerIntensity;
+      ctx.strokeStyle = `rgba(255,255,220,${rayAlpha})`;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(hlX + 3, hlY);
+      ctx.lineTo(hlX + Math.cos(rayAngle) * rayLen, hlY + Math.sin(rayAngle) * rayLen);
+      ctx.stroke();
+    }
+    ctx.restore();
+    
+    // ── Multi-Layer Ground Pool ──
+    ctx.save();
+    // Outer pool (wide, faint)
+    const poolX = frontWX + 18;
+    const poolY = 4;
+    const poolFlicker = 0.9 + Math.sin(g.elapsed * 6) * 0.1;
+    const outerGrad = ctx.createRadialGradient(poolX, poolY, 3, poolX, poolY, 28);
+    outerGrad.addColorStop(0, `rgba(255,255,200,${0.12 * flickerIntensity * poolFlicker})`);
+    outerGrad.addColorStop(0.3, `rgba(255,255,180,${0.07 * flickerIntensity * poolFlicker})`);
+    outerGrad.addColorStop(0.7, `rgba(255,255,150,${0.03 * flickerIntensity})`);
+    outerGrad.addColorStop(1, 'rgba(255,255,150,0)');
+    ctx.fillStyle = outerGrad;
+    ctx.beginPath();
+    ctx.ellipse(poolX, poolY, 28, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Inner bright pool
+    const innerGrad = ctx.createRadialGradient(poolX - 2, poolY, 1, poolX - 2, poolY, 12);
+    innerGrad.addColorStop(0, `rgba(255,255,230,${0.18 * flickerIntensity})`);
+    innerGrad.addColorStop(0.5, `rgba(255,255,200,${0.08 * flickerIntensity})`);
+    innerGrad.addColorStop(1, 'rgba(255,255,180,0)');
+    ctx.fillStyle = innerGrad;
+    ctx.beginPath();
+    ctx.ellipse(poolX - 2, poolY, 12, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    
+    // ── Headlight Lens (multi-layer glow) ──
+    // Outer glow
+    ctx.fillStyle = `rgba(255,255,200,${0.08 * flickerIntensity})`;
+    ctx.beginPath();
+    ctx.ellipse(hlX, hlY, 14, 9, 0.1, 0, Math.PI * 2);
     ctx.fill();
     // Mid glow
-    ctx.fillStyle = 'rgba(255,255,200,0.2)';
+    ctx.fillStyle = `rgba(255,255,200,${0.18 * flickerIntensity})`;
     ctx.beginPath();
-    ctx.ellipse(frontWX + 5, -10, 6, 4, 0.1, 0, Math.PI * 2);
+    ctx.ellipse(hlX, hlY, 7, 4.5, 0.1, 0, Math.PI * 2);
     ctx.fill();
-    // Headlight lens
-    const hlGrad = ctx.createRadialGradient(frontWX + 5, -10, 0, frontWX + 5, -10, 3.5);
-    hlGrad.addColorStop(0, 'rgba(255,255,240,0.95)');
-    hlGrad.addColorStop(0.6, 'rgba(255,255,200,0.7)');
-    hlGrad.addColorStop(1, 'rgba(255,230,150,0.3)');
+    // Lens body
+    const hlGrad = ctx.createRadialGradient(hlX, hlY, 0, hlX, hlY, 3.5);
+    hlGrad.addColorStop(0, `rgba(255,255,240,${0.95 * flickerIntensity})`);
+    hlGrad.addColorStop(0.6, `rgba(255,255,200,${0.7 * flickerIntensity})`);
+    hlGrad.addColorStop(1, `rgba(255,230,150,${0.3 * flickerIntensity})`);
     ctx.fillStyle = hlGrad;
     ctx.beginPath();
-    ctx.ellipse(frontWX + 5, -10, 3.5, 2.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(hlX, hlY, 3.5, 2.5, 0, 0, Math.PI * 2);
     ctx.fill();
     // Lens reflection
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillStyle = `rgba(255,255,255,${0.5 * flickerIntensity})`;
     ctx.beginPath();
-    ctx.ellipse(frontWX + 4, -11, 1.5, 0.8, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(hlX - 1, hlY - 1, 1.5, 0.8, -0.3, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // ── Tail light ──
-  ctx.fillStyle = 'rgba(255,30,30,0.8)';
+  // ── Tail Light (enhanced braking glow) ──
+  const isBraking = bike.phase === 'idle' || bike.speed < 30;
+  const brakeAlpha = isBraking ? (0.7 + Math.sin(g.elapsed * 4) * 0.2) : 0.5;
+  const brakeGlowSize = isBraking ? 7 : 4;
+  ctx.fillStyle = `rgba(255,0,0,${brakeAlpha * 0.2})`;
+  ctx.beginPath();
+  ctx.ellipse(rearWX - 2, -10, brakeGlowSize, brakeGlowSize * 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = `rgba(255,20,20,${brakeAlpha * 0.4})`;
+  ctx.beginPath();
+  ctx.ellipse(rearWX - 2, -10, 4, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = `rgba(255,50,30,${brakeAlpha})`;
   ctx.beginPath();
   ctx.ellipse(rearWX - 2, -10, 2.5, 1.5, 0, 0, Math.PI * 2);
   ctx.fill();
-  // Tail light glow
-  ctx.fillStyle = 'rgba(255,0,0,0.15)';
+  ctx.fillStyle = `rgba(255,150,150,${brakeAlpha * 0.4})`;
   ctx.beginPath();
-  ctx.ellipse(rearWX - 2, -10, 5, 3, 0, 0, Math.PI * 2);
+  ctx.ellipse(rearWX - 1.5, -11, 1, 0.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // ── Headlight ground pool (cone of light on ground) ──
-  if (showLight) {
+  // ── Ground Reflection (faint inverted ghost) ──
+  ctx.save();
+  ctx.translate(0, 10);
+  ctx.scale(1, -0.15);
+  ctx.globalAlpha = 0.06;
+  // Just draw a simplified reflection silhouette
+  ctx.fillStyle = '#222';
+  ctx.beginPath();
+  ctx.ellipse(0, -10, 30, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // ── Heat Shimmer (above engine during idle) ──
+  if (bike.phase === 'idle') {
     ctx.save();
-    const groundPoolGrad = ctx.createRadialGradient(frontWX + 15, 4, 2, frontWX + 15, 4, 20);
-    groundPoolGrad.addColorStop(0, 'rgba(255,255,200,0.15)');
-    groundPoolGrad.addColorStop(0.5, 'rgba(255,255,180,0.06)');
-    groundPoolGrad.addColorStop(1, 'rgba(255,255,150,0)');
-    ctx.fillStyle = groundPoolGrad;
-    ctx.beginPath();
-    ctx.ellipse(frontWX + 15, 4, 20, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.globalAlpha = 0.04;
+    for (let h = 0; h < 5; h++) {
+      const hx = -6 + h * 3 + Math.sin(g.elapsed * 4 + h * 1.5) * 1.5;
+      const hy = -12 - h * 2 + Math.sin(g.elapsed * 3 + h) * 1;
+      ctx.fillStyle = 'rgba(255,200,100,0.3)';
+      ctx.beginPath();
+      ctx.ellipse(hx, hy, 2, 1.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 
@@ -3960,51 +4071,66 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
     });
   }
 
-  // ── Dismounting passenger — 3-phase: leg swing back → slide off → land ──
+  // ── Dismounting passenger — physics-based 3-phase with gravity ──
   if (passengerDismounting) {
     const dp = dismountProgress;
     let dismountX: number, dismountY: number, finalScale: number, isSitting: boolean, legAnim: number, bodyTilt: number;
     
-    if (dp < 0.3) {
-      // Phase 1: Swing leg BACK over the seat — character stays seated, far leg lifts behind
-      const t = dp / 0.3;
-      const ease = t * t; // ease in
-      dismountX = -6;
-      dismountY = -18;
+    if (dp < 0.25) {
+      // Phase 1: Lean forward, swing leg BACK over seat with cubic bezier easing
+      const t = dp / 0.25;
+      const ease = t * t * t; // cubic ease-in for natural weight shift
+      dismountX = -6 + ease * 1; // slight forward lean
+      dismountY = -18 - ease * 2; // lift body slightly as leg swings
       finalScale = 0.5;
       isSitting = true;
-      legAnim = ease * 6; // leg lifts back
-      bodyTilt = ease * 0.15; // slight forward lean as leg swings
-    } else if (dp < 0.65) {
-      // Phase 2: Slide off seat sideways — body lifts and moves backward off bike
-      const t = (dp - 0.3) / 0.35;
+      legAnim = ease * 8; // leg swings back higher
+      bodyTilt = ease * 0.2; // more pronounced forward lean
+    } else if (dp < 0.55) {
+      // Phase 2: Body lift with parabolic gravity — pushes off seat with arms
+      const t = (dp - 0.25) / 0.3;
       const ease = t * t * (3 - 2 * t); // smoothstep
-      dismountX = -6 - ease * 6; // move backward (toward rear)
-      dismountY = -18 + ease * 4; // lift up slightly then come down
-      finalScale = 0.5 + ease * 0.1;
-      isSitting = t < 0.4;
-      legAnim = 6 - ease * 4;
-      bodyTilt = 0.15 * (1 - ease);
+      // Parabolic arc: up then gravity pulls down
+      const jumpArc = Math.sin(t * Math.PI) * -5; // parabolic up arc
+      dismountX = -5 - ease * 8; // slide backward
+      dismountY = -18 + jumpArc + ease * 2;
+      finalScale = 0.5 + ease * 0.12;
+      isSitting = t < 0.3;
+      legAnim = 8 - ease * 5;
+      bodyTilt = 0.2 * (1 - ease * 1.5); // tilt decreases
     } else {
-      // Phase 3: Land on ground and straighten up
-      const t = (dp - 0.65) / 0.35;
-      const ease = 1 - (1 - t) * (1 - t); // ease out
-      dismountX = -12 + ease * 2;
-      dismountY = -14 + ease * 8; // come down to ground level
-      finalScale = 0.6 + ease * 0.1;
+      // Phase 3: Landing with knee bend (squat absorb) + bounce
+      const t = (dp - 0.55) / 0.45;
+      const easeOut = 1 - (1 - t) * (1 - t); // ease out
+      // Gravity curve: accelerate downward
+      const gravityDrop = 0.5 * 9.8 * t * t * 2;
+      // Squat absorb: overshoot 2px then settle
+      const squat = t < 0.6 ? Math.sin(t / 0.6 * Math.PI) * 3 : Math.sin((t - 0.6) / 0.4 * Math.PI * 0.5) * 1;
+      // Bounce: subtle overshoot
+      const bounce = t > 0.7 ? Math.sin((t - 0.7) / 0.3 * Math.PI) * -1.5 : 0;
+      dismountX = -13 + easeOut * 3;
+      dismountY = -16 + Math.min(gravityDrop, 22) + squat + bounce;
+      finalScale = 0.62 + easeOut * 0.08;
       isSitting = false;
-      legAnim = 2 * (1 - ease);
+      legAnim = 3 * (1 - easeOut);
       bodyTilt = 0;
 
-      // Dust particles on landing
-      if (t > 0.7) {
-        const dustAlpha = (t - 0.7) / 0.3;
-        for (let i = 0; i < 3; i++) {
-          const dx = dismountX - 2 + i * 2;
-          const dy = dismountY + 14;
-          ctx.fillStyle = `rgba(160,140,110,${0.3 * (1 - dustAlpha)})`;
+      // Physics-based landing dust burst
+      if (t > 0.5 && t < 0.9) {
+        const burstT = (t - 0.5) / 0.4;
+        const particleCount = 10;
+        for (let i = 0; i < particleCount; i++) {
+          const angle = -Math.PI + (i / particleCount) * Math.PI; // semicircle upward
+          const speed = 3 + i * 0.5;
+          const pAge = burstT;
+          const px = dismountX + Math.cos(angle) * speed * pAge * 3;
+          const py = dismountY + 14 + Math.sin(angle) * speed * pAge * 2;
+          const pSize = (2 + i * 0.3) * (1 + pAge * 0.8) * (1 - pAge * 0.5);
+          const pAlpha = Math.max(0, 0.35 * (1 - pAge));
+          const brown = 150 + Math.round(i * 3);
+          ctx.fillStyle = `rgba(${brown},${brown - 15},${brown - 35},${pAlpha})`;
           ctx.beginPath();
-          ctx.arc(dx, dy, 1.5 + dustAlpha * 2, 0, Math.PI * 2);
+          ctx.ellipse(px, py, pSize * 1.3, pSize * 0.7, angle * 0.3, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -4048,7 +4174,7 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
 
   const showPassenger = g.introPhase === 'bikeEnter' || g.introPhase === 'bikeStop';
   const isDismounting = g.introPhase === 'playerDismount';
-  const dismountProg = isDismounting ? Math.min(1, g.introTimer / 1.0) : 0;
+  const dismountProg = isDismounting ? Math.min(1, g.introTimer / 1.4) : 0;
 
   renderMotorcycle(ctx, bike, g, showPassenger, isDismounting, dismountProg);
 

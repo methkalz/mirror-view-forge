@@ -314,31 +314,42 @@ export function updateIntro(g: GameData, dt: number) {
       break;
     }
     case 'playerDismount': {
-      // Player walks away from bike to the right
+      // Physics-based dismount with gravity
       bike.shakeOffset = {
-        x: (Math.random() - 0.5) * 0.6,
-        y: (Math.random() - 0.5) * 0.3,
+        x: (Math.random() - 0.5) * 0.4,
+        y: (Math.random() - 0.5) * 0.2,
       };
-      const dismountSpeed = 60;
-      g.introPlayerOffset += dismountSpeed * dt;
-      g.player.pos.x = bike.pos.x + g.introPlayerOffset;
+      
+      // Slower dismount for more cinematic feel
+      const dismountDuration = 1.4;
+      const dp = Math.min(1, g.introTimer / dismountDuration);
+      
+      // Track player position based on dismount phase
+      if (dp < 0.55) {
+        // Still near bike
+        g.player.pos.x = bike.pos.x;
+      } else {
+        // Landing — smoothly interpolate to final position
+        const landT = (dp - 0.55) / 0.45;
+        const easeOut = 1 - (1 - landT) * (1 - landT);
+        g.introPlayerOffset = easeOut * 35;
+        g.player.pos.x = bike.pos.x + g.introPlayerOffset;
+      }
       g.player.facingRight = true;
-      g.player.anim = 'walk';
-      g.player.animTimer += dt;
 
-      // Camera starts pulling back
+      // Camera tracks midpoint
       g.cameraFocusX = (bike.pos.x + g.player.pos.x) / 2;
 
-      if (g.introTimer > 1.0) {
-        // Precisely set player position at dismount end to avoid jump
-        g.player.pos.x = bike.pos.x + g.introPlayerOffset;
+      if (g.introTimer > dismountDuration) {
+        // Precisely set player position at dismount end
+        g.player.pos.x = bike.pos.x + 35;
         g.player.pos.y = g.player.groundY;
         g.introPhase = 'bikeLeave';
         g.introTimer = 0;
         bike.phase = 'leaving';
         bike.speed = 0;
         bike.facingRight = true;
-        g.cameraZoomTarget = 1.0; // zoom out
+        g.cameraZoomTarget = 1.0;
         g.player.anim = 'idle';
       }
       break;
