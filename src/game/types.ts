@@ -325,6 +325,10 @@ export interface GameData {
   cameraFocusX: number;
   cameraFocusY: number;
   bikeZoomTimer: number;
+  // Wave recipe system
+  waveEndSlowMo: number;
+  waveFinale: boolean;
+  activeHazardCount: number;
 }
 
 export interface InputState {

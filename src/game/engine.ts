@@ -122,6 +122,9 @@ export function createGame(w: number, h: number): GameData {
     cameraFocusX: w / 2,
     cameraFocusY: h * GROUND_RATIO,
     bikeZoomTimer: 0,
+    waveEndSlowMo: 0,
+    waveFinale: false,
+    activeHazardCount: 0,
   };
 }
 
@@ -221,6 +224,9 @@ export function resetGame(g: GameData) {
   g.selectedUpgrade = null;
   g.cardsShownTimer = 0;
   g.waveElapsed = 0;
+  g.waveEndSlowMo = 0;
+  g.waveFinale = false;
+  g.activeHazardCount = 0;
 }
 
 function dist(a: Vec2, b: Vec2): number {
@@ -273,7 +279,86 @@ function spawnAmbientParticle(g: GameData) {
   g.ambientParticles.push(ap);
 }
 
+const MAX_MISSILE_SPEED = 450; // missile can't cross screen in < 0.8s
+
+// ===== WAVE RECIPE SYSTEM =====
+interface WaveRecipe {
+  threats: HazardType[];
+  maxConcurrent: number;
+  spawnInterval: number;
+  droneInterval: number;
+  droneTiers: DroneTier[];
+  clusterSplits: number;
+  bulletLevel: number;
+  phaseInDelay: number;
+  hasChemical?: boolean;
+  hasIncendiary?: boolean;
+  hasBoss?: boolean;
+}
+
+function getWaveRecipe(wave: number): WaveRecipe {
+  if (wave <= 1) return { threats: ['shrapnel'], maxConcurrent: 3, spawnInterval: 2.5, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 1, phaseInDelay: 0 };
+  if (wave === 2) return { threats: ['shrapnel', 'missile'], maxConcurrent: 4, spawnInterval: 2.2, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 1, phaseInDelay: 12 };
+  if (wave === 3) return { threats: ['shrapnel', 'missile'], maxConcurrent: 5, spawnInterval: 2.0, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 2, phaseInDelay: 0 };
+  // Wave 4 — "psychological" wave, easier than 3!
+  if (wave === 4) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 4, spawnInterval: 2.1, droneInterval: 0, droneTiers: [], clusterSplits: 2, bulletLevel: 2, phaseInDelay: 15 };
+  // Wave 5 — "shock" with scout drones
+  if (wave === 5) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.8, droneInterval: 22, droneTiers: ['scout'], clusterSplits: 2, bulletLevel: 2, phaseInDelay: 12 };
+  if (wave === 6) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.7, droneInterval: 20, droneTiers: ['scout'], clusterSplits: 3, bulletLevel: 2, phaseInDelay: 0 };
+  if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.6, droneInterval: 18, droneTiers: ['scout', 'tracker'], clusterSplits: 3, bulletLevel: 2, phaseInDelay: 12 };
+  if (wave === 8) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.5, droneInterval: 16, droneTiers: ['scout', 'tracker'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15 };
+  if (wave === 9) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 8, spawnInterval: 1.4, droneInterval: 14, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 12 };
+  if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 8, spawnInterval: 1.3, droneInterval: 14, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15, hasChemical: true };
+  if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 9, spawnInterval: 1.2, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15, hasIncendiary: true };
+  if (wave === 12) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 5, bulletLevel: 3, phaseInDelay: 12, hasBoss: true, hasChemical: true, hasIncendiary: true };
+  // Wave 13+: everything, gradual scaling
+  const extra = wave - 12;
+  return {
+    threats: ['shrapnel', 'missile', 'cluster'],
+    maxConcurrent: Math.min(12, 10 + Math.floor(extra / 2)),
+    spawnInterval: Math.max(0.6, 0.9 - extra * 0.03),
+    droneInterval: Math.max(8, 11 - extra * 0.5),
+    droneTiers: ['scout', 'tracker', 'bomber'] as DroneTier[],
+    clusterSplits: Math.min(6, 5 + Math.floor(extra / 3)),
+    bulletLevel: 3,
+    phaseInDelay: 0,
+    hasBoss: extra % 3 === 0,
+    hasChemical: true,
+    hasIncendiary: true,
+  };
+}
+
+// Warning messages for new threats introduced in each wave
+const WAVE_WARNINGS: Record<number, { id: string; text: string; sub: string; color: string; type: 'warning' | 'upgrade' }[]> = {
+  1: [{ id: 'w1_shrapnel', text: '\u26A0 تحذير: شظايا متساقطة!', sub: 'SHRAPNEL INCOMING', color: '#ef4444', type: 'warning' }],
+  2: [{ id: 'w2_missile', text: '\u26A0 تحذير: صواريخ قادمة!', sub: 'MISSILES DETECTED', color: '#dc2626', type: 'warning' }],
+  3: [{ id: 'w3_bullet2', text: '\u2B06 تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e', type: 'upgrade' }],
+  4: [{ id: 'w4_cluster', text: '\u26A0 تحذير: صواريخ متشظية!', sub: 'SPLITTING MISSILES INCOMING', color: '#f43f5e', type: 'warning' }],
+  5: [{ id: 'w5_drone', text: '\u26A0 تحذير: طائرات استطلاع!', sub: 'SCOUT DRONES APPROACHING', color: '#ef4444', type: 'warning' }],
+  6: [{ id: 'w6_cluster3', text: '\u26A0 تحذير: تشظي ثلاثي!', sub: 'TRIPLE SPLIT MISSILES', color: '#ef4444', type: 'warning' }],
+  7: [{ id: 'w7_tracker', text: '\u26A0 تحذير: طائرات تتبع!', sub: 'TRACKER DRONES INBOUND', color: '#dc2626', type: 'warning' }],
+  8: [
+    { id: 'w8_bullet3', text: '\u2B06 تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#22c55e', type: 'upgrade' },
+    { id: 'w8_cluster4', text: '\u26A0 تحذير: تشظي رباعي!', sub: 'QUAD SPLIT MISSILES', color: '#dc2626', type: 'warning' },
+  ],
+  9: [{ id: 'w9_bomber', text: '\u26A0 تحذير: قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444', type: 'warning' }],
+  10: [
+    { id: 'w10_gasmask', text: '\u2B06 إمدادات: كمامة غاز!', sub: 'GAS MASK DROPPED', color: '#16a34a', type: 'upgrade' },
+    { id: 'w10_chemical', text: '\u26A0 تحذير: طائرات كيميائية!', sub: 'CHEMICAL DRONES — TOXIC GAS', color: '#15803d', type: 'warning' },
+  ],
+  11: [
+    { id: 'w11_extinguisher', text: '\u2B06 إمدادات: طفاية حريق!', sub: 'FIRE EXTINGUISHER DROPPED', color: '#f97316', type: 'upgrade' },
+    { id: 'w11_incendiary', text: '\u26A0 تحذير: طائرات حارقة!', sub: 'INCENDIARY DRONES — FIRE HAZARD', color: '#ea580c', type: 'warning' },
+  ],
+  12: [
+    { id: 'w12_boss', text: '\u26A0 تحذير: طائرة حربية!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626', type: 'warning' },
+    { id: 'w12_cluster5', text: '\u26A0 تحذير: تشظي خماسي!', sub: 'MAX SPLIT — DANGER', color: '#991b1b', type: 'warning' },
+  ],
+};
+
 function spawnHazard(g: GameData, type: HazardType) {
+  const recipe = getWaveRecipe(g.waveNumber);
+
   const h = getFromPool<Hazard>(g.hazards, () => ({
     active: false, type: 'shrapnel', pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
     speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
@@ -281,7 +366,7 @@ function spawnHazard(g: GameData, type: HazardType) {
   }));
   const groundY = g.height * GROUND_RATIO;
   const tx = 30 + Math.random() * (g.width - 60);
-  const ty = groundY - 5 + Math.random() * 10; // Impacts near ground level
+  const ty = groundY - 5 + Math.random() * 10;
   h.type = type;
   h.targetPos = { x: tx, y: ty };
   h.pos = { x: tx + (Math.random() - 0.5) * 80, y: -40 };
@@ -292,27 +377,26 @@ function spawnHazard(g: GameData, type: HazardType) {
 
   switch (type) {
     case 'shrapnel':
-      h.speed = 280 + g.difficulty * 20 + Math.random() * 140;
+      h.speed = Math.min(280 + g.difficulty * 20 + Math.random() * 140, MAX_MISSILE_SPEED * 0.8);
       h.size = 8;
       h.damage = 10;
       h.warningDuration = 0.7;
       break;
     case 'missile':
-      h.speed = 160 + g.difficulty * 15 + Math.random() * 100;
+      h.speed = Math.min(160 + g.difficulty * 15 + Math.random() * 100, MAX_MISSILE_SPEED);
       h.size = 12;
       h.damage = 22;
       h.warningDuration = 1.2;
       break;
     case 'cluster': {
-      // Horizontal flying ballistic missile with arc trajectory
       const fromRight = Math.random() > 0.5;
       const startX = fromRight ? g.width + 40 : -40;
       const flyY = g.height * (0.12 + Math.random() * 0.2);
       h.pos = { x: startX, y: flyY };
       h.targetPos = { x: g.width / 2, y: flyY };
-      const baseSpeed = 120 + g.difficulty * 5 + Math.random() * 40;
+      const baseSpeed = Math.min(120 + g.difficulty * 5 + Math.random() * 40, MAX_MISSILE_SPEED * 0.7);
       h.clusterVelX = fromRight ? -baseSpeed : baseSpeed;
-      h.clusterVelY = -(10 + Math.random() * 15); // gentle upward arc initially
+      h.clusterVelY = -(10 + Math.random() * 15);
       h.clusterStartSpeed = baseSpeed;
       h.clusterPhase = 'flying';
       h.clusterTimer = 0;
@@ -321,13 +405,12 @@ function spawnHazard(g: GameData, type: HazardType) {
       h.damage = 16;
       h.warningDuration = 0;
       h.warningTimer = 0;
-      h.falling = true; // skip warning phase
+      h.falling = true;
       break;
     }
   }
   h.warningTimer = h.warningDuration;
-  // Avoid repetitive heartbeat-like beeps from frequent shrapnel spawns
-  // warning sound disabled for regular hazard spawns to avoid repetitive heartbeat-like beeps
+  g.activeHazardCount++;
 }
 
 function spawnPowerUp(g: GameData) {
@@ -542,37 +625,23 @@ function queueWaveEvent(
 function applyWaveEvent(g: GameData, id: string) {
   g.activatedWaveEvents.add(id);
 
-  if (id === 'shrapnel_start') {
-    spawnHazard(g, 'shrapnel');
-    return;
-  }
+  // Spawn initial hazard for demonstration
+  if (id.includes('shrapnel')) { spawnHazard(g, 'shrapnel'); return; }
+  if (id.includes('missile') && !id.includes('cluster')) { spawnHazard(g, 'missile'); return; }
+  if (id.includes('cluster') && !id.includes('split')) { spawnHazard(g, 'cluster'); return; }
 
-  if (id === 'missiles') {
-    spawnHazard(g, 'missile');
-    return;
-  }
+  // Bullet level upgrades
+  if (id.includes('bullet2')) { g.bulletLevel = Math.max(g.bulletLevel, 2); return; }
+  if (id.includes('bullet3')) { g.bulletLevel = Math.max(g.bulletLevel, 3); return; }
 
-  if (id === 'clusters') {
-    spawnHazard(g, 'cluster');
-    return;
-  }
-
-  if (id === 'bullet_2') {
-    g.bulletLevel = Math.max(g.bulletLevel, 2);
-    return;
-  }
-
-  if (id === 'bullet_3') {
-    g.bulletLevel = Math.max(g.bulletLevel, 3);
-    return;
-  }
-
-  if (id === 'drones_scout') {
+  // Drone spawns
+  if (id.includes('drone') && !id.includes('incendiary') && !id.includes('chemical')) {
     g.droneTimer = Math.min(g.droneTimer, 2 + Math.random() * 3);
     return;
   }
 
-  if (id === 'boss_warn') {
+  // Boss
+  if (id.includes('boss')) {
     if (!g.boss) {
       spawnBoss(g, false);
       g.bossTimer = 240 + g.bossCount * 30;
@@ -580,60 +649,39 @@ function applyWaveEvent(g: GameData, id: string) {
     return;
   }
 
-  if (id === 'boss_prep') {
-    for (const t of ['ammo', 'medkit'] as PowerUpType[]) {
-      const pu = getFromPool<PowerUp>(g.powerUps, () => ({
-        active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
-        parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
-      }), 20);
-      pu.type = t;
-      pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
-      pu.size = 14;
-      pu.parachuting = true;
-      pu.fallSpeed = 35;
-      pu.bobTimer = 0;
-      pu.groundTimer = 0;
-    }
-    return;
-  }
-
-  if (id === 'extinguisher_prep') {
+  // Extinguisher drop
+  if (id.includes('extinguisher')) {
     const pu = getFromPool<PowerUp>(g.powerUps, () => ({
       active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
       parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
     }), 20);
     pu.type = 'extinguisher';
     pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
-    pu.size = 14;
-    pu.parachuting = true;
-    pu.fallSpeed = 30;
-    pu.bobTimer = 0;
-    pu.groundTimer = 0;
+    pu.size = 14; pu.parachuting = true; pu.fallSpeed = 30; pu.bobTimer = 0; pu.groundTimer = 0;
     return;
   }
 
-  if (id === 'gasmask_prep') {
+  // Gas mask drop
+  if (id.includes('gasmask')) {
     const pu = getFromPool<PowerUp>(g.powerUps, () => ({
       active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
       parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
     }), 20);
     pu.type = 'gasmask';
     pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
-    pu.size = 14;
-    pu.parachuting = true;
-    pu.fallSpeed = 30;
-    pu.bobTimer = 0;
-    pu.groundTimer = 0;
+    pu.size = 14; pu.parachuting = true; pu.fallSpeed = 30; pu.bobTimer = 0; pu.groundTimer = 0;
     return;
   }
 
-  if (id === 'drones_incendiary') {
+  // Incendiary drones
+  if (id.includes('incendiary')) {
     g.incendiaryTimer = Math.min(g.incendiaryTimer, 2 + Math.random() * 3);
     spawnIncendiaryDrone(g);
     return;
   }
 
-  if (id === 'drones_chemical') {
+  // Chemical drones
+  if (id.includes('chemical')) {
     g.chemicalTimer = Math.min(g.chemicalTimer, 2 + Math.random() * 3);
     spawnChemicalDrone(g);
     return;
@@ -705,6 +753,7 @@ function handleInterceptor(g: GameData) {
     spawnParticles(g, explodePos, 15, '#f97316', 200);
     addExplosion(g, explodePos, h.size * 2);
     h.active = false;
+    g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
   }
   const activeDrones = g.drones.filter(d => d.active)
     .sort((a, b) => dist(a.pos, g.player.pos) - dist(b.pos, g.player.pos));
@@ -861,32 +910,99 @@ function updateDeliveryBike(g: GameData, dt: number) {
   }
 }
 
-function updateWaveSystem(g: GameData, input: InputState, dt: number) {
-  if (g.wavePhase === 'active') {
-    g.waveTimer -= dt;
-    if (g.waveTimer <= 0) {
-      // Start clearing phase
-      g.wavePhase = 'clearing';
-      // Stop spawning — drones fly away
-      for (const d of g.drones) {
-        if (d.active && d.tier !== 'cargo') {
-          // Force drones to leave
-          const exitDir = d.pos.x < g.width / 2 ? -1 : 1;
-          d.vel.x = exitDir * d.speed * 3;
-          d.vel.y = -d.speed;
+function startNextWave(g: GameData) {
+  g.waveNumber++;
+  g.levelNumber = Math.floor((g.waveNumber - 1) / 3) + 1;
+  g.waveTimer = 60 + Math.random() * 10;
+  g.waveElapsed = 0;
+  g.waveFinale = false;
+  g.wavePhase = 'active';
+
+  // Apply recipe settings for this wave
+  const recipe = getWaveRecipe(g.waveNumber);
+  g.bulletLevel = Math.max(g.bulletLevel, recipe.bulletLevel);
+
+  // Queue wave warnings for new threats
+  const warnings = WAVE_WARNINGS[g.waveNumber];
+  if (warnings) {
+    for (const w of warnings) {
+      if (!g.waveTriggered.has(w.id)) {
+        // Delay warnings by phaseInDelay
+        const delay = recipe.phaseInDelay || 0;
+        if (delay > 0) {
+          // Will be triggered later by wave elapsed check
+        } else {
+          queueWaveEvent(g, { ...w, duration: 2.0 });
         }
       }
     }
+  }
+}
+
+function updateWaveSystem(g: GameData, input: InputState, dt: number) {
+  // === Wave End Slow-Mo ===
+  if (g.waveEndSlowMo > 0) {
+    g.waveEndSlowMo -= dt;
+    g.slowMoFactor = 0.2;
+    // Player moves at 0.7x during slow-mo (feels powerful)
+    if (g.waveEndSlowMo <= 0) {
+      g.slowMoFactor = 1;
+      // Now enter clearing
+      g.wavePhase = 'clearing';
+      // Force-clear hazards immediately
+      for (const h of g.hazards) {
+        if (h.active) {
+          addExplosion(g, h.pos, h.size * 1.5);
+          h.active = false;
+          g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
+        }
+      }
+      // Force drones to leave at 5x speed
+      for (const d of g.drones) {
+        if (d.active && d.tier !== 'cargo') {
+          const exitDir = d.pos.x < g.width / 2 ? -1 : 1;
+          d.vel.x = exitDir * d.speed * 5;
+          d.vel.y = -d.speed * 2;
+        }
+      }
+    }
+    return;
+  }
+
+  if (g.wavePhase === 'active') {
+    g.waveTimer -= dt;
+
+    // Wave Finale — last 5 seconds
+    if (g.waveTimer <= 5 && !g.waveFinale) {
+      g.waveFinale = true;
+    }
+
+    if (g.waveTimer <= 0) {
+      g.waveFinale = false;
+      // Cinematic slow-mo transition
+      g.waveEndSlowMo = 2.0;
+      g.slowMoFactor = 0.2;
+      return;
+    }
   } else if (g.wavePhase === 'clearing') {
-    // Force-clear all parachuting powerups, fire pools, gas clouds
+    // Force-clear all powerups, fire pools, gas clouds
     for (const pu of g.powerUps) { if (pu.active) pu.active = false; }
     g.firePools.length = 0;
     g.gasClouds.length = 0;
 
-    // Wait for all hazards & drones to clear
-    const activeHazards = g.hazards.filter(h => h.active).length;
+    // Force-clear drones that left screen
+    for (const d of g.drones) {
+      if (d.active && d.tier !== 'cargo') {
+        if (d.pos.x < -60 || d.pos.x > g.width + 60 || d.pos.y < -60) {
+          d.active = false;
+        }
+      }
+    }
+
+    // Check if scene is clear
     const activeDrones = g.drones.filter(d => d.active && d.tier !== 'cargo').length;
-    if (activeHazards === 0 && activeDrones === 0) {
+    if (g.activeHazardCount <= 0 && activeDrones === 0) {
+      g.activeHazardCount = 0; // safety reset
       // Only show cards+bike at end of level (every 3 waves)
       if (g.waveNumber % 3 === 0) {
         g.wavePhase = 'cards';
@@ -894,20 +1010,7 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         g.cardsShownTimer = 0;
         g.selectedUpgrade = null;
       } else {
-        // Skip to next wave directly
-        g.wavePhase = 'active';
-        g.waveNumber++;
-        g.levelNumber = Math.floor((g.waveNumber - 1) / 3) + 1;
-        g.waveTimer = 60 + Math.random() * 10;
-        g.waveElapsed = 0;
-      }
-    }
-    // Force-clear drones that refuse to leave after 5s
-    for (const d of g.drones) {
-      if (d.active && d.tier !== 'cargo') {
-        if (d.pos.x < -60 || d.pos.x > g.width + 60 || d.pos.y < -60) {
-          d.active = false;
-        }
+        startNextWave(g);
       }
     }
   } else if (g.wavePhase === 'cards') {
@@ -917,7 +1020,6 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
     if (input.cardClick && g.upgradeCards.length > 0) {
       const { x, y } = input.cardClick;
       input.cardClick = null;
-      // Check which card was clicked — use same dimensions as renderer
       const cardW = 130, cardH = 185, gap = 12;
       const totalW = g.upgradeCards.length * cardW + (g.upgradeCards.length - 1) * gap;
       const startX = (g.width - totalW) / 2;
@@ -931,7 +1033,7 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
       }
     }
 
-    // Auto-select after 7s if player hasn't chosen
+    // Auto-select after 10s
     if (g.cardsShownTimer > 10 && g.upgradeCards.length > 0) {
       const randomCard = g.upgradeCards[Math.floor(Math.random() * g.upgradeCards.length)];
       applyUpgrade(g, randomCard.id);
@@ -939,34 +1041,27 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
   } else if (g.wavePhase === 'bike') {
     updateDeliveryBike(g, dt);
 
-    // Track bike focus point
     if (g.deliveryBike && g.deliveryBike.active) {
       g.cameraFocusX += (g.deliveryBike.pos.x - g.cameraFocusX) * 0.08;
       g.cameraFocusY += (g.deliveryBike.pos.y - 20 - g.cameraFocusY) * 0.08;
     }
 
-    // Zoom timer countdown
     if (g.bikeZoomTimer > 0) {
       g.bikeZoomTimer -= dt;
       if (g.bikeZoomTimer <= 0) {
-        g.cameraZoomTarget = 1.0; // zoom back out
+        g.cameraZoomTarget = 1.0;
       }
     }
 
-    // Smooth zoom lerp
     g.cameraZoom += (g.cameraZoomTarget - g.cameraZoom) * 0.04;
     if (Math.abs(g.cameraZoom - g.cameraZoomTarget) < 0.005) g.cameraZoom = g.cameraZoomTarget;
 
-    // When bike is done (left the screen), start next wave
+    // When bike leaves, start next wave
     if (!g.deliveryBike || !g.deliveryBike.active) {
       g.cameraZoom = 1.0;
       g.cameraZoomTarget = 1.0;
-      g.wavePhase = 'active';
-      g.waveNumber++;
-      g.levelNumber = Math.floor((g.waveNumber - 1) / 3) + 1;
-      g.waveTimer = 60 + Math.random() * 10;
-      g.waveElapsed = 0;
       g.selectedUpgrade = null;
+      startNextWave(g);
     }
   }
 }
@@ -1023,7 +1118,7 @@ export function update(g: GameData, input: InputState, dt: number) {
 
   g.elapsed += dt;
   g.waveElapsed += dt;
-  g.difficulty = 1 + g.elapsed / 60;
+  g.difficulty = 1 + g.elapsed / 120; // slower difficulty scaling
   if (g.wavePhase === 'active') g.score += Math.round(dt);
   g.windOffset = Math.sin(g.elapsed * 0.3) * 0.5;
 
@@ -1043,43 +1138,32 @@ export function update(g: GameData, input: InputState, dt: number) {
   resolvePendingWaveEvents(g);
 
   // === Slow-mo & Magnet timers ===
-  if (!g.cinematicWarning && g.slowMoTimer > 0) {
+  if (!g.cinematicWarning && g.waveEndSlowMo <= 0 && g.slowMoTimer > 0) {
     g.slowMoTimer -= dt;
     g.slowMoFactor = 0.3;
     if (g.slowMoTimer <= 0) { g.slowMoFactor = 1; g.slowMoTimer = 0; }
-  } else if (!g.cinematicWarning && g.slowMoTimer <= 0) {
+  } else if (!g.cinematicWarning && g.waveEndSlowMo <= 0 && g.slowMoTimer <= 0) {
     g.slowMoFactor = 1;
   }
   if (g.magnetTimer > 0) g.magnetTimer -= dt;
   if (g.magnetFlashTimer > 0) g.magnetFlashTimer -= dt;
 
-  // === Wave warnings ===
-  // === Cinematic warning system ===
-  const waveEvents: { time: number; id: string; text: string; sub: string; color: string; duration: number; type: 'warning' | 'upgrade' }[] = [
-    { time: 3, id: 'shrapnel_start', text: '⚠ تحذير: شظايا متساقطة!', sub: 'SHRAPNEL INCOMING', color: '#ef4444', duration: 2.0, type: 'warning' },
-    { time: g.missileStartTime, id: 'missiles', text: '⚠ تحذير: صواريخ قادمة!', sub: 'MISSILES DETECTED', color: '#dc2626', duration: 2.0, type: 'warning' },
-    { time: 75, id: 'clusters', text: '⚠ تحذير: صواريخ متشظية!', sub: 'SPLITTING MISSILES INCOMING', color: '#f43f5e', duration: 2.0, type: 'warning' },
-    { time: 85, id: 'drones_scout', text: '⚠ تحذير: طائرات استطلاع!', sub: 'SCOUT DRONES APPROACHING', color: '#ef4444', duration: 2.0, type: 'warning' },
-    { time: 115, id: 'bullet_2', text: '⬆ تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e', duration: 2.0, type: 'upgrade' },
-    { time: 125, id: 'cluster_3', text: '⚠ تحذير: تشظي ثلاثي!', sub: 'TRIPLE SPLIT MISSILES', color: '#ef4444', duration: 2.0, type: 'warning' },
-    { time: 150, id: 'drones_tracker', text: '⚠ تحذير: طائرات تتبع!', sub: 'TRACKER DRONES INBOUND', color: '#dc2626', duration: 2.0, type: 'warning' },
-    { time: 190, id: 'bullet_3', text: '⬆ تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#22c55e', duration: 2.0, type: 'upgrade' },
-    { time: 200, id: 'cluster_4', text: '⚠ تحذير: تشظي رباعي!', sub: 'QUAD SPLIT MISSILES', color: '#dc2626', duration: 2.0, type: 'warning' },
-    { time: 210, id: 'drones_bomber', text: '⚠ تحذير: قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444', duration: 2.0, type: 'warning' },
-    { time: 230, id: 'boss_warn', text: '⚠ تحذير: طائرة حربية!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626', duration: 2.0, type: 'warning' },
-    { time: 233, id: 'boss_prep', text: '⬆ تطوير: إمدادات طارئة!', sub: 'EMERGENCY SUPPLIES DROPPED', color: '#22c55e', duration: 2.0, type: 'upgrade' },
-    { time: 260, id: 'cluster_5', text: '⚠ تحذير: تشظي خماسي!', sub: 'MAX SPLIT — DANGER', color: '#991b1b', duration: 2.0, type: 'warning' },
-    { time: 240, id: 'extinguisher_prep', text: '⬆ إمدادات: طفاية حريق!', sub: 'FIRE EXTINGUISHER DROPPED', color: '#f97316', duration: 2.0, type: 'upgrade' },
-    { time: 245, id: 'drones_incendiary', text: '⚠ تحذير: طائرات حارقة!', sub: 'INCENDIARY DRONES — FIRE HAZARD', color: '#ea580c', duration: 2.0, type: 'warning' },
-    { time: 195, id: 'gasmask_prep', text: '⬆ إمدادات: كمامة غاز!', sub: 'GAS MASK DROPPED', color: '#16a34a', duration: 2.0, type: 'upgrade' },
-    { time: 200, id: 'drones_chemical', text: '⚠ تحذير: طائرات كيميائية!', sub: 'CHEMICAL DRONES — TOXIC GAS', color: '#15803d', duration: 2.0, type: 'warning' },
-  ];
-  for (const we of waveEvents) {
-    if (g.elapsed >= we.time && !g.waveTriggered.has(we.id)) {
-      if (g.cinematicWarning || g.pendingWaveEvents.length > 0 || g.elapsed < g.warningLockUntil) continue;
-      queueWaveEvent(g, we);
+  // === Wave-based warning system ===
+  const recipe = getWaveRecipe(g.waveNumber);
+  const warnings = WAVE_WARNINGS[g.waveNumber];
+  if (warnings && g.wavePhase === 'active') {
+    for (const w of warnings) {
+      if (g.waveTriggered.has(w.id)) continue;
+      // Check phaseInDelay — trigger after delay seconds into the wave
+      const delay = recipe.phaseInDelay || 0;
+      if (g.waveElapsed >= delay) {
+        if (!g.cinematicWarning && g.pendingWaveEvents.length === 0 && g.elapsed >= g.warningLockUntil) {
+          queueWaveEvent(g, { ...w, duration: 2.0 });
+        }
+      }
     }
   }
+
   // Update wave warnings
   for (let i = g.waveWarnings.length - 1; i >= 0; i--) {
     g.waveWarnings[i].life -= dt;
@@ -1222,32 +1306,50 @@ export function update(g: GameData, input: InputState, dt: number) {
 
   // Clouds removed — stars only
 
-  // === Spawn hazards (safety period + staggered types) ===
+  // === Spawn hazards — Recipe-based system ===
   if (g.elapsed >= 3 && !g.cinematicWarning && g.wavePhase === 'active') {
     g.spawnTimer -= dt;
     if (g.spawnTimer <= 0) {
+      const recipe = getWaveRecipe(g.waveNumber);
+
+      // Build available threat types based on recipe + phaseInDelay
       const types: HazardType[] = [];
-      if (g.activatedWaveEvents.has('shrapnel_start')) types.push('shrapnel', 'shrapnel');
-      if (g.activatedWaveEvents.has('missiles')) types.push('missile');
-      // Gradual cluster increase
-      if (g.activatedWaveEvents.has('clusters')) {
-        types.push('cluster');
-        if (g.difficulty >= 4) types.push('cluster');
-        if (g.difficulty >= 7) types.push('cluster');
+      for (const t of recipe.threats) {
+        // New threats (not in previous wave) respect phaseInDelay
+        const prevRecipe = g.waveNumber > 1 ? getWaveRecipe(g.waveNumber - 1) : { threats: [] as string[] };
+        const isNew = !prevRecipe.threats.includes(t);
+        if (isNew && g.waveElapsed < recipe.phaseInDelay) continue;
+        types.push(t as HazardType);
+        if (t === 'shrapnel') types.push('shrapnel'); // weight shrapnel higher
       }
 
       if (types.length === 0) {
         g.spawnTimer = 0.12;
-        return;
-      }
+      } else {
+        // Pity system — reduce maxConcurrent when player is low health
+        let effectiveMax = recipe.maxConcurrent;
+        if (g.player.health < 20) effectiveMax = Math.max(2, effectiveMax - 1);
+        if (g.player.health < 10) effectiveMax = Math.max(2, effectiveMax - 2);
 
-      const spawnRate = Math.max(0.5, 2.0 - g.difficulty * 0.12);
-      const bossMultiplier = g.boss && !g.boss.defeated ? 2.5 : 1;
-      g.spawnTimer = spawnRate * bossMultiplier;
+        // Wave Finale — boost for shrapnel only
+        if (g.waveFinale) effectiveMax += 3;
 
-      spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
-      if (g.difficulty >= 4 && Math.random() < 0.15 && !g.boss) {
-        spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
+        // Check activeHazardCount
+        if (g.activeHazardCount < effectiveMax) {
+          const type = types[Math.floor(Math.random() * types.length)];
+          // During finale, only spawn shrapnel for performance
+          if (g.waveFinale) {
+            spawnHazard(g, 'shrapnel');
+          } else {
+            spawnHazard(g, type);
+          }
+        }
+
+        // SpawnRate from recipe (finale = half interval for shrapnel)
+        let interval = recipe.spawnInterval;
+        if (g.waveFinale) interval *= 0.5;
+        const bossMultiplier = g.boss && !g.boss.defeated ? 2.5 : 1;
+        g.spawnTimer = interval * bossMultiplier;
       }
     }
   }
@@ -1291,6 +1393,7 @@ export function update(g: GameData, input: InputState, dt: number) {
         // Off-screen removal
         if (h.pos.x < -100 || h.pos.x > g.width + 100 || h.pos.y > g.height + 50) {
           h.active = false;
+          g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
         }
       } else if (h.clusterPhase === 'opening') {
         h.clusterTimer! -= dt;
@@ -1310,11 +1413,9 @@ export function update(g: GameData, input: InputState, dt: number) {
         // Keep moving at 50% speed while releasing
         h.pos.x += (h.clusterVelX! * 0.5) * g.slowMoFactor * dt;
 
-        // Release glowing bombs downward
-        let splitCount = 2;
-        if (g.activatedWaveEvents.has('cluster_3')) splitCount = 3;
-        if (g.activatedWaveEvents.has('cluster_4')) splitCount = 4;
-        if (g.activatedWaveEvents.has('cluster_5')) splitCount = 5;
+        // Release glowing bombs downward — use recipe cluster splits
+        const recipe = getWaveRecipe(g.waveNumber);
+        let splitCount = Math.max(2, recipe.clusterSplits);
 
         for (let i = 0; i < splitCount; i++) {
           const spreadX = (i - (splitCount - 1) / 2) * 35 + (Math.random() - 0.5) * 20;
@@ -1366,6 +1467,7 @@ export function update(g: GameData, input: InputState, dt: number) {
         h.clusterTimer! -= dt;
         if (h.clusterTimer! <= 0) {
           h.active = false;
+          g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
         }
       }
       continue; // skip normal hazard logic for clusters
@@ -1392,6 +1494,7 @@ export function update(g: GameData, input: InputState, dt: number) {
       if (d < 8) {
         // Impact
         h.active = false;
+        g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
         if (h.type === 'shrapnel') sfxImpactLight();
         else if (h.type === 'missile') sfxImpactHeavy();
         else sfxExplosion();
@@ -1541,6 +1644,7 @@ export function update(g: GameData, input: InputState, dt: number) {
               addExplosion(g, h.pos, h.size * 2);
               spawnParticles(g, h.pos, 6, '#f97316', 150);
               h.active = false;
+              g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
               g.score += 15;
             }
           }
@@ -1593,8 +1697,9 @@ export function update(g: GameData, input: InputState, dt: number) {
     }
   }
 
-  // === Incendiary Drones ===
-  if (g.activatedWaveEvents.has('drones_incendiary') && g.wavePhase === 'active') {
+  // === Incendiary Drones — Recipe-based ===
+  const recipeForDrones = getWaveRecipe(g.waveNumber);
+  if (recipeForDrones.hasIncendiary && g.wavePhase === 'active') {
     g.incendiaryTimer -= dt;
     if (g.incendiaryTimer <= 0) {
       g.incendiaryTimer = 25 + Math.random() * 15;
@@ -1602,8 +1707,8 @@ export function update(g: GameData, input: InputState, dt: number) {
     }
   }
 
-  // === Chemical Drones ===
-  if (g.activatedWaveEvents.has('drones_chemical') && g.wavePhase === 'active') {
+  // === Chemical Drones — Recipe-based ===
+  if (recipeForDrones.hasChemical && g.wavePhase === 'active') {
     g.chemicalTimer -= dt;
     if (g.chemicalTimer <= 0) {
       g.chemicalTimer = 30 + Math.random() * 20;
@@ -1664,17 +1769,15 @@ export function update(g: GameData, input: InputState, dt: number) {
     }
   }
 
-  // === Drones ===
-  if (g.activatedWaveEvents.has('drones_scout') && g.wavePhase === 'active') {
+  // === Drones — Recipe-based ===
+  if (recipeForDrones.droneInterval > 0 && g.wavePhase === 'active') {
     g.droneTimer -= dt;
     if (g.droneTimer <= 0) {
-      const hasTrackers = g.activatedWaveEvents.has('drones_tracker');
-      const hasBombers = g.activatedWaveEvents.has('drones_bomber');
-      const baseInterval = hasBombers ? 16 : hasTrackers ? 20 : 26;
-      const minInterval = hasBombers ? 8 : hasTrackers ? 10 : 12;
-      const interval = Math.max(minInterval, baseInterval - g.elapsed * 0.02);
-      g.droneTimer = interval + Math.random() * 4;
-      spawnDrone(g);
+      g.droneTimer = recipeForDrones.droneInterval + Math.random() * 4;
+      if (recipeForDrones.droneTiers.length > 0) {
+        const tier = recipeForDrones.droneTiers[Math.floor(Math.random() * recipeForDrones.droneTiers.length)];
+        spawnDrone(g, tier);
+      }
     }
   }
 
@@ -2030,6 +2133,7 @@ export function update(g: GameData, input: InputState, dt: number) {
       if (!h.active || !h.falling) continue;
       if (dist(b.pos, h.pos) < h.size + b.size + 4) {
         h.active = false;
+        g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
         sfxExplosion();
         addExplosion(g, h.pos, h.size * 2);
         spawnParticles(g, h.pos, 8, '#f97316', 150);
