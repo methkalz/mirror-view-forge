@@ -335,6 +335,7 @@ export interface GameData {
   introTimer: number;
   introBike: DeliveryBike | null;
   introPlayerOffset: number; // player's visual offset during dismount
+  introWaitDuration: number; // random wait time after bike leaves
   introPlayerJumpY: number; // vertical jump arc during dismount
   introTransitionTimer: number; // smooth fade between intro character and player
 }
