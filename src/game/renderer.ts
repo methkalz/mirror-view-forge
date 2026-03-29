@@ -3865,6 +3865,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderPowerUps(ctx, g);
   renderFirePools(ctx, g);
   renderDeliveryBike(ctx, g);
+  renderIntroBike(ctx, g);
   renderGasClouds(ctx, g);
   renderDrones(ctx, g);
   renderBoss(ctx, g);
