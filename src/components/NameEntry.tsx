@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { loadAudioSettings, startMenuMusic, stopMenuMusic } from '@/game/audio';
 
 interface BrandingConfig {
@@ -14,7 +14,6 @@ interface NameEntryProps {
   branding?: BrandingConfig;
 }
 
-// Spark particle
 interface Spark {
   x: number; y: number; vx: number; vy: number;
   life: number; maxLife: number; size: number;
@@ -25,6 +24,7 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   const [name, setName] = useState(defaultName);
   const [shake, setShake] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
+  const [focused, setFocused] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sparksRef = useRef<Spark[]>([]);
   const rafRef = useRef<number>(0);
@@ -34,44 +34,34 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   const subtitle = branding?.gameSubtitle || 'SURVIVAL';
   const developer = branding?.developerName || 'CAILOR GG';
   const logoUrl = branding?.logoUrl || null;
+  const hasName = name.trim().length > 0;
 
-  // Start menu music on mount
   useEffect(() => {
     const init = async () => {
       await loadAudioSettings();
       startMenuMusic();
       musicStarted.current = true;
     };
-    // Delay slightly for user gesture context
     const timer = setTimeout(init, 300);
-    return () => {
-      clearTimeout(timer);
-      stopMenuMusic();
-    };
+    return () => { clearTimeout(timer); stopMenuMusic(); };
   }, []);
 
-  // Spark particles canvas
+  // Spark particles
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
     resize();
     window.addEventListener('resize', resize);
 
-    // Initialize sparks
     const createSpark = (): Spark => ({
       x: Math.random() * canvas.width,
       y: canvas.height + Math.random() * 40,
       vx: (Math.random() - 0.5) * 1.5,
       vy: -(1 + Math.random() * 2.5),
-      life: 0,
-      maxLife: 80 + Math.random() * 120,
+      life: 0, maxLife: 80 + Math.random() * 120,
       size: 1 + Math.random() * 2.5,
-      hue: 15 + Math.random() * 30, // orange-gold range
+      hue: 15 + Math.random() * 30,
       brightness: 60 + Math.random() * 40,
     });
 
@@ -86,7 +76,6 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
       const sparks = sparksRef.current;
       for (let i = sparks.length - 1; i >= 0; i--) {
         const s = sparks[i];
@@ -94,16 +83,9 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
         s.x += s.vx + Math.sin(s.life * 0.02) * 0.3;
         s.y += s.vy;
         s.vy *= 0.998;
-
         const progress = s.life / s.maxLife;
         const alpha = progress < 0.1 ? progress * 10 : progress > 0.7 ? (1 - progress) / 0.3 : 1;
-
-        if (s.life >= s.maxLife) {
-          sparks[i] = createSpark();
-          continue;
-        }
-
-        // Glow
+        if (s.life >= s.maxLife) { sparks[i] = createSpark(); continue; }
         const glowSize = s.size * 4;
         const glow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, glowSize);
         glow.addColorStop(0, `hsla(${s.hue}, 100%, ${s.brightness}%, ${alpha * 0.6})`);
@@ -111,36 +93,26 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
         glow.addColorStop(1, `hsla(${s.hue}, 80%, 50%, 0)`);
         ctx.fillStyle = glow;
         ctx.fillRect(s.x - glowSize, s.y - glowSize, glowSize * 2, glowSize * 2);
-
-        // Core
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.size * (1 - progress * 0.5), 0, Math.PI * 2);
         ctx.fillStyle = `hsla(${s.hue}, 100%, ${s.brightness + 20}%, ${alpha * 0.9})`;
         ctx.fill();
       }
-
       rafRef.current = requestAnimationFrame(animate);
     };
     rafRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      cancelAnimationFrame(rafRef.current);
-      window.removeEventListener('resize', resize);
-      sparksRef.current = [];
-    };
+    return () => { cancelAnimationFrame(rafRef.current); window.removeEventListener('resize', resize); sparksRef.current = []; };
   }, []);
 
   const handleSubmit = useCallback(() => {
     const trimmed = name.trim();
-    if (!trimmed) {
-      setShake(true);
-      setTimeout(() => setShake(false), 500);
-      return;
-    }
+    if (!trimmed) { setShake(true); setTimeout(() => setShake(false), 500); return; }
     setFadeOut(true);
     stopMenuMusic();
     setTimeout(() => onSubmit(trimmed.slice(0, 20)), 400);
   }, [name, onSubmit]);
+
+  const bevelRadius = 6;
 
   return (
     <div style={{
@@ -149,12 +121,8 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
       background: 'radial-gradient(ellipse at 50% 40%, rgba(15,23,42,0.92) 0%, rgba(0,0,0,0.98) 100%)',
       opacity: fadeOut ? 0 : 1, transition: 'opacity 0.4s ease',
     }}>
-      {/* Spark Canvas */}
-      <canvas ref={canvasRef} style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
-      }} />
+      <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }} />
 
-      {/* Content */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
 
         {/* Logo or Title */}
@@ -165,14 +133,13 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           }} />
         ) : (
           <h1 style={{
-            fontFamily: "'Tajawal', 'SF Pro Display', system-ui, sans-serif",
+            fontFamily: "'Tajawal', system-ui, sans-serif",
             fontSize: 'clamp(32px, 8vw, 56px)',
             fontWeight: 900,
             color: 'transparent',
             backgroundImage: 'linear-gradient(180deg, #f8fafc 0%, #94a3b8 100%)',
             backgroundClip: 'text',
             WebkitBackgroundClip: 'text',
-            textShadow: 'none',
             marginBottom: 4,
             letterSpacing: -1,
             filter: 'drop-shadow(0 0 30px rgba(220,38,38,0.25))',
@@ -181,6 +148,7 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           </h1>
         )}
 
+        {/* Subtitle with flicker */}
         <p style={{
           fontFamily: "'Tajawal', system-ui, sans-serif",
           fontSize: 'clamp(10px, 2.5vw, 14px)',
@@ -188,34 +156,53 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           marginBottom: 36,
           letterSpacing: 6,
           textTransform: 'uppercase',
+          animation: 'subtitleFlicker 4s ease-in-out infinite',
         }}>
           {subtitle}
         </p>
 
-        {/* Glassmorphism Card */}
+        {/* Glass Card with HUD corners */}
         <div style={{
-          background: 'rgba(255,255,255,0.04)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-          borderRadius: 24,
-          border: '1px solid rgba(255,255,255,0.08)',
-          padding: '36px 28px',
-          width: 'min(330px, 85vw)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 20,
-          boxShadow: '0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 80px rgba(220,38,38,0.05)',
-          position: 'relative',
-          overflow: 'hidden',
+          background: 'rgba(255,255,255,0.03)',
+          backdropFilter: 'blur(32px)',
+          WebkitBackdropFilter: 'blur(32px)',
+          borderRadius: 20,
+          border: '1px solid rgba(255,255,255,0.1)',
+          padding: '40px 28px 36px',
+          width: 'min(340px, 88vw)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22,
+          boxShadow: '0 8px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 100px rgba(220,38,38,0.06)',
+          position: 'relative', overflow: 'hidden',
         }}>
-          {/* Subtle inner glow */}
+          {/* Inner glow */}
           <div style={{
-            position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)',
-            width: 200, height: 120, borderRadius: '50%',
-            background: 'radial-gradient(ellipse, rgba(220,38,38,0.08) 0%, transparent 70%)',
+            position: 'absolute', top: -80, left: '50%', transform: 'translateX(-50%)',
+            width: 260, height: 160, borderRadius: '50%',
+            background: 'radial-gradient(ellipse, rgba(220,38,38,0.1) 0%, transparent 70%)',
             pointerEvents: 'none',
           }} />
+
+          {/* HUD Corner brackets */}
+          {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map(pos => {
+            const isTop = pos.includes('top');
+            const isLeft = pos.includes('left');
+            return (
+              <div key={pos} style={{
+                position: 'absolute',
+                [isTop ? 'top' : 'bottom']: 8,
+                [isLeft ? 'left' : 'right']: 8,
+                width: 18, height: 18,
+                borderColor: 'rgba(220,38,38,0.35)',
+                borderStyle: 'solid',
+                borderWidth: 0,
+                ...(isTop && isLeft ? { borderTopWidth: 1.5, borderLeftWidth: 1.5 } : {}),
+                ...(isTop && !isLeft ? { borderTopWidth: 1.5, borderRightWidth: 1.5 } : {}),
+                ...(!isTop && isLeft ? { borderBottomWidth: 1.5, borderLeftWidth: 1.5 } : {}),
+                ...(!isTop && !isLeft ? { borderBottomWidth: 1.5, borderRightWidth: 1.5 } : {}),
+                pointerEvents: 'none',
+              }} />
+            );
+          })}
 
           <label style={{
             fontFamily: "'Tajawal', system-ui, sans-serif",
@@ -227,121 +214,116 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
             أدخل اسم البطل
           </label>
 
-          <input
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-            maxLength={20}
-            placeholder="HERO NAME"
-            autoFocus
-            style={{
-              width: '100%',
-              padding: '14px 16px',
-              borderRadius: 14,
-              border: `1.5px solid ${shake ? 'rgba(220,38,38,0.7)' : 'rgba(255,255,255,0.1)'}`,
-              background: 'rgba(0,0,0,0.35)',
-              color: '#f1f5f9',
-              fontSize: 18,
-              fontFamily: "'SF Pro', system-ui, sans-serif",
-              fontWeight: 600,
-              textAlign: 'center',
-              letterSpacing: 2,
-              outline: 'none',
-              transition: 'border-color 0.3s, box-shadow 0.3s',
-              boxShadow: shake ? '0 0 16px rgba(220,38,38,0.3)' : '0 2px 12px rgba(0,0,0,0.3)',
-              animation: shake ? 'shake 0.5s ease' : 'none',
-              zIndex: 1,
-            }}
-          />
+          {/* Input with beveled style */}
+          <div style={{ width: '100%', position: 'relative', zIndex: 1 }}>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              maxLength={20}
+              placeholder="HERO NAME"
+              autoFocus
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                borderRadius: bevelRadius,
+                border: `1.5px solid ${shake ? 'rgba(220,38,38,0.7)' : focused ? 'rgba(220,38,38,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                background: 'rgba(0,0,0,0.4)',
+                color: '#f1f5f9',
+                fontSize: 18,
+                fontFamily: "'Tajawal', system-ui, sans-serif",
+                fontWeight: 600,
+                textAlign: 'center',
+                outline: 'none',
+                transition: 'border-color 0.3s, box-shadow 0.3s',
+                boxShadow: shake
+                  ? '0 0 16px rgba(220,38,38,0.3)'
+                  : focused
+                    ? '0 0 20px rgba(220,38,38,0.15), inset 0 0 20px rgba(220,38,38,0.05)'
+                    : '0 2px 12px rgba(0,0,0,0.3)',
+                animation: shake ? 'shake 0.5s ease' : 'none',
+              }}
+            />
+          </div>
 
-          {/* Hexagonal Military Button */}
+          {/* Battle Button — Beveled Military */}
           <div style={{ width: '100%', position: 'relative', zIndex: 1 }}>
             <button
               onClick={handleSubmit}
-              onPointerDown={e => { if (name.trim()) (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'; }}
-              onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
-              onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
               style={{
                 width: '100%',
                 padding: '16px 24px',
-                border: 'none',
-                background: 'transparent',
-                color: name.trim() ? '#fff' : 'rgba(255,255,255,0.25)',
-                fontSize: 17,
+                borderRadius: bevelRadius,
+                border: hasName ? '1.5px solid rgba(220,38,38,0.6)' : '1.5px solid rgba(255,255,255,0.08)',
+                background: hasName
+                  ? 'linear-gradient(135deg, rgba(153,27,27,0.5) 0%, rgba(127,29,29,0.7) 50%, rgba(153,27,27,0.5) 100%)'
+                  : 'rgba(255,255,255,0.03)',
+                color: hasName ? '#fff' : 'rgba(255,255,255,0.25)',
+                fontSize: 18,
                 fontFamily: "'Tajawal', system-ui, sans-serif",
                 fontWeight: 800,
-                cursor: name.trim() ? 'pointer' : 'default',
+                cursor: hasName ? 'pointer' : 'default',
                 transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: 'scale(1)',
                 direction: 'rtl',
                 position: 'relative',
-                clipPath: 'polygon(12px 0%, calc(100% - 12px) 0%, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0% calc(100% - 12px), 0% 12px)',
-                textShadow: name.trim() ? '0 0 12px rgba(220,38,38,0.6)' : 'none',
                 overflow: 'hidden',
+                textShadow: hasName ? '0 0 16px rgba(220,38,38,0.7)' : 'none',
+                boxShadow: hasName
+                  ? '0 0 30px rgba(220,38,38,0.2), inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 20px rgba(0,0,0,0.4)'
+                  : 'none',
+                outline: 'none',
               }}
+              onPointerDown={e => { if (hasName) (e.currentTarget as HTMLElement).style.transform = 'scale(0.96)'; }}
+              onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+              onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
             >
-              {/* Button background */}
-              <div style={{
-                position: 'absolute', inset: 0,
-                background: name.trim()
-                  ? 'linear-gradient(135deg, rgba(220,38,38,0.2) 0%, rgba(127,29,29,0.3) 100%)'
-                  : 'rgba(255,255,255,0.03)',
-                transition: 'background 0.3s ease',
-              }} />
-
-              {/* Scan line effect */}
-              {name.trim() && (
+              {/* Energy pulse overlay */}
+              {hasName && (
                 <div style={{
-                  position: 'absolute', left: 0, right: 0,
-                  height: '2px',
-                  background: 'linear-gradient(90deg, transparent, rgba(220,38,38,0.5), transparent)',
-                  animation: 'scanLine 2.5s linear infinite',
+                  position: 'absolute', inset: 0,
+                  background: 'radial-gradient(ellipse at center, rgba(220,38,38,0.15) 0%, transparent 70%)',
+                  animation: 'energyPulse 2.5s ease-in-out infinite',
                   pointerEvents: 'none',
                 }} />
               )}
 
-              {/* Text */}
-              <span style={{ position: 'relative', zIndex: 2, letterSpacing: 0 }}>
-                ابدأ المعركة
+              {/* Scan line */}
+              {hasName && (
+                <div style={{
+                  position: 'absolute', left: 0, right: 0, height: 1,
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%)',
+                  animation: 'scanLine 3s linear infinite',
+                  pointerEvents: 'none',
+                }} />
+              )}
+
+              <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <span>ابدأ المعركة</span>
+                {hasName && <span style={{ fontSize: 16, opacity: 0.8 }}>⚔</span>}
               </span>
             </button>
-
-            {/* Hexagonal border overlay (SVG) */}
-            <svg
-              style={{
-                position: 'absolute', inset: 0, width: '100%', height: '100%',
-                pointerEvents: 'none', zIndex: 2,
-              }}
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-            >
-              <polygon
-                points="4,0 96,0 100,4 100,96 96,100 4,100 0,96 0,4"
-                fill="none"
-                stroke={name.trim() ? 'rgba(220,38,38,0.6)' : 'rgba(255,255,255,0.08)'}
-                strokeWidth="0.8"
-                style={{
-                  filter: name.trim() ? 'drop-shadow(0 0 4px rgba(220,38,38,0.4))' : 'none',
-                  transition: 'stroke 0.3s, filter 0.3s',
-                  animation: name.trim() ? 'borderPulse 2s ease-in-out infinite' : 'none',
-                }}
-              />
-            </svg>
           </div>
         </div>
 
         {/* Developer credit */}
-        <p style={{
-          marginTop: 32,
-          fontFamily: "'SF Pro', system-ui, sans-serif",
-          fontSize: 11,
-          color: 'rgba(100,116,139,0.5)',
-          letterSpacing: 2,
-          textTransform: 'uppercase',
-        }}>
-          Developed by {developer}
-        </p>
+        <div style={{ marginTop: 36, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 40, height: 1,
+            background: 'linear-gradient(90deg, transparent, rgba(100,116,139,0.3), transparent)',
+          }} />
+          <p style={{
+            fontFamily: "'Tajawal', system-ui, sans-serif",
+            fontSize: 11,
+            color: 'rgba(100,116,139,0.5)',
+            letterSpacing: 2,
+            textTransform: 'uppercase',
+          }}>
+            Developed by {developer}
+          </p>
+        </div>
       </div>
 
       <style>{`
@@ -358,9 +340,15 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           90% { opacity: 1; }
           100% { top: 100%; opacity: 0; }
         }
-        @keyframes borderPulse {
+        @keyframes energyPulse {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        @keyframes subtitleFlicker {
           0%, 100% { opacity: 0.6; }
-          50% { opacity: 1; }
+          50% { opacity: 0.85; }
+          70% { opacity: 0.5; }
+          85% { opacity: 0.75; }
         }
       `}</style>
     </div>
