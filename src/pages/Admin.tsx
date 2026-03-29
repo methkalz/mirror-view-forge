@@ -885,6 +885,19 @@ const BrandingPanel: React.FC<{
             </div>
           </div>
 
+          {/* Show Title Toggle (when logo exists) */}
+          {config.logoUrl && (
+            <div style={{ marginBottom: 20, padding: '14px 18px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 13, flex: 1, color: 'rgba(148,163,184,0.7)' }}>Show title text with logo</span>
+              <button onClick={() => onSave({ showTitle: !config.showTitle })} style={{
+                width: 42, height: 22, borderRadius: 11, border: 'none', cursor: 'pointer',
+                background: config.showTitle ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.08)', position: 'relative', transition: 'background 0.2s',
+              }}>
+                <div style={{ width: 18, height: 18, borderRadius: 9, background: config.showTitle ? '#60a5fa' : 'rgba(148,163,184,0.3)', position: 'absolute', top: 2, left: config.showTitle ? 22 : 2, transition: 'all 0.2s' }} />
+              </button>
+            </div>
+          )}
+
           <div style={{ marginBottom: 16 }}>
             <label style={labelStyle}>Game Title</label>
             <input value={config.gameTitle} onChange={e => onSave({ gameTitle: e.target.value })} style={inputStyle} />
@@ -908,7 +921,10 @@ const BrandingPanel: React.FC<{
         }}>
           <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.3)', marginBottom: 16, letterSpacing: 3 }}>PREVIEW</div>
           {config.logoUrl ? (
-            <img src={config.logoUrl} alt="Logo" style={{ width: 64, height: 64, objectFit: 'contain', marginBottom: 10 }} />
+            <div style={{ textAlign: 'center' }}>
+              <img src={config.logoUrl} alt="Logo" style={{ width: 64, height: 64, objectFit: 'contain', marginBottom: config.showTitle ? 6 : 10 }} />
+              {config.showTitle && <div style={{ fontSize: 18, fontWeight: 900, color: '#f1f5f9', marginBottom: 4 }}>{config.gameTitle}</div>}
+            </div>
           ) : (
             <div style={{ fontSize: 32, fontWeight: 900, color: '#f1f5f9', marginBottom: 6 }}>☄️ {config.gameTitle}</div>
           )}
