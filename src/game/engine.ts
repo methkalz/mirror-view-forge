@@ -1258,6 +1258,21 @@ export function update(g: GameData, input: InputState, dt: number) {
           }
           break;
         }
+        case 'extinguisher': {
+          // Extinguish all fire pools + 8s immunity
+          addFloatingText(g, 'EXTINGUISHER!', { x: p.pos.x, y: p.pos.y - 40 }, '#f97316');
+          spawnParticles(g, p.pos, 10, '#f97316', 90);
+          p.extinguisherTimer = 8;
+          // Clear all active fire pools
+          g.firePools.length = 0;
+          break;
+        }
+        case 'gasmask': {
+          addFloatingText(g, 'GAS MASK!', { x: p.pos.x, y: p.pos.y - 40 }, '#16a34a');
+          spawnParticles(g, p.pos, 10, '#16a34a', 90);
+          p.gasMaskTimer = 15;
+          break;
+        }
       }
     }
   }
