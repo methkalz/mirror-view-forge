@@ -3150,6 +3150,8 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderHazards(ctx, g);
   renderExplosions(ctx, g);
   renderPowerUps(ctx, g);
+  renderFirePools(ctx, g);
+  renderGasClouds(ctx, g);
   renderDrones(ctx, g);
   renderBoss(ctx, g);
   renderBullets(ctx, g);
