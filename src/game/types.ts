@@ -335,6 +335,8 @@ export interface GameData {
   introTimer: number;
   introBike: DeliveryBike | null;
   introPlayerOffset: number; // player's visual offset during dismount
+  introPlayerJumpY: number; // vertical jump arc during dismount
+  introTransitionTimer: number; // smooth fade between intro character and player
 }
 
 export interface InputState {

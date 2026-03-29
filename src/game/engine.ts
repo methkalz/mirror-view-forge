@@ -130,6 +130,8 @@ export function createGame(w: number, h: number): GameData {
     introTimer: 0,
     introBike: null,
     introPlayerOffset: 0,
+    introPlayerJumpY: 0,
+    introTransitionTimer: 0,
   };
 }
 
@@ -236,6 +238,8 @@ export function resetGame(g: GameData) {
   g.introPhase = 'bikeEnter';
   g.introTimer = 0;
   g.introPlayerOffset = 0;
+  g.introPlayerJumpY = 0;
+  g.introTransitionTimer = 0;
   const bikeStartX = -80;
   g.introBike = {
     active: true,
@@ -262,9 +266,10 @@ export function updateIntro(g: GameData, dt: number) {
   const bike = g.introBike;
   if (!bike) return;
 
-  // Smooth camera zoom
-  const zoomSpeed = 1.5;
-  g.cameraZoom += (g.cameraZoomTarget - g.cameraZoom) * zoomSpeed * dt;
+  // Cinematic easeOutExpo camera zoom
+  const zoomDiff = g.cameraZoomTarget - g.cameraZoom;
+  const easeOutZoom = 1 - Math.pow(0.005, dt * 2.5);
+  g.cameraZoom += zoomDiff * easeOutZoom;
 
   // Update wheel animation
   bike.wheelAnim += bike.speed * dt * 0.05;
@@ -299,14 +304,24 @@ export function updateIntro(g: GameData, dt: number) {
       break;
     }
     case 'bikeStop': {
-      // Brief pause, engine idling
-      bike.shakeOffset = {
-        x: (Math.random() - 0.5) * 0.6,
-        y: (Math.random() - 0.5) * 0.3,
-      };
+      // Organic Perlin-like idle vibration (multi-sine, not random)
+      const tS = g.elapsed;
+      const vibeX = Math.sin(tS * 12) * 0.3 + Math.sin(tS * 19) * 0.15 + Math.sin(tS * 31) * 0.08;
+      const vibeY = Math.sin(tS * 14) * 0.2 + Math.sin(tS * 23) * 0.1;
+      bike.shakeOffset = { x: vibeX, y: vibeY };
       g.cameraFocusX = bike.pos.x;
 
-      if (g.introTimer > 1.0) {
+      // Camera shake on brake impact — stronger, exponential decay
+      if (g.introTimer < dt * 2) {
+        g.screenShake = { x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 2 };
+      } else if (g.introTimer < 0.2) {
+        const decay = Math.pow(0.85, (g.introTimer / dt));
+        g.screenShake = { x: g.screenShake.x * decay, y: g.screenShake.y * decay };
+      } else {
+        g.screenShake = { x: 0, y: 0 };
+      }
+
+      if (g.introTimer > 1.2) {
         g.introPhase = 'playerDismount';
         g.introTimer = 0;
         g.introPlayerOffset = 0;
@@ -314,40 +329,76 @@ export function updateIntro(g: GameData, dt: number) {
       break;
     }
     case 'playerDismount': {
-      // Player walks away from bike to the right
-      bike.shakeOffset = {
-        x: (Math.random() - 0.5) * 0.6,
-        y: (Math.random() - 0.5) * 0.3,
-      };
-      const dismountSpeed = 60;
-      g.introPlayerOffset += dismountSpeed * dt;
-      g.player.pos.x = bike.pos.x + g.introPlayerOffset;
+      // Organic vibration continues (lighter)
+      const tD = g.elapsed;
+      const vibeXD = Math.sin(tD * 12) * 0.2 + Math.sin(tD * 19) * 0.1;
+      const vibeYD = Math.sin(tD * 14) * 0.1;
+      bike.shakeOffset = { x: vibeXD, y: vibeYD };
+      
+      // 4-phase professional dismount with BACKWARD jump arc
+      const dismountDuration = 1.8;
+      const dp = Math.min(1, g.introTimer / dismountDuration);
+      
+      // Phase 0: Anticipation [0→0.15] — still on bike
+      // Phase 1: Arc Leg Swing [0.15→0.40] — leg swings over seat
+      // Phase 2: Gravity Drop [0.40→0.70] — parabolic jump BEHIND bike
+      // Phase 3: Landing [0.70→1.0] — squat absorb + settle
+      if (dp < 0.15) {
+        // Still on bike, subtle weight shift
+        g.player.pos.x = bike.pos.x;
+        g.introPlayerJumpY = 0;
+      } else if (dp < 0.70) {
+        // Parabolic jump arc: up then down, moving BEHIND (left of) bike
+        const jumpT = (dp - 0.15) / 0.55; // 0→1 over phases 1+2
+        const horizontalEase = jumpT * jumpT * (3 - 2 * jumpT); // smoothstep
+        g.introPlayerOffset = -horizontalEase * 40; // negative = behind bike
+        g.player.pos.x = bike.pos.x + g.introPlayerOffset;
+        // Parabolic arc: initialVelocity * t - 0.5 * g * t²
+        const initialVelocity = 3.5;
+        const gravity = 5.0;
+        g.introPlayerJumpY = -(initialVelocity * jumpT - 0.5 * gravity * jumpT * jumpT) * 12;
+      } else {
+        // Landing phase: ease to final position
+        const landT = (dp - 0.70) / 0.30;
+        const easeOut = 1 - (1 - landT) * (1 - landT);
+        g.introPlayerOffset = -40 + easeOut * 5; // settle slightly
+        g.player.pos.x = bike.pos.x + g.introPlayerOffset;
+        g.introPlayerJumpY = 0; // on the ground
+      }
       g.player.facingRight = true;
-      g.player.anim = 'walk';
-      g.player.animTimer += dt;
 
-      // Camera starts pulling back
+      // Camera tracks midpoint
       g.cameraFocusX = (bike.pos.x + g.player.pos.x) / 2;
 
-      if (g.introTimer > 1.0) {
+      if (g.introTimer > dismountDuration) {
+        g.player.pos.x = bike.pos.x - 35;
+        g.player.pos.y = g.player.groundY;
         g.introPhase = 'bikeLeave';
         g.introTimer = 0;
+        g.introTransitionTimer = 0;
         bike.phase = 'leaving';
         bike.speed = 0;
         bike.facingRight = true;
-        g.cameraZoomTarget = 1.0; // zoom out
+        g.cameraZoomTarget = 1.0;
         g.player.anim = 'idle';
       }
       break;
     }
     case 'bikeLeave': {
+      // Smooth transition timer for fade between intro char and real player
+      g.introTransitionTimer += dt;
+      
       // Bike accelerates and leaves to the right
       bike.speed += 400 * dt;
       bike.pos.x += bike.speed * dt;
       bike.wheelAnim += bike.speed * dt * 0.05;
       bike.shakeOffset = { x: 0, y: 0 };
 
-      // Exhaust smoke while leaving
+      // Player looks at departing bike (faces right toward bike)
+      g.player.facingRight = true;
+      g.player.anim = 'idle';
+
+      // Camera follows player
       g.cameraFocusX = g.player.pos.x;
 
       if (bike.pos.x > g.width + 100) {
@@ -357,6 +408,7 @@ export function updateIntro(g: GameData, dt: number) {
         g.state = 'playing';
         g.cameraZoomTarget = 1.0;
         g.cameraZoom = 1.0;
+        g.player.facingRight = true; // reset facing for gameplay
       }
       break;
     }
