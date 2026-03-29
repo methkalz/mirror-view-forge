@@ -4,7 +4,7 @@ export interface Vec2 {
 }
 
 export type GameState = 'start' | 'intro' | 'playing' | 'gameover';
-export type IntroPhase = 'bikeEnter' | 'bikeStop' | 'playerDismount' | 'bikeLeave' | 'done';
+export type IntroPhase = 'bikeEnter' | 'bikeStop' | 'playerDismount' | 'bikeLeave' | 'playerWait' | 'done';
 
 export type HazardType = 'shrapnel' | 'missile' | 'cluster';
 export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike' | 'gasmask' | 'extinguisher' | 'water';
@@ -335,6 +335,7 @@ export interface GameData {
   introTimer: number;
   introBike: DeliveryBike | null;
   introPlayerOffset: number; // player's visual offset during dismount
+  introWaitDuration: number; // random wait time after bike leaves
   introPlayerJumpY: number; // vertical jump arc during dismount
   introTransitionTimer: number; // smooth fade between intro character and player
 }
