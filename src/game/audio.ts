@@ -1,5 +1,37 @@
+import { fetchAudioConfig, type AudioConfigEntry } from './config';
+
 let audioCtx: AudioContext | null = null;
 let ambientNode: AudioBufferSourceNode | null = null;
+
+// ─── Remote audio settings cache ───
+let audioSettings: Map<string, { volume: number; enabled: boolean }> = new Map();
+let settingsLoaded = false;
+
+export async function loadAudioSettings() {
+  try {
+    const entries = await fetchAudioConfig();
+    audioSettings.clear();
+    for (const e of entries) {
+      audioSettings.set(e.soundKey, { volume: e.volume, enabled: e.enabled });
+    }
+    settingsLoaded = true;
+  } catch {
+    settingsLoaded = false;
+  }
+}
+
+function getSoundVolume(key: string, baseVol: number): number {
+  const s = audioSettings.get(key);
+  if (!s) return baseVol;
+  if (!s.enabled) return 0;
+  return baseVol * s.volume;
+}
+
+function isSoundEnabled(key: string): boolean {
+  const s = audioSettings.get(key);
+  if (!s) return true;
+  return s.enabled;
+}
 
 /* ── iOS Silent-Mode bypass ── */
 let iosUnmuted = false;
@@ -43,6 +75,7 @@ function getCtx(): AudioContext {
 export function resumeAudio() {
   unmuteIOS();
   if (audioCtx?.state === 'suspended') audioCtx.resume();
+  if (!settingsLoaded) loadAudioSettings();
   startAmbient();
 }
 
