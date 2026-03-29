@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { GameData, InputState } from '@/game/types';
-import { createGame, resetGame, update } from '@/game/engine';
+import { createGame, resetGame, update, updateIntro } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
 import { resumeAudio } from '@/game/audio';
 
@@ -67,6 +67,9 @@ const SkyfallGame: React.FC = () => {
 
         if (g.state === 'start') {
           renderStartScreen(ctx, w, h, g.highScore);
+        } else if (g.state === 'intro') {
+          updateIntro(g, dt);
+          render(ctx, g);
         } else if (g.state === 'playing') {
           update(g, inputRef.current, dt);
           render(ctx, g);
