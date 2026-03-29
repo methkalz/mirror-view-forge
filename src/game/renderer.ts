@@ -2515,19 +2515,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.textAlign = 'right';
   ctx.fillText(`HI: ${g.highScore}`, w - 14, 42);
 
-  // ─ Wave ─
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 10px monospace';
-  ctx.textAlign = 'left';
-  const waveNum = Math.floor(g.difficulty);
-  const waveProgress = g.difficulty - waveNum;
-  ctx.fillText(`WAVE ${waveNum}`, 14, 44);
-  ctx.fillStyle = 'rgba(251, 191, 36, 0.15)';
-  roundRect(ctx, 14, 48, 60, 3, 1.5);
-  ctx.fill();
-  ctx.fillStyle = '#fbbf24';
-  roundRect(ctx, 14, 48, 60 * waveProgress, 3, 1.5);
-  ctx.fill();
+  // ─ Wave (removed — shown by renderWaveIndicator instead) ─
 
   // ─ Dash indicator ─
   if (p.dashCooldown > 0) {
