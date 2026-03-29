@@ -1259,6 +1259,7 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     interceptor:  { base: '#f97316', light: '#fb923c', dark: '#c2410c' },
     extinguisher: { base: '#dc2626', light: '#ef4444', dark: '#991b1b' },
     gasmask:      { base: '#16a34a', light: '#22c55e', dark: '#14532d' },
+    water:        { base: '#0ea5e9', light: '#38bdf8', dark: '#0284c7' },
   };
 
   for (const pu of g.powerUps) {
@@ -1544,6 +1545,7 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     else if (pu.type === 'interceptor') drawInterceptorIcon(ctx, iconScale);
     else if (pu.type === 'extinguisher') drawExtinguisherIcon(ctx, iconScale);
     else if (pu.type === 'gasmask') drawGasMaskIcon(ctx, iconScale);
+    else if (pu.type === 'water') drawWaterIcon(ctx, iconScale);
     ctx.restore();
 
     // ── Sparkles ──
@@ -3570,8 +3572,25 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
 
 // ─── Wave Indicator ───────────────────────────────────
 function renderWaveIndicator(ctx: CanvasRenderingContext2D, g: GameData) {
-  if (g.wavePhase !== 'active') return;
-  // Already shown in HUD wave section - just update the number
+  if (g.waveNumber < 1) return;
+  const w = g.width;
+  // Wave number badge top-center
+  const label = `WAVE ${g.waveNumber}`;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 10px monospace';
+  const tx = w / 2, ty = 14;
+  // Background pill
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  const tw = ctx.measureText(label).width + 16;
+  ctx.beginPath();
+  ctx.roundRect(tx - tw / 2, ty - 8, tw, 16, 8);
+  ctx.fill();
+  // Text
+  ctx.fillStyle = g.wavePhase === 'active' ? 'rgba(251,191,36,0.9)' : 'rgba(255,255,255,0.7)';
+  ctx.fillText(label, tx, ty);
+  ctx.restore();
 }
 
 // ─── Main Render ──────────────────────────────────────
