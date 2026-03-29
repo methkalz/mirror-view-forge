@@ -129,7 +129,8 @@ export function resetGame(g: GameData) {
   g.state = 'playing';
   g.player.pos = { x: g.width / 2, y: groundY };
   g.player.groundY = groundY;
-  g.player.health = g.player.maxHealth;
+  g.player.health = 100;
+  g.player.maxHealth = 100;
   g.player.shielded = false;
   g.player.shieldTimer = 0;
   g.player.dashCooldown = 0;
@@ -145,6 +146,13 @@ export function resetGame(g: GameData) {
   g.player.shootTimer = 0;
   g.player.gasMaskTimer = 0;
   g.player.extinguisherTimer = 0;
+  g.player.maxAmmo = 30;
+  g.player.speedMultiplier = 1;
+  g.player.slowMoDuration = 5;
+  g.player.shieldDuration = 8;
+  g.player.pickupRange = 5;
+  g.player.bulletDamage = 1;
+  g.player.dashCooldownBase = DASH_COOLDOWN;
   g.hazards.forEach(h => h.active = false);
   g.powerUps.forEach(p => p.active = false);
   g.particles.forEach(p => p.active = false);
@@ -198,6 +206,16 @@ export function resetGame(g: GameData) {
   g.gasClouds = [];
   g.incendiaryTimer = 160;
   g.chemicalTimer = 200;
+  // Wave system reset
+  g.waveNumber = 1;
+  g.wavePhase = 'active';
+  g.waveTimer = 60 + Math.random() * 10;
+  g.restTimer = 0;
+  g.deliveryBike = null;
+  g.upgradeCards = [];
+  g.selectedUpgrade = null;
+  g.cardsShownTimer = 0;
+  g.waveElapsed = 0;
 }
 
 function dist(a: Vec2, b: Vec2): number {
