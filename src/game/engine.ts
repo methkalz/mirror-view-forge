@@ -1,6 +1,7 @@
 import {
   GameData, InputState, Hazard, PowerUp, Particle, Vec2, Crater, FloatingText, Drone, Bullet,
-  HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning, Boss, DroneTier
+  HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning, Boss, DroneTier,
+  FirePool, GasCloud
 } from './types';
 import { getFromPool } from './pool';
 import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall } from './audio';
@@ -39,6 +40,8 @@ export function createGame(w: number, h: number): GameData {
       groundY,
       ammo: 0,
       shootTimer: 0,
+      gasMaskTimer: 0,
+      extinguisherTimer: 0,
     },
     hazards: [],
     powerUps: [],
@@ -93,6 +96,10 @@ export function createGame(w: number, h: number): GameData {
     deathPhase: 'alive',
     firstAmmoDropped: false,
     cargoTimer: 120,
+    firePools: [],
+    gasClouds: [],
+    incendiaryTimer: 160,
+    chemicalTimer: 200,
   };
 }
 
@@ -119,6 +126,8 @@ export function resetGame(g: GameData) {
   g.player.hitTimer = 0;
   g.player.ammo = 0;
   g.player.shootTimer = 0;
+  g.player.gasMaskTimer = 0;
+  g.player.extinguisherTimer = 0;
   g.hazards.forEach(h => h.active = false);
   g.powerUps.forEach(p => p.active = false);
   g.particles.forEach(p => p.active = false);
@@ -168,6 +177,10 @@ export function resetGame(g: GameData) {
   g.deathPhase = 'alive';
   g.firstAmmoDropped = false;
   g.cargoTimer = 120;
+  g.firePools = [];
+  g.gasClouds = [];
+  g.incendiaryTimer = 160;
+  g.chemicalTimer = 200;
 }
 
 function dist(a: Vec2, b: Vec2): number {
