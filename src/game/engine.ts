@@ -330,6 +330,9 @@ export function updateIntro(g: GameData, dt: number) {
       g.cameraFocusX = (bike.pos.x + g.player.pos.x) / 2;
 
       if (g.introTimer > 1.0) {
+        // Precisely set player position at dismount end to avoid jump
+        g.player.pos.x = bike.pos.x + g.introPlayerOffset;
+        g.player.pos.y = g.player.groundY;
         g.introPhase = 'bikeLeave';
         g.introTimer = 0;
         bike.phase = 'leaving';
