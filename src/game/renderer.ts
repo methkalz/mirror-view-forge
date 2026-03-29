@@ -3454,13 +3454,51 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
   ctx.moveTo(0, headY - 7);
   ctx.lineTo(0, headY - 3);
   ctx.stroke();
-  // Chin strap
+   // Chin strap
   ctx.strokeStyle = 'rgba(50,50,50,0.4)';
   ctx.lineWidth = 0.7;
   ctx.beginPath();
   ctx.moveTo(-5, headY - 2);
   ctx.quadraticCurveTo(-4, headY + 4, -2, headY + 5);
   ctx.stroke();
+
+  // ── Goggles (if enabled) ──
+  if (hasGoggles) {
+    // Goggle strap across helmet
+    ctx.strokeStyle = 'rgba(80,60,40,0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, headY - 1, 6.2, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.stroke();
+    // Left lens
+    ctx.fillStyle = 'rgba(180,220,255,0.5)';
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.ellipse(-2.5, headY - 3.5, 2.5, 1.8, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Right lens
+    ctx.beginPath();
+    ctx.ellipse(2.5, headY - 3.5, 2.5, 1.8, -0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Lens reflection
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(-2, headY - 4, 1, 0.6, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(3, headY - 4, 1, 0.6, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    // Bridge between lenses
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(-0.5, headY - 3.5);
+    ctx.lineTo(0.5, headY - 3.5);
+    ctx.stroke();
+  }
 
   // ── Eyes ──
   ctx.fillStyle = '#fff';
