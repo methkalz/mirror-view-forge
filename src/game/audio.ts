@@ -153,7 +153,19 @@ function playNoise(duration: number, vol = 0.08, filter?: { type: BiquadFilterTy
 function startAmbient() {
   if (ambientNode) return;
   if (!isSoundEnabled('ambient')) return;
-  const ctx = getCtx();
+  // Try custom ambient audio (looped)
+  const customBuf = audioBufferCache.get('ambient');
+  if (customBuf) {
+    const ctx = getCtx();
+    ambientNode = ctx.createBufferSource();
+    ambientNode.buffer = customBuf;
+    ambientNode.loop = true;
+    const gain = ctx.createGain();
+    gain.gain.value = getSoundVolume('ambient', 0.5);
+    ambientNode.connect(gain).connect(ctx.destination);
+    ambientNode.start();
+    return;
+  }
   const bufferSize = ctx.sampleRate * 2;
   const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
   const data = buffer.getChannelData(0);
