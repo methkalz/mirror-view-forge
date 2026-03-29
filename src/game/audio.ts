@@ -784,24 +784,22 @@ export async function startMenuMusic() {
 }
 
 export function stopMenuMusic() {
-  if (menuMusicNode) {
+  const node = menuMusicNode;
+  const gain = menuMusicGain;
+  menuMusicNode = null;
+  menuMusicGain = null;
+  if (node) {
     try {
-      if (menuMusicGain) {
+      if (gain) {
         const ctx = getCtx();
-        menuMusicGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
         setTimeout(() => {
-          try { menuMusicNode?.stop(); } catch {}
-          menuMusicNode = null;
-          menuMusicGain = null;
+          try { node.stop(); } catch {}
         }, 600);
       } else {
-        menuMusicNode.stop();
-        menuMusicNode = null;
+        node.stop();
       }
-    } catch {
-      menuMusicNode = null;
-      menuMusicGain = null;
-    }
+    } catch { /* already stopped */ }
   }
 }
 
