@@ -13,7 +13,7 @@ const Admin: React.FC = () => {
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'analytics' | 'config' | 'waves' | 'leaderboard' | 'audio'>('analytics');
+  const [tab, setTab] = useState<'analytics' | 'config' | 'branding' | 'waves' | 'leaderboard' | 'audio'>('analytics');
 
   // Config state
   const [config, setConfig] = useState<RemoteGameConfig | null>(null);
@@ -141,6 +141,7 @@ const Admin: React.FC = () => {
         {([
           { key: 'analytics' as const, icon: '📊', label: 'Analytics' },
           { key: 'config' as const, icon: '🎮', label: 'Config' },
+          { key: 'branding' as const, icon: '🎨', label: 'Brand' },
           { key: 'waves' as const, icon: '🌊', label: 'Waves' },
           { key: 'audio' as const, icon: '🔊', label: 'Audio' },
           { key: 'leaderboard' as const, icon: '🏆', label: 'Leaders' },
@@ -152,7 +153,7 @@ const Admin: React.FC = () => {
               flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', fontSize: 12, fontWeight: 600,
               background: tab === t.key ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
               color: tab === t.key ? '#60a5fa' : 'rgba(255,255,255,0.5)',
-              cursor: 'pointer', minWidth: 70,
+              cursor: 'pointer', minWidth: 60,
             }}
           >
             {t.icon} {t.label}
@@ -205,6 +206,11 @@ const Admin: React.FC = () => {
             </div>
           ))}
         </div>
+      )}
+
+      {/* BRANDING TAB */}
+      {tab === 'branding' && config && (
+        <BrandingPanel config={config} onSave={saveConfig} inputStyle={inputStyle} labelStyle={labelStyle} btnStyle={btnStyle} sectionStyle={sectionStyle} />
       )}
 
       {/* WAVES TAB */}
@@ -684,6 +690,99 @@ const AudioPanel: React.FC<{
           </div>
         );
       })}
+    </div>
+  );
+};
+
+// ─── Branding Panel ───
+const BrandingPanel: React.FC<{
+  config: RemoteGameConfig;
+  onSave: (updates: Partial<RemoteGameConfig>) => void;
+  inputStyle: React.CSSProperties;
+  labelStyle: React.CSSProperties;
+  btnStyle: (color: string) => React.CSSProperties;
+  sectionStyle: React.CSSProperties;
+}> = ({ config, onSave, inputStyle, labelStyle, sectionStyle }) => {
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoUpload = async (file: File) => {
+    setLogoUploading(true);
+    const ext = file.name.split('.').pop() || 'png';
+    const path = `logo_${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('game-audio').upload(path, file, { cacheControl: '3600', upsert: false });
+    if (!error) {
+      const { data } = supabase.storage.from('game-audio').getPublicUrl(path);
+      onSave({ logoUrl: data.publicUrl });
+    }
+    setLogoUploading(false);
+  };
+
+  return (
+    <div style={sectionStyle}>
+      <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>🎨 Branding — العلامة التجارية</h3>
+      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 20 }}>تحكم بالشعار والهوية البصرية لشاشة البداية</p>
+
+      {/* Logo */}
+      <div style={{ marginBottom: 20, padding: 16, borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <label style={labelStyle}>Logo — الشعار</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+          {config.logoUrl ? (
+            <img src={config.logoUrl} alt="Logo" style={{ width: 64, height: 64, objectFit: 'contain', borderRadius: 10, background: 'rgba(0,0,0,0.3)', padding: 6 }} />
+          ) : (
+            <div style={{ width: 64, height: 64, borderRadius: 10, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)', fontSize: 24 }}>☄️</div>
+          )}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f); e.target.value = ''; }} />
+            <button onClick={() => logoInputRef.current?.click()} disabled={logoUploading} style={{
+              padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+              background: 'rgba(59,130,246,0.2)', color: '#93c5fd',
+            }}>
+              {logoUploading ? '⏳ Uploading...' : '📁 Upload Logo'}
+            </button>
+            {config.logoUrl && (
+              <button onClick={() => onSave({ logoUrl: null })} style={{
+                padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
+                background: 'rgba(220,38,38,0.15)', color: '#fca5a5',
+              }}>✕ Remove Logo</button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Game Title */}
+      <div style={{ marginBottom: 14 }}>
+        <label style={labelStyle}>Game Title — اسم اللعبة</label>
+        <input value={config.gameTitle} onChange={e => onSave({ gameTitle: e.target.value })} style={inputStyle} />
+      </div>
+
+      {/* Subtitle */}
+      <div style={{ marginBottom: 14 }}>
+        <label style={labelStyle}>Subtitle — العنوان الفرعي</label>
+        <input value={config.gameSubtitle} onChange={e => onSave({ gameSubtitle: e.target.value })} style={inputStyle} />
+      </div>
+
+      {/* Developer Name */}
+      <div style={{ marginBottom: 14 }}>
+        <label style={labelStyle}>Developer Name — اسم المطور</label>
+        <input value={config.developerName} onChange={e => onSave({ developerName: e.target.value })} style={inputStyle} />
+      </div>
+
+      {/* Preview */}
+      <div style={{
+        marginTop: 20, padding: 20, borderRadius: 16, textAlign: 'center',
+        background: 'radial-gradient(ellipse at 50% 40%, rgba(15,23,42,0.95) 0%, rgba(0,0,0,0.98) 100%)',
+        border: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 10, letterSpacing: 2 }}>PREVIEW — معاينة</div>
+        {config.logoUrl ? (
+          <img src={config.logoUrl} alt="Logo" style={{ width: 60, height: 60, objectFit: 'contain', marginBottom: 6 }} />
+        ) : (
+          <div style={{ fontSize: 28, fontWeight: 900, color: '#f1f5f9', marginBottom: 2 }}>☄️ {config.gameTitle}</div>
+        )}
+        <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)', letterSpacing: 4, marginBottom: 8 }}>{config.gameSubtitle}</div>
+        <div style={{ fontSize: 9, color: 'rgba(100,116,139,0.4)', letterSpacing: 2 }}>Developed by {config.developerName}</div>
+      </div>
     </div>
   );
 };

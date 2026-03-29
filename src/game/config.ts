@@ -8,6 +8,12 @@ export interface RemoteGameConfig {
   difficultyMultiplier: number;
   ddaEnabled: boolean;
   globalPause: boolean;
+  // Branding
+  logoUrl: string | null;
+  gameTitle: string;
+  gameSubtitle: string;
+  developerName: string;
+  developerUrl: string | null;
 }
 
 export interface RemoteWaveConfig {
@@ -37,6 +43,11 @@ const DEFAULT_CONFIG: RemoteGameConfig = {
   difficultyMultiplier: 1.0,
   ddaEnabled: true,
   globalPause: false,
+  logoUrl: null,
+  gameTitle: 'SKYFALL',
+  gameSubtitle: 'SURVIVAL',
+  developerName: 'CAILOR GG',
+  developerUrl: null,
 };
 
 export async function fetchGameConfig(): Promise<RemoteGameConfig> {
@@ -54,6 +65,11 @@ export async function fetchGameConfig(): Promise<RemoteGameConfig> {
       difficultyMultiplier: data.difficulty_multiplier,
       ddaEnabled: data.dda_enabled,
       globalPause: data.global_pause,
+      logoUrl: (data as any).logo_url ?? null,
+      gameTitle: (data as any).game_title ?? 'SKYFALL',
+      gameSubtitle: (data as any).game_subtitle ?? 'SURVIVAL',
+      developerName: (data as any).developer_name ?? 'CAILOR GG',
+      developerUrl: (data as any).developer_url ?? null,
     };
   } catch {
     return DEFAULT_CONFIG;
@@ -265,6 +281,11 @@ export async function updateGameConfig(config: Partial<RemoteGameConfig>): Promi
   if (config.difficultyMultiplier !== undefined) mapped.difficulty_multiplier = config.difficultyMultiplier;
   if (config.ddaEnabled !== undefined) mapped.dda_enabled = config.ddaEnabled;
   if (config.globalPause !== undefined) mapped.global_pause = config.globalPause;
+  if (config.logoUrl !== undefined) mapped.logo_url = config.logoUrl;
+  if (config.gameTitle !== undefined) mapped.game_title = config.gameTitle;
+  if (config.gameSubtitle !== undefined) mapped.game_subtitle = config.gameSubtitle;
+  if (config.developerName !== undefined) mapped.developer_name = config.developerName;
+  if (config.developerUrl !== undefined) mapped.developer_url = config.developerUrl;
 
   const { data: rows } = await supabase.from('game_config').select('id').limit(1);
   if (!rows || rows.length === 0) return false;

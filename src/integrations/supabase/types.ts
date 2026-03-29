@@ -98,30 +98,45 @@ export type Database = {
         Row: {
           base_speed: number
           dda_enabled: boolean
+          developer_name: string
+          developer_url: string | null
           difficulty_multiplier: number
+          game_subtitle: string
+          game_title: string
           global_pause: boolean
           gravity: number
           id: string
+          logo_url: string | null
           spawn_interval: number
           updated_at: string
         }
         Insert: {
           base_speed?: number
           dda_enabled?: boolean
+          developer_name?: string
+          developer_url?: string | null
           difficulty_multiplier?: number
+          game_subtitle?: string
+          game_title?: string
           global_pause?: boolean
           gravity?: number
           id?: string
+          logo_url?: string | null
           spawn_interval?: number
           updated_at?: string
         }
         Update: {
           base_speed?: number
           dda_enabled?: boolean
+          developer_name?: string
+          developer_url?: string | null
           difficulty_multiplier?: number
+          game_subtitle?: string
+          game_title?: string
           global_pause?: boolean
           gravity?: number
           id?: string
+          logo_url?: string | null
           spawn_interval?: number
           updated_at?: string
         }
