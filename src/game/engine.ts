@@ -134,7 +134,7 @@ export function resetGame(g: GameData) {
   g.elapsed = 0;
   g.difficulty = 1;
   g.spawnTimer = 3.5;
-  g.powerUpTimer = 8;
+  g.powerUpTimer = 10 + Math.random() * 5;
   g.droneTimer = 90;
   g.screenShake = { x: 0, y: 0 };
   g.damageFlash = 0;
