@@ -823,10 +823,16 @@ const AudioPanel: React.FC<{
                         ))}
                       </div>
 
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                         <button disabled={uploading === item.id} onClick={() => { if (fileInputRef.current) { fileInputRef.current.dataset.entryId = item.id; fileInputRef.current.dataset.soundKey = item.soundKey; fileInputRef.current.click(); } }}
                           style={smallBtn('rgba(59,130,246,0.12)', '#93c5fd')}>{uploading === item.id ? '⏳...' : '📁 Upload'}</button>
                         <button onClick={() => { setLibraryOpen(libraryOpen === item.id ? null : item.id); loadLibrary(); }} style={smallBtn('rgba(168,85,247,0.12)', '#c4b5fd')}>📚 Library</button>
+                        <div style={{ flex: 1 }} />
+                        <button onClick={async () => {
+                          if (!confirm(`Delete "${item.label}"?`)) return;
+                          await deleteAudioEntry(item.id);
+                          setEntries(prev => prev.filter(e => e.id !== item.id));
+                        }} style={smallBtn('rgba(220,38,38,0.1)', '#f87171')}>🗑 Delete Sound</button>
                       </div>
 
                       {libraryOpen === item.id && (
