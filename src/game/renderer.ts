@@ -4121,7 +4121,7 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
           const brown = 150 + Math.round(i * 3);
           ctx.fillStyle = `rgba(${brown},${brown - 15},${brown - 35},${pAlpha})`;
           ctx.beginPath();
-          ctx.ellipse(px, py, pSize * 1.3, pSize * 0.7, angle * 0.3, 0, 0, Math.PI * 2);
+          ctx.ellipse(px, py, pSize * 1.3, pSize * 0.7, angle * 0.3, 0, Math.PI * 2);
           ctx.fill();
         }
       }
