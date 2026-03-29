@@ -7,7 +7,7 @@ import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfx
 
 const DASH_SPEED = 500;
 const DASH_DURATION = 0.25;
-const DASH_COOLDOWN = 1.2;
+const DASH_COOLDOWN = 0.8;
 const CLOSE_CALL_DIST = 45;
 const PLAYER_RADIUS = 22;
 const GROUND_RATIO = 0.78; // Ground plane at 78% of screen height
@@ -56,7 +56,7 @@ export function createGame(w: number, h: number): GameData {
     elapsed: 0,
     difficulty: 1,
     spawnTimer: 0,
-    powerUpTimer: 8,
+    powerUpTimer: 10 + Math.random() * 5,
     droneTimer: 90,
     screenShake: { x: 0, y: 0 },
     damageFlash: 0,
@@ -91,6 +91,8 @@ export function createGame(w: number, h: number): GameData {
     microSlowTimer: 0,
     deathTimer: 0,
     deathPhase: 'alive',
+    firstAmmoDropped: false,
+    cargoTimer: 120,
   };
 }
 
@@ -164,6 +166,8 @@ export function resetGame(g: GameData) {
   g.microSlowTimer = 0;
   g.deathTimer = 0;
   g.deathPhase = 'alive';
+  g.firstAmmoDropped = false;
+  g.cargoTimer = 120;
 }
 
 function dist(a: Vec2, b: Vec2): number {
@@ -479,7 +483,7 @@ function damagePlayer(g: GameData, dmg: number, sourcePos: Vec2) {
   p.hitTimer = 0.3;
   p.anim = 'hit';
   g.damageFlash = 0.35;
-  g.hitStopTimer = 0.06; // 60ms freeze on player hit
+  g.hitStopTimer = Math.max(g.hitStopTimer, 0.06);
   // Knockback
   const kdir = sourcePos.x < p.pos.x ? 1 : -1;
   p.velocity.x += kdir * 200;
@@ -489,7 +493,7 @@ function damagePlayer(g: GameData, dmg: number, sourcePos: Vec2) {
     g.deathPhase = 'dying';
     g.deathTimer = 1.5;
     g.slowMoFactor = 0.15;
-    g.hitStopTimer = 0.15; // longer freeze on death
+    g.hitStopTimer = Math.max(g.hitStopTimer, 0.15);
   }
 }
 
@@ -686,7 +690,7 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (g.bulletLevel >= 3) sfxShoot3();
     else if (g.bulletLevel >= 2) sfxShoot2();
     else sfxShoot1();
-    p.velocity.x += p.facingRight ? -60 : 60;
+    p.velocity.x += p.facingRight ? -18 : 18;
     const baseX = p.pos.x + (p.facingRight ? 10 : -10);
     const baseY = p.pos.y - 20;
     const angles = g.bulletLevel === 1 ? [0] : g.bulletLevel === 2 ? [-0.1, 0.1] : [-0.15, 0, 0.15];
@@ -1338,7 +1342,7 @@ export function update(g: GameData, input: InputState, dt: number) {
         const proximity = Math.max(0, 1 - distToPlayer / 200);
         const bonus = comboScore(g, Math.floor(20 + proximity * 80));
         g.score += bonus;
-        g.hitStopTimer = 0.05;
+        g.hitStopTimer = Math.max(g.hitStopTimer, 0.05);
         g.microSlowTimer = 0.2;
         const comboText = g.comboMultiplier > 1 ? ` ×${g.comboMultiplier}` : '';
         addFloatingText(g, `Shot! +${bonus}${comboText}`, h.pos, '#a855f7');
@@ -1374,12 +1378,12 @@ export function update(g: GameData, input: InputState, dt: number) {
           addFloatingText(g, `Shot Down! +${bonus}${comboText}`, d.pos, '#a855f7');
           g.score += bonus;
           g.stats.dronesDestroyed++;
-          g.hitStopTimer = 0.08;
+          g.hitStopTimer = Math.max(g.hitStopTimer, 0.08);
           g.microSlowTimer = 0.2;
         } else {
           // Damaged but not destroyed — visual feedback
           addFloatingText(g, `HIT!`, b.pos, '#ff6b35');
-          g.hitStopTimer = 0.03;
+          g.hitStopTimer = Math.max(g.hitStopTimer, 0.03);
         }
         hit = true;
         break;
