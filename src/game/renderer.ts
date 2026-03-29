@@ -3305,8 +3305,8 @@ function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
   const dir = bike.facingRight ? 1 : -1;
   ctx.scale(dir, 1);
 
-  // Scale up 1.8x for better visibility
-  ctx.scale(1.8, 1.8);
+  // Scale up 2.4x for better visibility
+  ctx.scale(2.4, 2.4);
 
   // Apply engine shake
   ctx.translate(bike.shakeOffset.x, bike.shakeOffset.y);
@@ -3404,12 +3404,12 @@ function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
   // "OTLOP" text — always readable (cancel parent mirrors)
   ctx.save();
   ctx.scale(dir, 1); // cancel first dir scale
-  ctx.scale(1 / 1.8, 1 / 1.8); // cancel the 1.8 scale for crisp text
+  ctx.scale(1 / 2.4, 1 / 2.4); // cancel the 2.4 scale for crisp text
   // Position in original coordinate space
-  const boxCenterX = dir === 1 ? -12 * 1.8 : 12 * 1.8;
-  const boxCenterY = -23 * 1.8;
+  const boxCenterX = dir === 1 ? -12 * 2.4 : 12 * 2.4;
+  const boxCenterY = -23 * 2.4;
   ctx.fillStyle = '#fff';
-  ctx.font = 'bold 7px monospace';
+  ctx.font = 'bold 9px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('OTLOP', boxCenterX, boxCenterY);
@@ -3512,16 +3512,16 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
 
   // Main title
   ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 20px Arial, sans-serif';
+  ctx.font = 'bold 22px Arial, sans-serif';
   ctx.shadowColor = 'rgba(251,191,36,0.3)';
   ctx.shadowBlur = 8;
-  ctx.fillText('CHOOSE UPGRADE', g.width / 2, g.height * 0.22);
+  ctx.fillText('CHOOSE UPGRADE', g.width / 2, g.height * 0.20);
   ctx.shadowBlur = 0;
 
   // Arabic subtitle
   ctx.fillStyle = 'rgba(251,191,36,0.6)';
-  ctx.font = '13px Arial, sans-serif';
-  ctx.fillText('اختر ترقية', g.width / 2, g.height * 0.22 + 22);
+  ctx.font = '15px Tajawal, Arial, sans-serif';
+  ctx.fillText('اختر ترقية', g.width / 2, g.height * 0.20 + 26);
   ctx.restore();
 
   // ── Cards ──
@@ -3598,45 +3598,24 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.arc(cx + cardW / 2, iconY, 28, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Icon
+    // Icon — larger
     ctx.fillStyle = '#fff';
-    ctx.font = '36px sans-serif';
+    ctx.font = '42px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(card.icon, cx + cardW / 2, iconY);
 
-    // ── Name ──
+    // ── Name (English) ──
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 13px Arial, sans-serif';
+    ctx.font = 'bold 14px Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(card.name, cx + cardW / 2, cy + 100);
+    ctx.fillText(card.name, cx + cardW / 2, cy + 105);
 
-    // Arabic name
+    // Arabic name — larger with Tajawal font
     ctx.fillStyle = card.color;
-    ctx.font = '11px Arial, sans-serif';
-    ctx.fillText(card.nameAr, cx + cardW / 2, cy + 118);
-
-    // ── Description ──
-    ctx.fillStyle = 'rgba(200,210,220,0.65)';
-    ctx.font = '10px Arial, sans-serif';
-    ctx.fillText(card.description, cx + cardW / 2, cy + 140);
-
-    // ── Separator line ──
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(cx + 16, cy + 155);
-    ctx.lineTo(cx + cardW - 16, cy + 155);
-    ctx.stroke();
-
-    // ── TAP hint ──
-    const pulse = 0.5 + Math.sin(g.elapsed * 4 + i * 1.2) * 0.3;
-    ctx.fillStyle = `rgba(251,191,36,${pulse})`;
-    ctx.font = '9px Arial, sans-serif';
-    ctx.letterSpacing = '3px';
-    ctx.fillText('── TAP ──', cx + cardW / 2, cy + cardH - 16);
-    ctx.letterSpacing = '0px';
+    ctx.font = 'bold 13px Tajawal, Arial, sans-serif';
+    ctx.fillText(card.nameAr, cx + cardW / 2, cy + 126);
 
     ctx.restore();
   }

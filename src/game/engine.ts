@@ -827,8 +827,8 @@ function updateDeliveryBike(g: GameData, dt: number) {
     // Promotional stop — stronger engine vibration
     bike.idleTimer -= dt;
     const t = g.elapsed * 35;
-    bike.shakeOffset.x = Math.sin(t) * 0.8 + Math.sin(t * 1.7) * 0.5;
-    bike.shakeOffset.y = Math.sin(t * 1.3) * 1.2 + Math.cos(t * 2.1) * 0.6;
+    bike.shakeOffset.x = Math.sin(t) * 0.15 + Math.sin(t * 1.7) * 0.15;
+    bike.shakeOffset.y = Math.sin(t * 1.3) * 0.2 + Math.cos(t * 2.1) * 0.1;
     if (bike.idleTimer <= 0) {
       bike.phase = 'leaving';
       const leaveDir = bike.facingRight ? 1 : -1;
@@ -848,8 +848,8 @@ function updateDeliveryBike(g: GameData, dt: number) {
   // Engine vibration during movement (lighter than idle)
   if (bike && bike.active && bike.phase !== 'idle') {
     const t = g.elapsed * 25;
-    bike.shakeOffset.x = Math.sin(t) * 0.4;
-    bike.shakeOffset.y = Math.sin(t * 1.5) * 0.3;
+    bike.shakeOffset.x = Math.sin(t) * 0.1;
+    bike.shakeOffset.y = Math.sin(t * 1.5) * 0.08;
   }
 }
 
