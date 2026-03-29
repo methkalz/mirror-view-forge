@@ -246,6 +246,21 @@ const Admin: React.FC = () => {
         </div>
       )}
 
+      {/* AUDIO TAB */}
+      {tab === 'audio' && (
+        <AudioPanel
+          entries={audioEntries}
+          onUpdate={(id, updates) => {
+            setAudioEntries(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+            updateAudioEntry(id, updates);
+          }}
+          onCategoryUpdate={(cat, updates) => {
+            setAudioEntries(prev => prev.map(e => e.category === cat ? { ...e, ...updates } : e));
+            updateAudioCategory(cat, updates);
+          }}
+        />
+      )}
+
       {/* LEADERBOARD TAB */}
       {tab === 'leaderboard' && (
         <div style={sectionStyle}>
