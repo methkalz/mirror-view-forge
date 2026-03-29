@@ -262,9 +262,10 @@ export function updateIntro(g: GameData, dt: number) {
   const bike = g.introBike;
   if (!bike) return;
 
-  // Smooth camera zoom
-  const zoomSpeed = 1.5;
-  g.cameraZoom += (g.cameraZoomTarget - g.cameraZoom) * zoomSpeed * dt;
+  // Cinematic easeOutExpo camera zoom
+  const zoomDiff = g.cameraZoomTarget - g.cameraZoom;
+  const easeOutZoom = 1 - Math.pow(0.005, dt * 2.5);
+  g.cameraZoom += zoomDiff * easeOutZoom;
 
   // Update wheel animation
   bike.wheelAnim += bike.speed * dt * 0.05;
@@ -299,14 +300,23 @@ export function updateIntro(g: GameData, dt: number) {
       break;
     }
     case 'bikeStop': {
-      // Brief pause, engine idling
-      bike.shakeOffset = {
-        x: (Math.random() - 0.5) * 0.6,
-        y: (Math.random() - 0.5) * 0.3,
-      };
+      // Organic Perlin-like idle vibration (multi-sine, not random)
+      const tS = g.elapsed;
+      const vibeX = Math.sin(tS * 12) * 0.3 + Math.sin(tS * 19) * 0.15 + Math.sin(tS * 31) * 0.08;
+      const vibeY = Math.sin(tS * 14) * 0.2 + Math.sin(tS * 23) * 0.1;
+      bike.shakeOffset = { x: vibeX, y: vibeY };
       g.cameraFocusX = bike.pos.x;
 
-      if (g.introTimer > 1.0) {
+      // Camera shake on brake impact (first few frames)
+      if (g.introTimer < dt * 2) {
+        g.screenShake = { x: (Math.random() - 0.5) * 3, y: (Math.random() - 0.5) * 1.5 };
+      } else if (g.introTimer < 0.15) {
+        g.screenShake = { x: g.screenShake.x * 0.7, y: g.screenShake.y * 0.7 };
+      } else {
+        g.screenShake = { x: 0, y: 0 };
+      }
+
+      if (g.introTimer > 1.2) {
         g.introPhase = 'playerDismount';
         g.introTimer = 0;
         g.introPlayerOffset = 0;
@@ -314,23 +324,24 @@ export function updateIntro(g: GameData, dt: number) {
       break;
     }
     case 'playerDismount': {
-      // Physics-based dismount with gravity
-      bike.shakeOffset = {
-        x: (Math.random() - 0.5) * 0.4,
-        y: (Math.random() - 0.5) * 0.2,
-      };
+      // Organic vibration continues (lighter)
+      const tD = g.elapsed;
+      const vibeXD = Math.sin(tD * 12) * 0.2 + Math.sin(tD * 19) * 0.1;
+      const vibeYD = Math.sin(tD * 14) * 0.1;
+      bike.shakeOffset = { x: vibeXD, y: vibeYD };
       
-      // Slower dismount for more cinematic feel
-      const dismountDuration = 1.4;
+      // 4-phase professional dismount (Anticipation/Action/Follow-through)
+      const dismountDuration = 1.8;
       const dp = Math.min(1, g.introTimer / dismountDuration);
       
-      // Track player position based on dismount phase
-      if (dp < 0.55) {
-        // Still near bike
+      // Phase 0: Anticipation [0→0.15] — still on bike
+      // Phase 1: Arc Leg Swing [0.15→0.40] — still near bike
+      // Phase 2: Gravity Drop [0.40→0.70] — transitioning
+      // Phase 3: Landing [0.70→1.0] — moving to final position
+      if (dp < 0.70) {
         g.player.pos.x = bike.pos.x;
       } else {
-        // Landing — smoothly interpolate to final position
-        const landT = (dp - 0.55) / 0.45;
+        const landT = (dp - 0.70) / 0.30;
         const easeOut = 1 - (1 - landT) * (1 - landT);
         g.introPlayerOffset = easeOut * 35;
         g.player.pos.x = bike.pos.x + g.introPlayerOffset;
@@ -341,7 +352,6 @@ export function updateIntro(g: GameData, dt: number) {
       g.cameraFocusX = (bike.pos.x + g.player.pos.x) / 2;
 
       if (g.introTimer > dismountDuration) {
-        // Precisely set player position at dismount end
         g.player.pos.x = bike.pos.x + 35;
         g.player.pos.y = g.player.groundY;
         g.introPhase = 'bikeLeave';
