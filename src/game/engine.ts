@@ -111,7 +111,7 @@ export function createGame(w: number, h: number): GameData {
     waveNumber: 1,
     wavePhase: 'active',
     waveTimer: 60 + Math.random() * 10,
-    restTimer: 0,
+    levelNumber: 1,
     deliveryBike: null,
     upgradeCards: [],
     selectedUpgrade: null,
@@ -210,7 +210,7 @@ export function resetGame(g: GameData) {
   g.waveNumber = 1;
   g.wavePhase = 'active';
   g.waveTimer = 60 + Math.random() * 10;
-  g.restTimer = 0;
+  g.levelNumber = 1;
   g.deliveryBike = null;
   g.upgradeCards = [];
   g.selectedUpgrade = null;
@@ -752,12 +752,11 @@ export function applyUpgrade(g: GameData, cardId: string) {
     case 'bullet_dmg': p.bulletDamage += 1; break;
   }
   g.selectedUpgrade = cardId;
-  g.wavePhase = 'active';
-  g.waveTimer = 60 + Math.random() * 10;
-  g.waveElapsed = 0;
-  g.waveNumber++;
+  // Transition to bike phase instead of directly starting next wave
+  g.wavePhase = 'bike';
   g.upgradeCards = [];
   g.cardsShownTimer = 0;
+  spawnDeliveryBike(g);
   addFloatingText(g, 'UPGRADE!', { x: g.width / 2, y: g.height * 0.35 }, '#fbbf24');
 }
 
@@ -820,9 +819,9 @@ function updateDeliveryBike(g: GameData, dt: number) {
       pu.bobTimer = 0;
       pu.groundTimer = -999; // Don't expire during rest
     }
-    // Transition to idle (promotional stop)
+    // Transition to idle (promotional stop — 4 seconds)
     bike.phase = 'idle';
-    bike.idleTimer = 2.5;
+    bike.idleTimer = 4.0;
     bike.speed = 0;
   } else if (bike.phase === 'idle') {
     // Promotional stop — stronger engine vibration
@@ -876,10 +875,11 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
     const activeDrones = g.drones.filter(d => d.active && d.tier !== 'cargo').length;
     // Also check falling hazards
     if (activeHazards === 0 && activeDrones === 0) {
-      g.wavePhase = 'rest';
-      g.restTimer = 10;
-      // Spawn delivery bike after 2s
-      setTimeout(() => { if (g.wavePhase === 'rest') spawnDeliveryBike(g); }, 2000);
+      // Cards first, then bike
+      g.wavePhase = 'cards';
+      g.upgradeCards = generateUpgradeCards(g);
+      g.cardsShownTimer = 0;
+      g.selectedUpgrade = null;
     }
     // Force-clear drones that refuse to leave after 5s
     for (const d of g.drones) {
@@ -889,39 +889,18 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         }
       }
     }
-  } else if (g.wavePhase === 'rest') {
-    g.restTimer -= dt;
-    updateDeliveryBike(g, dt);
-
-    // Show cards at ~4s into rest
-    if (g.restTimer <= 6 && g.upgradeCards.length === 0 && !g.selectedUpgrade) {
-      g.upgradeCards = generateUpgradeCards(g);
-      g.cardsShownTimer = 0;
-      g.wavePhase = 'cards';
-    }
-
-    if (g.restTimer <= 0) {
-      // Time's up, force start next wave
-      g.wavePhase = 'active';
-      g.waveTimer = 60 + Math.random() * 10;
-      g.waveElapsed = 0;
-      g.waveNumber++;
-      g.upgradeCards = [];
-      g.selectedUpgrade = null;
-    }
   } else if (g.wavePhase === 'cards') {
     g.cardsShownTimer += dt;
-    updateDeliveryBike(g, dt);
 
     // Handle card selection via input
     if (input.cardClick && g.upgradeCards.length > 0) {
       const { x, y } = input.cardClick;
       input.cardClick = null;
-      // Check which card was clicked
-      const cardW = 100, cardH = 140, gap = 16;
+      // Check which card was clicked — use same dimensions as renderer
+      const cardW = 130, cardH = 185, gap = 12;
       const totalW = g.upgradeCards.length * cardW + (g.upgradeCards.length - 1) * gap;
       const startX = (g.width - totalW) / 2;
-      const cardY = g.height * 0.35;
+      const cardY = g.height * 0.30;
       for (let i = 0; i < g.upgradeCards.length; i++) {
         const cx = startX + i * (cardW + gap);
         if (x >= cx && x <= cx + cardW && y >= cardY && y <= cardY + cardH) {
@@ -931,10 +910,22 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
       }
     }
 
-    // Auto-select after 8s if player hasn't chosen
-    if (g.cardsShownTimer > 8 && g.upgradeCards.length > 0) {
+    // Auto-select after 7s if player hasn't chosen
+    if (g.cardsShownTimer > 7 && g.upgradeCards.length > 0) {
       const randomCard = g.upgradeCards[Math.floor(Math.random() * g.upgradeCards.length)];
       applyUpgrade(g, randomCard.id);
+    }
+  } else if (g.wavePhase === 'bike') {
+    updateDeliveryBike(g, dt);
+
+    // When bike is done (left the screen), start next wave
+    if (!g.deliveryBike || !g.deliveryBike.active) {
+      g.wavePhase = 'active';
+      g.waveNumber++;
+      g.levelNumber = Math.floor((g.waveNumber - 1) / 3) + 1;
+      g.waveTimer = 60 + Math.random() * 10;
+      g.waveElapsed = 0;
+      g.selectedUpgrade = null;
     }
   }
 }

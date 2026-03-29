@@ -10,7 +10,7 @@ export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo
 export type DroneState = 'entering' | 'tracking' | 'bombing';
 export type DroneTier = 'scout' | 'tracker' | 'bomber' | 'cargo' | 'incendiary' | 'chemical';
 export type PlayerAnim = 'idle' | 'walk' | 'roll' | 'hit';
-export type WavePhase = 'active' | 'clearing' | 'rest' | 'cards';
+export type WavePhase = 'active' | 'clearing' | 'cards' | 'bike';
 
 export interface Player {
   pos: Vec2;
@@ -313,7 +313,7 @@ export interface GameData {
   waveNumber: number;
   wavePhase: WavePhase;
   waveTimer: number;
-  restTimer: number;
+  levelNumber: number;
   deliveryBike: DeliveryBike | null;
   upgradeCards: UpgradeCard[];
   selectedUpgrade: string | null;

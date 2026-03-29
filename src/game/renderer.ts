@@ -3486,25 +3486,10 @@ function drawWaterIcon(ctx: CanvasRenderingContext2D, s: number) {
 
 // ─── Rest Overlay ─────────────────────────────────────
 function renderRestOverlay(ctx: CanvasRenderingContext2D, g: GameData) {
-  if (g.wavePhase !== 'rest' && g.wavePhase !== 'cards') return;
+  if (g.wavePhase !== 'cards' && g.wavePhase !== 'bike') return;
   // Subtle calm overlay
   ctx.fillStyle = 'rgba(0, 10, 30, 0.15)';
   ctx.fillRect(0, 0, g.width, g.height);
-
-  // "WAVE COMPLETE" text
-  if (g.wavePhase === 'rest' && g.restTimer > 7) {
-    const alpha = Math.min(1, (10 - g.restTimer) * 2);
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 22px monospace';
-    ctx.textAlign = 'center';
-    ctx.shadowColor = '#fbbf24';
-    ctx.shadowBlur = 15;
-    ctx.fillText(`WAVE ${g.waveNumber} COMPLETE`, g.width / 2, g.height * 0.25);
-    ctx.shadowBlur = 0;
-    ctx.restore();
-  }
 }
 
 // ─── Upgrade Cards ────────────────────────────────────
@@ -3657,7 +3642,7 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
   }
 
   // ── Timer bar ──
-  const maxTime = 8;
+  const maxTime = 7;
   const remaining = Math.max(0, maxTime - g.cardsShownTimer);
   const ratio = remaining / maxTime;
   const barW = totalW;
@@ -3682,8 +3667,8 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
 function renderWaveIndicator(ctx: CanvasRenderingContext2D, g: GameData) {
   if (g.waveNumber < 1) return;
   const w = g.width;
-  // Wave number badge top-center
-  const label = `WAVE ${g.waveNumber}`;
+  const levelNum = g.levelNumber || 1;
+  const label = `LVL ${levelNum} — WAVE ${g.waveNumber}`;
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -3698,6 +3683,21 @@ function renderWaveIndicator(ctx: CanvasRenderingContext2D, g: GameData) {
   // Text
   ctx.fillStyle = g.wavePhase === 'active' ? 'rgba(251,191,36,0.9)' : 'rgba(255,255,255,0.7)';
   ctx.fillText(label, tx, ty);
+
+  // Level Up announcement (first wave of a new level, briefly)
+  if (g.waveNumber > 1 && (g.waveNumber - 1) % 3 === 0 && g.waveElapsed < 3) {
+    const alpha = Math.max(0, 1 - g.waveElapsed / 3);
+    const scale = 1 + (1 - g.waveElapsed / 3) * 0.3;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = `bold ${Math.round(24 * scale)}px Arial, sans-serif`;
+    ctx.shadowColor = 'rgba(251,191,36,0.5)';
+    ctx.shadowBlur = 20;
+    ctx.fillText(`LEVEL ${levelNum}`, tx, ty + 35);
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  }
+
   ctx.restore();
 }
 
