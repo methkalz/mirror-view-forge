@@ -370,6 +370,38 @@ function spawnDrone(g: GameData, forcedTier?: DroneTier) {
   configureDroneByTier(d, selectedTier, g.elapsed);
 }
 
+function spawnCargoDrone(g: GameData) {
+  const d = getFromPool<Drone>(g.drones, () => ({
+    active: false, pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
+    speed: 0, size: 0, health: 0, maxHealth: 0, state: 'entering' as const, entryTarget: { x: 0, y: 0 },
+    tier: 'scout' as const, bombTimer: 0, bombCooldown: 0, hoverTimer: 0,
+    aggroDelay: 0, trackingAccuracy: 0, wobble: 0, altitudeOffset: 0, colorHue: 0
+  }), 10);
+  const fromRight = Math.random() > 0.5;
+  const startX = fromRight ? g.width + 40 : -40;
+  const flyY = g.height * (0.08 + Math.random() * 0.04);
+  const speed = 40 + Math.random() * 20;
+  d.pos = { x: startX, y: flyY };
+  d.entryTarget = { x: fromRight ? -60 : g.width + 60, y: flyY };
+  d.vel = { x: fromRight ? -speed : speed, y: 0 };
+  d.speed = speed;
+  d.size = 35;
+  d.health = 3;
+  d.maxHealth = 3;
+  d.state = 'tracking';
+  d.tier = 'cargo';
+  d.hoverTimer = 0;
+  d.aggroDelay = 0;
+  d.trackingAccuracy = 0;
+  d.bombTimer = 0;
+  d.bombCooldown = 0;
+  d.wobble = Math.random() * Math.PI * 2;
+  d.altitudeOffset = 0;
+  d.colorHue = 30;
+  d.cargoType = Math.random() > 0.5 ? 'airstrike' : 'medkit';
+  d.label = 'OTLOP';
+}
+
 function queueWaveEvent(
   g: GameData,
   event: { id: string; text: string; sub: string; color: string; duration: number; type: 'warning' | 'upgrade' }
