@@ -1,5 +1,37 @@
+import { fetchAudioConfig, type AudioConfigEntry } from './config';
+
 let audioCtx: AudioContext | null = null;
 let ambientNode: AudioBufferSourceNode | null = null;
+
+// ─── Remote audio settings cache ───
+let audioSettings: Map<string, { volume: number; enabled: boolean }> = new Map();
+let settingsLoaded = false;
+
+export async function loadAudioSettings() {
+  try {
+    const entries = await fetchAudioConfig();
+    audioSettings.clear();
+    for (const e of entries) {
+      audioSettings.set(e.soundKey, { volume: e.volume, enabled: e.enabled });
+    }
+    settingsLoaded = true;
+  } catch {
+    settingsLoaded = false;
+  }
+}
+
+function getSoundVolume(key: string, baseVol: number): number {
+  const s = audioSettings.get(key);
+  if (!s) return baseVol;
+  if (!s.enabled) return 0;
+  return baseVol * s.volume;
+}
+
+function isSoundEnabled(key: string): boolean {
+  const s = audioSettings.get(key);
+  if (!s) return true;
+  return s.enabled;
+}
 
 /* ── iOS Silent-Mode bypass ── */
 let iosUnmuted = false;
@@ -43,6 +75,7 @@ function getCtx(): AudioContext {
 export function resumeAudio() {
   unmuteIOS();
   if (audioCtx?.state === 'suspended') audioCtx.resume();
+  if (!settingsLoaded) loadAudioSettings();
   startAmbient();
 }
 
@@ -84,11 +117,11 @@ function playNoise(duration: number, vol = 0.08, filter?: { type: BiquadFilterTy
 
 function startAmbient() {
   if (ambientNode) return;
+  if (!isSoundEnabled('ambient')) return;
   const ctx = getCtx();
   const bufferSize = ctx.sampleRate * 2;
   const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
   const data = buffer.getChannelData(0);
-  // Brown noise for wind
   let last = 0;
   for (let i = 0; i < bufferSize; i++) {
     const white = Math.random() * 2 - 1;
@@ -99,7 +132,7 @@ function startAmbient() {
   ambientNode.buffer = buffer;
   ambientNode.loop = true;
   const gain = ctx.createGain();
-  gain.gain.value = 0.03;
+  gain.gain.value = getSoundVolume('ambient', 0.03);
   const bq = ctx.createBiquadFilter();
   bq.type = 'lowpass';
   bq.frequency.value = 400;
@@ -108,78 +141,106 @@ function startAmbient() {
 }
 
 export function sfxExplosion() {
-  playTone(40, 0.15, 'sine', 0.03);
-  playNoise(0.12, 0.025, { type: 'lowpass', freq: 250 });
+  if (!isSoundEnabled('explosion')) return;
+  const v = getSoundVolume('explosion', 1);
+  playTone(40, 0.15, 'sine', 0.03 * v);
+  playNoise(0.12, 0.025 * v, { type: 'lowpass', freq: 250 });
 }
 
 export function sfxImpactLight() {
-  playNoise(0.05, 0.12, { type: 'lowpass', freq: 250 + Math.random() * 300 });
-  playTone(120 + Math.random() * 80, 0.04, 'sine', 0.08);
+  if (!isSoundEnabled('impactLight')) return;
+  const v = getSoundVolume('impactLight', 1);
+  playNoise(0.05, 0.12 * v, { type: 'lowpass', freq: 250 + Math.random() * 300 });
+  playTone(120 + Math.random() * 80, 0.04, 'sine', 0.08 * v);
 }
 
 export function sfxImpactHeavy() {
-  playTone(45, 0.18, 'sine', 0.18);
-  playNoise(0.14, 0.13, { type: 'lowpass', freq: 200 });
+  if (!isSoundEnabled('impactHeavy')) return;
+  const v = getSoundVolume('impactHeavy', 1);
+  playTone(45, 0.18, 'sine', 0.18 * v);
+  playNoise(0.14, 0.13 * v, { type: 'lowpass', freq: 200 });
 }
 
 export function sfxPickup() {
-  playTone(500, 0.06, 'sine', 0.08);
-  setTimeout(() => playTone(700, 0.06, 'sine', 0.08), 50);
-  setTimeout(() => playTone(900, 0.05, 'sine', 0.06), 100);
-  setTimeout(() => playTone(1100, 0.04, 'sine', 0.05), 150);
+  if (!isSoundEnabled('pickup')) return;
+  const v = getSoundVolume('pickup', 1);
+  playTone(500, 0.06, 'sine', 0.08 * v);
+  setTimeout(() => playTone(700, 0.06, 'sine', 0.08 * v), 50);
+  setTimeout(() => playTone(900, 0.05, 'sine', 0.06 * v), 100);
+  setTimeout(() => playTone(1100, 0.04, 'sine', 0.05 * v), 150);
 }
 
 export function sfxDamage() {
-  playTone(120, 0.2, 'sawtooth', 0.12);
-  playNoise(0.15, 0.08, { type: 'lowpass', freq: 1500 });
+  if (!isSoundEnabled('damage')) return;
+  const v = getSoundVolume('damage', 1);
+  playTone(120, 0.2, 'sawtooth', 0.12 * v);
+  playNoise(0.15, 0.08 * v, { type: 'lowpass', freq: 1500 });
 }
 
 export function sfxDash() {
-  playTone(300, 0.08, 'triangle', 0.06);
-  playNoise(0.1, 0.04, { type: 'highpass', freq: 3000 });
+  if (!isSoundEnabled('dash')) return;
+  const v = getSoundVolume('dash', 1);
+  playTone(300, 0.08, 'triangle', 0.06 * v);
+  playNoise(0.1, 0.04 * v, { type: 'highpass', freq: 3000 });
 }
 
 export function sfxInterceptor() {
-  playTone(1200, 0.05, 'square', 0.06);
-  setTimeout(() => playTone(800, 0.1, 'square', 0.05), 40);
+  if (!isSoundEnabled('interceptor')) return;
+  const v = getSoundVolume('interceptor', 1);
+  playTone(1200, 0.05, 'square', 0.06 * v);
+  setTimeout(() => playTone(800, 0.1, 'square', 0.05 * v), 40);
   setTimeout(() => sfxExplosion(), 100);
 }
 
 export function sfxFootstep() {
-  playNoise(0.04, 0.02, { type: 'lowpass', freq: 600 });
+  if (!isSoundEnabled('footstep')) return;
+  const v = getSoundVolume('footstep', 1);
+  playNoise(0.04, 0.02 * v, { type: 'lowpass', freq: 600 });
 }
 
 export function sfxWarning() {
-  playTone(800, 0.08, 'sine', 0.03);
-  setTimeout(() => playTone(1000, 0.06, 'sine', 0.02), 80);
+  if (!isSoundEnabled('warning')) return;
+  const v = getSoundVolume('warning', 1);
+  playTone(800, 0.08, 'sine', 0.03 * v);
+  setTimeout(() => playTone(1000, 0.06, 'sine', 0.02 * v), 80);
 }
 
 export function sfxSlowmo() {
-  playTone(150, 0.6, 'sine', 0.1);
-  playTone(100, 0.8, 'sine', 0.06);
+  if (!isSoundEnabled('slowmo')) return;
+  const v = getSoundVolume('slowmo', 1);
+  playTone(150, 0.6, 'sine', 0.1 * v);
+  playTone(100, 0.8, 'sine', 0.06 * v);
 }
 
 export function sfxMagnet() {
-  playTone(400, 0.15, 'sawtooth', 0.06);
-  setTimeout(() => playTone(500, 0.12, 'sawtooth', 0.05), 60);
-  setTimeout(() => playTone(600, 0.1, 'sawtooth', 0.04), 120);
+  if (!isSoundEnabled('magnet')) return;
+  const v = getSoundVolume('magnet', 1);
+  playTone(400, 0.15, 'sawtooth', 0.06 * v);
+  setTimeout(() => playTone(500, 0.12, 'sawtooth', 0.05 * v), 60);
+  setTimeout(() => playTone(600, 0.1, 'sawtooth', 0.04 * v), 120);
 }
 
 export function sfxAirstrike() {
-  playTone(1200, 0.1, 'sine', 0.08);
-  setTimeout(() => playTone(800, 0.15, 'sine', 0.06), 100);
+  if (!isSoundEnabled('airstrike')) return;
+  const v = getSoundVolume('airstrike', 1);
+  playTone(1200, 0.1, 'sine', 0.08 * v);
+  setTimeout(() => playTone(800, 0.15, 'sine', 0.06 * v), 100);
   setTimeout(() => sfxExplosion(), 200);
   setTimeout(() => sfxExplosion(), 350);
   setTimeout(() => sfxExplosion(), 500);
 }
 
 export function sfxThunder() {
-  playNoise(0.8, 0.15, { type: 'lowpass', freq: 200 });
-  playTone(30, 0.6, 'sine', 0.1);
-  setTimeout(() => playNoise(0.5, 0.08, { type: 'lowpass', freq: 150 }), 200);
+  if (!isSoundEnabled('thunder')) return;
+  const v = getSoundVolume('thunder', 1);
+  playNoise(0.8, 0.15 * v, { type: 'lowpass', freq: 200 });
+  playTone(30, 0.6, 'sine', 0.1 * v);
+  setTimeout(() => playNoise(0.5, 0.08 * v, { type: 'lowpass', freq: 150 }), 200);
 }
 
 export function sfxBossSiren() {
+  if (!isSoundEnabled('bossSiren')) return;
+  const v = getSoundVolume('bossSiren', 1);
   const ctx = getCtx();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
@@ -188,7 +249,7 @@ export function sfxBossSiren() {
   osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.5);
   osc.frequency.linearRampToValueAtTime(400, ctx.currentTime + 1.0);
   osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 1.5);
-  gain.gain.setValueAtTime(0.08, ctx.currentTime);
+  gain.gain.setValueAtTime(0.08 * v, ctx.currentTime);
   gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 2);
   osc.connect(gain).connect(ctx.destination);
   osc.start();
@@ -196,54 +257,63 @@ export function sfxBossSiren() {
 }
 
 export function sfxBossExplosion() {
-  playTone(30, 0.8, 'sawtooth', 0.15);
-  playTone(50, 0.6, 'sine', 0.12);
-  playNoise(0.8, 0.15, { type: 'lowpass', freq: 500 });
-  setTimeout(() => { playNoise(0.5, 0.1, { type: 'lowpass', freq: 300 }); playTone(25, 0.5, 'sine', 0.08); }, 200);
-  setTimeout(() => playNoise(0.4, 0.06, { type: 'bandpass', freq: 1000 }), 400);
+  if (!isSoundEnabled('bossExplosion')) return;
+  const v = getSoundVolume('bossExplosion', 1);
+  playTone(30, 0.8, 'sawtooth', 0.15 * v);
+  playTone(50, 0.6, 'sine', 0.12 * v);
+  playNoise(0.8, 0.15 * v, { type: 'lowpass', freq: 500 });
+  setTimeout(() => { playNoise(0.5, 0.1 * v, { type: 'lowpass', freq: 300 }); playTone(25, 0.5, 'sine', 0.08 * v); }, 200);
+  setTimeout(() => playNoise(0.4, 0.06 * v, { type: 'bandpass', freq: 1000 }), 400);
 }
 
 export function sfxShoot1() {
-  // Realistic pistol: sharp crack + low thud
-  playNoise(0.08, 0.15, { type: 'highpass', freq: 3000 });
-  playTone(150, 0.1, 'sine', 0.12);
-  playTone(80, 0.08, 'sine', 0.06);
+  if (!isSoundEnabled('shoot1')) return;
+  const v = getSoundVolume('shoot1', 1);
+  playNoise(0.08, 0.15 * v, { type: 'highpass', freq: 3000 });
+  playTone(150, 0.1, 'sine', 0.12 * v);
+  playTone(80, 0.08, 'sine', 0.06 * v);
 }
 
 export function sfxShoot2() {
-  // Double shot: two rapid cracks with deeper bass
-  playNoise(0.09, 0.18, { type: 'highpass', freq: 2800 });
-  playTone(120, 0.12, 'sine', 0.14);
-  playTone(70, 0.1, 'sine', 0.08);
+  if (!isSoundEnabled('shoot2')) return;
+  const v = getSoundVolume('shoot2', 1);
+  playNoise(0.09, 0.18 * v, { type: 'highpass', freq: 2800 });
+  playTone(120, 0.12, 'sine', 0.14 * v);
+  playTone(70, 0.1, 'sine', 0.08 * v);
   setTimeout(() => {
-    playNoise(0.07, 0.14, { type: 'highpass', freq: 3200 });
-    playTone(130, 0.1, 'sine', 0.1);
+    playNoise(0.07, 0.14 * v, { type: 'highpass', freq: 3200 });
+    playTone(130, 0.1, 'sine', 0.1 * v);
   }, 60);
 }
 
 export function sfxShoot3() {
-  // Triple burst: dense cracks with heavy bass rumble
-  playNoise(0.1, 0.2, { type: 'highpass', freq: 2500 });
-  playTone(100, 0.15, 'sine', 0.16);
-  playTone(60, 0.12, 'sine', 0.1);
+  if (!isSoundEnabled('shoot3')) return;
+  const v = getSoundVolume('shoot3', 1);
+  playNoise(0.1, 0.2 * v, { type: 'highpass', freq: 2500 });
+  playTone(100, 0.15, 'sine', 0.16 * v);
+  playTone(60, 0.12, 'sine', 0.1 * v);
   setTimeout(() => {
-    playNoise(0.08, 0.16, { type: 'highpass', freq: 3000 });
-    playTone(110, 0.1, 'sine', 0.12);
+    playNoise(0.08, 0.16 * v, { type: 'highpass', freq: 3000 });
+    playTone(110, 0.1, 'sine', 0.12 * v);
   }, 50);
   setTimeout(() => {
-    playNoise(0.07, 0.14, { type: 'highpass', freq: 3400 });
-    playTone(90, 0.08, 'sine', 0.1);
+    playNoise(0.07, 0.14 * v, { type: 'highpass', freq: 3400 });
+    playTone(90, 0.08, 'sine', 0.1 * v);
   }, 100);
 }
 
 export function sfxCombo(level: number) {
+  if (!isSoundEnabled('combo')) return;
+  const v = getSoundVolume('combo', 1);
   const baseFreq = 600 + level * 100;
-  playTone(baseFreq, 0.06, 'sine', 0.06);
-  setTimeout(() => playTone(baseFreq + 200, 0.05, 'sine', 0.05), 40);
+  playTone(baseFreq, 0.06, 'sine', 0.06 * v);
+  setTimeout(() => playTone(baseFreq + 200, 0.05, 'sine', 0.05 * v), 40);
 }
 
 export function sfxCloseCall() {
-  playTone(1000, 0.04, 'sine', 0.04);
-  setTimeout(() => playTone(1200, 0.03, 'sine', 0.03), 30);
+  if (!isSoundEnabled('closeCall')) return;
+  const v = getSoundVolume('closeCall', 1);
+  playTone(1000, 0.04, 'sine', 0.04 * v);
+  setTimeout(() => playTone(1200, 0.03, 'sine', 0.03 * v), 30);
 }
 

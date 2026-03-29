@@ -1,17 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import {
   fetchGameConfig, updateGameConfig, fetchLeaderboard, deleteLeaderboardEntry, clearLeaderboard,
   fetchWaveConfigs, upsertWaveConfig, deleteWaveConfig,
-  type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry,
+  fetchAudioConfig, updateAudioEntry, updateAudioCategory,
+  type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry,
 } from '@/game/config';
 
 const Admin: React.FC = () => {
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'config' | 'waves' | 'leaderboard'>('config');
+  const [tab, setTab] = useState<'config' | 'waves' | 'leaderboard' | 'audio'>('config');
 
   // Config state
   const [config, setConfig] = useState<RemoteGameConfig | null>(null);
@@ -23,6 +24,9 @@ const Admin: React.FC = () => {
 
   // Leaderboard state
   const [leaders, setLeaders] = useState<LeaderboardEntry[]>([]);
+
+  // Audio state
+  const [audioEntries, setAudioEntries] = useState<AudioConfigEntry[]>([]);
 
   // Auth check
   useEffect(() => {
@@ -42,10 +46,11 @@ const Admin: React.FC = () => {
   }, [navigate]);
 
   const loadAll = useCallback(async () => {
-    const [c, w, l] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard()]);
+    const [c, w, l, a] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard(), fetchAudioConfig()]);
     setConfig(c);
     setWaves(w);
     setLeaders(l);
+    setAudioEntries(a);
   }, []);
 
   useEffect(() => { if (isAdmin) loadAll(); }, [isAdmin, loadAll]);
@@ -129,19 +134,24 @@ const Admin: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {(['config', 'waves', 'leaderboard'] as const).map(t => (
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+        {([
+          { key: 'config' as const, icon: '🎮', label: 'Config' },
+          { key: 'waves' as const, icon: '🌊', label: 'Waves' },
+          { key: 'audio' as const, icon: '🔊', label: 'Audio' },
+          { key: 'leaderboard' as const, icon: '🏆', label: 'Leaders' },
+        ]).map(t => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={t.key}
+            onClick={() => setTab(t.key)}
             style={{
-              flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 600,
-              background: tab === t ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
-              color: tab === t ? '#60a5fa' : 'rgba(255,255,255,0.5)',
-              cursor: 'pointer',
+              flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', fontSize: 12, fontWeight: 600,
+              background: tab === t.key ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
+              color: tab === t.key ? '#60a5fa' : 'rgba(255,255,255,0.5)',
+              cursor: 'pointer', minWidth: 70,
             }}
           >
-            {t === 'config' ? '🎮 Config' : t === 'waves' ? '🌊 Waves' : '🏆 Leaders'}
+            {t.icon} {t.label}
           </button>
         ))}
       </div>
@@ -236,6 +246,21 @@ const Admin: React.FC = () => {
         </div>
       )}
 
+      {/* AUDIO TAB */}
+      {tab === 'audio' && (
+        <AudioPanel
+          entries={audioEntries}
+          onUpdate={(id, updates) => {
+            setAudioEntries(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+            updateAudioEntry(id, updates);
+          }}
+          onCategoryUpdate={(cat, updates) => {
+            setAudioEntries(prev => prev.map(e => e.category === cat ? { ...e, ...updates } : e));
+            updateAudioCategory(cat, updates);
+          }}
+        />
+      )}
+
       {/* LEADERBOARD TAB */}
       {tab === 'leaderboard' && (
         <div style={sectionStyle}>
@@ -258,6 +283,172 @@ const Admin: React.FC = () => {
           ))}
         </div>
       )}
+    </div>
+  );
+};
+
+// --- Audio Panel Sub-Component ---
+const CATEGORY_META: Record<string, { icon: string; label: string; labelAr: string; color: string }> = {
+  ambient: { icon: '🌬️', label: 'Ambient', labelAr: 'خلفية', color: '#22d3ee' },
+  threats: { icon: '💥', label: 'Threats', labelAr: 'تهديدات', color: '#f87171' },
+  combat: { icon: '🔫', label: 'Combat', labelAr: 'قتال', color: '#fb923c' },
+  player: { icon: '🏃', label: 'Player', labelAr: 'اللاعب', color: '#a78bfa' },
+  powerups: { icon: '⚡', label: 'Power-ups', labelAr: 'تعزيزات', color: '#34d399' },
+  boss: { icon: '👹', label: 'Boss', labelAr: 'الزعيم', color: '#f472b6' },
+};
+
+const AudioPanel: React.FC<{
+  entries: AudioConfigEntry[];
+  onUpdate: (id: string, updates: { volume?: number; enabled?: boolean }) => void;
+  onCategoryUpdate: (cat: string, updates: { volume?: number; enabled?: boolean }) => void;
+}> = ({ entries, onUpdate, onCategoryUpdate }) => {
+  const [expandedCat, setExpandedCat] = useState<string | null>(null);
+
+  const categories = Array.from(new Set(entries.map(e => e.category)));
+  const grouped = categories.map(cat => ({
+    cat,
+    meta: CATEGORY_META[cat] || { icon: '🔈', label: cat, labelAr: cat, color: '#94a3b8' },
+    items: entries.filter(e => e.category === cat),
+  }));
+
+  const panelStyle: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.04)',
+    borderRadius: 16,
+    border: '1px solid rgba(255,255,255,0.08)',
+    padding: '20px 16px',
+    marginBottom: 16,
+  };
+
+  return (
+    <div style={panelStyle}>
+      <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>🔊 Audio Control System</h3>
+      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
+        تحكم ذكي بكل صوت في اللعبة — حسب الفئة أو كل صوت على حدة
+      </p>
+
+      {/* Master volume */}
+      <div style={{
+        padding: '12px 14px', borderRadius: 12, marginBottom: 16,
+        background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <span style={{ fontSize: 18 }}>🎚️</span>
+          <span style={{ fontSize: 14, fontWeight: 700, flex: 1 }}>Master Volume</span>
+          <span style={{ fontSize: 12, color: '#60a5fa', fontWeight: 600 }}>
+            {entries.length > 0 ? Math.round(entries.reduce((a, e) => a + e.volume, 0) / entries.length * 100) : 100}%
+          </span>
+        </div>
+        <input
+          type="range" min={0} max={1} step={0.05}
+          value={entries.length > 0 ? entries.reduce((a, e) => a + e.volume, 0) / entries.length : 1}
+          onChange={e => {
+            const v = parseFloat(e.target.value);
+            for (const cat of categories) {
+              onCategoryUpdate(cat, { volume: v });
+            }
+          }}
+          style={{ width: '100%', accentColor: '#3b82f6' }}
+        />
+      </div>
+
+      {/* Categories */}
+      {grouped.map(({ cat, meta, items }) => {
+        const expanded = expandedCat === cat;
+        const catEnabled = items.some(i => i.enabled);
+        const catAvgVol = items.reduce((a, i) => a + i.volume, 0) / items.length;
+
+        return (
+          <div key={cat} style={{
+            marginBottom: 10, borderRadius: 12, overflow: 'hidden',
+            border: `1px solid ${expanded ? meta.color + '33' : 'rgba(255,255,255,0.06)'}`,
+            background: expanded ? 'rgba(255,255,255,0.03)' : 'transparent',
+          }}>
+            {/* Category Header */}
+            <div
+              onClick={() => setExpandedCat(expanded ? null : cat)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
+                cursor: 'pointer', userSelect: 'none',
+              }}
+            >
+              <span style={{ fontSize: 20 }}>{meta.icon}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: meta.color }}>{meta.label}</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{meta.labelAr} · {items.length} sounds</div>
+              </div>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginRight: 6 }}>
+                {Math.round(catAvgVol * 100)}%
+              </span>
+              <button
+                onClick={e => { e.stopPropagation(); onCategoryUpdate(cat, { enabled: !catEnabled }); }}
+                style={{
+                  width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer',
+                  background: catEnabled ? meta.color + '55' : 'rgba(255,255,255,0.1)',
+                  position: 'relative', transition: 'background 0.2s',
+                }}
+              >
+                <div style={{
+                  width: 16, height: 16, borderRadius: 8, background: catEnabled ? meta.color : 'rgba(255,255,255,0.3)',
+                  position: 'absolute', top: 2, left: catEnabled ? 18 : 2, transition: 'all 0.2s',
+                }} />
+              </button>
+              <span style={{
+                fontSize: 14, color: 'rgba(255,255,255,0.3)',
+                transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s',
+              }}>▼</span>
+            </div>
+
+            {/* Category Volume Slider */}
+            {expanded && (
+              <div style={{ padding: '0 14px 8px' }}>
+                <input
+                  type="range" min={0} max={1} step={0.05} value={catAvgVol}
+                  onChange={e => onCategoryUpdate(cat, { volume: parseFloat(e.target.value) })}
+                  style={{ width: '100%', accentColor: meta.color }}
+                />
+              </div>
+            )}
+
+            {/* Individual sounds */}
+            {expanded && items.map(item => (
+              <div key={item.id} style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px 8px 44px',
+                borderTop: '1px solid rgba(255,255,255,0.04)',
+                opacity: item.enabled ? 1 : 0.4, transition: 'opacity 0.2s',
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{item.label}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{item.labelAr}</div>
+                </div>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', width: 32, textAlign: 'right' }}>
+                  {Math.round(item.volume * 100)}%
+                </span>
+                <input
+                  type="range" min={0} max={2} step={0.05} value={item.volume}
+                  onChange={e => onUpdate(item.id, { volume: parseFloat(e.target.value) })}
+                  style={{ width: 80, accentColor: meta.color }}
+                />
+                <button
+                  onClick={() => onUpdate(item.id, { enabled: !item.enabled })}
+                  style={{
+                    width: 28, height: 16, borderRadius: 8, border: 'none', cursor: 'pointer',
+                    background: item.enabled ? meta.color + '44' : 'rgba(255,255,255,0.08)',
+                    position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                  }}
+                >
+                  <div style={{
+                    width: 12, height: 12, borderRadius: 6,
+                    background: item.enabled ? meta.color : 'rgba(255,255,255,0.25)',
+                    position: 'absolute', top: 2, left: item.enabled ? 14 : 2,
+                    transition: 'all 0.2s',
+                  }} />
+                </button>
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 };

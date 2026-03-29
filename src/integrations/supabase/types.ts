@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      audio_config: {
+        Row: {
+          category: string
+          enabled: boolean
+          id: string
+          label: string
+          label_ar: string
+          sound_key: string
+          updated_at: string
+          volume: number
+        }
+        Insert: {
+          category: string
+          enabled?: boolean
+          id?: string
+          label: string
+          label_ar?: string
+          sound_key: string
+          updated_at?: string
+          volume?: number
+        }
+        Update: {
+          category?: string
+          enabled?: boolean
+          id?: string
+          label?: string
+          label_ar?: string
+          sound_key?: string
+          updated_at?: string
+          volume?: number
+        }
+        Relationships: []
+      }
       game_config: {
         Row: {
           base_speed: number
