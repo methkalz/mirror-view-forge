@@ -4050,18 +4050,20 @@ function renderCinematicWarning(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.restore();
   }
 
-  // Main text
+  // Main text (Arabic — RTL)
   ctx.fillStyle = '#fff';
-  ctx.font = 'bold 26px monospace';
+  ctx.font = 'bold 22px Tajawal, Arial';
   ctx.textAlign = 'center';
+  ctx.direction = 'rtl';
   ctx.shadowColor = cw.color;
   ctx.shadowBlur = 20;
-  ctx.fillText(cw.text, w / 2, centerY + 8);
+  ctx.fillText(cw.text, w / 2, centerY + 6);
 
-  // Sub text
+  // Sub text (English — LTR)
+  ctx.direction = 'ltr';
   ctx.shadowBlur = 8;
   ctx.fillStyle = cw.color;
-  ctx.font = 'bold 12px monospace';
+  ctx.font = 'bold 11px monospace';
   ctx.fillText(cw.subText, w / 2, centerY + 28);
 
   ctx.shadowBlur = 0;
