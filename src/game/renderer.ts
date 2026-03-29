@@ -2981,7 +2981,7 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
   const {
     x, y, scale, sitting, facingRight, isDriver, helmetColor,
     bodyBob, armOffset, legOffset, isHit, elapsed,
-    holdingDriver, isShooting, shootTimer,
+    holdingDriver, isShooting, shootTimer, isWaving, hasGoggles, lookingBack,
   } = opts;
 
   ctx.save();
