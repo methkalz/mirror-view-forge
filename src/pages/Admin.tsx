@@ -251,17 +251,10 @@ const Admin: React.FC = () => {
       {tab === 'audio' && (
         <AudioPanel
           entries={audioEntries}
-          onUpdate={(id, updates) => {
-            setAudioEntries(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
-            updateAudioEntry(id, updates);
-          }}
+          setEntries={setAudioEntries}
           onCategoryUpdate={(cat, updates) => {
             setAudioEntries(prev => prev.map(e => e.category === cat ? { ...e, ...updates } : e));
             updateAudioCategory(cat, updates);
-          }}
-          onAudioUrlChange={(id, audioUrl) => {
-            setAudioEntries(prev => prev.map(e => e.id === id ? { ...e, audioUrl } : e));
-            updateAudioEntry(id, { audioUrl });
           }}
         />
       )}
