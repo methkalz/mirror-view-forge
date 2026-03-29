@@ -3518,10 +3518,12 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.fillText('CHOOSE UPGRADE', g.width / 2, g.height * 0.20);
   ctx.shadowBlur = 0;
 
-  // Arabic subtitle
+  // Arabic subtitle (RTL)
   ctx.fillStyle = 'rgba(251,191,36,0.6)';
   ctx.font = '15px Tajawal, Arial, sans-serif';
+  ctx.direction = 'rtl';
   ctx.fillText('اختر ترقية', g.width / 2, g.height * 0.20 + 26);
+  ctx.direction = 'ltr';
   ctx.restore();
 
   // ── Cards ──
@@ -3612,10 +3614,12 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.textBaseline = 'middle';
     ctx.fillText(card.name, cx + cardW / 2, cy + 105);
 
-    // Arabic name — larger with Tajawal font
+    // Arabic name — RTL with Tajawal font
     ctx.fillStyle = card.color;
     ctx.font = 'bold 13px Tajawal, Arial, sans-serif';
+    ctx.direction = 'rtl';
     ctx.fillText(card.nameAr, cx + cardW / 2, cy + 126);
+    ctx.direction = 'ltr';
 
     ctx.restore();
   }
@@ -3651,7 +3655,7 @@ function renderWaveIndicator(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = 'bold 10px monospace';
+  ctx.font = 'bold 10px Tajawal, monospace';
   const tx = w / 2, ty = 14;
   // Background pill
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -3669,7 +3673,7 @@ function renderWaveIndicator(ctx: CanvasRenderingContext2D, g: GameData) {
     const scale = 1 + (1 - g.waveElapsed / 3) * 0.3;
     ctx.globalAlpha = alpha;
     ctx.fillStyle = '#fbbf24';
-    ctx.font = `bold ${Math.round(24 * scale)}px Arial, sans-serif`;
+    ctx.font = `bold ${Math.round(24 * scale)}px Tajawal, Arial, sans-serif`;
     ctx.shadowColor = 'rgba(251,191,36,0.5)';
     ctx.shadowBlur = 20;
     ctx.fillText(`LEVEL ${levelNum}`, tx, ty + 35);
@@ -4050,18 +4054,20 @@ function renderCinematicWarning(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.restore();
   }
 
-  // Main text
+  // Main text (Arabic — RTL)
   ctx.fillStyle = '#fff';
-  ctx.font = 'bold 26px monospace';
+  ctx.font = 'bold 22px Tajawal, Arial';
   ctx.textAlign = 'center';
+  ctx.direction = 'rtl';
   ctx.shadowColor = cw.color;
   ctx.shadowBlur = 20;
-  ctx.fillText(cw.text, w / 2, centerY + 8);
+  ctx.fillText(cw.text, w / 2, centerY + 6);
 
-  // Sub text
+  // Sub text (English — LTR)
+  ctx.direction = 'ltr';
   ctx.shadowBlur = 8;
   ctx.fillStyle = cw.color;
-  ctx.font = 'bold 12px monospace';
+  ctx.font = 'bold 11px monospace';
   ctx.fillText(cw.subText, w / 2, centerY + 28);
 
   ctx.shadowBlur = 0;
@@ -4121,13 +4127,15 @@ function renderWaveWarnings(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.stroke();
     ctx.globalAlpha = alpha;
 
-    // Main text
+    // Main text (Arabic — RTL)
     ctx.textAlign = 'center';
+    ctx.direction = 'rtl';
     ctx.fillStyle = ww.color;
-    ctx.font = 'bold 13px monospace';
+    ctx.font = 'bold 13px Tajawal, Arial';
     ctx.fillText(ww.text, w / 2, y - 2);
 
-    // Sub text
+    // Sub text (English — LTR)
+    ctx.direction = 'ltr';
     ctx.fillStyle = 'rgba(200,200,200,0.8)';
     ctx.font = '9px monospace';
     ctx.fillText(ww.subText, w / 2, y + 12);
