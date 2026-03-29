@@ -4174,7 +4174,7 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
 
   const showPassenger = g.introPhase === 'bikeEnter' || g.introPhase === 'bikeStop';
   const isDismounting = g.introPhase === 'playerDismount';
-  const dismountProg = isDismounting ? Math.min(1, g.introTimer / 1.0) : 0;
+  const dismountProg = isDismounting ? Math.min(1, g.introTimer / 1.4) : 0;
 
   renderMotorcycle(ctx, bike, g, showPassenger, isDismounting, dismountProg);
 
