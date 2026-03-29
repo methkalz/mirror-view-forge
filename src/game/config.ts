@@ -106,14 +106,29 @@ export async function submitScore(
   playerName: string,
   score: number,
   wavesReached: number,
-  levelReached: number
+  levelReached: number,
+  stats?: { timeSurvived?: number; dronesDestroyed?: number; powerUpsCollected?: number; closeCalls?: number; bossesDefeated?: number }
 ): Promise<{ rank: number | null }> {
   try {
+    // Insert leaderboard entry
     await supabase.from('leaderboard').insert({
       player_name: playerName.slice(0, 20),
       score,
       waves_reached: wavesReached,
       level_reached: levelReached,
+    });
+
+    // Insert session analytics
+    await supabase.from('game_sessions').insert({
+      player_name: playerName.slice(0, 20),
+      score,
+      waves_reached: wavesReached,
+      level_reached: levelReached,
+      duration_seconds: stats?.timeSurvived ?? 0,
+      drones_destroyed: stats?.dronesDestroyed ?? 0,
+      powerups_collected: stats?.powerUpsCollected ?? 0,
+      close_calls: stats?.closeCalls ?? 0,
+      bosses_defeated: stats?.bossesDefeated ?? 0,
     });
 
     // Get rank
@@ -125,6 +140,110 @@ export async function submitScore(
     return { rank: (count ?? 0) + 1 };
   } catch {
     return { rank: null };
+  }
+}
+
+// ─── Analytics Queries ───
+
+export interface GameAnalytics {
+  totalSessions: number;
+  uniquePlayers: number;
+  totalPlayTime: number;
+  avgScore: number;
+  avgDuration: number;
+  avgWaves: number;
+  maxScore: number;
+  maxWaves: number;
+  maxDuration: number;
+  sessionsToday: number;
+  sessionsThisWeek: number;
+  topPlayers: { name: string; games: number; avgScore: number; bestScore: number; totalTime: number }[];
+  recentSessions: { playerName: string; score: number; waves: number; duration: number; createdAt: string }[];
+  hourlyDistribution: { hour: number; count: number }[];
+  retentionData: { players1Game: number; players3Games: number; players5Games: number; players10Games: number };
+}
+
+export async function fetchAnalytics(): Promise<GameAnalytics> {
+  try {
+    const { data: sessions } = await supabase
+      .from('game_sessions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1000);
+
+    const all = sessions || [];
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const weekStart = new Date(now.getTime() - 7 * 86400000).toISOString();
+
+    const sessionsToday = all.filter(s => s.created_at >= todayStart).length;
+    const sessionsThisWeek = all.filter(s => s.created_at >= weekStart).length;
+
+    // Unique players
+    const playerMap = new Map<string, typeof all>();
+    for (const s of all) {
+      const arr = playerMap.get(s.player_name) || [];
+      arr.push(s);
+      playerMap.set(s.player_name, arr);
+    }
+
+    const totalDuration = all.reduce((a, s) => a + (s.duration_seconds || 0), 0);
+    const totalScore = all.reduce((a, s) => a + s.score, 0);
+
+    // Top players by avg score
+    const topPlayers = Array.from(playerMap.entries())
+      .map(([name, games]) => ({
+        name,
+        games: games.length,
+        avgScore: Math.round(games.reduce((a, g) => a + g.score, 0) / games.length),
+        bestScore: Math.max(...games.map(g => g.score)),
+        totalTime: Math.round(games.reduce((a, g) => a + (g.duration_seconds || 0), 0)),
+      }))
+      .sort((a, b) => b.avgScore - a.avgScore)
+      .slice(0, 10);
+
+    // Hourly distribution
+    const hourCounts = new Array(24).fill(0);
+    for (const s of all) {
+      const h = new Date(s.created_at).getHours();
+      hourCounts[h]++;
+    }
+
+    // Retention
+    const players1 = Array.from(playerMap.values()).filter(g => g.length >= 1).length;
+    const players3 = Array.from(playerMap.values()).filter(g => g.length >= 3).length;
+    const players5 = Array.from(playerMap.values()).filter(g => g.length >= 5).length;
+    const players10 = Array.from(playerMap.values()).filter(g => g.length >= 10).length;
+
+    return {
+      totalSessions: all.length,
+      uniquePlayers: playerMap.size,
+      totalPlayTime: totalDuration,
+      avgScore: all.length > 0 ? Math.round(totalScore / all.length) : 0,
+      avgDuration: all.length > 0 ? Math.round(totalDuration / all.length) : 0,
+      avgWaves: all.length > 0 ? Math.round(all.reduce((a, s) => a + s.waves_reached, 0) / all.length * 10) / 10 : 0,
+      maxScore: all.length > 0 ? Math.max(...all.map(s => s.score)) : 0,
+      maxWaves: all.length > 0 ? Math.max(...all.map(s => s.waves_reached)) : 0,
+      maxDuration: all.length > 0 ? Math.max(...all.map(s => s.duration_seconds || 0)) : 0,
+      sessionsToday,
+      sessionsThisWeek,
+      topPlayers,
+      recentSessions: all.slice(0, 20).map(s => ({
+        playerName: s.player_name,
+        score: s.score,
+        waves: s.waves_reached,
+        duration: Math.round(s.duration_seconds || 0),
+        createdAt: s.created_at,
+      })),
+      hourlyDistribution: hourCounts.map((count, hour) => ({ hour, count })),
+      retentionData: { players1Game: players1, players3Games: players3, players5Games: players5, players10Games: players10 },
+    };
+  } catch {
+    return {
+      totalSessions: 0, uniquePlayers: 0, totalPlayTime: 0, avgScore: 0, avgDuration: 0, avgWaves: 0,
+      maxScore: 0, maxWaves: 0, maxDuration: 0, sessionsToday: 0, sessionsThisWeek: 0,
+      topPlayers: [], recentSessions: [], hourlyDistribution: [], retentionData: { players1Game: 0, players3Games: 0, players5Games: 0, players10Games: 0 },
+    };
   }
 }
 

@@ -127,7 +127,13 @@ const SkyfallGame: React.FC = () => {
           // Submit score once
           if (!scoreSubmittedRef.current) {
             scoreSubmittedRef.current = true;
-            submitScore(playerName, g.score, g.waveNumber, g.levelNumber).then(({ rank }) => {
+            submitScore(playerName, g.score, g.waveNumber, g.levelNumber, {
+              timeSurvived: g.stats.timeSurvived,
+              dronesDestroyed: g.stats.dronesDestroyed,
+              powerUpsCollected: g.stats.powerUpsCollected,
+              closeCalls: g.stats.closeCalls,
+              bossesDefeated: g.stats.bossesDefeated,
+            }).then(({ rank }) => {
               setGameOverData({ score: g.score, rank, waves: g.waveNumber });
               fetchLeaderboard().then(setLeaderboard);
             });

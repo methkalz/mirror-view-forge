@@ -5,15 +5,15 @@ import {
   fetchGameConfig, updateGameConfig, fetchLeaderboard, deleteLeaderboardEntry, clearLeaderboard,
   fetchWaveConfigs, upsertWaveConfig, deleteWaveConfig,
   fetchAudioConfig, updateAudioEntry, updateAudioCategory, uploadAudioFile, deleteAudioFile, listAudioLibrary,
-  addAudioFile, removeAudioFile,
-  type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode,
+  addAudioFile, removeAudioFile, fetchAnalytics,
+  type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type GameAnalytics,
 } from '@/game/config';
 
 const Admin: React.FC = () => {
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'config' | 'waves' | 'leaderboard' | 'audio'>('config');
+  const [tab, setTab] = useState<'analytics' | 'config' | 'waves' | 'leaderboard' | 'audio'>('analytics');
 
   // Config state
   const [config, setConfig] = useState<RemoteGameConfig | null>(null);
@@ -28,6 +28,7 @@ const Admin: React.FC = () => {
 
   // Audio state
   const [audioEntries, setAudioEntries] = useState<AudioConfigEntry[]>([]);
+  const [analytics, setAnalytics] = useState<GameAnalytics | null>(null);
 
   // Auth check
   useEffect(() => {
@@ -47,11 +48,12 @@ const Admin: React.FC = () => {
   }, [navigate]);
 
   const loadAll = useCallback(async () => {
-    const [c, w, l, a] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard(), fetchAudioConfig()]);
+    const [c, w, l, a, an] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard(), fetchAudioConfig(), fetchAnalytics()]);
     setConfig(c);
     setWaves(w);
     setLeaders(l);
     setAudioEntries(a);
+    setAnalytics(an);
   }, []);
 
   useEffect(() => { if (isAdmin) loadAll(); }, [isAdmin, loadAll]);
@@ -137,6 +139,7 @@ const Admin: React.FC = () => {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
         {([
+          { key: 'analytics' as const, icon: '📊', label: 'Analytics' },
           { key: 'config' as const, icon: '🎮', label: 'Config' },
           { key: 'waves' as const, icon: '🌊', label: 'Waves' },
           { key: 'audio' as const, icon: '🔊', label: 'Audio' },
@@ -156,6 +159,9 @@ const Admin: React.FC = () => {
           </button>
         ))}
       </div>
+
+      {/* ANALYTICS TAB */}
+      {tab === 'analytics' && analytics && <AnalyticsPanel data={analytics} onRefresh={async () => { const an = await fetchAnalytics(); setAnalytics(an); }} />}
 
       {/* CONFIG TAB */}
       {tab === 'config' && config && (
@@ -281,6 +287,147 @@ const Admin: React.FC = () => {
           ))}
         </div>
       )}
+    </div>
+  );
+};
+
+// ─── Analytics Panel ───
+
+function formatTime(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
+  return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+}
+
+const AnalyticsPanel: React.FC<{ data: GameAnalytics; onRefresh: () => void }> = ({ data, onRefresh }) => {
+  const panelStyle: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.04)', borderRadius: 16,
+    border: '1px solid rgba(255,255,255,0.08)', padding: '20px 16px', marginBottom: 16,
+  };
+
+  const statCard = (icon: string, label: string, value: string | number, color: string, sub?: string): React.ReactNode => (
+    <div style={{
+      flex: '1 1 45%', minWidth: 120, padding: '14px 12px', borderRadius: 12,
+      background: `${color}11`, border: `1px solid ${color}22`,
+    }}>
+      <div style={{ fontSize: 18, marginBottom: 4 }}>{icon}</div>
+      <div style={{ fontSize: 20, fontWeight: 800, color }}>{value}</div>
+      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{label}</div>
+      {sub && <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{sub}</div>}
+    </div>
+  );
+
+  const maxHourCount = Math.max(...data.hourlyDistribution.map(h => h.count), 1);
+
+  return (
+    <div style={panelStyle}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div>
+          <h3 style={{ fontSize: 16, fontWeight: 700 }}>📊 Game Analytics</h3>
+          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>إحصائيات مباشرة — بيانات حقيقية عن اللاعبين</p>
+        </div>
+        <button onClick={onRefresh} style={{
+          padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
+          background: 'rgba(59,130,246,0.2)', color: '#93c5fd', fontSize: 11, fontWeight: 600,
+        }}>🔄 Refresh</button>
+      </div>
+
+      {/* Key Metrics */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+        {statCard('🎮', 'Total Sessions', data.totalSessions, '#3b82f6', `${data.sessionsToday} today · ${data.sessionsThisWeek} this week`)}
+        {statCard('👥', 'Unique Players', data.uniquePlayers, '#8b5cf6')}
+        {statCard('⏱️', 'Avg Duration', formatTime(data.avgDuration), '#f59e0b', `Max: ${formatTime(data.maxDuration)}`)}
+        {statCard('⭐', 'Avg Score', data.avgScore.toLocaleString(), '#22c55e', `Max: ${data.maxScore.toLocaleString()}`)}
+        {statCard('🌊', 'Avg Waves', data.avgWaves.toString(), '#06b6d4', `Max: ${data.maxWaves}`)}
+        {statCard('🕐', 'Total Play Time', formatTime(data.totalPlayTime), '#ec4899')}
+      </div>
+
+      {/* Retention Funnel */}
+      <div style={{ marginBottom: 16, padding: '14px', borderRadius: 12, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#a78bfa', marginBottom: 10 }}>🔁 Player Retention — بقاء اللاعبين</div>
+        {[
+          { label: '1+ game', count: data.retentionData.players1Game, color: '#22c55e' },
+          { label: '3+ games', count: data.retentionData.players3Games, color: '#3b82f6' },
+          { label: '5+ games', count: data.retentionData.players5Games, color: '#f59e0b' },
+          { label: '10+ games', count: data.retentionData.players10Games, color: '#ef4444' },
+        ].map(({ label, count, color }) => {
+          const pct = data.retentionData.players1Game > 0 ? (count / data.retentionData.players1Game) * 100 : 0;
+          return (
+            <div key={label} style={{ marginBottom: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 3 }}>
+                <span style={{ color: 'rgba(255,255,255,0.6)' }}>{label}</span>
+                <span style={{ color, fontWeight: 700 }}>{count} ({Math.round(pct)}%)</span>
+              </div>
+              <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.06)' }}>
+                <div style={{ height: '100%', borderRadius: 3, background: color, width: `${pct}%`, transition: 'width 0.5s' }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Hourly Distribution */}
+      <div style={{ marginBottom: 16, padding: '14px', borderRadius: 12, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#60a5fa', marginBottom: 10 }}>🕐 Peak Hours — أوقات الذروة</div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 60 }}>
+          {data.hourlyDistribution.map(({ hour, count }) => (
+            <div key={hour} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <div style={{
+                width: '100%', borderRadius: 3,
+                height: Math.max(2, (count / maxHourCount) * 50),
+                background: count > maxHourCount * 0.7 ? '#3b82f6' : count > maxHourCount * 0.3 ? 'rgba(59,130,246,0.4)' : 'rgba(59,130,246,0.15)',
+                transition: 'height 0.3s',
+              }} />
+              {hour % 4 === 0 && <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>{hour}</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Top Players */}
+      <div style={{ marginBottom: 16, padding: '14px', borderRadius: 12, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#4ade80', marginBottom: 10 }}>🏅 Top Players — أفضل اللاعبين</div>
+        {data.topPlayers.length === 0 && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: 12 }}>No data yet</div>}
+        {data.topPlayers.map((p, i) => (
+          <div key={p.name} style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
+            borderBottom: i < data.topPlayers.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+          }}>
+            <span style={{ fontSize: 14, width: 20, textAlign: 'center' }}>
+              {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>{p.games} games · {formatTime(p.totalTime)} total</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#4ade80' }}>{p.avgScore.toLocaleString()}</div>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>best: {p.bestScore.toLocaleString()}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Recent Sessions */}
+      <div style={{ padding: '14px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#94a3b8', marginBottom: 10 }}>📋 Recent Sessions — الجلسات الأخيرة</div>
+        {data.recentSessions.length === 0 && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: 12 }}>No sessions yet</div>}
+        <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+          {data.recentSessions.map((s, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0',
+              borderBottom: i < data.recentSessions.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none',
+              fontSize: 11,
+            }}>
+              <span style={{ color: '#e2e8f0', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.playerName}</span>
+              <span style={{ color: '#4ade80', fontWeight: 700 }}>{s.score.toLocaleString()}</span>
+              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9 }}>W{s.waves}</span>
+              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9 }}>{formatTime(s.duration)}</span>
+              <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 8 }}>{new Date(s.createdAt).toLocaleTimeString()}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
