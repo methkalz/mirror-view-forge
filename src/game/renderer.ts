@@ -3305,8 +3305,8 @@ function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
   const dir = bike.facingRight ? 1 : -1;
   ctx.scale(dir, 1);
 
-  // Scale up 1.8x for better visibility
-  ctx.scale(1.8, 1.8);
+  // Scale up 2.4x for better visibility
+  ctx.scale(2.4, 2.4);
 
   // Apply engine shake
   ctx.translate(bike.shakeOffset.x, bike.shakeOffset.y);
@@ -3404,12 +3404,12 @@ function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
   // "OTLOP" text — always readable (cancel parent mirrors)
   ctx.save();
   ctx.scale(dir, 1); // cancel first dir scale
-  ctx.scale(1 / 1.8, 1 / 1.8); // cancel the 1.8 scale for crisp text
+  ctx.scale(1 / 2.4, 1 / 2.4); // cancel the 2.4 scale for crisp text
   // Position in original coordinate space
-  const boxCenterX = dir === 1 ? -12 * 1.8 : 12 * 1.8;
-  const boxCenterY = -23 * 1.8;
+  const boxCenterX = dir === 1 ? -12 * 2.4 : 12 * 2.4;
+  const boxCenterY = -23 * 2.4;
   ctx.fillStyle = '#fff';
-  ctx.font = 'bold 7px monospace';
+  ctx.font = 'bold 9px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('OTLOP', boxCenterX, boxCenterY);
