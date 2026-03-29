@@ -7,6 +7,7 @@ import { fetchGameConfig, fetchLeaderboard, submitScore, type RemoteGameConfig, 
 import { supabase } from '@/integrations/supabase/client';
 import NameEntry from './NameEntry';
 import Leaderboard from './Leaderboard';
+import GameLoader from './GameLoader';
 
 const SkyfallGame: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
