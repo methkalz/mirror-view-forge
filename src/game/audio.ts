@@ -4,20 +4,55 @@ let audioCtx: AudioContext | null = null;
 let ambientNode: AudioBufferSourceNode | null = null;
 
 // ─── Remote audio settings cache ───
-let audioSettings: Map<string, { volume: number; enabled: boolean }> = new Map();
+let audioSettings: Map<string, { volume: number; enabled: boolean; audioUrl: string | null }> = new Map();
 let settingsLoaded = false;
+// ─── Preloaded audio buffers cache ───
+const audioBufferCache: Map<string, AudioBuffer> = new Map();
 
 export async function loadAudioSettings() {
   try {
     const entries = await fetchAudioConfig();
     audioSettings.clear();
     for (const e of entries) {
-      audioSettings.set(e.soundKey, { volume: e.volume, enabled: e.enabled });
+      audioSettings.set(e.soundKey, { volume: e.volume, enabled: e.enabled, audioUrl: e.audioUrl });
     }
     settingsLoaded = true;
+    // Preload custom audio files in background
+    preloadCustomAudio();
   } catch {
     settingsLoaded = false;
   }
+}
+
+async function preloadCustomAudio() {
+  const ctx = getCtx();
+  for (const [key, s] of audioSettings) {
+    if (s.audioUrl && !audioBufferCache.has(key)) {
+      try {
+        const resp = await fetch(s.audioUrl);
+        const buf = await resp.arrayBuffer();
+        const decoded = await ctx.decodeAudioData(buf);
+        audioBufferCache.set(key, decoded);
+      } catch {
+        // Failed to preload — will use synthesized fallback
+      }
+    }
+  }
+}
+
+function playCustomAudio(key: string): boolean {
+  const s = audioSettings.get(key);
+  if (!s?.audioUrl) return false;
+  const buffer = audioBufferCache.get(key);
+  if (!buffer) return false;
+  const ctx = getCtx();
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const gain = ctx.createGain();
+  gain.gain.value = s.volume;
+  src.connect(gain).connect(ctx.destination);
+  src.start();
+  return true;
 }
 
 function getSoundVolume(key: string, baseVol: number): number {
