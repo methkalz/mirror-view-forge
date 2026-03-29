@@ -4324,7 +4324,7 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
       facingRight: true,
       isDriver: false,
       helmetColor: '#334155',
-      bodyBob: 0,
+      bodyBob: Math.sin(g.elapsed * 2.5) * 0.8, // Same idle bob as renderPlayer
       armOffset: 0,
       legOffset: 0,
       isHit: false,
