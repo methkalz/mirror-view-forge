@@ -221,7 +221,7 @@ const SkyfallGame: React.FC = () => {
       document.removeEventListener('contextmenu', preventContext);
       canvas.removeEventListener('touchstart', preventTouch);
     };
-  }, [showNameEntry, playerName, remoteConfig]);
+  }, [showNameEntry, playerName]);
 
   const hapticRef = useRef<{ checkbox: HTMLInputElement; label: HTMLLabelElement } | null>(null);
   useEffect(() => {
