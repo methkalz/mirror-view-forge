@@ -281,6 +281,7 @@ const SkyfallGame: React.FC = () => {
             gameTitle: remoteConfig.gameTitle,
             gameSubtitle: remoteConfig.gameSubtitle,
             developerName: remoteConfig.developerName,
+            showTitle: remoteConfig.showTitle,
           } : undefined}
         />
         {leaderboard.length > 0 && (
