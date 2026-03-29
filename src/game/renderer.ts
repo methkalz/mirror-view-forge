@@ -3514,79 +3514,60 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.ellipse(rearWX - 2, -10, 2, 1.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // ── Driver (rider) ──
-  // Body
-  ctx.fillStyle = '#333';
-  ctx.beginPath();
-  ctx.ellipse(2, -24, 4, 5, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Helmet
-  ctx.fillStyle = '#dc2626';
-  ctx.beginPath();
-  ctx.arc(2, -31, 4.5, 0, Math.PI * 2);
-  ctx.fill();
-  // Visor
-  ctx.fillStyle = '#111';
-  ctx.beginPath();
-  ctx.roundRect(3, -33, 4, 3, 1);
-  ctx.fill();
-  // Visor shine
-  ctx.fillStyle = 'rgba(255,255,255,0.25)';
-  ctx.fillRect(4, -33, 2, 1);
-  // Arms to handlebar
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  ctx.moveTo(5, -24);
-  ctx.quadraticCurveTo(10, -20, 15, -25);
-  ctx.stroke();
-  // Legs
-  ctx.strokeStyle = '#2a2a2a';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(0, -19);
-  ctx.lineTo(-4, -10);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(3, -19);
-  ctx.lineTo(8, -10);
-  ctx.stroke();
+  // ── Driver (detailed character) ──
+  drawCharacter(ctx, {
+    x: 2, y: -18,
+    scale: 0.55,
+    sitting: true,
+    facingRight: true,
+    isDriver: true,
+    helmetColor: '#dc2626',
+    bodyBob: Math.sin(g.elapsed * 12) * 0.3,
+    armOffset: 0,
+    legOffset: 0,
+    isHit: false,
+    elapsed: g.elapsed,
+  });
 
-  // ── Passenger (player riding behind) ──
+  // ── Passenger (player riding behind — identical to playable character) ──
   if (showPassenger && !passengerDismounting) {
-    // Sitting behind driver
-    ctx.fillStyle = '#4a5568';
-    ctx.beginPath();
-    ctx.ellipse(-8, -24, 4, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Player head (no helmet, different color)
-    ctx.fillStyle = '#f5c542';
-    ctx.beginPath();
-    ctx.arc(-8, -31, 4, 0, Math.PI * 2);
-    ctx.fill();
-    // Eyes
-    ctx.fillStyle = '#111';
-    ctx.beginPath();
-    ctx.arc(-6.5, -31.5, 0.8, 0, Math.PI * 2);
-    ctx.fill();
-    // Arms holding driver
-    ctx.strokeStyle = '#4a5568';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-5, -24);
-    ctx.lineTo(-1, -23);
-    ctx.stroke();
-    // Legs
-    ctx.strokeStyle = '#3a4558';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(-10, -19);
-    ctx.lineTo(-14, -10);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(-7, -19);
-    ctx.lineTo(-2, -12);
-    ctx.stroke();
+    drawCharacter(ctx, {
+      x: -10, y: -18,
+      scale: 0.55,
+      sitting: true,
+      facingRight: true,
+      isDriver: false,
+      helmetColor: '#334155',
+      bodyBob: Math.sin(g.elapsed * 12) * 0.3,
+      armOffset: 0,
+      legOffset: 0,
+      isHit: false,
+      elapsed: g.elapsed,
+      holdingDriver: true,
+    });
+  }
+
+  // ── Dismounting passenger ──
+  if (passengerDismounting) {
+    const dp = dismountProgress;
+    // Interpolate from sitting on bike to standing beside it
+    const dismountX = -10 + dp * 18; // move right/off bike
+    const dismountY = -18 + dp * 12; // come down to ground level
+    const sittingLerp = 1 - dp; // 1=fully sitting, 0=standing
+
+    drawCharacter(ctx, {
+      x: dismountX, y: dismountY,
+      scale: 0.55 + dp * 0.15, // grow slightly toward normal size
+      sitting: sittingLerp > 0.4,
+      facingRight: true,
+      isDriver: false,
+      helmetColor: '#334155',
+      bodyBob: 0,
+      armOffset: 0,
+      legOffset: dp * 3,
+      isHit: false,
+      elapsed: g.elapsed,
+    });
   }
 
   ctx.restore();
