@@ -154,16 +154,30 @@ export async function updateGameConfig(config: Partial<RemoteGameConfig>): Promi
 }
 
 export async function upsertWaveConfig(wave: RemoteWaveConfig): Promise<boolean> {
-  const { error } = await supabase.from('wave_configs').upsert({
+  // Check if exists
+  const { data: existing } = await supabase
+    .from('wave_configs')
+    .select('id')
+    .eq('wave_number', wave.waveNumber)
+    .maybeSingle();
+
+  const payload = {
     wave_number: wave.waveNumber,
     duration: wave.duration,
-    threats: wave.threats as unknown as Record<string, unknown>,
+    threats: wave.threats as unknown as Json,
     max_concurrent: wave.maxConcurrent,
     spawn_rate: wave.spawnRate,
     surge_multiplier: wave.surgeMultiplier,
-    drone_types: wave.droneTypes as unknown as Record<string, unknown>,
-  }, { onConflict: 'wave_number' });
-  return !error;
+    drone_types: wave.droneTypes as unknown as Json,
+  };
+
+  if (existing) {
+    const { error } = await supabase.from('wave_configs').update(payload).eq('id', existing.id);
+    return !error;
+  } else {
+    const { error } = await supabase.from('wave_configs').insert(payload);
+    return !error;
+  }
 }
 
 export async function deleteWaveConfig(waveNumber: number): Promise<boolean> {
