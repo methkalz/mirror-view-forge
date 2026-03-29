@@ -9,6 +9,7 @@ import NameEntry from './NameEntry';
 import Leaderboard from './Leaderboard';
 
 const SkyfallGame: React.FC = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<GameData | null>(null);
   const inputRef = useRef<InputState>({

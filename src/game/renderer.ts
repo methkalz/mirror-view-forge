@@ -49,34 +49,19 @@ function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
   const totalW = right - left;
 
   if (bgLoaded) {
-    // "Cover" scaling: ensure the image covers the full viewport without repeating
+    // Desktop-safe rendering (from web.dev/MDN + HTML5GameDevs practices):
+    // single cover layer + subtle pan, avoids obvious repeated tiling seams on wide monitors.
     const imgAspect = bgImage.width / bgImage.height;
-    const screenAspect = w / h;
+    const viewportW = totalW;
+    const drawW = Math.max(viewportW * 1.12, h * imgAspect);
+    const drawH = drawW / imgAspect;
 
-    let drawW: number, drawH: number;
-    if (imgAspect > screenAspect) {
-      // Image is wider than screen — fit to height
-      drawH = h;
-      drawW = drawH * imgAspect;
-    } else {
-      // Screen is wider than image — fit to width
-      drawW = w;
-      drawH = drawW / imgAspect;
-    }
+    const panRange = Math.max(0, drawW - viewportW);
+    const pan = panRange > 0 ? ((Math.sin(camX * 0.0025) + 1) * 0.5) * panRange : 0;
 
-    // Parallax: image moves slower than camera
-    const parallax = 0.3;
-    const imgOffset = camX * parallax;
-
-    // Tile the image to cover the full visible width
-    const startTile = Math.floor((left + imgOffset) / drawW) - 1;
-    const endTile = Math.ceil((right + imgOffset) / drawW) + 1;
-
-    for (let tile = startTile; tile <= endTile; tile++) {
-      const drawX = tile * drawW - imgOffset;
-      const drawY = h - drawH; // align to bottom
-      ctx.drawImage(bgImage, drawX, drawY, drawW, drawH);
-    }
+    const drawX = left - pan;
+    const drawY = h - drawH;
+    ctx.drawImage(bgImage, drawX, drawY, drawW, drawH);
   } else {
     // Fallback: solid dark color while loading
     ctx.fillStyle = '#0c1445';
