@@ -14,16 +14,132 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      game_config: {
+        Row: {
+          base_speed: number
+          dda_enabled: boolean
+          difficulty_multiplier: number
+          global_pause: boolean
+          gravity: number
+          id: string
+          spawn_interval: number
+          updated_at: string
+        }
+        Insert: {
+          base_speed?: number
+          dda_enabled?: boolean
+          difficulty_multiplier?: number
+          global_pause?: boolean
+          gravity?: number
+          id?: string
+          spawn_interval?: number
+          updated_at?: string
+        }
+        Update: {
+          base_speed?: number
+          dda_enabled?: boolean
+          difficulty_multiplier?: number
+          global_pause?: boolean
+          gravity?: number
+          id?: string
+          spawn_interval?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      leaderboard: {
+        Row: {
+          created_at: string
+          id: string
+          level_reached: number
+          player_name: string
+          score: number
+          waves_reached: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level_reached?: number
+          player_name: string
+          score?: number
+          waves_reached?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level_reached?: number
+          player_name?: string
+          score?: number
+          waves_reached?: number
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wave_configs: {
+        Row: {
+          drone_types: Json
+          duration: number
+          id: string
+          max_concurrent: number
+          spawn_rate: number
+          surge_multiplier: number
+          threats: Json
+          wave_number: number
+        }
+        Insert: {
+          drone_types?: Json
+          duration?: number
+          id?: string
+          max_concurrent?: number
+          spawn_rate?: number
+          surge_multiplier?: number
+          threats?: Json
+          wave_number: number
+        }
+        Update: {
+          drone_types?: Json
+          duration?: number
+          id?: string
+          max_concurrent?: number
+          spawn_rate?: number
+          surge_multiplier?: number
+          threats?: Json
+          wave_number?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +266,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
