@@ -1308,6 +1308,13 @@ export function update(g: GameData, input: InputState, dt: number) {
           p.gasMaskTimer = 15;
           break;
         }
+        case 'water': {
+          const heal = 20;
+          p.health = Math.min(p.maxHealth, p.health + heal);
+          addFloatingText(g, `+${heal} HP`, { x: p.pos.x, y: p.pos.y - 40 }, '#38bdf8');
+          spawnParticles(g, p.pos, 8, '#38bdf8', 80);
+          break;
+        }
       }
     }
   }
