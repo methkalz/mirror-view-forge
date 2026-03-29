@@ -3711,18 +3711,18 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
     if (dp < 0.3) {
       // Leg swing phase — stay on bike, body tilts slightly
       const t = dp / 0.3;
-      dismountX = -12 + t * 2;
-      dismountY = -19;
-      finalScale = 0.55;
+      dismountX = -10 + t * 2;
+      dismountY = -17;
+      finalScale = 0.5;
       isSitting = true;
-      legAnim = t * 5; // legs animate outward
+      legAnim = t * 5;
     } else if (dp < 0.7) {
       // Slide off phase — move body off the seat
       const t = (dp - 0.3) / 0.4;
       const ease = t * t * (3 - 2 * t); // smoothstep
-      dismountX = -10 + ease * 16;
-      dismountY = -19 + ease * 14;
-      finalScale = 0.55 + ease * 0.12;
+      dismountX = -8 + ease * 14;
+      dismountY = -17 + ease * 12;
+      finalScale = 0.5 + ease * 0.15;
       isSitting = t < 0.5;
       legAnim = 5 - t * 3;
     } else {
@@ -3731,7 +3731,7 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
       const ease = 1 - (1 - t) * (1 - t); // ease out
       dismountX = 6 + ease * 4;
       dismountY = -5 - ease * 1;
-      finalScale = 0.67 + ease * 0.03;
+      finalScale = 0.65 + ease * 0.05;
       isSitting = false;
       legAnim = 2 * (1 - t);
     }
