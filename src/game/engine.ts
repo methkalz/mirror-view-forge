@@ -865,6 +865,8 @@ export function update(g: GameData, input: InputState, dt: number) {
 
         // Arc trajectory — gravity pulls missile down
         h.clusterVelY = (h.clusterVelY || 0) + 40 * dt;
+        // Terminal velocity cap
+        h.clusterVelY = Math.min(h.clusterVelY!, 120);
         h.pos.y += h.clusterVelY * g.slowMoFactor * dt;
 
         // Check if slowed enough to open
@@ -878,10 +880,14 @@ export function update(g: GameData, input: InputState, dt: number) {
         }
       } else if (h.clusterPhase === 'opening') {
         h.clusterTimer! -= dt;
-        // Keep moving at 60% speed during opening + gravity arc continues
-        h.pos.x += (h.clusterVelX! * 0.6) * g.slowMoFactor * dt;
+        // Gradual deceleration from 60% to 50% during opening
+        const openProgress = 1 - (h.clusterTimer! / 1.0);
+        const openSpeedFactor = 0.6 - openProgress * 0.1; // 0.6 → 0.5
+        h.pos.x += (h.clusterVelX! * openSpeedFactor) * g.slowMoFactor * dt;
         h.clusterVelY = (h.clusterVelY || 0) + 50 * dt;
-        h.pos.y += (h.clusterVelY || 0) * 0.5 * g.slowMoFactor * dt;
+        // Terminal velocity cap
+        h.clusterVelY = Math.min(h.clusterVelY!, 120);
+        h.pos.y += h.clusterVelY * g.slowMoFactor * dt;
         if (h.clusterTimer! <= 0) {
           h.clusterPhase = 'releasing';
           h.clusterTimer = 0.1;
@@ -906,8 +912,8 @@ export function update(g: GameData, input: InputState, dt: number) {
           sh.type = 'shrapnel';
           sh.isClusterBomb = true;
           sh.pos = { x: h.pos.x + spreadX, y: h.pos.y + 10 };
-          const targetX = h.pos.x + spreadX + (Math.random() - 0.5) * 40;
-          sh.targetPos = { x: targetX, y: groundY - 5 + Math.random() * 10 };
+          // Bombs fall vertically — no horizontal drift
+          sh.targetPos = { x: h.pos.x + spreadX, y: groundY - 5 + Math.random() * 10 };
           sh.speed = 80 + Math.random() * 80; // slow falling bombs with varied speeds
           sh.size = 4 + Math.random() * 1.5;
           sh.damage = 7;
