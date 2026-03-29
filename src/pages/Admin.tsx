@@ -309,8 +309,19 @@ const AudioPanel: React.FC<{
   entries: AudioConfigEntry[];
   onUpdate: (id: string, updates: { volume?: number; enabled?: boolean }) => void;
   onCategoryUpdate: (cat: string, updates: { volume?: number; enabled?: boolean }) => void;
-}> = ({ entries, onUpdate, onCategoryUpdate }) => {
+  onAudioUrlChange: (id: string, audioUrl: string | null) => void;
+}> = ({ entries, onUpdate, onCategoryUpdate, onAudioUrlChange }) => {
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [libraryOpen, setLibraryOpen] = useState<string | null>(null);
+  const [library, setLibrary] = useState<{ name: string; url: string }[]>([]);
+  const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const loadLibrary = useCallback(async () => {
+    const files = await listAudioLibrary();
+    setLibrary(files);
+  }, []);
 
   const categories = Array.from(new Set(entries.map(e => e.category)));
   const grouped = categories.map(cat => ({
@@ -318,6 +329,28 @@ const AudioPanel: React.FC<{
     meta: CATEGORY_META[cat] || { icon: '🔈', label: cat, labelAr: cat, color: '#94a3b8' },
     items: entries.filter(e => e.category === cat),
   }));
+
+  const handleUpload = async (entryId: string, soundKey: string, file: File) => {
+    setUploading(entryId);
+    const url = await uploadAudioFile(file, soundKey);
+    if (url) {
+      onAudioUrlChange(entryId, url);
+    }
+    setUploading(null);
+  };
+
+  const handleRemoveAudio = async (entryId: string, audioUrl: string) => {
+    await deleteAudioFile(audioUrl);
+    onAudioUrlChange(entryId, null);
+  };
+
+  const handlePreview = (url: string) => {
+    if (previewAudio) { previewAudio.pause(); previewAudio.currentTime = 0; }
+    const audio = new Audio(url);
+    audio.volume = 0.5;
+    audio.play();
+    setPreviewAudio(audio);
+  };
 
   const panelStyle: React.CSSProperties = {
     background: 'rgba(255,255,255,0.04)',
@@ -327,11 +360,26 @@ const AudioPanel: React.FC<{
     marginBottom: 16,
   };
 
+  const smallBtn = (bg: string, color = '#fff'): React.CSSProperties => ({
+    padding: '4px 8px', borderRadius: 6, border: 'none', cursor: 'pointer',
+    background: bg, color, fontSize: 10, fontWeight: 600,
+  });
+
   return (
     <div style={panelStyle}>
+      <input ref={fileInputRef} type="file" accept="audio/*" style={{ display: 'none' }}
+        onChange={e => {
+          const file = e.target.files?.[0];
+          const entryId = fileInputRef.current?.dataset.entryId;
+          const soundKey = fileInputRef.current?.dataset.soundKey;
+          if (file && entryId && soundKey) handleUpload(entryId, soundKey, file);
+          e.target.value = '';
+        }}
+      />
+
       <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>🔊 Audio Control System</h3>
       <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
-        تحكم ذكي بكل صوت في اللعبة — حسب الفئة أو كل صوت على حدة
+        تحكم ذكي بكل صوت في اللعبة — ارفع ملفات صوتية أو اختر من المكتبة
       </p>
 
       {/* Master volume */}
@@ -351,9 +399,7 @@ const AudioPanel: React.FC<{
           value={entries.length > 0 ? entries.reduce((a, e) => a + e.volume, 0) / entries.length : 1}
           onChange={e => {
             const v = parseFloat(e.target.value);
-            for (const cat of categories) {
-              onCategoryUpdate(cat, { volume: v });
-            }
+            for (const cat of categories) { onCategoryUpdate(cat, { volume: v }); }
           }}
           style={{ width: '100%', accentColor: '#3b82f6' }}
         />
@@ -421,37 +467,108 @@ const AudioPanel: React.FC<{
             {/* Individual sounds */}
             {expanded && items.map(item => (
               <div key={item.id} style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px 8px 44px',
+                padding: '10px 14px 10px 44px',
                 borderTop: '1px solid rgba(255,255,255,0.04)',
                 opacity: item.enabled ? 1 : 0.4, transition: 'opacity 0.2s',
               }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{item.label}</div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{item.labelAr}</div>
+                {/* Row 1: Name + Toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{item.label}</div>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{item.labelAr}</div>
+                  </div>
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', width: 32, textAlign: 'right' }}>
+                    {Math.round(item.volume * 100)}%
+                  </span>
+                  <input
+                    type="range" min={0} max={2} step={0.05} value={item.volume}
+                    onChange={e => onUpdate(item.id, { volume: parseFloat(e.target.value) })}
+                    style={{ width: 80, accentColor: meta.color }}
+                  />
+                  <button
+                    onClick={() => onUpdate(item.id, { enabled: !item.enabled })}
+                    style={{
+                      width: 28, height: 16, borderRadius: 8, border: 'none', cursor: 'pointer',
+                      background: item.enabled ? meta.color + '44' : 'rgba(255,255,255,0.08)',
+                      position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                    }}
+                  >
+                    <div style={{
+                      width: 12, height: 12, borderRadius: 6,
+                      background: item.enabled ? meta.color : 'rgba(255,255,255,0.25)',
+                      position: 'absolute', top: 2, left: item.enabled ? 14 : 2,
+                      transition: 'all 0.2s',
+                    }} />
+                  </button>
                 </div>
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', width: 32, textAlign: 'right' }}>
-                  {Math.round(item.volume * 100)}%
-                </span>
-                <input
-                  type="range" min={0} max={2} step={0.05} value={item.volume}
-                  onChange={e => onUpdate(item.id, { volume: parseFloat(e.target.value) })}
-                  style={{ width: 80, accentColor: meta.color }}
-                />
-                <button
-                  onClick={() => onUpdate(item.id, { enabled: !item.enabled })}
-                  style={{
-                    width: 28, height: 16, borderRadius: 8, border: 'none', cursor: 'pointer',
-                    background: item.enabled ? meta.color + '44' : 'rgba(255,255,255,0.08)',
-                    position: 'relative', transition: 'background 0.2s', flexShrink: 0,
-                  }}
-                >
+
+                {/* Row 2: Audio file controls */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  {item.audioUrl ? (
+                    <>
+                      <span style={{ fontSize: 10, color: '#34d399', display: 'flex', alignItems: 'center', gap: 3 }}>
+                        🎵 Custom
+                      </span>
+                      <button onClick={() => handlePreview(item.audioUrl!)} style={smallBtn('rgba(59,130,246,0.25)', '#93c5fd')}>
+                        ▶ Preview
+                      </button>
+                      <button onClick={() => handleRemoveAudio(item.id, item.audioUrl!)} style={smallBtn('rgba(220,38,38,0.25)', '#fca5a5')}>
+                        ✕ Remove
+                      </button>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>🔊 Synthesized</span>
+                  )}
+                  <button
+                    disabled={uploading === item.id}
+                    onClick={() => {
+                      if (fileInputRef.current) {
+                        fileInputRef.current.dataset.entryId = item.id;
+                        fileInputRef.current.dataset.soundKey = item.soundKey;
+                        fileInputRef.current.click();
+                      }
+                    }}
+                    style={smallBtn('rgba(59,130,246,0.15)', '#93c5fd')}
+                  >
+                    {uploading === item.id ? '⏳...' : '📁 Upload'}
+                  </button>
+                  <button
+                    onClick={() => { setLibraryOpen(libraryOpen === item.id ? null : item.id); loadLibrary(); }}
+                    style={smallBtn('rgba(168,85,247,0.15)', '#c4b5fd')}
+                  >
+                    📚 Library
+                  </button>
+                </div>
+
+                {/* Library picker */}
+                {libraryOpen === item.id && (
                   <div style={{
-                    width: 12, height: 12, borderRadius: 6,
-                    background: item.enabled ? meta.color : 'rgba(255,255,255,0.25)',
-                    position: 'absolute', top: 2, left: item.enabled ? 14 : 2,
-                    transition: 'all 0.2s',
-                  }} />
-                </button>
+                    marginTop: 8, padding: 10, borderRadius: 8,
+                    background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)',
+                    maxHeight: 150, overflowY: 'auto',
+                  }}>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>
+                      📚 Sound Library ({library.length} files)
+                    </div>
+                    {library.length === 0 && (
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', padding: 8, textAlign: 'center' }}>
+                        No audio files uploaded yet
+                      </div>
+                    )}
+                    {library.map(f => (
+                      <div key={f.name} style={{
+                        display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0',
+                        borderBottom: '1px solid rgba(255,255,255,0.04)',
+                      }}>
+                        <span style={{ fontSize: 10, color: '#e2e8f0', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {f.name}
+                        </span>
+                        <button onClick={() => handlePreview(f.url)} style={smallBtn('rgba(59,130,246,0.2)', '#93c5fd')}>▶</button>
+                        <button onClick={() => { onAudioUrlChange(item.id, f.url); setLibraryOpen(null); }} style={smallBtn('rgba(34,197,94,0.2)', '#86efac')}>Use</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
