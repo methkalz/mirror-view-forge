@@ -287,6 +287,172 @@ const Admin: React.FC = () => {
   );
 };
 
+// --- Audio Panel Sub-Component ---
+const CATEGORY_META: Record<string, { icon: string; label: string; labelAr: string; color: string }> = {
+  ambient: { icon: '🌬️', label: 'Ambient', labelAr: 'خلفية', color: '#22d3ee' },
+  threats: { icon: '💥', label: 'Threats', labelAr: 'تهديدات', color: '#f87171' },
+  combat: { icon: '🔫', label: 'Combat', labelAr: 'قتال', color: '#fb923c' },
+  player: { icon: '🏃', label: 'Player', labelAr: 'اللاعب', color: '#a78bfa' },
+  powerups: { icon: '⚡', label: 'Power-ups', labelAr: 'تعزيزات', color: '#34d399' },
+  boss: { icon: '👹', label: 'Boss', labelAr: 'الزعيم', color: '#f472b6' },
+};
+
+const AudioPanel: React.FC<{
+  entries: AudioConfigEntry[];
+  onUpdate: (id: string, updates: { volume?: number; enabled?: boolean }) => void;
+  onCategoryUpdate: (cat: string, updates: { volume?: number; enabled?: boolean }) => void;
+}> = ({ entries, onUpdate, onCategoryUpdate }) => {
+  const [expandedCat, setExpandedCat] = useState<string | null>(null);
+
+  const categories = Array.from(new Set(entries.map(e => e.category)));
+  const grouped = categories.map(cat => ({
+    cat,
+    meta: CATEGORY_META[cat] || { icon: '🔈', label: cat, labelAr: cat, color: '#94a3b8' },
+    items: entries.filter(e => e.category === cat),
+  }));
+
+  const panelStyle: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.04)',
+    borderRadius: 16,
+    border: '1px solid rgba(255,255,255,0.08)',
+    padding: '20px 16px',
+    marginBottom: 16,
+  };
+
+  return (
+    <div style={panelStyle}>
+      <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>🔊 Audio Control System</h3>
+      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
+        تحكم ذكي بكل صوت في اللعبة — حسب الفئة أو كل صوت على حدة
+      </p>
+
+      {/* Master volume */}
+      <div style={{
+        padding: '12px 14px', borderRadius: 12, marginBottom: 16,
+        background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <span style={{ fontSize: 18 }}>🎚️</span>
+          <span style={{ fontSize: 14, fontWeight: 700, flex: 1 }}>Master Volume</span>
+          <span style={{ fontSize: 12, color: '#60a5fa', fontWeight: 600 }}>
+            {entries.length > 0 ? Math.round(entries.reduce((a, e) => a + e.volume, 0) / entries.length * 100) : 100}%
+          </span>
+        </div>
+        <input
+          type="range" min={0} max={1} step={0.05}
+          value={entries.length > 0 ? entries.reduce((a, e) => a + e.volume, 0) / entries.length : 1}
+          onChange={e => {
+            const v = parseFloat(e.target.value);
+            for (const cat of categories) {
+              onCategoryUpdate(cat, { volume: v });
+            }
+          }}
+          style={{ width: '100%', accentColor: '#3b82f6' }}
+        />
+      </div>
+
+      {/* Categories */}
+      {grouped.map(({ cat, meta, items }) => {
+        const expanded = expandedCat === cat;
+        const catEnabled = items.some(i => i.enabled);
+        const catAvgVol = items.reduce((a, i) => a + i.volume, 0) / items.length;
+
+        return (
+          <div key={cat} style={{
+            marginBottom: 10, borderRadius: 12, overflow: 'hidden',
+            border: `1px solid ${expanded ? meta.color + '33' : 'rgba(255,255,255,0.06)'}`,
+            background: expanded ? 'rgba(255,255,255,0.03)' : 'transparent',
+          }}>
+            {/* Category Header */}
+            <div
+              onClick={() => setExpandedCat(expanded ? null : cat)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
+                cursor: 'pointer', userSelect: 'none',
+              }}
+            >
+              <span style={{ fontSize: 20 }}>{meta.icon}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: meta.color }}>{meta.label}</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{meta.labelAr} · {items.length} sounds</div>
+              </div>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginRight: 6 }}>
+                {Math.round(catAvgVol * 100)}%
+              </span>
+              <button
+                onClick={e => { e.stopPropagation(); onCategoryUpdate(cat, { enabled: !catEnabled }); }}
+                style={{
+                  width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer',
+                  background: catEnabled ? meta.color + '55' : 'rgba(255,255,255,0.1)',
+                  position: 'relative', transition: 'background 0.2s',
+                }}
+              >
+                <div style={{
+                  width: 16, height: 16, borderRadius: 8, background: catEnabled ? meta.color : 'rgba(255,255,255,0.3)',
+                  position: 'absolute', top: 2, left: catEnabled ? 18 : 2, transition: 'all 0.2s',
+                }} />
+              </button>
+              <span style={{
+                fontSize: 14, color: 'rgba(255,255,255,0.3)',
+                transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s',
+              }}>▼</span>
+            </div>
+
+            {/* Category Volume Slider */}
+            {expanded && (
+              <div style={{ padding: '0 14px 8px' }}>
+                <input
+                  type="range" min={0} max={1} step={0.05} value={catAvgVol}
+                  onChange={e => onCategoryUpdate(cat, { volume: parseFloat(e.target.value) })}
+                  style={{ width: '100%', accentColor: meta.color }}
+                />
+              </div>
+            )}
+
+            {/* Individual sounds */}
+            {expanded && items.map(item => (
+              <div key={item.id} style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px 8px 44px',
+                borderTop: '1px solid rgba(255,255,255,0.04)',
+                opacity: item.enabled ? 1 : 0.4, transition: 'opacity 0.2s',
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{item.label}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{item.labelAr}</div>
+                </div>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', width: 32, textAlign: 'right' }}>
+                  {Math.round(item.volume * 100)}%
+                </span>
+                <input
+                  type="range" min={0} max={2} step={0.05} value={item.volume}
+                  onChange={e => onUpdate(item.id, { volume: parseFloat(e.target.value) })}
+                  style={{ width: 80, accentColor: meta.color }}
+                />
+                <button
+                  onClick={() => onUpdate(item.id, { enabled: !item.enabled })}
+                  style={{
+                    width: 28, height: 16, borderRadius: 8, border: 'none', cursor: 'pointer',
+                    background: item.enabled ? meta.color + '44' : 'rgba(255,255,255,0.08)',
+                    position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                  }}
+                >
+                  <div style={{
+                    width: 12, height: 12, borderRadius: 6,
+                    background: item.enabled ? meta.color : 'rgba(255,255,255,0.25)',
+                    position: 'absolute', top: 2, left: item.enabled ? 14 : 2,
+                    transition: 'all 0.2s',
+                  }} />
+                </button>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 // --- Wave Editor Sub-Component ---
 const THREAT_TYPES = ['shrapnel', 'missile', 'cluster'];
 const DRONE_TYPES = ['scout', 'tracker', 'bomber', 'cargo', 'incendiary', 'chemical'];
