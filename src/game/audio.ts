@@ -207,8 +207,10 @@ function playNoise(duration: number, vol = 0.08, filter?: { type: BiquadFilterTy
 function startAmbient() {
   if (ambientNode) return;
   if (!isSoundEnabled('ambient')) return;
-  // Try custom ambient audio (looped)
-  const customBuf = audioBufferCache.get('ambient');
+
+  // Try custom multi-file ambient (looped)
+  const url = pickFileUrl('ambient');
+  const customBuf = url ? audioBufferCache.get(url) : null;
   if (customBuf) {
     const ctx = getCtx();
     ambientNode = ctx.createBufferSource();
@@ -220,6 +222,8 @@ function startAmbient() {
     ambientNode.start();
     return;
   }
+
+  // Fallback: synthesized wind
   const ctx = getCtx();
   const bufferSize = ctx.sampleRate * 2;
   const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -598,31 +602,49 @@ export function sfxUpgradeSelect() {
   setTimeout(() => playTone(1000, 0.08, 'sine', 0.07 * v), 50);
 }
 
-// ─── Periodic Ambient Sounds ───
-
-let ambientPeriodicTimer: ReturnType<typeof setInterval> | null = null;
+// ─── Dynamic Periodic Ambient System ───
 
 export function startPeriodicAmbient() {
-  if (ambientPeriodicTimer) return;
-  ambientPeriodicTimer = setInterval(() => {
-    // Random distant effects
-    const r = Math.random();
-    if (r < 0.3) {
-      sfxDistantExplosion();
-    } else if (r < 0.5) {
-      sfxWindGust();
-    } else if (r < 0.7) {
-      sfxDistantSiren();
+  stopPeriodicAmbient();
+
+  // Start periodic timers for sounds with intervalSeconds set
+  for (const [key, s] of audioSettings) {
+    if (s.intervalSeconds && s.intervalSeconds > 0 && s.enabled) {
+      const ms = s.intervalSeconds * 1000;
+      const timer = setInterval(() => {
+        if (!isSoundEnabled(key)) return;
+        // Try custom audio first
+        if (!playCustomAudio(key)) {
+          // Fallback to synthesized
+          const sfxFn = periodicFallbacks[key];
+          if (sfxFn) sfxFn();
+        }
+      }, ms + Math.random() * ms * 0.5);
+      periodicTimers.set(key, timer);
     }
-  }, 8000 + Math.random() * 12000);
+  }
+
+  // Legacy fallback: if no periodic sounds configured, use default random ambient
+  if (periodicTimers.size === 0) {
+    const timer = setInterval(() => {
+      const r = Math.random();
+      if (r < 0.3) sfxDistantExplosion();
+      else if (r < 0.5) sfxWindGust();
+      else if (r < 0.7) sfxDistantSiren();
+    }, 8000 + Math.random() * 12000);
+    periodicTimers.set('_legacy', timer);
+  }
 }
 
 export function stopPeriodicAmbient() {
-  if (ambientPeriodicTimer) {
-    clearInterval(ambientPeriodicTimer);
-    ambientPeriodicTimer = null;
+  for (const [key, timer] of periodicTimers) {
+    clearInterval(timer);
   }
+  periodicTimers.clear();
 }
+
+// Fallback synthesized sounds for periodic keys
+const periodicFallbacks: Record<string, (() => void)> = {};
 
 export function sfxDistantExplosion() {
   if (!isSoundEnabled('distantExplosion')) return;
