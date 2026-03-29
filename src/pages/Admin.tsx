@@ -58,12 +58,27 @@ const Admin: React.FC = () => {
 
   useEffect(() => { if (isAdmin) loadAll(); }, [isAdmin, loadAll]);
 
-  const saveConfig = async (updates: Partial<RemoteGameConfig>) => {
+  const [pendingChanges, setPendingChanges] = useState<Partial<RemoteGameConfig>>({});
+  const hasPending = Object.keys(pendingChanges).length > 0;
+
+  const stageChange = (updates: Partial<RemoteGameConfig>) => {
     if (!config) return;
-    setConfig({ ...config, ...updates });
+    setConfig(prev => prev ? { ...prev, ...updates } : prev);
+    setPendingChanges(prev => ({ ...prev, ...updates }));
+  };
+
+  const saveAllChanges = async () => {
+    if (!hasPending) return;
     setSaving(true);
-    await updateGameConfig(updates);
+    await updateGameConfig(pendingChanges);
+    setPendingChanges({});
     setSaving(false);
+  };
+
+  const discardChanges = async () => {
+    setPendingChanges({});
+    const c = await fetchGameConfig();
+    setConfig(c);
   };
 
   const handleDeleteEntry = async (id: string) => {
