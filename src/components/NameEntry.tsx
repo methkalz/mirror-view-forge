@@ -352,9 +352,15 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           60% { transform: translateX(-4px); }
           80% { transform: translateX(4px); }
         }
-        @keyframes btnShineSweep {
-          0%, 70%, 100% { transform: translateX(-120%); }
-          85% { transform: translateX(120%); }
+        @keyframes scanLine {
+          0% { top: 0; opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
+        @keyframes borderPulse {
+          0%, 100% { opacity: 0.6; }
+          50% { opacity: 1; }
         }
       `}</style>
     </div>
