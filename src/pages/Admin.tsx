@@ -323,15 +323,15 @@ const inputStyle: React.CSSProperties = {
 };
 
 const btnPrimary: React.CSSProperties = {
-  padding: '8px 18px', borderRadius: 10, border: 'none',
-  background: 'rgba(59,130,246,0.15)', color: '#60a5fa', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+  padding: '8px 18px', borderRadius: 10,
   border: '1px solid rgba(59,130,246,0.2)',
+  background: 'rgba(59,130,246,0.15)', color: '#60a5fa', fontSize: 12, fontWeight: 600, cursor: 'pointer',
 };
 
 const btnDanger: React.CSSProperties = {
-  padding: '8px 18px', borderRadius: 10, border: 'none',
-  background: 'rgba(220,38,38,0.1)', color: '#f87171', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+  padding: '8px 18px', borderRadius: 10,
   border: '1px solid rgba(220,38,38,0.15)',
+  background: 'rgba(220,38,38,0.1)', color: '#f87171', fontSize: 12, fontWeight: 600, cursor: 'pointer',
 };
 
 const btnGhost: React.CSSProperties = {
