@@ -1,78 +1,44 @@
 
+هدف التنفيذ: إصلاح تشغيل موسيقى شاشة الاسم بحيث تعمل تلقائياً عندما يسمح المتصفح، وتعمل فور أول تفاعل عندما يمنع autoplay (خصوصاً iPhone Safari/Chrome)، بدون أن تعلق في حالة صامتة.
 
-# ترقية لوحة التحكم — تصميم Desktop-first احترافي (Elegant Minimal)
+## التشخيص (سبب الخلل الحالي)
+1) بيانات الصوت سليمة: ملف `menuMusic` موجود ويتم تحميله من التخزين بنجاح.
+2) الخلل منطقي في الواجهة:
+- في `NameEntry.tsx` يوجد `setTimeout` بعد 500ms يستدعي `startMenuMusic()` ثم يضبط `musicStarted=true`.
+- إذا كان المتصفح حظر التشغيل التلقائي، يصبح `musicStarted=true` رغم أن الصوت لم يعمل فعلياً.
+- عند أول لمسة لاحقاً، `startOnGesture` لا ينفّذ `resumeAudio()` بسبب شرط `if (!musicStarted.current)`، فيبقى الصوت متوقفاً.
+3) قيود المتصفح: “تشغيل تلقائي بصوت” غير مضمون على iOS/Chrome الحديثة بدون gesture.
 
-## المشكلة الحالية
-- لوحة التحكم مصممة بـ `maxWidth: 600px` — مناسبة فقط للموبايل
-- جميع الأنماط inline styles بدون responsive design
-- لا يوجد sidebar أو تخطيط احترافي للحواسيب
+## خطة التنفيذ
+1) تعديل منطق بدء الموسيقى في `src/components/NameEntry.tsx`
+- فصل “محاولة التشغيل التلقائي” عن “فتح الصوت بتفاعل المستخدم”.
+- إلغاء الاعتماد على `musicStarted` بالشكل الحالي.
+- إنشاء دالة موحّدة `ensureAudioStarted()`:
+  - تستدعي `resumeAudio()` أولاً.
+  - ثم تستدعي `startMenuMusic()`.
+- محاولة auto-start عند mount (Desktop/المتصفحات المتساهلة) لكن **بدون** قفل مسار gesture.
+- إبقاء listeners للتفاعل (touchstart/click/pointerdown/keydown) فعالة حتى نتأكد أن الصوت أصبح يعمل.
 
-## التصميم الجديد
+2) تقوية طبقة الصوت في `src/game/audio.ts`
+- جعل `resumeAudio` دالة async وتنتظر فعلياً `audioCtx.resume()` عند الحاجة.
+- إرجاع حالة واضحة (نجاح/فشل) ليستفيد منها `NameEntry`.
+- إضافة helper صغيرة للتحقق من حالة الـ `AudioContext` (running/suspended) حتى لا نعتبر التشغيل نجح وهو محظور.
 
-```text
-┌─────────────────────────────────────────────────────┐
-│  ┌──────────┐  ┌──────────────────────────────────┐ │
-│  │ SIDEBAR  │  │         MAIN CONTENT             │ │
-│  │          │  │                                  │ │
-│  │ ☄ Skyfall│  │  ┌────────┐ ┌────────┐ ┌──────┐ │ │
-│  │          │  │  │ Card 1 │ │ Card 2 │ │Card 3│ │ │
-│  │ 📊 Stats │  │  └────────┘ └────────┘ └──────┘ │ │
-│  │ 🎮 Config│  │                                  │ │
-│  │ 🎨 Brand │  │  ┌──────────────────────────────┐│ │
-│  │ 🌊 Waves │  │  │     Section Content          ││ │
-│  │ 🔊 Audio │  │  │     (Grid layout)            ││ │
-│  │ 🏆 Board │  │  └──────────────────────────────┘│ │
-│  │          │  │                                  │ │
-│  │ ─────── │  │                                  │ │
-│  │ 🚪Logout│  │                                  │ │
-│  └──────────┘  └──────────────────────────────────┘ │
-└─────────────────────────────────────────────────────┘
-```
+3) تحسين تجربة المستخدم عند حظر autoplay
+- إذا فشلت محاولة auto-start خلال أول ثانية، إظهار تلميح بسيط جداً داخل شاشة الاسم (مثال: “انقر لتفعيل الصوت”) ثم يختفي تلقائياً بعد أول تفاعل.
+- هذا يحافظ على UX احترافي ويعالج قيود iOS الواقعية.
 
-على الموبايل: الـ sidebar يتحول لـ top navigation كما هو حالياً.
+4) تنظيف التحذيرات المرتبطة بالشاشة
+- مراجعة تمرير props في `SkyfallGame` إلى `LoadingScreen` و`NameEntry` والتأكد عدم تمرير `ref` غير مقصود أثناء إعادة التنظيم (لإزالة warning الظاهر في console).
 
-## التغييرات
-
-### 1. `src/pages/Admin.tsx` — إعادة هيكلة كاملة
-
-**Layout:**
-- إزالة `maxWidth: 600px` — استخدام layout مرن full-width
-- Desktop (`≥1024px`): Sidebar ثابت يسار (240px) + main content يمين
-- Tablet (`768-1023px`): Sidebar مصغر (icons only 64px) + content
-- Mobile (`<768px`): بدون sidebar، tabs أفقية كما هو
-
-**Sidebar (Desktop):**
-- شعار اللعبة + اسمها بالأعلى
-- قائمة التبويبات عمودياً بأيقونات + نص
-- التبويب النشط بخلفية خفيفة وخط جانبي ملون
-- زر Logout بالأسفل
-- تصميم minimal: خلفية `rgba(255,255,255,0.02)` مع حد يمين رفيع
-
-**Main Content Area:**
-- `max-width: 1200px` مع `margin: auto`
-- Header بعنوان التبويب الحالي + زر Refresh
-- Analytics cards في grid: 4 أعمدة على desktop، 2 على tablet
-- Config sliders في grid عمودين على desktop
-- جميع الأقسام بتصميم متسق: cards بـ `border-radius: 12px` وظلال خفيفة
-
-**Typography & Colors (Elegant Minimal):**
-- ألوان أساسية: slate-900 background، أبيض/رمادي للنصوص
-- لون مميز واحد (blue-500) للعناصر النشطة
-- خطوط أكبر للعناوين (24px بدل 16px)
-- مسافات أوسع بين العناصر (padding 24-32px بدل 16-20px)
-
-### 2. `src/pages/AdminLogin.tsx` — تحسين طفيف
-- توسيع العرض على desktop إلى `max-width: 420px`
-- إضافة شعار اللعبة فوق النموذج
-
-### 3. `src/hooks/use-mobile.tsx` — موجود بالفعل، سيتم استخدامه
+## التحقق بعد التنفيذ (End-to-End)
+1) Desktop Chrome (تبويب جديد): الموسيقى تبدأ تلقائياً إذا مسموح، وإلا تعمل مباشرة بعد أول click.
+2) iPhone Safari + Chrome: الموسيقى تبدأ فور أول لمسة على شاشة الاسم.
+3) عند رفع `menuMusic` مخصص من لوحة التحكم: يتم تشغيل الملف المرفوع وليس fallback.
+4) عند الانتقال من شاشة الاسم إلى اللعبة: تتوقف موسيقى القائمة بشكل صحيح بلا تكرار/تسريب.
+5) لا تظهر warning جديدة في console تخص `Function components cannot be given refs`.
 
 ## الملفات المتأثرة
-- `src/pages/Admin.tsx` — إعادة هيكلة التخطيط + responsive grid
-- `src/pages/AdminLogin.tsx` — تحسينات بسيطة
-
-## النهج التقني
-- استخدام CSS media queries عبر inline styles + `useIsMobile` hook
-- إضافة hook جديد `useIsDesktop` (≥1024px) للتفريق بين 3 أحجام
-- الحفاظ على كل المنطق والوظائف كما هي — فقط تغيير التخطيط والأنماط
-
+- `src/components/NameEntry.tsx`
+- `src/game/audio.ts`
+- (إن لزم لتنظيف التحذير) `src/components/SkyfallGame.tsx`
