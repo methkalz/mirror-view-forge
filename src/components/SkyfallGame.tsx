@@ -243,6 +243,7 @@ const SkyfallGame: React.FC = () => {
 
     return () => {
       cancelAnimationFrame(rafRef.current);
+      resizeObserver?.disconnect();
       window.removeEventListener('resize', resize);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
