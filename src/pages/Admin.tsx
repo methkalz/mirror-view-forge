@@ -5,7 +5,8 @@ import {
   fetchGameConfig, updateGameConfig, fetchLeaderboard, deleteLeaderboardEntry, clearLeaderboard,
   fetchWaveConfigs, upsertWaveConfig, deleteWaveConfig,
   fetchAudioConfig, updateAudioEntry, updateAudioCategory, uploadAudioFile, deleteAudioFile, listAudioLibrary,
-  type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry,
+  addAudioFile, removeAudioFile,
+  type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode,
 } from '@/game/config';
 
 const Admin: React.FC = () => {
