@@ -1,36 +1,35 @@
 
 
-# تحسين الدراجة + البطاقات + خط عربي احترافي
+# زووم إن/آوت عند دخول الدراجة النارية
+
+## الفكرة
+عند دخول الدراجة تبدأ الكاميرا بالتقريب (zoom in) تدريجياً نحو الدراجة لمدة ثانيتين لإبرازها بوضوح، ثم تعود للعرض الطبيعي (zoom out) بسلاسة.
 
 ## التغييرات
 
-### 1. خط عربي احترافي — `index.html`
-- تحميل خط **Tajawal** (Google Fonts) — خط عربي عصري مناسب للألعاب
-- `<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap">`
+### 1. `src/game/types.ts`
+- إضافة حقول zoom للكاميرا في `GameData`:
+  - `cameraZoom: number` (القيمة الحالية، تبدأ 1.0)
+  - `cameraZoomTarget: number` (القيمة المستهدفة)
+  - `cameraFocusX: number` و `cameraFocusY: number` (نقطة التركيز)
 
-### 2. تقليل اهتزاز الدراجة — `src/game/engine.ts`
-- مرحلة `idle`: تقليل الاهتزاز من `±1.3px` إلى `±0.3px` (اهتزاز خفيف جداً بالكاد ملحوظ)
-- مرحلة الحركة: تقليل من `±0.4px` إلى `±0.15px`
+### 2. `src/game/engine.ts`
+- عند دخول الدراجة (مرحلة `bike` تبدأ): ضبط `cameraZoomTarget = 1.6` ونقطة التركيز على الدراجة
+- بعد **2 ثانية**: إعادة `cameraZoomTarget = 1.0`
+- تحديث `cameraZoom` كل فريم بـ lerp سلس نحو `cameraZoomTarget`
+- إضافة `bikeZoomTimer: number` لتتبع الوقت
 
-### 3. لا تبدأ الموجة قبل مغادرة الدراجة — `src/game/engine.ts`
-- تأكيد أن مرحلة `bike` لا تنتقل لـ `active` إلا عندما `!g.deliveryBike || !g.deliveryBike.active` (موجود حالياً — سليم، لكن نتحقق من عدم وجود shortcut آخر)
-
-### 4. تكبير الدراجة — `src/game/renderer.ts`
-- زيادة `ctx.scale` من `1.8` إلى `2.4`
-- تعديل OTLOP text scaling بالتناسب
-
-### 5. تبسيط بطاقات الترقية — `src/game/engine.ts` + `src/game/renderer.ts`
-- إزالة `description` من البطاقات (مزدحم وغير مقروء)
-- إبقاء فقط: أيقونة كبيرة + اسم إنجليزي + اسم عربي
-- إزالة `── TAP ──` (غير ضروري)
-- تكبير الأيقونة والنصوص لملء المساحة
-
-### 6. استخدام خط Tajawal للعربية — `src/game/renderer.ts`
-- استبدال كل `font: '...px Arial'` للنصوص العربية بـ `'...px Tajawal, Arial'`
-- يشمل: بطاقات الترقية، عنوان "اختر ترقية"، وأي نص عربي آخر
+### 3. `src/game/renderer.ts`
+- في `render()`: تطبيق zoom حول نقطة التركيز قبل رسم المشهد:
+  ```
+  ctx.translate(focusX, focusY);
+  ctx.scale(zoom, zoom);
+  ctx.translate(-focusX, -focusY);
+  ```
+- HUD يبقى بدون zoom (يُرسم بعد `ctx.restore`)
 
 ## الملفات المتأثرة
-1. **`index.html`** — تحميل خط Tajawal
-2. **`src/game/engine.ts`** — اهتزاز أخف
-3. **`src/game/renderer.ts`** — scale 2.4x للدراجة + بطاقات مبسطة + خط Tajawal
+1. **`src/game/types.ts`** — حقول zoom
+2. **`src/game/engine.ts`** — منطق الزووم + مؤقت
+3. **`src/game/renderer.ts`** — تطبيق الزووم على المشهد
 
