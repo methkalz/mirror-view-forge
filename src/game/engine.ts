@@ -764,7 +764,7 @@ export function applyUpgrade(g: GameData, cardId: string) {
   spawnDeliveryBike(g);
   // Start zoom-in towards bike
   g.cameraZoomTarget = 1.5;
-  g.bikeZoomTimer = 2.0;
+  g.bikeZoomTimer = 3.0;
   addFloatingText(g, 'UPGRADE!', { x: g.width / 2, y: g.height * 0.35 }, '#fbbf24');
 }
 
@@ -932,7 +932,7 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
     }
 
     // Auto-select after 7s if player hasn't chosen
-    if (g.cardsShownTimer > 7 && g.upgradeCards.length > 0) {
+    if (g.cardsShownTimer > 10 && g.upgradeCards.length > 0) {
       const randomCard = g.upgradeCards[Math.floor(Math.random() * g.upgradeCards.length)];
       applyUpgrade(g, randomCard.id);
     }
