@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { GameData, InputState } from '@/game/types';
+import { loadAudioSettings } from '@/game/audio';
 import { createGame, resetGame, update, updateIntro } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
 import { resumeAudio, stopMenuMusic } from '@/game/audio';
@@ -44,21 +45,22 @@ const SkyfallGame: React.FC = () => {
 
     const loadAll = async () => {
       try {
-        // Load config
         const cfgPromise = fetchGameConfig();
-        setLoadProgress(25);
-
-        // Load leaderboard in parallel
         const lbPromise = fetchLeaderboard();
-        setLoadProgress(40);
+        const audioPromise = loadAudioSettings();
+        setLoadProgress(20);
 
         const [cfg, lb] = await Promise.all([cfgPromise, lbPromise]);
         if (!mounted) return;
-        setLoadProgress(70);
+        setLoadProgress(55);
 
         setRemoteConfig(cfg);
         remoteConfigRef.current = cfg;
         setLeaderboard(lb);
+
+        // Wait for audio preloading
+        await audioPromise;
+        if (!mounted) return;
         setLoadProgress(100);
       } catch (e) {
         console.error('Loading error:', e);
