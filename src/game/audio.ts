@@ -643,8 +643,12 @@ export function stopPeriodicAmbient() {
   periodicTimers.clear();
 }
 
-// Fallback synthesized sounds for periodic keys
-const periodicFallbacks: Record<string, (() => void)> = {};
+// Register periodic fallbacks after functions are defined (populated below)
+const periodicFallbacks: Record<string, (() => void)> = {
+  distantExplosion: () => { sfxDistantExplosion(); },
+  windGust: () => { sfxWindGust(); },
+  distantSiren: () => { sfxDistantSiren(); },
+};
 
 export function sfxDistantExplosion() {
   if (!isSoundEnabled('distantExplosion')) return;
