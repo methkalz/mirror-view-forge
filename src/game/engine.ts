@@ -1494,6 +1494,7 @@ export function update(g: GameData, input: InputState, dt: number) {
         // Impact
         h.active = false;
         g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
+        if (h.type === 'shrapnel') sfxImpactLight();
         else if (h.type === 'missile') sfxImpactHeavy();
         else sfxExplosion();
         
