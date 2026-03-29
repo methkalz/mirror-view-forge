@@ -878,16 +878,29 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
       }
     }
   } else if (g.wavePhase === 'clearing') {
+    // Force-clear all parachuting powerups, fire pools, gas clouds
+    for (const pu of g.powerUps) { if (pu.active) pu.active = false; }
+    g.firePools.length = 0;
+    g.gasClouds.length = 0;
+
     // Wait for all hazards & drones to clear
     const activeHazards = g.hazards.filter(h => h.active).length;
     const activeDrones = g.drones.filter(d => d.active && d.tier !== 'cargo').length;
-    // Also check falling hazards
     if (activeHazards === 0 && activeDrones === 0) {
-      // Cards first, then bike
-      g.wavePhase = 'cards';
-      g.upgradeCards = generateUpgradeCards(g);
-      g.cardsShownTimer = 0;
-      g.selectedUpgrade = null;
+      // Only show cards+bike at end of level (every 3 waves)
+      if (g.waveNumber % 3 === 0) {
+        g.wavePhase = 'cards';
+        g.upgradeCards = generateUpgradeCards(g);
+        g.cardsShownTimer = 0;
+        g.selectedUpgrade = null;
+      } else {
+        // Skip to next wave directly
+        g.wavePhase = 'active';
+        g.waveNumber++;
+        g.levelNumber = Math.floor((g.waveNumber - 1) / 3) + 1;
+        g.waveTimer = 60 + Math.random() * 10;
+        g.waveElapsed = 0;
+      }
     }
     // Force-clear drones that refuse to leave after 5s
     for (const d of g.drones) {
