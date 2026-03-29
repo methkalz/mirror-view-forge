@@ -2972,6 +2972,9 @@ interface CharacterOptions {
   holdingDriver?: boolean;
   isShooting?: boolean;
   shootTimer?: number;
+  isWaving?: boolean;
+  hasGoggles?: boolean;
+  lookingBack?: boolean;
 }
 
 function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
