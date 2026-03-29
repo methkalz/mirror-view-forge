@@ -119,11 +119,21 @@ const SkyfallGame: React.FC = () => {
       inputRef.current.keys.delete(e.key.toLowerCase());
     };
 
-    // Unified pointer for start/restart (no double-fire)
+    // Unified pointer for start/restart + card clicks
     const onPointerDown = (e: PointerEvent) => {
       // Ignore if it came from a control button
       if ((e.target as HTMLElement) !== canvas) return;
       e.preventDefault();
+
+      // If in cards phase, pass click coordinates for card selection
+      if (g.wavePhase === 'cards' && g.upgradeCards.length > 0) {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        inputRef.current.cardClick = { x, y };
+        return;
+      }
+
       startOrRestart();
     };
 
