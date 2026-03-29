@@ -107,6 +107,7 @@ export type Database = {
           gravity: number
           id: string
           logo_url: string | null
+          show_title: boolean
           spawn_interval: number
           updated_at: string
         }
@@ -122,6 +123,7 @@ export type Database = {
           gravity?: number
           id?: string
           logo_url?: string | null
+          show_title?: boolean
           spawn_interval?: number
           updated_at?: string
         }
@@ -137,6 +139,7 @@ export type Database = {
           gravity?: number
           id?: string
           logo_url?: string | null
+          show_title?: boolean
           spawn_interval?: number
           updated_at?: string
         }
