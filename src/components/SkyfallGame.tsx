@@ -4,6 +4,7 @@ import { createGame, resetGame, update, updateIntro } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
 import { resumeAudio } from '@/game/audio';
 import { fetchGameConfig, fetchLeaderboard, submitScore, type RemoteGameConfig, type LeaderboardEntry } from '@/game/config';
+import { supabase } from '@/integrations/supabase/client';
 import NameEntry from './NameEntry';
 import Leaderboard from './Leaderboard';
 
@@ -33,13 +34,22 @@ const SkyfallGame: React.FC = () => {
   const remoteConfigRef = useRef<RemoteGameConfig | null>(null);
   const scoreSubmittedRef = useRef(false);
 
-  // Load leaderboard on mount
+  // Load leaderboard on mount + presence tracking
   useEffect(() => {
     fetchLeaderboard().then(setLeaderboard);
     fetchGameConfig().then(cfg => {
       setRemoteConfig(cfg);
       remoteConfigRef.current = cfg;
     });
+
+    // Track online presence
+    const channel = supabase.channel('online-players', { config: { presence: { key: `player_${Date.now()}_${Math.random().toString(36).slice(2)}` } } });
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.track({ online_at: new Date().toISOString() });
+      }
+    });
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const handleNameSubmit = useCallback((name: string) => {

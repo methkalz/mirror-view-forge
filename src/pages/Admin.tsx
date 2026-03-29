@@ -300,6 +300,17 @@ function formatTime(seconds: number): string {
 }
 
 const AnalyticsPanel: React.FC<{ data: GameAnalytics; onRefresh: () => void }> = ({ data, onRefresh }) => {
+  const [onlineCount, setOnlineCount] = useState(0);
+
+  useEffect(() => {
+    const channel = supabase.channel('online-players');
+    channel.on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState();
+      setOnlineCount(Object.keys(state).length);
+    });
+    channel.subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
   const panelStyle: React.CSSProperties = {
     background: 'rgba(255,255,255,0.04)', borderRadius: 16,
     border: '1px solid rgba(255,255,255,0.08)', padding: '20px 16px', marginBottom: 16,
