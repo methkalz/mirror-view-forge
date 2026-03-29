@@ -299,23 +299,27 @@ const CATEGORY_META: Record<string, { icon: string; label: string; labelAr: stri
   ui: { icon: '🖱️', label: 'UI Sounds', labelAr: 'أصوات الواجهة', color: '#94a3b8' },
 };
 
+const PLAY_MODES: { value: PlayMode; label: string; icon: string }[] = [
+  { value: 'single', label: 'Single', icon: '1️⃣' },
+  { value: 'random', label: 'Random', icon: '🎲' },
+  { value: 'sequential', label: 'Sequential', icon: '🔄' },
+  { value: 'loop', label: 'Loop', icon: '♾️' },
+];
+
 const AudioPanel: React.FC<{
   entries: AudioConfigEntry[];
-  onUpdate: (id: string, updates: { volume?: number; enabled?: boolean }) => void;
+  setEntries: React.Dispatch<React.SetStateAction<AudioConfigEntry[]>>;
   onCategoryUpdate: (cat: string, updates: { volume?: number; enabled?: boolean }) => void;
-  onAudioUrlChange: (id: string, audioUrl: string | null) => void;
-}> = ({ entries, onUpdate, onCategoryUpdate, onAudioUrlChange }) => {
+}> = ({ entries, setEntries, onCategoryUpdate }) => {
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = useState<string | null>(null);
   const [library, setLibrary] = useState<{ name: string; url: string }[]>([]);
   const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadLibrary = useCallback(async () => {
-    const files = await listAudioLibrary();
-    setLibrary(files);
-  }, []);
+  const loadLibrary = useCallback(async () => { setLibrary(await listAudioLibrary()); }, []);
 
   const categories = Array.from(new Set(entries.map(e => e.category)));
   const grouped = categories.map(cat => ({
@@ -324,79 +328,80 @@ const AudioPanel: React.FC<{
     items: entries.filter(e => e.category === cat),
   }));
 
-  const handleUpload = async (entryId: string, soundKey: string, file: File) => {
+  const handleUpdate = (id: string, updates: Partial<AudioConfigEntry>) => {
+    setEntries(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+    const db: any = {};
+    if (updates.volume !== undefined) db.volume = updates.volume;
+    if (updates.enabled !== undefined) db.enabled = updates.enabled;
+    if (updates.playMode !== undefined) db.playMode = updates.playMode;
+    if (updates.intervalSeconds !== undefined) db.intervalSeconds = updates.intervalSeconds;
+    if (updates.maxConcurrent !== undefined) db.maxConcurrent = updates.maxConcurrent;
+    if (Object.keys(db).length > 0) updateAudioEntry(id, db);
+  };
+
+  const handleUploadFile = async (entryId: string, soundKey: string, file: File) => {
     setUploading(entryId);
-    const url = await uploadAudioFile(file, soundKey);
-    if (url) {
-      onAudioUrlChange(entryId, url);
+    const result = await uploadAudioFile(file, soundKey);
+    if (result) {
+      const entry = entries.find(e => e.id === entryId);
+      const newFile = await addAudioFile(entryId, result.url, result.name, entry ? entry.files.length : 0);
+      if (newFile) setEntries(prev => prev.map(e => e.id === entryId ? { ...e, files: [...e.files, newFile] } : e));
     }
     setUploading(null);
   };
 
-  const handleRemoveAudio = async (entryId: string, audioUrl: string) => {
-    await deleteAudioFile(audioUrl);
-    onAudioUrlChange(entryId, null);
+  const handleRemoveFile = async (entryId: string, fileId: string, fileUrl: string) => {
+    await removeAudioFile(fileId);
+    await deleteAudioFile(fileUrl);
+    setEntries(prev => prev.map(e => e.id === entryId ? { ...e, files: e.files.filter(f => f.id !== fileId) } : e));
+  };
+
+  const handleAddFromLibrary = async (entryId: string, url: string, name: string) => {
+    const entry = entries.find(e => e.id === entryId);
+    const newFile = await addAudioFile(entryId, url, name, entry ? entry.files.length : 0);
+    if (newFile) setEntries(prev => prev.map(e => e.id === entryId ? { ...e, files: [...e.files, newFile] } : e));
+    setLibraryOpen(null);
   };
 
   const handlePreview = (url: string) => {
     if (previewAudio) { previewAudio.pause(); previewAudio.currentTime = 0; }
-    const audio = new Audio(url);
-    audio.volume = 0.5;
-    audio.play();
-    setPreviewAudio(audio);
+    const a = new Audio(url); a.volume = 0.5; a.play(); setPreviewAudio(a);
   };
+  const stopPreview = () => { if (previewAudio) { previewAudio.pause(); previewAudio.currentTime = 0; setPreviewAudio(null); } };
 
   const panelStyle: React.CSSProperties = {
-    background: 'rgba(255,255,255,0.04)',
-    borderRadius: 16,
-    border: '1px solid rgba(255,255,255,0.08)',
-    padding: '20px 16px',
-    marginBottom: 16,
+    background: 'rgba(255,255,255,0.04)', borderRadius: 16,
+    border: '1px solid rgba(255,255,255,0.08)', padding: '20px 16px', marginBottom: 16,
   };
-
   const smallBtn = (bg: string, color = '#fff'): React.CSSProperties => ({
-    padding: '4px 8px', borderRadius: 6, border: 'none', cursor: 'pointer',
-    background: bg, color, fontSize: 10, fontWeight: 600,
+    padding: '4px 8px', borderRadius: 6, border: 'none', cursor: 'pointer', background: bg, color, fontSize: 10, fontWeight: 600,
+  });
+  const chipBtn = (active: boolean, color: string): React.CSSProperties => ({
+    padding: '3px 8px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 600,
+    background: active ? color + '33' : 'rgba(255,255,255,0.06)', color: active ? color : 'rgba(255,255,255,0.4)',
   });
 
   return (
     <div style={panelStyle}>
-      <input ref={fileInputRef} type="file" accept="audio/*" style={{ display: 'none' }}
-        onChange={e => {
-          const file = e.target.files?.[0];
-          const entryId = fileInputRef.current?.dataset.entryId;
-          const soundKey = fileInputRef.current?.dataset.soundKey;
-          if (file && entryId && soundKey) handleUpload(entryId, soundKey, file);
-          e.target.value = '';
-        }}
-      />
+      <input ref={fileInputRef} type="file" accept="audio/*" style={{ display: 'none' }} onChange={e => {
+        const file = e.target.files?.[0]; const eid = fileInputRef.current?.dataset.entryId; const sk = fileInputRef.current?.dataset.soundKey;
+        if (file && eid && sk) handleUploadFile(eid, sk, file); e.target.value = '';
+      }} />
 
-      <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>🔊 Audio Control System</h3>
-      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
-        تحكم ذكي بكل صوت في اللعبة — ارفع ملفات صوتية أو اختر من المكتبة
-      </p>
+      <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>🔊 Professional Audio System</h3>
+      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>نظام صوتي احترافي — أصوات متعددة لكل مصدر مع أوضاع تشغيل ذكية</p>
 
       {/* Master volume */}
-      <div style={{
-        padding: '12px 14px', borderRadius: 12, marginBottom: 16,
-        background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
-      }}>
+      <div style={{ padding: '12px 14px', borderRadius: 12, marginBottom: 16, background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <span style={{ fontSize: 18 }}>🎚️</span>
           <span style={{ fontSize: 14, fontWeight: 700, flex: 1 }}>Master Volume</span>
-          <span style={{ fontSize: 12, color: '#60a5fa', fontWeight: 600 }}>
-            {entries.length > 0 ? Math.round(entries.reduce((a, e) => a + e.volume, 0) / entries.length * 100) : 100}%
-          </span>
+          <span style={{ fontSize: 12, color: '#60a5fa', fontWeight: 600 }}>{entries.length > 0 ? Math.round(entries.reduce((a, e) => a + e.volume, 0) / entries.length * 100) : 100}%</span>
         </div>
-        <input
-          type="range" min={0} max={1} step={0.05}
+        <input type="range" min={0} max={1} step={0.05}
           value={entries.length > 0 ? entries.reduce((a, e) => a + e.volume, 0) / entries.length : 1}
-          onChange={e => {
-            const v = parseFloat(e.target.value);
-            for (const cat of categories) { onCategoryUpdate(cat, { volume: v }); }
-          }}
-          style={{ width: '100%', accentColor: '#3b82f6' }}
-        />
+          onChange={e => { const v = parseFloat(e.target.value); for (const cat of categories) onCategoryUpdate(cat, { volume: v }); }}
+          style={{ width: '100%', accentColor: '#3b82f6' }} />
       </div>
 
       {/* Categories */}
@@ -404,167 +409,119 @@ const AudioPanel: React.FC<{
         const expanded = expandedCat === cat;
         const catEnabled = items.some(i => i.enabled);
         const catAvgVol = items.reduce((a, i) => a + i.volume, 0) / items.length;
-
         return (
-          <div key={cat} style={{
-            marginBottom: 10, borderRadius: 12, overflow: 'hidden',
-            border: `1px solid ${expanded ? meta.color + '33' : 'rgba(255,255,255,0.06)'}`,
-            background: expanded ? 'rgba(255,255,255,0.03)' : 'transparent',
-          }}>
-            {/* Category Header */}
-            <div
-              onClick={() => setExpandedCat(expanded ? null : cat)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
-                cursor: 'pointer', userSelect: 'none',
-              }}
-            >
+          <div key={cat} style={{ marginBottom: 10, borderRadius: 12, overflow: 'hidden', border: `1px solid ${expanded ? meta.color + '33' : 'rgba(255,255,255,0.06)'}`, background: expanded ? 'rgba(255,255,255,0.03)' : 'transparent' }}>
+            <div onClick={() => setExpandedCat(expanded ? null : cat)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', cursor: 'pointer', userSelect: 'none' }}>
               <span style={{ fontSize: 20 }}>{meta.icon}</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: meta.color }}>{meta.label}</div>
                 <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{meta.labelAr} · {items.length} sounds</div>
               </div>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginRight: 6 }}>
-                {Math.round(catAvgVol * 100)}%
-              </span>
-              <button
-                onClick={e => { e.stopPropagation(); onCategoryUpdate(cat, { enabled: !catEnabled }); }}
-                style={{
-                  width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer',
-                  background: catEnabled ? meta.color + '55' : 'rgba(255,255,255,0.1)',
-                  position: 'relative', transition: 'background 0.2s',
-                }}
-              >
-                <div style={{
-                  width: 16, height: 16, borderRadius: 8, background: catEnabled ? meta.color : 'rgba(255,255,255,0.3)',
-                  position: 'absolute', top: 2, left: catEnabled ? 18 : 2, transition: 'all 0.2s',
-                }} />
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginRight: 6 }}>{Math.round(catAvgVol * 100)}%</span>
+              <button onClick={e => { e.stopPropagation(); onCategoryUpdate(cat, { enabled: !catEnabled }); }} style={{
+                width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer',
+                background: catEnabled ? meta.color + '55' : 'rgba(255,255,255,0.1)', position: 'relative', transition: 'background 0.2s',
+              }}>
+                <div style={{ width: 16, height: 16, borderRadius: 8, background: catEnabled ? meta.color : 'rgba(255,255,255,0.3)', position: 'absolute', top: 2, left: catEnabled ? 18 : 2, transition: 'all 0.2s' }} />
               </button>
-              <span style={{
-                fontSize: 14, color: 'rgba(255,255,255,0.3)',
-                transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s',
-              }}>▼</span>
+              <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
             </div>
 
-            {/* Category Volume Slider */}
-            {expanded && (
-              <div style={{ padding: '0 14px 8px' }}>
-                <input
-                  type="range" min={0} max={1} step={0.05} value={catAvgVol}
-                  onChange={e => onCategoryUpdate(cat, { volume: parseFloat(e.target.value) })}
-                  style={{ width: '100%', accentColor: meta.color }}
-                />
-              </div>
-            )}
+            {expanded && <div style={{ padding: '0 14px 8px' }}>
+              <input type="range" min={0} max={1} step={0.05} value={catAvgVol} onChange={e => onCategoryUpdate(cat, { volume: parseFloat(e.target.value) })} style={{ width: '100%', accentColor: meta.color }} />
+            </div>}
 
-            {/* Individual sounds */}
-            {expanded && items.map(item => (
-              <div key={item.id} style={{
-                padding: '10px 14px 10px 44px',
-                borderTop: '1px solid rgba(255,255,255,0.04)',
-                opacity: item.enabled ? 1 : 0.4, transition: 'opacity 0.2s',
-              }}>
-                {/* Row 1: Name + Toggle */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{item.label}</div>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{item.labelAr}</div>
-                  </div>
-                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', width: 32, textAlign: 'right' }}>
-                    {Math.round(item.volume * 100)}%
-                  </span>
-                  <input
-                    type="range" min={0} max={2} step={0.05} value={item.volume}
-                    onChange={e => onUpdate(item.id, { volume: parseFloat(e.target.value) })}
-                    style={{ width: 80, accentColor: meta.color }}
-                  />
-                  <button
-                    onClick={() => onUpdate(item.id, { enabled: !item.enabled })}
-                    style={{
-                      width: 28, height: 16, borderRadius: 8, border: 'none', cursor: 'pointer',
-                      background: item.enabled ? meta.color + '44' : 'rgba(255,255,255,0.08)',
-                      position: 'relative', transition: 'background 0.2s', flexShrink: 0,
-                    }}
-                  >
-                    <div style={{
-                      width: 12, height: 12, borderRadius: 6,
-                      background: item.enabled ? meta.color : 'rgba(255,255,255,0.25)',
-                      position: 'absolute', top: 2, left: item.enabled ? 14 : 2,
-                      transition: 'all 0.2s',
-                    }} />
-                  </button>
-                </div>
-
-                {/* Row 2: Audio file controls */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                  {item.audioUrl ? (
-                    <>
-                      <span style={{ fontSize: 10, color: '#34d399', display: 'flex', alignItems: 'center', gap: 3 }}>
-                        🎵 Custom
-                      </span>
-                      <button onClick={() => handlePreview(item.audioUrl!)} style={smallBtn('rgba(59,130,246,0.25)', '#93c5fd')}>
-                        ▶ Preview
-                      </button>
-                      <button onClick={() => handleRemoveAudio(item.id, item.audioUrl!)} style={smallBtn('rgba(220,38,38,0.25)', '#fca5a5')}>
-                        ✕ Remove
-                      </button>
-                    </>
-                  ) : (
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>🔊 Synthesized</span>
-                  )}
-                  <button
-                    disabled={uploading === item.id}
-                    onClick={() => {
-                      if (fileInputRef.current) {
-                        fileInputRef.current.dataset.entryId = item.id;
-                        fileInputRef.current.dataset.soundKey = item.soundKey;
-                        fileInputRef.current.click();
-                      }
-                    }}
-                    style={smallBtn('rgba(59,130,246,0.15)', '#93c5fd')}
-                  >
-                    {uploading === item.id ? '⏳...' : '📁 Upload'}
-                  </button>
-                  <button
-                    onClick={() => { setLibraryOpen(libraryOpen === item.id ? null : item.id); loadLibrary(); }}
-                    style={smallBtn('rgba(168,85,247,0.15)', '#c4b5fd')}
-                  >
-                    📚 Library
-                  </button>
-                </div>
-
-                {/* Library picker */}
-                {libraryOpen === item.id && (
-                  <div style={{
-                    marginTop: 8, padding: 10, borderRadius: 8,
-                    background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)',
-                    maxHeight: 150, overflowY: 'auto',
-                  }}>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>
-                      📚 Sound Library ({library.length} files)
+            {expanded && items.map(item => {
+              const isOpen = expandedItem === item.id;
+              return (
+                <div key={item.id} style={{ padding: '10px 14px 10px 20px', borderTop: '1px solid rgba(255,255,255,0.04)', opacity: item.enabled ? 1 : 0.4, transition: 'opacity 0.2s' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => setExpandedItem(isOpen ? null : item.id)}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>
+                        {item.label}
+                        {item.files.length > 0 && <span style={{ fontSize: 9, color: meta.color, marginLeft: 4 }}>🎵×{item.files.length}</span>}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{item.labelAr}</div>
                     </div>
-                    {library.length === 0 && (
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', padding: 8, textAlign: 'center' }}>
-                        No audio files uploaded yet
-                      </div>
-                    )}
-                    {library.map(f => (
-                      <div key={f.name} style={{
-                        display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0',
-                        borderBottom: '1px solid rgba(255,255,255,0.04)',
-                      }}>
-                        <span style={{ fontSize: 10, color: '#e2e8f0', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {f.name}
-                        </span>
-                        <button onClick={() => handlePreview(f.url)} style={smallBtn('rgba(59,130,246,0.2)', '#93c5fd')}>▶</button>
-                        <button onClick={() => { onAudioUrlChange(item.id, f.url); setLibraryOpen(null); }} style={smallBtn('rgba(34,197,94,0.2)', '#86efac')}>Use</button>
-                      </div>
-                    ))}
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', width: 30, textAlign: 'right' }}>{Math.round(item.volume * 100)}%</span>
+                    <input type="range" min={0} max={2} step={0.05} value={item.volume} onChange={e => handleUpdate(item.id, { volume: parseFloat(e.target.value) })} style={{ width: 70, accentColor: meta.color }} />
+                    <button onClick={() => handleUpdate(item.id, { enabled: !item.enabled })} style={{
+                      width: 28, height: 16, borderRadius: 8, border: 'none', cursor: 'pointer',
+                      background: item.enabled ? meta.color + '44' : 'rgba(255,255,255,0.08)', position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                    }}>
+                      <div style={{ width: 12, height: 12, borderRadius: 6, background: item.enabled ? meta.color : 'rgba(255,255,255,0.25)', position: 'absolute', top: 2, left: item.enabled ? 14 : 2, transition: 'all 0.2s' }} />
+                    </button>
+                    <span onClick={() => setExpandedItem(isOpen ? null : item.id)} style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', cursor: 'pointer', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {isOpen && (
+                    <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 10, background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      {/* Play Mode */}
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>Play Mode — وضع التشغيل</div>
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                          {PLAY_MODES.map(m => (
+                            <button key={m.value} onClick={() => handleUpdate(item.id, { playMode: m.value })} style={chipBtn(item.playMode === m.value, meta.color)}>
+                              {m.icon} {m.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Interval */}
+                      <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>⏱ Interval (sec)</div>
+                        <input type="number" min={0} step={1} value={item.intervalSeconds ?? ''} placeholder="—"
+                          onChange={e => handleUpdate(item.id, { intervalSeconds: e.target.value ? parseFloat(e.target.value) : null } as any)}
+                          style={{ width: 60, padding: '4px 6px', borderRadius: 6, fontSize: 11, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(0,0,0,0.3)', color: '#f1f5f9', outline: 'none' }}
+                        />
+                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>{item.intervalSeconds ? `كل ${item.intervalSeconds} ثانية` : 'عند الحدث فقط'}</div>
+                      </div>
+
+                      {/* Files list */}
+                      <div style={{ marginBottom: 8 }}>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
+                          🎵 Audio Files ({item.files.length})
+                          {item.files.length > 1 && <span style={{ color: meta.color }}> — {item.playMode === 'random' ? 'عشوائي' : item.playMode === 'sequential' ? 'تسلسلي' : item.playMode === 'loop' ? 'متكرر' : 'أول ملف'}</span>}
+                        </div>
+                        {item.files.length === 0 && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', padding: '6px 0' }}>🔊 Using synthesized sound — أضف ملفات صوتية</div>}
+                        {item.files.map((f, idx) => (
+                          <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: idx < item.files.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', width: 16 }}>#{idx + 1}</span>
+                            <span style={{ fontSize: 10, color: '#e2e8f0', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.fileName}</span>
+                            <button onClick={() => handlePreview(f.fileUrl)} style={smallBtn('rgba(59,130,246,0.25)', '#93c5fd')}>▶</button>
+                            <button onClick={stopPreview} style={smallBtn('rgba(255,255,255,0.1)', 'rgba(255,255,255,0.4)')}>⏹</button>
+                            <button onClick={() => handleRemoveFile(item.id, f.id, f.fileUrl)} style={smallBtn('rgba(220,38,38,0.2)', '#fca5a5')}>✕</button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Upload + Library */}
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <button disabled={uploading === item.id} onClick={() => { if (fileInputRef.current) { fileInputRef.current.dataset.entryId = item.id; fileInputRef.current.dataset.soundKey = item.soundKey; fileInputRef.current.click(); } }}
+                          style={smallBtn('rgba(59,130,246,0.2)', '#93c5fd')}>{uploading === item.id ? '⏳...' : '📁 Upload'}</button>
+                        <button onClick={() => { setLibraryOpen(libraryOpen === item.id ? null : item.id); loadLibrary(); }} style={smallBtn('rgba(168,85,247,0.2)', '#c4b5fd')}>📚 Library</button>
+                      </div>
+
+                      {/* Library picker */}
+                      {libraryOpen === item.id && (
+                        <div style={{ marginTop: 8, padding: 10, borderRadius: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', maxHeight: 150, overflowY: 'auto' }}>
+                          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>📚 ({library.length} files)</div>
+                          {library.length === 0 && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', padding: 8, textAlign: 'center' }}>Upload files first</div>}
+                          {library.map(f => (
+                            <div key={f.name} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                              <span style={{ fontSize: 10, color: '#e2e8f0', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                              <button onClick={() => handlePreview(f.url)} style={smallBtn('rgba(59,130,246,0.2)', '#93c5fd')}>▶</button>
+                              <button onClick={() => handleAddFromLibrary(item.id, f.url, f.name)} style={smallBtn('rgba(34,197,94,0.2)', '#86efac')}>+ Add</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         );
       })}
