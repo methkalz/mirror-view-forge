@@ -9,6 +9,7 @@ import NameEntry from './NameEntry';
 import Leaderboard from './Leaderboard';
 
 const SkyfallGame: React.FC = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<GameData | null>(null);
   const inputRef = useRef<InputState>({
@@ -63,7 +64,14 @@ const SkyfallGame: React.FC = () => {
     const canvas = canvasRef.current;
     if (!canvas || showNameEntry) return;
 
-    const g = createGame(window.innerWidth, window.innerHeight);
+    const getViewportSize = () => {
+      const width = Math.max(320, Math.floor(containerRef.current?.clientWidth ?? window.innerWidth));
+      const height = Math.max(320, Math.floor(containerRef.current?.clientHeight ?? window.innerHeight));
+      return { width, height };
+    };
+
+    const initialViewport = getViewportSize();
+    const g = createGame(initialViewport.width, initialViewport.height);
     gameRef.current = g;
 
     // Apply remote config from ref (not state dependency)
@@ -75,22 +83,32 @@ const SkyfallGame: React.FC = () => {
     }
 
     const resize = () => {
+      const { width: w, height: h } = getViewportSize();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
+
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
+
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.scale(dpr, dpr);
       }
+
       g.width = w;
       g.height = h;
     };
+
     resize();
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+      resizeObserver = new ResizeObserver(() => resize());
+      resizeObserver.observe(containerRef.current);
+    }
+
     window.addEventListener('resize', resize);
 
     let prevState = g.state;
@@ -103,8 +121,8 @@ const SkyfallGame: React.FC = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx) { rafRef.current = requestAnimationFrame(loop); return; }
 
-      const w = window.innerWidth;
-      const h = window.innerHeight;
+      const w = g.width;
+      const h = g.height;
 
       try {
         ctx.save();
@@ -225,6 +243,7 @@ const SkyfallGame: React.FC = () => {
 
     return () => {
       cancelAnimationFrame(rafRef.current);
+      resizeObserver?.disconnect();
       window.removeEventListener('resize', resize);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
@@ -298,6 +317,7 @@ const SkyfallGame: React.FC = () => {
 
   return (
     <div
+      ref={containerRef}
       onContextMenu={(e) => e.preventDefault()}
       style={{
         position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#000',
@@ -306,7 +326,7 @@ const SkyfallGame: React.FC = () => {
     >
       <canvas
         ref={canvasRef}
-        style={{ display: 'block', width: '100vw', height: '100vh', touchAction: 'none', userSelect: 'none' }}
+        style={{ display: 'block', width: '100%', height: '100%', touchAction: 'none', userSelect: 'none' }}
       />
 
       {/* Game Over overlay with leaderboard */}
