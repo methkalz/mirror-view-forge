@@ -134,19 +134,24 @@ const Admin: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {(['config', 'waves', 'leaderboard'] as const).map(t => (
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+        {([
+          { key: 'config' as const, icon: '🎮', label: 'Config' },
+          { key: 'waves' as const, icon: '🌊', label: 'Waves' },
+          { key: 'audio' as const, icon: '🔊', label: 'Audio' },
+          { key: 'leaderboard' as const, icon: '🏆', label: 'Leaders' },
+        ]).map(t => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={t.key}
+            onClick={() => setTab(t.key)}
             style={{
-              flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 600,
-              background: tab === t ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
-              color: tab === t ? '#60a5fa' : 'rgba(255,255,255,0.5)',
-              cursor: 'pointer',
+              flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', fontSize: 12, fontWeight: 600,
+              background: tab === t.key ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
+              color: tab === t.key ? '#60a5fa' : 'rgba(255,255,255,0.5)',
+              cursor: 'pointer', minWidth: 70,
             }}
           >
-            {t === 'config' ? '🎮 Config' : t === 'waves' ? '🌊 Waves' : '🏆 Leaders'}
+            {t.icon} {t.label}
           </button>
         ))}
       </div>
