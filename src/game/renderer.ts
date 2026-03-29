@@ -4263,11 +4263,56 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
   // ── Draw dismounting character BEHIND the bike (before bike rendering) ──
   if (isDismounting) {
     const dp = dismountProg;
-    // Simple smooth slide off backward — no animations, no dust, no body tilt
-    const ease = dp * dp * (3 - 2 * dp); // smoothstep
-    const dismountX = bike.pos.x + (-6 - ease * 20); // slide backward (left)
-    const dismountY = bike.pos.y + (-18 + ease * 10); // slide down to ground
-    const finalScale = (0.5 + ease * 0.2) * 1.6; // scale up to player size
+    
+    // 3-phase dismount with physical weight
+    // Phase 1 [0→0.3]: lift off seat, arms push down on seat for support
+    // Phase 2 [0.3→0.7]: swing leg over, arms swing for balance  
+    // Phase 3 [0.7→1.0]: land & settle into idle pose (arms down at sides)
+    
+    let ease: number, posX: number, posY: number, armAnim: number, legAnim: number, bodyTilt: number;
+    
+    if (dp < 0.3) {
+      // Phase 1: Push off — arms press down, body lifts slightly
+      const t = dp / 0.3;
+      const t2 = t * t;
+      ease = t2;
+      posX = -6 - ease * 4; // slight backward shift
+      posY = -18 - t2 * 3; // lift UP from seat
+      armAnim = -t2 * 6; // arms push DOWN (negative = downward reach)
+      legAnim = t2 * 2;
+      bodyTilt = 0;
+    } else if (dp < 0.7) {
+      // Phase 2: Swing over — arc trajectory, arms balance
+      const t = (dp - 0.3) / 0.4;
+      const swing = Math.sin(t * Math.PI); // arc peak at midpoint
+      ease = 0.09 + t * 0.6;
+      posX = -10 - t * 12; // move backward
+      posY = -21 + swing * -2 + t * 8; // arc up then down
+      armAnim = -6 + t * 8; // arms swing from down to neutral
+      legAnim = 2 + swing * 4; // leg swings over
+      bodyTilt = 0;
+    } else {
+      // Phase 3: Land & settle — gravity drop, arms fall to sides (idle pose)
+      const t = (dp - 0.7) / 0.3;
+      const land = t * t; // accelerating drop (gravity)
+      const settle = 1 - Math.pow(1 - t, 2); // ease out for settling
+      ease = 0.69 + t * 0.31;
+      posX = -22 - t * 4; // final position behind bike
+      posY = -13 + land * 5; // drop to ground
+      // Arms settle down to idle position (armOffset = 0)
+      armAnim = 2 * (1 - settle); // from slight offset → 0 (idle)
+      legAnim = (6 - settle * 6); // legs settle to standing
+      bodyTilt = 0;
+      // Subtle knee compression on landing
+      if (t > 0.5) {
+        const bounce = Math.sin((t - 0.5) / 0.5 * Math.PI) * 1.5;
+        posY += bounce; // tiny knee bend
+      }
+    }
+    
+    const dismountX = bike.pos.x + posX;
+    const dismountY = bike.pos.y + posY;
+    const finalScale = (0.5 + ease * 0.2) * 1.6;
 
     ctx.save();
     ctx.translate(dismountX, dismountY);
@@ -4275,13 +4320,13 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
     drawCharacter(ctx, {
       x: 0, y: -12,
       scale: 0.7,
-      sitting: dp < 0.3,
+      sitting: dp < 0.25,
       facingRight: true,
       isDriver: false,
       helmetColor: '#334155',
       bodyBob: 0,
-      armOffset: 0,
-      legOffset: 0,
+      armOffset: armAnim,
+      legOffset: legAnim,
       isHit: false,
       elapsed: g.elapsed,
     });
