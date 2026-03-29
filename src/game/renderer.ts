@@ -1716,6 +1716,140 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
       continue;
     }
 
+    // === INCENDIARY DRONE ===
+    if (d.tier === 'incendiary') {
+      const dir = facingRight ? 1 : -1;
+      const sz = d.size;
+      // Red-orange fuselage
+      const bodyGrad = ctx.createLinearGradient(0, -sz * 0.3, 0, sz * 0.3);
+      bodyGrad.addColorStop(0, '#dc2626');
+      bodyGrad.addColorStop(0.5, '#ea580c');
+      bodyGrad.addColorStop(1, '#b91c1c');
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.moveTo(dir * sz * 1.1, 0);
+      ctx.lineTo(dir * sz * 0.4, -sz * 0.3);
+      ctx.lineTo(-dir * sz * 0.7, -sz * 0.25);
+      ctx.lineTo(-dir * sz * 0.9, 0);
+      ctx.lineTo(-dir * sz * 0.7, sz * 0.3);
+      ctx.lineTo(dir * sz * 0.4, sz * 0.35);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#7f1d1d';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Fuel tank underneath — glowing
+      const tankPulse = 0.5 + Math.sin(g.elapsed * 4) * 0.3;
+      ctx.fillStyle = `rgba(249, 115, 22, ${tankPulse})`;
+      ctx.shadowColor = '#f97316';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.ellipse(0, sz * 0.35, sz * 0.35, sz * 0.15, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      // Wings
+      ctx.fillStyle = '#991b1b';
+      ctx.beginPath();
+      ctx.moveTo(dir * sz * 0.1, -sz * 0.25);
+      ctx.lineTo(-dir * sz * 0.3, -sz * 0.9);
+      ctx.lineTo(-dir * sz * 0.6, -sz * 0.25);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(dir * sz * 0.1, sz * 0.3);
+      ctx.lineTo(-dir * sz * 0.3, sz * 0.9);
+      ctx.lineTo(-dir * sz * 0.6, sz * 0.3);
+      ctx.fill();
+      // Engine exhaust
+      ctx.fillStyle = '#f97316';
+      ctx.shadowColor = '#f97316';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.ellipse(-dir * sz * 0.85, 0, 3, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      // Health bar
+      if (damaged) {
+        const barW = sz * 2; const barH = 3; const barY = -sz * 0.5;
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(-barW / 2 - 1, barY - 1, barW + 2, barH + 2);
+        const hpRatio = d.health / d.maxHealth;
+        ctx.fillStyle = hpRatio > 0.5 ? '#22c55e' : '#ef4444';
+        ctx.fillRect(-barW / 2, barY, barW * hpRatio, barH);
+      }
+      ctx.restore();
+      continue;
+    }
+
+    // === CHEMICAL DRONE ===
+    if (d.tier === 'chemical') {
+      const dir = facingRight ? 1 : -1;
+      const sz = d.size;
+      // Dark green fuselage
+      const bodyGrad = ctx.createLinearGradient(0, -sz * 0.3, 0, sz * 0.3);
+      bodyGrad.addColorStop(0, '#14532d');
+      bodyGrad.addColorStop(0.5, '#166534');
+      bodyGrad.addColorStop(1, '#14532d');
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.moveTo(dir * sz * 1.1, 0);
+      ctx.lineTo(dir * sz * 0.4, -sz * 0.3);
+      ctx.lineTo(-dir * sz * 0.7, -sz * 0.25);
+      ctx.lineTo(-dir * sz * 0.9, 0);
+      ctx.lineTo(-dir * sz * 0.7, sz * 0.3);
+      ctx.lineTo(dir * sz * 0.4, sz * 0.35);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#052e16';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Gas canister underneath — green glow
+      const gasPulse = 0.4 + Math.sin(g.elapsed * 3) * 0.2;
+      ctx.fillStyle = `rgba(74, 222, 128, ${gasPulse})`;
+      ctx.shadowColor = '#4ade80';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.ellipse(0, sz * 0.35, sz * 0.3, sz * 0.12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      // ☣ symbol on body
+      ctx.fillStyle = 'rgba(74, 222, 128, 0.6)';
+      ctx.font = `${sz * 0.4}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('☣', 0, 0);
+      // Wings
+      ctx.fillStyle = '#052e16';
+      ctx.beginPath();
+      ctx.moveTo(dir * sz * 0.1, -sz * 0.25);
+      ctx.lineTo(-dir * sz * 0.3, -sz * 0.9);
+      ctx.lineTo(-dir * sz * 0.6, -sz * 0.25);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(dir * sz * 0.1, sz * 0.3);
+      ctx.lineTo(-dir * sz * 0.3, sz * 0.9);
+      ctx.lineTo(-dir * sz * 0.6, sz * 0.3);
+      ctx.fill();
+      // Engine
+      ctx.fillStyle = '#16a34a';
+      ctx.shadowColor = '#16a34a';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.ellipse(-dir * sz * 0.85, 0, 3, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      // Health bar
+      if (damaged) {
+        const barW = sz * 2; const barH = 3; const barY = -sz * 0.5;
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(-barW / 2 - 1, barY - 1, barW + 2, barH + 2);
+        const hpRatio = d.health / d.maxHealth;
+        ctx.fillStyle = hpRatio > 0.5 ? '#22c55e' : '#ef4444';
+        ctx.fillRect(-barW / 2, barY, barW * hpRatio, barH);
+      }
+      ctx.restore();
+      continue;
+    }
+
     // Searchlight beam (stronger for trackers/bombers)
     const beamAlpha = d.tier === 'scout' ? 0.03 : d.tier === 'tracker' ? 0.06 : 0.08;
     const beamColor = d.tier === 'bomber' ? '255, 150, 0' : '239, 68, 68';
