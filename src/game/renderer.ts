@@ -3915,8 +3915,12 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.globalAlpha = 1;
     }
   }
-  renderPlayerGlow(ctx, g);
-  renderPlayer(ctx, g);
+  // Don't render player separately when riding on intro bike
+  const hidePlayer = g.state === 'intro' && (g.introPhase === 'bikeEnter' || g.introPhase === 'bikeStop');
+  if (!hidePlayer) {
+    renderPlayerGlow(ctx, g);
+    renderPlayer(ctx, g);
+  }
   renderParticles(ctx, g);
   renderRain(ctx, g);
   renderFloatingTexts(ctx, g);
