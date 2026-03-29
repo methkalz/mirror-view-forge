@@ -177,6 +177,7 @@ function startAmbient() {
 
 export function sfxExplosion() {
   if (!isSoundEnabled('explosion')) return;
+  if (playCustomAudio('explosion')) return;
   const v = getSoundVolume('explosion', 1);
   playTone(40, 0.15, 'sine', 0.03 * v);
   playNoise(0.12, 0.025 * v, { type: 'lowpass', freq: 250 });
@@ -184,6 +185,7 @@ export function sfxExplosion() {
 
 export function sfxImpactLight() {
   if (!isSoundEnabled('impactLight')) return;
+  if (playCustomAudio('impactLight')) return;
   const v = getSoundVolume('impactLight', 1);
   playNoise(0.05, 0.12 * v, { type: 'lowpass', freq: 250 + Math.random() * 300 });
   playTone(120 + Math.random() * 80, 0.04, 'sine', 0.08 * v);
@@ -191,6 +193,7 @@ export function sfxImpactLight() {
 
 export function sfxImpactHeavy() {
   if (!isSoundEnabled('impactHeavy')) return;
+  if (playCustomAudio('impactHeavy')) return;
   const v = getSoundVolume('impactHeavy', 1);
   playTone(45, 0.18, 'sine', 0.18 * v);
   playNoise(0.14, 0.13 * v, { type: 'lowpass', freq: 200 });
@@ -198,6 +201,7 @@ export function sfxImpactHeavy() {
 
 export function sfxPickup() {
   if (!isSoundEnabled('pickup')) return;
+  if (playCustomAudio('pickup')) return;
   const v = getSoundVolume('pickup', 1);
   playTone(500, 0.06, 'sine', 0.08 * v);
   setTimeout(() => playTone(700, 0.06, 'sine', 0.08 * v), 50);
@@ -207,6 +211,7 @@ export function sfxPickup() {
 
 export function sfxDamage() {
   if (!isSoundEnabled('damage')) return;
+  if (playCustomAudio('damage')) return;
   const v = getSoundVolume('damage', 1);
   playTone(120, 0.2, 'sawtooth', 0.12 * v);
   playNoise(0.15, 0.08 * v, { type: 'lowpass', freq: 1500 });
@@ -214,6 +219,7 @@ export function sfxDamage() {
 
 export function sfxDash() {
   if (!isSoundEnabled('dash')) return;
+  if (playCustomAudio('dash')) return;
   const v = getSoundVolume('dash', 1);
   playTone(300, 0.08, 'triangle', 0.06 * v);
   playNoise(0.1, 0.04 * v, { type: 'highpass', freq: 3000 });
@@ -221,6 +227,7 @@ export function sfxDash() {
 
 export function sfxInterceptor() {
   if (!isSoundEnabled('interceptor')) return;
+  if (playCustomAudio('interceptor')) return;
   const v = getSoundVolume('interceptor', 1);
   playTone(1200, 0.05, 'square', 0.06 * v);
   setTimeout(() => playTone(800, 0.1, 'square', 0.05 * v), 40);
@@ -229,12 +236,14 @@ export function sfxInterceptor() {
 
 export function sfxFootstep() {
   if (!isSoundEnabled('footstep')) return;
+  if (playCustomAudio('footstep')) return;
   const v = getSoundVolume('footstep', 1);
   playNoise(0.04, 0.02 * v, { type: 'lowpass', freq: 600 });
 }
 
 export function sfxWarning() {
   if (!isSoundEnabled('warning')) return;
+  if (playCustomAudio('warning')) return;
   const v = getSoundVolume('warning', 1);
   playTone(800, 0.08, 'sine', 0.03 * v);
   setTimeout(() => playTone(1000, 0.06, 'sine', 0.02 * v), 80);
@@ -242,6 +251,7 @@ export function sfxWarning() {
 
 export function sfxSlowmo() {
   if (!isSoundEnabled('slowmo')) return;
+  if (playCustomAudio('slowmo')) return;
   const v = getSoundVolume('slowmo', 1);
   playTone(150, 0.6, 'sine', 0.1 * v);
   playTone(100, 0.8, 'sine', 0.06 * v);
@@ -249,6 +259,7 @@ export function sfxSlowmo() {
 
 export function sfxMagnet() {
   if (!isSoundEnabled('magnet')) return;
+  if (playCustomAudio('magnet')) return;
   const v = getSoundVolume('magnet', 1);
   playTone(400, 0.15, 'sawtooth', 0.06 * v);
   setTimeout(() => playTone(500, 0.12, 'sawtooth', 0.05 * v), 60);
@@ -257,6 +268,7 @@ export function sfxMagnet() {
 
 export function sfxAirstrike() {
   if (!isSoundEnabled('airstrike')) return;
+  if (playCustomAudio('airstrike')) return;
   const v = getSoundVolume('airstrike', 1);
   playTone(1200, 0.1, 'sine', 0.08 * v);
   setTimeout(() => playTone(800, 0.15, 'sine', 0.06 * v), 100);
@@ -267,6 +279,7 @@ export function sfxAirstrike() {
 
 export function sfxThunder() {
   if (!isSoundEnabled('thunder')) return;
+  if (playCustomAudio('thunder')) return;
   const v = getSoundVolume('thunder', 1);
   playNoise(0.8, 0.15 * v, { type: 'lowpass', freq: 200 });
   playTone(30, 0.6, 'sine', 0.1 * v);
@@ -275,6 +288,7 @@ export function sfxThunder() {
 
 export function sfxBossSiren() {
   if (!isSoundEnabled('bossSiren')) return;
+  if (playCustomAudio('bossSiren')) return;
   const v = getSoundVolume('bossSiren', 1);
   const ctx = getCtx();
   const osc = ctx.createOscillator();
@@ -293,6 +307,7 @@ export function sfxBossSiren() {
 
 export function sfxBossExplosion() {
   if (!isSoundEnabled('bossExplosion')) return;
+  if (playCustomAudio('bossExplosion')) return;
   const v = getSoundVolume('bossExplosion', 1);
   playTone(30, 0.8, 'sawtooth', 0.15 * v);
   playTone(50, 0.6, 'sine', 0.12 * v);
@@ -303,6 +318,7 @@ export function sfxBossExplosion() {
 
 export function sfxShoot1() {
   if (!isSoundEnabled('shoot1')) return;
+  if (playCustomAudio('shoot1')) return;
   const v = getSoundVolume('shoot1', 1);
   playNoise(0.08, 0.15 * v, { type: 'highpass', freq: 3000 });
   playTone(150, 0.1, 'sine', 0.12 * v);
@@ -311,6 +327,7 @@ export function sfxShoot1() {
 
 export function sfxShoot2() {
   if (!isSoundEnabled('shoot2')) return;
+  if (playCustomAudio('shoot2')) return;
   const v = getSoundVolume('shoot2', 1);
   playNoise(0.09, 0.18 * v, { type: 'highpass', freq: 2800 });
   playTone(120, 0.12, 'sine', 0.14 * v);
@@ -323,6 +340,7 @@ export function sfxShoot2() {
 
 export function sfxShoot3() {
   if (!isSoundEnabled('shoot3')) return;
+  if (playCustomAudio('shoot3')) return;
   const v = getSoundVolume('shoot3', 1);
   playNoise(0.1, 0.2 * v, { type: 'highpass', freq: 2500 });
   playTone(100, 0.15, 'sine', 0.16 * v);
@@ -339,6 +357,7 @@ export function sfxShoot3() {
 
 export function sfxCombo(level: number) {
   if (!isSoundEnabled('combo')) return;
+  if (playCustomAudio('combo')) return;
   const v = getSoundVolume('combo', 1);
   const baseFreq = 600 + level * 100;
   playTone(baseFreq, 0.06, 'sine', 0.06 * v);
@@ -347,6 +366,7 @@ export function sfxCombo(level: number) {
 
 export function sfxCloseCall() {
   if (!isSoundEnabled('closeCall')) return;
+  if (playCustomAudio('closeCall')) return;
   const v = getSoundVolume('closeCall', 1);
   playTone(1000, 0.04, 'sine', 0.04 * v);
   setTimeout(() => playTone(1200, 0.03, 'sine', 0.03 * v), 30);
@@ -356,6 +376,7 @@ export function sfxCloseCall() {
 
 export function sfxBikeEngine() {
   if (!isSoundEnabled('bikeEngine')) return;
+  if (playCustomAudio('bikeEngine')) return;
   const v = getSoundVolume('bikeEngine', 1);
   const ctx = getCtx();
   const osc = ctx.createOscillator();
@@ -379,6 +400,7 @@ export function sfxBikeEngine() {
 
 export function sfxBikeBrake() {
   if (!isSoundEnabled('bikeBrake')) return;
+  if (playCustomAudio('bikeBrake')) return;
   const v = getSoundVolume('bikeBrake', 1);
   const ctx = getCtx();
   const osc = ctx.createOscillator();
@@ -400,6 +422,7 @@ export function sfxBikeBrake() {
 
 export function sfxBikeIdle() {
   if (!isSoundEnabled('bikeIdle')) return;
+  if (playCustomAudio('bikeIdle')) return;
   const v = getSoundVolume('bikeIdle', 1);
   const ctx = getCtx();
   const osc = ctx.createOscillator();
@@ -418,6 +441,7 @@ export function sfxBikeIdle() {
 
 export function sfxBikeDepart() {
   if (!isSoundEnabled('bikeDepart')) return;
+  if (playCustomAudio('bikeDepart')) return;
   const v = getSoundVolume('bikeDepart', 1);
   const ctx = getCtx();
   const osc = ctx.createOscillator();
@@ -442,6 +466,7 @@ export function sfxBikeDepart() {
 
 export function sfxWarningAlert() {
   if (!isSoundEnabled('warningAlert')) return;
+  if (playCustomAudio('warningAlert')) return;
   const v = getSoundVolume('warningAlert', 1);
   playTone(600, 0.12, 'square', 0.06 * v);
   setTimeout(() => playTone(500, 0.12, 'square', 0.05 * v), 150);
@@ -450,6 +475,7 @@ export function sfxWarningAlert() {
 
 export function sfxUpgradeAlert() {
   if (!isSoundEnabled('upgradeAlert')) return;
+  if (playCustomAudio('upgradeAlert')) return;
   const v = getSoundVolume('upgradeAlert', 1);
   playTone(500, 0.08, 'sine', 0.06 * v);
   setTimeout(() => playTone(700, 0.08, 'sine', 0.06 * v), 80);
@@ -459,6 +485,7 @@ export function sfxUpgradeAlert() {
 
 export function sfxWaveComplete() {
   if (!isSoundEnabled('waveComplete')) return;
+  if (playCustomAudio('waveComplete')) return;
   const v = getSoundVolume('waveComplete', 1);
   playTone(400, 0.15, 'sine', 0.08 * v);
   setTimeout(() => playTone(500, 0.12, 'sine', 0.07 * v), 100);
@@ -468,6 +495,7 @@ export function sfxWaveComplete() {
 
 export function sfxLevelUp() {
   if (!isSoundEnabled('levelUp')) return;
+  if (playCustomAudio('levelUp')) return;
   const v = getSoundVolume('levelUp', 1);
   playTone(400, 0.1, 'sine', 0.08 * v);
   setTimeout(() => playTone(600, 0.1, 'sine', 0.08 * v), 100);
@@ -478,6 +506,7 @@ export function sfxLevelUp() {
 
 export function sfxGameOver() {
   if (!isSoundEnabled('gameOver')) return;
+  if (playCustomAudio('gameOver')) return;
   const v = getSoundVolume('gameOver', 1);
   playTone(400, 0.3, 'sawtooth', 0.1 * v);
   setTimeout(() => playTone(300, 0.3, 'sawtooth', 0.08 * v), 200);
@@ -487,6 +516,7 @@ export function sfxGameOver() {
 
 export function sfxGameStart() {
   if (!isSoundEnabled('gameStart')) return;
+  if (playCustomAudio('gameStart')) return;
   const v = getSoundVolume('gameStart', 1);
   playTone(300, 0.1, 'sine', 0.06 * v);
   setTimeout(() => playTone(500, 0.1, 'sine', 0.07 * v), 80);
@@ -495,6 +525,7 @@ export function sfxGameStart() {
 
 export function sfxUpgradeSelect() {
   if (!isSoundEnabled('upgradeSelect')) return;
+  if (playCustomAudio('upgradeSelect')) return;
   const v = getSoundVolume('upgradeSelect', 1);
   playTone(800, 0.06, 'sine', 0.06 * v);
   setTimeout(() => playTone(1000, 0.08, 'sine', 0.07 * v), 50);
@@ -528,6 +559,7 @@ export function stopPeriodicAmbient() {
 
 export function sfxDistantExplosion() {
   if (!isSoundEnabled('distantExplosion')) return;
+  if (playCustomAudio('distantExplosion')) return;
   const v = getSoundVolume('distantExplosion', 1);
   playNoise(0.4, 0.03 * v, { type: 'lowpass', freq: 150 });
   playTone(25, 0.5, 'sine', 0.02 * v);
@@ -535,6 +567,7 @@ export function sfxDistantExplosion() {
 
 export function sfxWindGust() {
   if (!isSoundEnabled('windGust')) return;
+  if (playCustomAudio('windGust')) return;
   const v = getSoundVolume('windGust', 1);
   const ctx = getCtx();
   const bufferSize = Math.floor(ctx.sampleRate * 1.5);
@@ -560,6 +593,7 @@ export function sfxWindGust() {
 
 export function sfxDistantSiren() {
   if (!isSoundEnabled('distantSiren')) return;
+  if (playCustomAudio('distantSiren')) return;
   const v = getSoundVolume('distantSiren', 1);
   const ctx = getCtx();
   const osc = ctx.createOscillator();
@@ -580,12 +614,14 @@ export function sfxDistantSiren() {
 
 export function sfxButtonClick() {
   if (!isSoundEnabled('buttonClick')) return;
+  if (playCustomAudio('buttonClick')) return;
   const v = getSoundVolume('buttonClick', 1);
   playTone(800, 0.03, 'sine', 0.04 * v);
 }
 
 export function sfxScoreSubmit() {
   if (!isSoundEnabled('scoreSubmit')) return;
+  if (playCustomAudio('scoreSubmit')) return;
   const v = getSoundVolume('scoreSubmit', 1);
   playTone(600, 0.08, 'sine', 0.06 * v);
   setTimeout(() => playTone(800, 0.06, 'sine', 0.05 * v), 60);
