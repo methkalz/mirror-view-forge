@@ -4264,63 +4264,39 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
   if (isDismounting) {
     const dp = dismountProg;
     
-    // 3-phase dismount with physical weight
-    // Phase 1 [0→0.3]: lift off seat, arms push down on seat for support
-    // Phase 2 [0.3→0.7]: swing leg over, arms swing for balance  
-    // Phase 3 [0.7→1.0]: land & settle into idle pose (arms down at sides)
+    // Simple dismount: slide off behind bike, end exactly at gameplay idle pose
+    // Final position must be: posX = final offset, posY = 0 (ground), arms/legs = 0 (idle)
     
-    let ease: number, posX: number, posY: number, armAnim: number, legAnim: number, bodyTilt: number;
+    let posX: number, posY: number, armAnim: number, legAnim: number;
     
-    if (dp < 0.3) {
-      // Phase 1: Push off — arms press down, body lifts slightly
-      const t = dp / 0.3;
-      const t2 = t * t;
-      ease = t2;
-      posX = -6 - ease * 4; // slight backward shift
-      posY = -18 - t2 * 3; // lift UP from seat
-      armAnim = -t2 * 6; // arms push DOWN (negative = downward reach)
-      legAnim = t2 * 2;
-      bodyTilt = 0;
-    } else if (dp < 0.7) {
-      // Phase 2: Swing over — arc trajectory, arms balance
-      const t = (dp - 0.3) / 0.4;
-      const swing = Math.sin(t * Math.PI); // arc peak at midpoint
-      ease = 0.09 + t * 0.6;
-      posX = -10 - t * 12; // move backward
-      posY = -21 + swing * -2 + t * 8; // arc up then down
-      armAnim = -6 + t * 8; // arms swing from down to neutral
-      legAnim = 2 + swing * 4; // leg swings over
-      bodyTilt = 0;
+    if (dp < 0.4) {
+      // Phase 1: Slide off the seat, moving behind bike
+      const t = dp / 0.4;
+      const smooth = t * t * (3 - 2 * t); // smoothstep
+      posX = -6 - smooth * 20; // move behind
+      posY = -smooth * 2; // slight lift then settle
+      armAnim = 0;
+      legAnim = smooth * 2;
     } else {
-      // Phase 3: Land & settle — gravity drop, arms fall to sides (idle pose)
-      const t = (dp - 0.7) / 0.3;
-      const land = t * t; // accelerating drop (gravity)
-      const settle = 1 - Math.pow(1 - t, 2); // ease out for settling
-      ease = 0.69 + t * 0.31;
-      posX = -22 - t * 4; // final position behind bike
-      posY = -13 + land * 5; // drop to ground
-      // Arms settle down to idle position (armOffset = 0)
-      armAnim = 2 * (1 - settle); // from slight offset → 0 (idle)
-      legAnim = (6 - settle * 6); // legs settle to standing
-      bodyTilt = 0;
-      // Subtle knee compression on landing
-      if (t > 0.5) {
-        const bounce = Math.sin((t - 0.5) / 0.5 * Math.PI) * 1.5;
-        posY += bounce; // tiny knee bend
-      }
+      // Phase 2: Settle to exact ground position (idle pose)
+      const t = (dp - 0.4) / 0.6;
+      const ease = 1 - Math.pow(1 - t, 3); // ease out
+      posX = -26 - ease * 9; // settle to final position (-35)
+      posY = -2 * (1 - ease); // ease to exactly 0 (ground)
+      armAnim = 0; // idle pose
+      legAnim = 2 * (1 - ease); // settle to 0 (idle)
     }
     
     const dismountX = bike.pos.x + posX;
     const dismountY = bike.pos.y + posY;
-    const finalScale = 0.7 * 1.6; // Full player scale from the start
 
     ctx.save();
     ctx.translate(dismountX, dismountY);
-    ctx.scale(finalScale, finalScale);
+    ctx.scale(1.6, 1.6); // Same scale as renderPlayer
     drawCharacter(ctx, {
-      x: 0, y: -12,
-      scale: 0.7,
-      sitting: dp < 0.25,
+      x: 0, y: 0, // Same as renderPlayer
+      scale: 1, // Same as renderPlayer
+      sitting: false,
       facingRight: true,
       isDriver: false,
       helmetColor: '#334155',
@@ -4342,13 +4318,13 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.translate(p.pos.x, p.pos.y);
     ctx.scale(1.6, 1.6);
     drawCharacter(ctx, {
-      x: 0, y: -12,
-      scale: 0.7,
+      x: 0, y: 0, // Same as renderPlayer
+      scale: 1, // Same as renderPlayer
       sitting: false,
       facingRight: true,
       isDriver: false,
       helmetColor: '#334155',
-      bodyBob: 0,
+      bodyBob: Math.sin(g.elapsed * 2.5) * 0.8, // Same idle bob as renderPlayer
       armOffset: 0,
       legOffset: 0,
       isHit: false,
