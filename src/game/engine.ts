@@ -1327,9 +1327,12 @@ export function update(g: GameData, input: InputState, dt: number) {
         g.spawnTimer = 0.12;
       } else {
         // Pity system — reduce maxConcurrent when player is low health
+        // DISABLED during Wave Finale — player must face real danger for a satisfying victory
         let effectiveMax = recipe.maxConcurrent;
-        if (g.player.health < 20) effectiveMax = Math.max(2, effectiveMax - 1);
-        if (g.player.health < 10) effectiveMax = Math.max(2, effectiveMax - 2);
+        if (!g.waveFinale) {
+          if (g.player.health < 20) effectiveMax = Math.max(2, effectiveMax - 1);
+          if (g.player.health < 10) effectiveMax = Math.max(2, effectiveMax - 2);
+        }
 
         // Wave Finale — boost for shrapnel only
         if (g.waveFinale) effectiveMax += 3;
