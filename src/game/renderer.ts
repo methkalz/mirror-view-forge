@@ -4312,7 +4312,7 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
     
     const dismountX = bike.pos.x + posX;
     const dismountY = bike.pos.y + posY;
-    const finalScale = (0.5 + ease * 0.2) * 1.6;
+    const finalScale = 0.7 * 1.6; // Full player scale from the start
 
     ctx.save();
     ctx.translate(dismountX, dismountY);
@@ -4335,21 +4335,12 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
 
   renderMotorcycle(ctx, bike, g, showPassenger, isDismounting, dismountProg);
 
-  // Panel 2: Player standing alone behind bike, waving farewell as bike leaves to the right
+  // Panel 2: Player standing alone — no waving, just idle pose
   if (g.introPhase === 'bikeLeave') {
     const p = g.player;
-    const bikeDist = bike.pos.x - p.pos.x;
     ctx.save();
     ctx.translate(p.pos.x, p.pos.y);
-    const playerScale = 1.6;
-    ctx.scale(playerScale, playerScale);
-    // Player faces RIGHT (looking at departing bike going right)
-    // No flip needed — facingRight is true
-    
-    // Body leans slightly toward departing bike
-    const leanAngle = -Math.min(0.09, bikeDist * 0.0003);
-    ctx.rotate(leanAngle);
-    
+    ctx.scale(1.6, 1.6);
     drawCharacter(ctx, {
       x: 0, y: -12,
       scale: 0.7,
@@ -4362,8 +4353,6 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
       legOffset: 0,
       isHit: false,
       elapsed: g.elapsed,
-      isWaving: true,
-      lookingBack: false,
     });
     ctx.restore();
   }
