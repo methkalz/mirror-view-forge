@@ -350,7 +350,11 @@ export function updateIntro(g: GameData, dt: number) {
       bike.wheelAnim += bike.speed * dt * 0.05;
       bike.shakeOffset = { x: 0, y: 0 };
 
-      // Exhaust smoke while leaving
+      // Player looks at departing bike (faces left)
+      g.player.facingRight = false;
+      g.player.anim = 'idle';
+
+      // Camera follows player
       g.cameraFocusX = g.player.pos.x;
 
       if (bike.pos.x > g.width + 100) {
@@ -360,6 +364,7 @@ export function updateIntro(g: GameData, dt: number) {
         g.state = 'playing';
         g.cameraZoomTarget = 1.0;
         g.cameraZoom = 1.0;
+        g.player.facingRight = true; // reset facing for gameplay
       }
       break;
     }
