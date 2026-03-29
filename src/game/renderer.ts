@@ -3243,38 +3243,53 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
     ctx.restore();
     ctx.restore();
   } else if (isDriver) {
-    // Side-view: one arm visible reaching forward to handlebar, other arm hint behind body
-    // Far arm hint (behind torso)
+    // Side-view: bent-elbow arm reaching to handlebar with proper joint articulation
+    // Far arm hint (behind torso — darker, partially hidden)
     ctx.lineWidth = 3;
     ctx.strokeStyle = '#2a5a9a';
     ctx.beginPath();
     ctx.moveTo(2, bodyTopY + 4);
-    ctx.quadraticCurveTo(8, bodyTopY, 14, bodyTopY - 6);
+    ctx.quadraticCurveTo(6, bodyTopY + 1, 10, bodyTopY - 3);
     ctx.stroke();
+    // Far gloved hand
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.arc(10, bodyTopY - 3, 1.8, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Near arm — upper arm from shoulder, elbow bend, forearm to handlebar grip
+    // Near arm — shoulder → bent elbow (~120°) → forearm → grip on handlebar
+    // Upper arm: shoulder to elbow
+    const shoulderX = 4, shoulderY = bodyTopY + 3;
+    const elbowX = 10, elbowY = bodyTopY + 1;
+    const handleX = 16, handleY = bodyTopY - 9;
+    
     ctx.lineWidth = 4.5;
     ctx.strokeStyle = armColor;
     ctx.beginPath();
-    ctx.moveTo(4, bodyTopY + 3);
-    ctx.quadraticCurveTo(9, bodyTopY - 1, 12, bodyTopY - 5);
+    ctx.moveTo(shoulderX, shoulderY);
+    ctx.lineTo(elbowX, elbowY);
     ctx.stroke();
-    // Forearm
+    // Elbow joint highlight
+    ctx.fillStyle = armHighlight;
+    ctx.beginPath();
+    ctx.arc(elbowX, elbowY, 2, 0, Math.PI * 2);
+    ctx.fill();
+    // Forearm: elbow to handlebar grip (bent upward)
     ctx.lineWidth = 4;
     ctx.strokeStyle = armHighlight;
     ctx.beginPath();
-    ctx.moveTo(12, bodyTopY - 5);
-    ctx.lineTo(16, bodyTopY - 9);
+    ctx.moveTo(elbowX, elbowY);
+    ctx.quadraticCurveTo(elbowX + 2, elbowY - 5, handleX, handleY);
     ctx.stroke();
     // Gloved hand gripping handlebar
     ctx.fillStyle = '#2a2a2a';
     ctx.beginPath();
-    ctx.arc(16, bodyTopY - 9, 2.5, 0, Math.PI * 2);
+    ctx.arc(handleX, handleY, 2.5, 0, Math.PI * 2);
     ctx.fill();
     // Knuckle detail
     ctx.fillStyle = '#444';
     ctx.beginPath();
-    ctx.arc(16, bodyTopY - 10, 1, 0, Math.PI * 2);
+    ctx.arc(handleX, handleY - 1, 1, 0, Math.PI * 2);
     ctx.fill();
   } else if (holdingDriver) {
     // Passenger side-view: near arm reaches forward to driver's back, far arm on grab rail behind
@@ -4195,7 +4210,7 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
     hasGoggles: true,
   });
 
-  // ── Passenger (player — red helmet, grey/blue jacket) ──
+  // ── Passenger (player — slate helmet, same as renderPlayer) ──
   if (showPassenger && !passengerDismounting) {
     drawCharacter(ctx, {
       x: -6, y: -18,
@@ -4203,7 +4218,7 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
       sitting: true,
       facingRight: true,
       isDriver: false,
-      helmetColor: '#dc2626',
+      helmetColor: '#334155',
       bodyBob: engineBob,
       armOffset: 0,
       legOffset: 0,
@@ -4213,7 +4228,7 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
     });
   }
 
-  // ── 4-Phase Professional Dismount: Anticipation → Arc → Gravity → Landing ──
+  // ── 4-Phase Professional Dismount: Anticipation → Arc → Gravity (BACKWARD) → Landing ──
   if (passengerDismounting) {
     const dp = dismountProgress;
     let dismountX: number, dismountY: number, finalScale: number, isSitting: boolean, legAnim: number, bodyTilt: number;
@@ -4221,38 +4236,37 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
     if (dp < 0.15) {
       // Phase 0: ANTICIPATION — weight shift, bike tilts, passenger prepares
       const t = dp / 0.15;
-      const ease = t * t; // slow start
-      dismountX = -6 + ease * 0.5;
-      dismountY = -18 - ease * 0.5; // slight lift
+      const ease = t * t;
+      dismountX = -6 - ease * 0.5; // shift LEFT (toward back)
+      dismountY = -18 - ease * 0.5;
       finalScale = 0.5;
       isSitting = true;
-      legAnim = ease * 1; // subtle leg prep
-      bodyTilt = ease * 0.08; // tiny forward lean
+      legAnim = ease * 1;
+      bodyTilt = -ease * 0.08; // lean back (negative = toward back of bike)
     } else if (dp < 0.40) {
-      // Phase 1: ARC LEG SWING — leg arcs over seat in bezier path
+      // Phase 1: ARC LEG SWING — leg arcs BACKWARD over seat
       const t = (dp - 0.15) / 0.25;
-      const ease = t * t * (3 - 2 * t); // smoothstep
-      dismountX = -5.5 + ease * 2;
-      // Arc up over the seat then back down
-      const arcY = Math.sin(t * Math.PI) * -6; // arc trajectory
+      const ease = t * t * (3 - 2 * t);
+      dismountX = -6.5 - ease * 4; // moving left/backward
+      const arcY = Math.sin(t * Math.PI) * -6;
       dismountY = -18.5 + arcY + ease * 1;
       finalScale = 0.5 + ease * 0.05;
       isSitting = t < 0.4;
-      legAnim = 1 + ease * 10; // big leg swing over seat
-      bodyTilt = 0.08 + ease * 0.15; // lean back as counterbalance
+      legAnim = 1 + ease * 10;
+      bodyTilt = -0.08 - ease * 0.15; // lean backward as counterbalance
     } else if (dp < 0.70) {
-      // Phase 2: GRAVITY DROP — parabolic descent with counter-balance arms
+      // Phase 2: GRAVITY DROP — parabolic descent BEHIND bike
       const t = (dp - 0.40) / 0.30;
       const ease = t * t * (3 - 2 * t);
-      // Parabolic gravity: up briefly then fall
+      // Parabolic jump arc: up briefly then fall
       const jumpArc = Math.sin(t * Math.PI * 0.6) * -4;
       const gravityPull = t * t * 8;
-      dismountX = -3.5 - ease * 10;
+      dismountX = -10.5 - ease * 12; // continue moving backward
       dismountY = -17.5 + jumpArc + gravityPull;
       finalScale = 0.55 + ease * 0.1;
       isSitting = false;
-      legAnim = 11 - ease * 7; // legs come together
-      bodyTilt = 0.23 * (1 - ease * 1.8); // tilt reduces
+      legAnim = 11 - ease * 7;
+      bodyTilt = -0.23 * (1 - ease * 1.8); // tilt reduces as landing approaches
     } else {
       // Phase 3: LANDING — knee bend (squat absorb) + bounce + dust
       const t = (dp - 0.70) / 0.30;
@@ -4260,12 +4274,12 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
       // Squat absorb: knees compress then spring up
       const squatDepth = t < 0.4 ? Math.sin(t / 0.4 * Math.PI * 0.5) * 4 : 
                          t < 0.7 ? 4 * (1 - (t - 0.4) / 0.3) : 
-                         Math.sin((t - 0.7) / 0.3 * Math.PI) * -1.5; // bounce overshoot
-      dismountX = -13.5 + easeOut * 3;
+                         Math.sin((t - 0.7) / 0.3 * Math.PI) * -1.5;
+      dismountX = -22.5 + easeOut * 2;
       dismountY = -9 + squatDepth;
       finalScale = 0.65 + easeOut * 0.05;
       isSitting = false;
-      legAnim = 4 * (1 - easeOut) + (squatDepth > 2 ? 2 : 0); // knee bend visual
+      legAnim = 4 * (1 - easeOut) + (squatDepth > 2 ? 2 : 0);
       bodyTilt = 0;
 
       // Physics-based landing dust burst (fan-shaped)
@@ -4282,7 +4296,6 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
           const py = dismountY + 14 + Math.sin(angle) * speed * pAge * 3 * friction + gravity;
           const pSize = (1.8 + i * 0.3) * (1 + pAge * 1.2) * Math.max(0, 1 - pAge * 0.7);
           const pAlpha = Math.max(0, 0.4 * (1 - pAge * 1.1));
-          // Color gradient: tan → grey → transparent
           const brownBase = 160 + Math.round(i * 3);
           const greyShift = Math.round(pAge * 30);
           ctx.fillStyle = `rgba(${brownBase - greyShift},${brownBase - 15 - greyShift},${brownBase - 35 - greyShift},${pAlpha})`;
@@ -4305,9 +4318,9 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
       sitting: isSitting,
       facingRight: true,
       isDriver: false,
-      helmetColor: '#dc2626',
+      helmetColor: '#334155',
       bodyBob: 0,
-      armOffset: dp > 0.40 && dp < 0.70 ? Math.sin(dp * 8) * 3 : 0, // counter-balance arms
+      armOffset: dp > 0.40 && dp < 0.70 ? Math.sin(dp * 8) * 3 : 0,
       legOffset: legAnim,
       isHit: false,
       elapsed: g.elapsed,
@@ -4335,7 +4348,7 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
 
   renderMotorcycle(ctx, bike, g, showPassenger, isDismounting, dismountProg);
 
-  // Panel 2: Player standing alone, waving farewell as bike leaves
+  // Panel 2: Player standing alone behind bike, waving farewell as bike leaves to the right
   if (g.introPhase === 'bikeLeave') {
     const p = g.player;
     const bikeDist = bike.pos.x - p.pos.x;
@@ -4343,15 +4356,12 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.translate(p.pos.x, p.pos.y);
     const playerScale = 1.6;
     ctx.scale(playerScale, playerScale);
-    // Player faces left (looking at departing bike)
-    ctx.scale(-1, 1);
+    // Player faces RIGHT (looking at departing bike going right)
+    // No flip needed — facingRight is true
     
-    // Body leans 5° toward departing bike
-    const leanAngle = Math.min(0.09, bikeDist * 0.0003);
+    // Body leans slightly toward departing bike
+    const leanAngle = -Math.min(0.09, bikeDist * 0.0003);
     ctx.rotate(leanAngle);
-    
-    // Head tracks the bike (extra rotation)
-    const headTrack = Math.min(0.18, bikeDist * 0.0005);
     
     drawCharacter(ctx, {
       x: 0, y: -12,
@@ -4359,7 +4369,7 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
       sitting: false,
       facingRight: true,
       isDriver: false,
-      helmetColor: '#dc2626',
+      helmetColor: '#334155',
       bodyBob: 0,
       armOffset: 0,
       legOffset: 0,
@@ -4711,9 +4721,17 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
     }
   }
   // Don't render player separately during intro — renderIntroBike handles all character rendering
+  // Fade in playerGlow smoothly after intro ends (0.5s transition)
   const hidePlayer = g.state === 'intro' && g.introPhase !== 'done';
   if (!hidePlayer) {
-    renderPlayerGlow(ctx, g);
+    // Smooth fade-in for player glow after intro transition
+    const glowFade = g.introTransitionTimer !== undefined ? Math.min(1, g.introTransitionTimer / 0.5) : 1;
+    if (glowFade > 0.01) {
+      ctx.save();
+      ctx.globalAlpha = glowFade;
+      renderPlayerGlow(ctx, g);
+      ctx.restore();
+    }
     renderPlayer(ctx, g);
   }
   renderParticles(ctx, g);
