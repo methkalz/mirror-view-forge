@@ -38,7 +38,7 @@ export async function loadAudioSettings() {
       });
     }
     settingsLoaded = true;
-    await preloadAllAudio();
+    preloadAllAudio();
   } catch {
     settingsLoaded = false;
   }
@@ -161,19 +161,11 @@ function getCtx(): AudioContext {
   return audioCtx;
 }
 
-export async function resumeAudio(): Promise<boolean> {
+export function resumeAudio() {
   unmuteIOS();
-  const ctx = getCtx();
-  if (ctx.state === 'suspended') {
-    try { await ctx.resume(); } catch { return false; }
-  }
+  if (audioCtx?.state === 'suspended') audioCtx.resume();
   if (!settingsLoaded) loadAudioSettings();
   startAmbient();
-  return ctx.state === 'running';
-}
-
-export function isAudioRunning(): boolean {
-  return audioCtx ? audioCtx.state === 'running' : false;
 }
 
 function playTone(freq: number, duration: number, type: OscillatorType = 'square', vol = 0.12) {

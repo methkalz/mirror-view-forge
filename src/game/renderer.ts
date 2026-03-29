@@ -49,19 +49,24 @@ function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
   const totalW = right - left;
 
   if (bgLoaded) {
-    // Desktop-safe rendering (from web.dev/MDN + HTML5GameDevs practices):
-    // single cover layer + subtle pan, avoids obvious repeated tiling seams on wide monitors.
+    // Draw the background image covering the full visible area
+    // Use cover-style: fill height, tile horizontally with parallax
     const imgAspect = bgImage.width / bgImage.height;
-    const viewportW = totalW;
-    const drawW = Math.max(viewportW * 1.12, h * imgAspect);
-    const drawH = drawW / imgAspect;
+    const drawH = h;
+    const drawW = drawH * imgAspect;
 
-    const panRange = Math.max(0, drawW - viewportW);
-    const pan = panRange > 0 ? ((Math.sin(camX * 0.0025) + 1) * 0.5) * panRange : 0;
+    // Parallax: image moves slower than camera
+    const parallax = 0.3;
+    const imgOffset = camX * parallax;
 
-    const drawX = left - pan;
-    const drawY = h - drawH;
-    ctx.drawImage(bgImage, drawX, drawY, drawW, drawH);
+    // Tile the image to cover the full visible width
+    const startTile = Math.floor((left + imgOffset) / drawW) - 1;
+    const endTile = Math.ceil((right + imgOffset) / drawW) + 1;
+
+    for (let tile = startTile; tile <= endTile; tile++) {
+      const drawX = tile * drawW - imgOffset;
+      ctx.drawImage(bgImage, drawX, 0, drawW, drawH);
+    }
   } else {
     // Fallback: solid dark color while loading
     ctx.fillStyle = '#0c1445';
