@@ -2131,6 +2131,7 @@ export function update(g: GameData, input: InputState, dt: number) {
       if (!h.active || !h.falling) continue;
       if (dist(b.pos, h.pos) < h.size + b.size + 4) {
         h.active = false;
+        g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
         sfxExplosion();
         addExplosion(g, h.pos, h.size * 2);
         spawnParticles(g, h.pos, 8, '#f97316', 150);
