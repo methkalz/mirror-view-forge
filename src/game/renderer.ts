@@ -1065,6 +1065,188 @@ function drawInterceptorIcon(ctx: CanvasRenderingContext2D, s: number) {
   ctx.fill();
 }
 
+function drawExtinguisherIcon(ctx: CanvasRenderingContext2D, s: number) {
+  // Red cylinder body
+  const bw = s * 0.3, bh = s * 0.75;
+  const bg = ctx.createLinearGradient(-bw, 0, bw, 0);
+  bg.addColorStop(0, '#991b1b');
+  bg.addColorStop(0.3, '#dc2626');
+  bg.addColorStop(0.6, '#ef4444');
+  bg.addColorStop(1, '#991b1b');
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.roundRect(-bw, -bh * 0.4, bw * 2, bh, 3);
+  ctx.fill();
+  // Nozzle on top
+  ctx.fillStyle = '#333';
+  ctx.fillRect(-bw * 0.3, -bh * 0.55, bw * 0.6, bh * 0.2);
+  // Handle
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(bw * 0.3, -bh * 0.4);
+  ctx.quadraticCurveTo(bw * 1.2, -bh * 0.6, bw * 0.8, -bh * 0.2);
+  ctx.stroke();
+  // Label band
+  ctx.fillStyle = '#fef3c7';
+  ctx.fillRect(-bw * 0.8, -bh * 0.05, bw * 1.6, bh * 0.2);
+  // Fire icon on label
+  ctx.fillStyle = '#f97316';
+  ctx.font = `${s * 0.3}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🔥', 0, bh * 0.05);
+}
+
+function drawGasMaskIcon(ctx: CanvasRenderingContext2D, s: number) {
+  // Mask outline
+  const mw = s * 0.65, mh = s * 0.7;
+  ctx.fillStyle = '#1a3a2a';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, mw, mh, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Inner mask — darker
+  ctx.fillStyle = '#0f2a1a';
+  ctx.beginPath();
+  ctx.ellipse(0, mh * 0.05, mw * 0.8, mh * 0.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Eye lenses — circular, reflective green
+  for (const ex of [-mw * 0.35, mw * 0.35]) {
+    ctx.fillStyle = '#065f46';
+    ctx.beginPath();
+    ctx.arc(ex, -mh * 0.15, s * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Lens reflection
+    ctx.fillStyle = 'rgba(16,185,129,0.4)';
+    ctx.beginPath();
+    ctx.arc(ex - s * 0.05, -mh * 0.2, s * 0.08, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Filter canister at bottom
+  ctx.fillStyle = '#374151';
+  ctx.beginPath();
+  ctx.roundRect(-mw * 0.25, mh * 0.3, mw * 0.5, mh * 0.35, 2);
+  ctx.fill();
+  ctx.strokeStyle = '#6b7280';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+  // Grill lines on filter
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  for (let i = 0; i < 3; i++) {
+    const gy = mh * 0.38 + i * mh * 0.1;
+    ctx.beginPath();
+    ctx.moveTo(-mw * 0.18, gy);
+    ctx.lineTo(mw * 0.18, gy);
+    ctx.stroke();
+  }
+}
+
+// ─── Fire Pools ────────────────────────────────────────
+function renderFirePools(ctx: CanvasRenderingContext2D, g: GameData) {
+  for (const fp of g.firePools) {
+    const alpha = Math.min(1, fp.life / (fp.maxLife * 0.3));
+    ctx.save();
+    ctx.translate(fp.pos.x, fp.pos.y);
+
+    // Ground scorch
+    ctx.fillStyle = `rgba(80, 30, 0, ${alpha * 0.4})`;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, fp.size, fp.size * 0.3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Base glow
+    const glowGrad = ctx.createRadialGradient(0, -5, 0, 0, -5, fp.size);
+    glowGrad.addColorStop(0, `rgba(255, 120, 0, ${alpha * 0.3})`);
+    glowGrad.addColorStop(0.5, `rgba(255, 60, 0, ${alpha * 0.15})`);
+    glowGrad.addColorStop(1, 'rgba(255, 30, 0, 0)');
+    ctx.fillStyle = glowGrad;
+    ctx.beginPath();
+    ctx.arc(0, -5, fp.size, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Animated flame tongues
+    const t = g.elapsed;
+    const flameCount = 6;
+    for (let i = 0; i < flameCount; i++) {
+      const fx = (i / flameCount - 0.5) * fp.size * 1.5;
+      const flameH = (15 + Math.sin(t * 8 + i * 2.3) * 8 + Math.cos(t * 12 + i * 3.7) * 4) * alpha;
+      const flameW = 4 + Math.sin(t * 6 + i * 1.7) * 2;
+      // Outer flame — orange
+      ctx.fillStyle = `rgba(249, 115, 22, ${alpha * 0.7})`;
+      ctx.beginPath();
+      ctx.moveTo(fx - flameW, 0);
+      ctx.quadraticCurveTo(fx - flameW * 0.5, -flameH * 0.6, fx, -flameH);
+      ctx.quadraticCurveTo(fx + flameW * 0.5, -flameH * 0.6, fx + flameW, 0);
+      ctx.fill();
+      // Inner flame — yellow
+      ctx.fillStyle = `rgba(251, 191, 36, ${alpha * 0.8})`;
+      ctx.beginPath();
+      ctx.moveTo(fx - flameW * 0.5, 0);
+      ctx.quadraticCurveTo(fx, -flameH * 0.7, fx + flameW * 0.5, 0);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+}
+
+// ─── Gas Clouds ────────────────────────────────────────
+function renderGasClouds(ctx: CanvasRenderingContext2D, g: GameData) {
+  for (const gc of g.gasClouds) {
+    const alpha = Math.min(1, gc.life / (gc.maxLife * 0.3));
+    ctx.save();
+    ctx.translate(gc.pos.x, gc.pos.y);
+
+    // Main cloud — pulsating green
+    const pulse = 1 + Math.sin(g.elapsed * 3) * 0.1;
+    const cloudGrad = ctx.createRadialGradient(0, -gc.size * 0.2, 0, 0, -gc.size * 0.2, gc.size * pulse);
+    cloudGrad.addColorStop(0, `rgba(22, 163, 74, ${alpha * 0.25})`);
+    cloudGrad.addColorStop(0.4, `rgba(21, 128, 61, ${alpha * 0.15})`);
+    cloudGrad.addColorStop(0.7, `rgba(20, 83, 45, ${alpha * 0.08})`);
+    cloudGrad.addColorStop(1, 'rgba(20, 83, 45, 0)');
+    ctx.fillStyle = cloudGrad;
+    ctx.beginPath();
+    ctx.arc(0, -gc.size * 0.2, gc.size * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Secondary cloud blobs
+    for (let i = 0; i < 4; i++) {
+      const bx = Math.sin(g.elapsed * 1.5 + i * 1.8) * gc.size * 0.4;
+      const by = -gc.size * 0.1 + Math.cos(g.elapsed * 1.2 + i * 2.1) * gc.size * 0.2;
+      const br = gc.size * (0.3 + Math.sin(g.elapsed * 2 + i) * 0.1);
+      ctx.fillStyle = `rgba(22, 163, 74, ${alpha * 0.12})`;
+      ctx.beginPath();
+      ctx.arc(bx, by, br, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Rising toxic particles
+    for (let i = 0; i < 5; i++) {
+      const phase = (g.elapsed * 0.8 + i * 0.7) % 2;
+      const py = -phase * gc.size * 0.8;
+      const px = Math.sin(g.elapsed * 2 + i * 1.5) * gc.size * 0.3;
+      const pAlpha = alpha * (1 - phase / 2) * 0.4;
+      const pSize = 2 + phase * 2;
+      ctx.fillStyle = `rgba(74, 222, 128, ${pAlpha})`;
+      ctx.beginPath();
+      ctx.arc(px, py, pSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // ☣ symbol in center (faint)
+    ctx.fillStyle = `rgba(74, 222, 128, ${alpha * 0.2})`;
+    ctx.font = `${gc.size * 0.4}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('☣', 0, -gc.size * 0.15);
+
+    ctx.restore();
+  }
+}
+
 // ─── Power-ups ────────────────────────────────────────
 function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
   const puColors: Record<string, { base: string; light: string; dark: string }> = {
