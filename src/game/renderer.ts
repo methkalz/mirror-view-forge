@@ -3834,6 +3834,75 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillRect(0, 0, g.width, g.height);
   }
 
+  // Wave Finale — red vignette warning
+  if (g.waveFinale && g.wavePhase === 'active') {
+    const pulse = 0.15 + Math.sin(g.elapsed * 6) * 0.08;
+    const cx = g.width / 2, cy = g.height / 2;
+    const r = Math.max(g.width, g.height) * 0.7;
+    const vigGrad = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r);
+    vigGrad.addColorStop(0, 'rgba(239,68,68,0)');
+    vigGrad.addColorStop(1, `rgba(239,68,68,${pulse})`);
+    ctx.fillStyle = vigGrad;
+    ctx.fillRect(0, 0, g.width, g.height);
+    // "FINAL BARRAGE" text
+    ctx.save();
+    ctx.globalAlpha = 0.7 + Math.sin(g.elapsed * 8) * 0.3;
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 12px Tajawal, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('\u26A0 FINAL BARRAGE', g.width / 2, 32);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // Wave End Slow-Mo — cinematic vignette + WAVE COMPLETE text
+  if (g.waveEndSlowMo > 0) {
+    const progress = 1 - g.waveEndSlowMo / 2.0;
+    // Dark vignette
+    const vigAlpha = 0.3 + progress * 0.2;
+    const cx = g.width / 2, cy = g.height / 2;
+    const r = Math.max(g.width, g.height) * 0.8;
+    const vigGrad = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r);
+    vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
+    vigGrad.addColorStop(1, `rgba(0,0,0,${vigAlpha})`);
+    ctx.fillStyle = vigGrad;
+    ctx.fillRect(0, 0, g.width, g.height);
+
+    // Chromatic aberration effect
+    const abStr = 2 * (1 - progress);
+    if (abStr > 0.3) {
+      ctx.save();
+      ctx.globalAlpha = abStr * 0.04;
+      ctx.fillStyle = 'rgba(255,0,0,1)';
+      ctx.fillRect(abStr, 0, g.width, g.height);
+      ctx.fillStyle = 'rgba(0,0,255,1)';
+      ctx.fillRect(-abStr, 0, g.width, g.height);
+      ctx.restore();
+    }
+
+    // "WAVE COMPLETE" text
+    const textAlpha = progress < 0.2 ? progress / 0.2 : progress > 0.8 ? (1 - progress) / 0.2 : 1;
+    ctx.save();
+    ctx.globalAlpha = textAlpha;
+    ctx.textAlign = 'center';
+    // English
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 28px Tajawal, Arial, sans-serif';
+    ctx.shadowColor = 'rgba(251,191,36,0.5)';
+    ctx.shadowBlur = 20;
+    ctx.fillText(`WAVE ${g.waveNumber} COMPLETE`, g.width / 2, g.height * 0.42);
+    // Arabic
+    ctx.fillStyle = 'rgba(251,191,36,0.7)';
+    ctx.font = 'bold 18px Tajawal, Arial, sans-serif';
+    ctx.direction = 'rtl';
+    ctx.fillText(`انتهت الموجة ${g.waveNumber}`, g.width / 2, g.height * 0.42 + 32);
+    ctx.direction = 'ltr';
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
   // Magnet attraction visual effects
   if (g.magnetFlashTimer > 0) {
     const p = g.player;
