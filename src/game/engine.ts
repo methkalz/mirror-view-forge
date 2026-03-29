@@ -1305,32 +1305,50 @@ export function update(g: GameData, input: InputState, dt: number) {
 
   // Clouds removed — stars only
 
-  // === Spawn hazards (safety period + staggered types) ===
+  // === Spawn hazards — Recipe-based system ===
   if (g.elapsed >= 3 && !g.cinematicWarning && g.wavePhase === 'active') {
     g.spawnTimer -= dt;
     if (g.spawnTimer <= 0) {
+      const recipe = getWaveRecipe(g.waveNumber);
+
+      // Build available threat types based on recipe + phaseInDelay
       const types: HazardType[] = [];
-      if (g.activatedWaveEvents.has('shrapnel_start')) types.push('shrapnel', 'shrapnel');
-      if (g.activatedWaveEvents.has('missiles')) types.push('missile');
-      // Gradual cluster increase
-      if (g.activatedWaveEvents.has('clusters')) {
-        types.push('cluster');
-        if (g.difficulty >= 4) types.push('cluster');
-        if (g.difficulty >= 7) types.push('cluster');
+      for (const t of recipe.threats) {
+        // New threats (not in previous wave) respect phaseInDelay
+        const prevRecipe = g.waveNumber > 1 ? getWaveRecipe(g.waveNumber - 1) : { threats: [] as string[] };
+        const isNew = !prevRecipe.threats.includes(t);
+        if (isNew && g.waveElapsed < recipe.phaseInDelay) continue;
+        types.push(t as HazardType);
+        if (t === 'shrapnel') types.push('shrapnel'); // weight shrapnel higher
       }
 
       if (types.length === 0) {
         g.spawnTimer = 0.12;
-        return;
-      }
+      } else {
+        // Pity system — reduce maxConcurrent when player is low health
+        let effectiveMax = recipe.maxConcurrent;
+        if (g.player.health < 20) effectiveMax = Math.max(2, effectiveMax - 1);
+        if (g.player.health < 10) effectiveMax = Math.max(2, effectiveMax - 2);
 
-      const spawnRate = Math.max(0.5, 2.0 - g.difficulty * 0.12);
-      const bossMultiplier = g.boss && !g.boss.defeated ? 2.5 : 1;
-      g.spawnTimer = spawnRate * bossMultiplier;
+        // Wave Finale — boost for shrapnel only
+        if (g.waveFinale) effectiveMax += 3;
 
-      spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
-      if (g.difficulty >= 4 && Math.random() < 0.15 && !g.boss) {
-        spawnHazard(g, types[Math.floor(Math.random() * types.length)]);
+        // Check activeHazardCount
+        if (g.activeHazardCount < effectiveMax) {
+          const type = types[Math.floor(Math.random() * types.length)];
+          // During finale, only spawn shrapnel for performance
+          if (g.waveFinale) {
+            spawnHazard(g, 'shrapnel');
+          } else {
+            spawnHazard(g, type);
+          }
+        }
+
+        // SpawnRate from recipe (finale = half interval for shrapnel)
+        let interval = recipe.spawnInterval;
+        if (g.waveFinale) interval *= 0.5;
+        const bossMultiplier = g.boss && !g.boss.defeated ? 2.5 : 1;
+        g.spawnTimer = interval * bossMultiplier;
       }
     }
   }
