@@ -625,37 +625,23 @@ function queueWaveEvent(
 function applyWaveEvent(g: GameData, id: string) {
   g.activatedWaveEvents.add(id);
 
-  if (id === 'shrapnel_start') {
-    spawnHazard(g, 'shrapnel');
-    return;
-  }
+  // Spawn initial hazard for demonstration
+  if (id.includes('shrapnel')) { spawnHazard(g, 'shrapnel'); return; }
+  if (id.includes('missile') && !id.includes('cluster')) { spawnHazard(g, 'missile'); return; }
+  if (id.includes('cluster') && !id.includes('split')) { spawnHazard(g, 'cluster'); return; }
 
-  if (id === 'missiles') {
-    spawnHazard(g, 'missile');
-    return;
-  }
+  // Bullet level upgrades
+  if (id.includes('bullet2')) { g.bulletLevel = Math.max(g.bulletLevel, 2); return; }
+  if (id.includes('bullet3')) { g.bulletLevel = Math.max(g.bulletLevel, 3); return; }
 
-  if (id === 'clusters') {
-    spawnHazard(g, 'cluster');
-    return;
-  }
-
-  if (id === 'bullet_2') {
-    g.bulletLevel = Math.max(g.bulletLevel, 2);
-    return;
-  }
-
-  if (id === 'bullet_3') {
-    g.bulletLevel = Math.max(g.bulletLevel, 3);
-    return;
-  }
-
-  if (id === 'drones_scout') {
+  // Drone spawns
+  if (id.includes('drone') && !id.includes('incendiary') && !id.includes('chemical')) {
     g.droneTimer = Math.min(g.droneTimer, 2 + Math.random() * 3);
     return;
   }
 
-  if (id === 'boss_warn') {
+  // Boss
+  if (id.includes('boss')) {
     if (!g.boss) {
       spawnBoss(g, false);
       g.bossTimer = 240 + g.bossCount * 30;
@@ -663,60 +649,39 @@ function applyWaveEvent(g: GameData, id: string) {
     return;
   }
 
-  if (id === 'boss_prep') {
-    for (const t of ['ammo', 'medkit'] as PowerUpType[]) {
-      const pu = getFromPool<PowerUp>(g.powerUps, () => ({
-        active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
-        parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
-      }), 20);
-      pu.type = t;
-      pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
-      pu.size = 14;
-      pu.parachuting = true;
-      pu.fallSpeed = 35;
-      pu.bobTimer = 0;
-      pu.groundTimer = 0;
-    }
-    return;
-  }
-
-  if (id === 'extinguisher_prep') {
+  // Extinguisher drop
+  if (id.includes('extinguisher')) {
     const pu = getFromPool<PowerUp>(g.powerUps, () => ({
       active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
       parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
     }), 20);
     pu.type = 'extinguisher';
     pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
-    pu.size = 14;
-    pu.parachuting = true;
-    pu.fallSpeed = 30;
-    pu.bobTimer = 0;
-    pu.groundTimer = 0;
+    pu.size = 14; pu.parachuting = true; pu.fallSpeed = 30; pu.bobTimer = 0; pu.groundTimer = 0;
     return;
   }
 
-  if (id === 'gasmask_prep') {
+  // Gas mask drop
+  if (id.includes('gasmask')) {
     const pu = getFromPool<PowerUp>(g.powerUps, () => ({
       active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
       parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
     }), 20);
     pu.type = 'gasmask';
     pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
-    pu.size = 14;
-    pu.parachuting = true;
-    pu.fallSpeed = 30;
-    pu.bobTimer = 0;
-    pu.groundTimer = 0;
+    pu.size = 14; pu.parachuting = true; pu.fallSpeed = 30; pu.bobTimer = 0; pu.groundTimer = 0;
     return;
   }
 
-  if (id === 'drones_incendiary') {
+  // Incendiary drones
+  if (id.includes('incendiary')) {
     g.incendiaryTimer = Math.min(g.incendiaryTimer, 2 + Math.random() * 3);
     spawnIncendiaryDrone(g);
     return;
   }
 
-  if (id === 'drones_chemical') {
+  // Chemical drones
+  if (id.includes('chemical')) {
     g.chemicalTimer = Math.min(g.chemicalTimer, 2 + Math.random() * 3);
     spawnChemicalDrone(g);
     return;
