@@ -468,3 +468,40 @@ export async function updateAudioCategory(category: string, updates: { volume?: 
   const { error } = await supabase.from('audio_config').update(mapped).eq('category', category);
   return !error;
 }
+
+export async function createAudioEntry(entry: {
+  soundKey: string; category: string; label: string; labelAr: string;
+}): Promise<AudioConfigEntry | null> {
+  const { data, error } = await supabase.from('audio_config').insert({
+    sound_key: entry.soundKey,
+    category: entry.category,
+    label: entry.label,
+    label_ar: entry.labelAr,
+    volume: 1.0,
+    enabled: true,
+    play_mode: 'single',
+    max_concurrent: 1,
+  }).select().single();
+  if (error || !data) return null;
+  return {
+    id: data.id,
+    soundKey: data.sound_key,
+    category: data.category,
+    label: data.label,
+    labelAr: data.label_ar,
+    volume: data.volume,
+    enabled: data.enabled,
+    audioUrl: data.audio_url,
+    playMode: (data.play_mode || 'single') as PlayMode,
+    intervalSeconds: data.interval_seconds,
+    maxConcurrent: data.max_concurrent,
+    files: [],
+  };
+}
+
+export async function deleteAudioEntry(id: string): Promise<boolean> {
+  // Delete associated files first
+  await supabase.from('audio_files').delete().eq('sound_config_id', id);
+  const { error } = await supabase.from('audio_config').delete().eq('id', id);
+  return !error;
+}
