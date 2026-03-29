@@ -1169,6 +1169,17 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (!d.active) continue;
     d.wobble += dt;
 
+    // === Cargo drone: passive fly-through ===
+    if (d.tier === 'cargo') {
+      d.pos.x += d.vel.x * dt;
+      d.pos.y += Math.sin(d.wobble * 1.5) * 5 * dt; // gentle bob
+      // Remove when off-screen
+      if ((d.vel.x > 0 && d.pos.x > g.width + 80) || (d.vel.x < 0 && d.pos.x < -80)) {
+        d.active = false;
+      }
+      continue;
+    }
+
     // Emit damage smoke if health < maxHealth
     if (d.health < d.maxHealth && d.health > 0) {
       if (Math.random() < 0.4) {
