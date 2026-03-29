@@ -1605,7 +1605,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Drones ===
-  if (g.activatedWaveEvents.has('drones_scout')) {
+  if (g.activatedWaveEvents.has('drones_scout') && g.wavePhase === 'active') {
     g.droneTimer -= dt;
     if (g.droneTimer <= 0) {
       const hasTrackers = g.activatedWaveEvents.has('drones_tracker');
