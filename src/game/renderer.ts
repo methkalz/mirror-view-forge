@@ -4027,7 +4027,7 @@ function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
   renderMotorcycle(ctx, bike, g, false, false, 0);
 }
 
-// ─── Intro Bike + Passenger ──────────────────────────
+// ─── Intro Bike + Passenger + Farewell Scene ──────────────────────────
 function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
   const bike = g.introBike;
   if (!bike || !bike.active) return;
@@ -4037,6 +4037,33 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
   const dismountProg = isDismounting ? Math.min(1, g.introTimer / 1.0) : 0;
 
   renderMotorcycle(ctx, bike, g, showPassenger, isDismounting, dismountProg);
+
+  // Panel 2: Player standing alone, waving farewell as bike leaves
+  if (g.introPhase === 'bikeLeave') {
+    const p = g.player;
+    ctx.save();
+    ctx.translate(p.pos.x, p.pos.y);
+    const playerScale = 1.6; // match in-game player scale
+    ctx.scale(playerScale, playerScale);
+    // Player faces left (looking at departing bike)
+    ctx.scale(-1, 1);
+    drawCharacter(ctx, {
+      x: 0, y: -12,
+      scale: 0.7,
+      sitting: false,
+      facingRight: true,
+      isDriver: false,
+      helmetColor: '#dc2626',
+      bodyBob: 0,
+      armOffset: 0,
+      legOffset: 0,
+      isHit: false,
+      elapsed: g.elapsed,
+      isWaving: true,
+      lookingBack: false,
+    });
+    ctx.restore();
+  }
 }
 
 // ─── Water Bottle Icon ────────────────────────────────
