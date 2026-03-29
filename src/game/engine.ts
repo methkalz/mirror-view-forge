@@ -1442,7 +1442,22 @@ export function update(g: GameData, input: InputState, dt: number) {
           spawnParticles(g, d.pos, 15, '#f97316', 180);
           spawnParticles(g, d.pos, 8, '#555', 100);
           incrementCombo(g);
-          const base = d.tier === 'bomber' ? 80 : d.tier === 'tracker' ? 50 : 30;
+          // Cargo drone drops its payload
+          if (d.tier === 'cargo' && d.cargoType) {
+            const pu = getFromPool<PowerUp>(g.powerUps, () => ({
+              active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
+              parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
+            }), 20);
+            pu.type = d.cargoType;
+            pu.pos = { x: d.pos.x, y: d.pos.y };
+            pu.size = 14;
+            pu.parachuting = true;
+            pu.fallSpeed = 30;
+            pu.bobTimer = 0;
+            pu.groundTimer = 0;
+            addFloatingText(g, `CARGO DROP!`, d.pos, '#fbbf24');
+          }
+          const base = d.tier === 'cargo' ? 60 : d.tier === 'bomber' ? 80 : d.tier === 'tracker' ? 50 : 30;
           const bonus = comboScore(g, base);
           const comboText = g.comboMultiplier > 1 ? ` ×${g.comboMultiplier}` : '';
           addFloatingText(g, `Shot Down! +${bonus}${comboText}`, d.pos, '#a855f7');
