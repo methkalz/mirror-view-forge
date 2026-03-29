@@ -4260,6 +4260,34 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
   const isDismounting = g.introPhase === 'playerDismount';
   const dismountProg = isDismounting ? Math.min(1, g.introTimer / 1.8) : 0;
 
+  // ── Draw dismounting character BEHIND the bike (before bike rendering) ──
+  if (isDismounting) {
+    const dp = dismountProg;
+    // Simple smooth slide off backward — no animations, no dust, no body tilt
+    const ease = dp * dp * (3 - 2 * dp); // smoothstep
+    const dismountX = bike.pos.x + (-6 - ease * 20); // slide backward (left)
+    const dismountY = bike.pos.y + (-18 + ease * 10); // slide down to ground
+    const finalScale = (0.5 + ease * 0.2) * 1.6; // scale up to player size
+
+    ctx.save();
+    ctx.translate(dismountX, dismountY);
+    ctx.scale(finalScale, finalScale);
+    drawCharacter(ctx, {
+      x: 0, y: -12,
+      scale: 0.7,
+      sitting: dp < 0.3,
+      facingRight: true,
+      isDriver: false,
+      helmetColor: '#334155',
+      bodyBob: 0,
+      armOffset: 0,
+      legOffset: 0,
+      isHit: false,
+      elapsed: g.elapsed,
+    });
+    ctx.restore();
+  }
+
   renderMotorcycle(ctx, bike, g, showPassenger, isDismounting, dismountProg);
 
   // Panel 2: Player standing alone behind bike, waving farewell as bike leaves to the right
