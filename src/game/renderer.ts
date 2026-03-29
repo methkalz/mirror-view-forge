@@ -3296,29 +3296,24 @@ function renderOffscreenIndicators(ctx: CanvasRenderingContext2D, g: GameData) {
   }
 }
 
-// ─── Delivery Bike ────────────────────────────────────
-function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
-  const bike = g.deliveryBike;
-  if (!bike || !bike.active) return;
+// ─── Delivery Bike (Realistic Motorcycle) ─────────────
+function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: number; y: number }; facingRight: boolean; wheelAnim: number; shakeOffset: { x: number; y: number }; phase: string; speed: number }, g: GameData, showPassenger: boolean = false, passengerDismounting: boolean = false, dismountProgress: number = 0) {
   ctx.save();
   ctx.translate(bike.pos.x, bike.pos.y);
   const dir = bike.facingRight ? 1 : -1;
   ctx.scale(dir, 1);
-
-  // Scale up 2.4x for better visibility
   ctx.scale(2.4, 2.4);
-
-  // Apply engine shake
   ctx.translate(bike.shakeOffset.x, bike.shakeOffset.y);
 
-  // Exhaust smoke during idle
-  if (bike.phase === 'idle') {
-    for (let i = 0; i < 3; i++) {
+  // Exhaust smoke
+  if (bike.phase === 'idle' || bike.phase === 'leaving' || bike.phase === 'entering') {
+    const smokeCount = bike.phase === 'idle' ? 3 : 5;
+    for (let i = 0; i < smokeCount; i++) {
       const age = (g.elapsed * 2 + i * 0.7) % 2;
-      const sx = -22 - age * 8;
-      const sy = -6 - age * 12;
-      const sr = 2 + age * 3;
-      const sa = Math.max(0, 0.25 - age * 0.13);
+      const sx = -28 - age * 10;
+      const sy = -4 - age * 14;
+      const sr = 2 + age * 4;
+      const sa = Math.max(0, 0.3 - age * 0.15);
       ctx.fillStyle = `rgba(150,150,150,${sa})`;
       ctx.beginPath();
       ctx.arc(sx, sy, sr, 0, Math.PI * 2);
@@ -3326,88 +3321,171 @@ function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
     }
   }
 
-  // Dust particles
+  // Dust particles when moving
   if (Math.abs(bike.speed) > 30) {
-    for (let i = 0; i < 3; i++) {
-      const dx = -15 - Math.random() * 14;
-      const dy = -Math.random() * 5;
-      ctx.fillStyle = `rgba(160,140,120,${0.12 + Math.random() * 0.12})`;
+    for (let i = 0; i < 4; i++) {
+      const dx = -20 - Math.random() * 16;
+      const dy = -Math.random() * 4;
+      ctx.fillStyle = `rgba(160,140,120,${0.15 + Math.random() * 0.15})`;
       ctx.beginPath();
-      ctx.arc(dx, dy, 2 + Math.random() * 2.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  } else if (bike.phase === 'idle') {
-    // Settled dust under wheels
-    for (let i = 0; i < 2; i++) {
-      const dx = (i === 0 ? 18 : -16) + (Math.random() - 0.5) * 6;
-      ctx.fillStyle = `rgba(160,140,120,${0.06 + Math.random() * 0.04})`;
-      ctx.beginPath();
-      ctx.arc(dx, 1, 3 + Math.random() * 2, 0, Math.PI * 2);
+      ctx.arc(dx, dy, 2 + Math.random() * 3, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
-  // Wheels
-  const wheelR = 7;
-  const wheelY = -2;
-  const frontWX = 18, rearWX = -16;
-  ctx.strokeStyle = '#111';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(frontWX, wheelY, wheelR, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(rearWX, wheelY, wheelR, 0, Math.PI * 2);
-  ctx.stroke();
-  // Spokes
-  ctx.strokeStyle = '#555';
-  ctx.lineWidth = 0.8;
+  // ── Wheels ──
+  const wheelR = 8;
+  const wheelY = 0;
+  const frontWX = 22, rearWX = -20;
+
+  // Tire outer
   for (const wx of [frontWX, rearWX]) {
-    for (let i = 0; i < 4; i++) {
-      const a = bike.wheelAnim + i * Math.PI / 2;
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(wx, wheelY, wheelR, 0, Math.PI * 2);
+    ctx.stroke();
+    // Rim
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(wx, wheelY, wheelR - 3, 0, Math.PI * 2);
+    ctx.stroke();
+    // Spokes
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 0.7;
+    for (let i = 0; i < 6; i++) {
+      const a = bike.wheelAnim + i * Math.PI / 3;
       ctx.beginPath();
       ctx.moveTo(wx + Math.cos(a) * 2, wheelY + Math.sin(a) * 2);
-      ctx.lineTo(wx + Math.cos(a) * (wheelR - 1), wheelY + Math.sin(a) * (wheelR - 1));
+      ctx.lineTo(wx + Math.cos(a) * (wheelR - 3), wheelY + Math.sin(a) * (wheelR - 3));
       ctx.stroke();
     }
+    // Hub
+    ctx.fillStyle = '#555';
+    ctx.beginPath();
+    ctx.arc(wx, wheelY, 2, 0, Math.PI * 2);
+    ctx.fill();
   }
-  // Tire fill
-  ctx.fillStyle = '#222';
-  ctx.beginPath(); ctx.arc(frontWX, wheelY, wheelR - 2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(rearWX, wheelY, wheelR - 2, 0, Math.PI * 2); ctx.fill();
 
-  // Frame
+  // ── Fenders ──
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  // Front fender
+  ctx.beginPath();
+  ctx.arc(frontWX, wheelY, wheelR + 2, -Math.PI * 0.8, -Math.PI * 0.2);
+  ctx.stroke();
+  // Rear fender
+  ctx.beginPath();
+  ctx.arc(rearWX, wheelY, wheelR + 2, -Math.PI * 0.85, -Math.PI * 0.15);
+  ctx.stroke();
+
+  // ── Frame / Body (curved motorcycle shape) ──
+  ctx.fillStyle = '#2d2d2d';
+  ctx.beginPath();
+  ctx.moveTo(rearWX + 4, wheelY - 2);
+  ctx.quadraticCurveTo(-8, -18, 0, -18);
+  ctx.quadraticCurveTo(8, -18, frontWX - 4, wheelY - 6);
+  ctx.lineTo(frontWX - 2, wheelY - 2);
+  ctx.lineTo(rearWX + 4, wheelY - 2);
+  ctx.fill();
   ctx.strokeStyle = '#444';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // ── Engine block ──
+  ctx.fillStyle = '#3a3a3a';
+  ctx.fillRect(-8, -6, 14, 6);
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(-8, -6, 14, 6);
+  // Engine detail lines (fins)
+  ctx.strokeStyle = '#4a4a4a';
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(-6 + i * 3.5, -5);
+    ctx.lineTo(-6 + i * 3.5, -1);
+    ctx.stroke();
+  }
+
+  // ── Fuel tank (elliptical, colored) ──
+  const tankGrad = ctx.createLinearGradient(-6, -20, 4, -12);
+  tankGrad.addColorStop(0, '#1e40af');
+  tankGrad.addColorStop(0.5, '#2563eb');
+  tankGrad.addColorStop(1, '#1e3a8a');
+  ctx.fillStyle = tankGrad;
+  ctx.beginPath();
+  ctx.ellipse(-1, -15, 8, 4, -0.1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#1e3a8a';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+  // Tank highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.beginPath();
+  ctx.ellipse(-2, -16, 5, 1.5, -0.1, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Exhaust pipe ──
+  ctx.strokeStyle = '#777';
   ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.moveTo(rearWX, wheelY);
-  ctx.lineTo(-5, -14);
-  ctx.lineTo(frontWX, wheelY);
+  ctx.moveTo(-6, -3);
+  ctx.quadraticCurveTo(-16, -2, -24, -6);
   ctx.stroke();
+  // Exhaust tip
+  ctx.fillStyle = '#555';
   ctx.beginPath();
-  ctx.moveTo(-5, -14);
-  ctx.lineTo(5, -14);
-  ctx.lineTo(frontWX + 3, wheelY - 5);
+  ctx.ellipse(-24, -6, 2, 1.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Seat (long, comfortable) ──
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath();
+  ctx.moveTo(-12, -18);
+  ctx.quadraticCurveTo(-6, -22, 2, -20);
+  ctx.quadraticCurveTo(6, -19, 4, -17);
+  ctx.lineTo(-12, -17);
+  ctx.closePath();
+  ctx.fill();
+
+  // ── Handlebar ──
+  ctx.strokeStyle = '#666';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(10, -18);
+  ctx.lineTo(16, -24);
+  ctx.stroke();
+  // Handlebar grips
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(15, -25);
+  ctx.lineTo(18, -26);
   ctx.stroke();
 
-  // Seat
-  ctx.fillStyle = '#333';
-  ctx.fillRect(-8, -17, 10, 3);
-
-  // Orange delivery box
+  // ── Orange delivery box (OTLOP) ──
   ctx.fillStyle = '#e8760a';
-  ctx.fillRect(-20, -30, 16, 14);
+  const boxX = -24, boxY = -32, boxW = 16, boxH = 14;
+  ctx.beginPath();
+  ctx.roundRect(boxX, boxY, boxW, boxH, 2);
+  ctx.fill();
   ctx.strokeStyle = '#b05508';
   ctx.lineWidth = 1;
-  ctx.strokeRect(-20, -30, 16, 14);
+  ctx.strokeRect(boxX, boxY, boxW, boxH);
+  // Box lid detail
+  ctx.strokeStyle = '#d06808';
+  ctx.beginPath();
+  ctx.moveTo(boxX + 2, boxY + 3);
+  ctx.lineTo(boxX + boxW - 2, boxY + 3);
+  ctx.stroke();
 
-  // "OTLOP" text — always readable (cancel parent mirrors)
+  // "OTLOP" text — always readable
   ctx.save();
-  ctx.scale(dir, 1); // cancel first dir scale
-  ctx.scale(1 / 2.4, 1 / 2.4); // cancel the 2.4 scale for crisp text
-  // Position in original coordinate space
-  const boxCenterX = dir === 1 ? -12 * 2.4 : 12 * 2.4;
-  const boxCenterY = -23 * 2.4;
+  ctx.scale(dir, 1);
+  ctx.scale(1 / 2.4, 1 / 2.4);
+  const boxCenterX = dir === 1 ? (boxX + boxW / 2) * 2.4 : -(boxX + boxW / 2) * 2.4;
+  const boxCenterY = (boxY + boxH / 2) * 2.4;
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 9px monospace';
   ctx.textAlign = 'center';
@@ -3415,44 +3493,121 @@ function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.fillText('OTLOP', boxCenterX, boxCenterY);
   ctx.restore();
 
-  // Rider (simplified)
+  // ── Headlight ──
+  const showLight = bike.phase === 'idle'
+    ? Math.sin(g.elapsed * 6) > 0
+    : true;
+  if (showLight) {
+    ctx.fillStyle = 'rgba(255,255,200,0.8)';
+    ctx.beginPath();
+    ctx.arc(frontWX + 5, -10, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,200,0.15)';
+    ctx.beginPath();
+    ctx.arc(frontWX + 5, -10, 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ── Tail light ──
+  ctx.fillStyle = 'rgba(255,30,30,0.7)';
+  ctx.beginPath();
+  ctx.ellipse(rearWX - 2, -10, 2, 1.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Driver (rider) ──
+  // Body
   ctx.fillStyle = '#333';
   ctx.beginPath();
-  ctx.ellipse(-2, -22, 4, 3.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(2, -24, 4, 5, 0, 0, Math.PI * 2);
   ctx.fill();
   // Helmet
   ctx.fillStyle = '#dc2626';
   ctx.beginPath();
-  ctx.arc(-2, -28, 4, 0, Math.PI * 2);
+  ctx.arc(2, -31, 4.5, 0, Math.PI * 2);
   ctx.fill();
   // Visor
   ctx.fillStyle = '#111';
-  ctx.fillRect(-1, -29, 4, 2);
-  // Arms
-  ctx.strokeStyle = '#333';
-  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(2, -22);
-  ctx.lineTo(8, -16);
+  ctx.roundRect(3, -33, 4, 3, 1);
+  ctx.fill();
+  // Visor shine
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(4, -33, 2, 1);
+  // Arms to handlebar
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(5, -24);
+  ctx.quadraticCurveTo(10, -20, 15, -25);
+  ctx.stroke();
+  // Legs
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(0, -19);
+  ctx.lineTo(-4, -10);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(3, -19);
+  ctx.lineTo(8, -10);
   ctx.stroke();
 
-  // Headlight — blinks during idle
-  const showLight = bike.phase === 'idle'
-    ? Math.sin(g.elapsed * 6) > 0
-    : bike.phase !== 'dropping';
-  if (showLight) {
-    ctx.fillStyle = 'rgba(255,255,200,0.7)';
+  // ── Passenger (player riding behind) ──
+  if (showPassenger && !passengerDismounting) {
+    // Sitting behind driver
+    ctx.fillStyle = '#4a5568';
     ctx.beginPath();
-    ctx.arc(frontWX + 5, -8, 2.5, 0, Math.PI * 2);
+    ctx.ellipse(-8, -24, 4, 5, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Light glow
-    ctx.fillStyle = 'rgba(255,255,200,0.15)';
+    // Player head (no helmet, different color)
+    ctx.fillStyle = '#f5c542';
     ctx.beginPath();
-    ctx.arc(frontWX + 5, -8, 6, 0, Math.PI * 2);
+    ctx.arc(-8, -31, 4, 0, Math.PI * 2);
     ctx.fill();
+    // Eyes
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(-6.5, -31.5, 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    // Arms holding driver
+    ctx.strokeStyle = '#4a5568';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-5, -24);
+    ctx.lineTo(-1, -23);
+    ctx.stroke();
+    // Legs
+    ctx.strokeStyle = '#3a4558';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-10, -19);
+    ctx.lineTo(-14, -10);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-7, -19);
+    ctx.lineTo(-2, -12);
+    ctx.stroke();
   }
 
   ctx.restore();
+}
+
+function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
+  const bike = g.deliveryBike;
+  if (!bike || !bike.active) return;
+  renderMotorcycle(ctx, bike, g, false, false, 0);
+}
+
+// ─── Intro Bike + Passenger ──────────────────────────
+function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
+  const bike = g.introBike;
+  if (!bike || !bike.active) return;
+
+  const showPassenger = g.introPhase === 'bikeEnter' || g.introPhase === 'bikeStop';
+  const isDismounting = g.introPhase === 'playerDismount';
+  const dismountProg = isDismounting ? Math.min(1, g.introTimer / 1.0) : 0;
+
+  renderMotorcycle(ctx, bike, g, showPassenger, isDismounting, dismountProg);
 }
 
 // ─── Water Bottle Icon ────────────────────────────────
