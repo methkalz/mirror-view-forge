@@ -1172,7 +1172,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   // Clouds removed — stars only
 
   // === Spawn hazards (safety period + staggered types) ===
-  if (g.elapsed >= 3 && !g.cinematicWarning) {
+  if (g.elapsed >= 3 && !g.cinematicWarning && g.wavePhase === 'active') {
     g.spawnTimer -= dt;
     if (g.spawnTimer <= 0) {
       const types: HazardType[] = [];
