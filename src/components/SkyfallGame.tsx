@@ -56,11 +56,12 @@ const SkyfallGame: React.FC = () => {
     const g = createGame(window.innerWidth, window.innerHeight);
     gameRef.current = g;
 
-    // Apply remote config
-    if (remoteConfig) {
-      g.player.speed = remoteConfig.baseSpeed;
-      g.spawnTimer = remoteConfig.spawnInterval;
-      g.difficulty = remoteConfig.difficultyMultiplier;
+    // Apply remote config from ref (not state dependency)
+    const cfg = remoteConfigRef.current;
+    if (cfg) {
+      g.player.speed = cfg.baseSpeed;
+      g.spawnTimer = cfg.spawnInterval;
+      g.difficulty = cfg.difficultyMultiplier;
     }
 
     const resize = () => {
