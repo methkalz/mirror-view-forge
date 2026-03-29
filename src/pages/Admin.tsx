@@ -5,15 +5,15 @@ import {
   fetchGameConfig, updateGameConfig, fetchLeaderboard, deleteLeaderboardEntry, clearLeaderboard,
   fetchWaveConfigs, upsertWaveConfig, deleteWaveConfig,
   fetchAudioConfig, updateAudioEntry, updateAudioCategory, uploadAudioFile, deleteAudioFile, listAudioLibrary,
-  addAudioFile, removeAudioFile,
-  type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode,
+  addAudioFile, removeAudioFile, fetchAnalytics,
+  type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type GameAnalytics,
 } from '@/game/config';
 
 const Admin: React.FC = () => {
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'config' | 'waves' | 'leaderboard' | 'audio'>('config');
+  const [tab, setTab] = useState<'analytics' | 'config' | 'waves' | 'leaderboard' | 'audio'>('analytics');
 
   // Config state
   const [config, setConfig] = useState<RemoteGameConfig | null>(null);
@@ -28,6 +28,7 @@ const Admin: React.FC = () => {
 
   // Audio state
   const [audioEntries, setAudioEntries] = useState<AudioConfigEntry[]>([]);
+  const [analytics, setAnalytics] = useState<GameAnalytics | null>(null);
 
   // Auth check
   useEffect(() => {
