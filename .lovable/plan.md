@@ -1,25 +1,33 @@
 
 
-# ضمان تحميل جميع الملفات الصوتية قبل الانتقال من شاشة اللودينغ
+# إبقاء الموسيقى تعمل حتى بدء اللعبة الفعلي
 
 ## المشكلة
-في `loadAudioSettings()` بملف `src/game/audio.ts`، يتم استدعاء `preloadAllAudio()` **بدون `await`** (سطر 41). هذا يعني أن الدالة تنتهي قبل أن تُحمَّل الملفات الصوتية فعلياً، فينتقل التطبيق لشاشة إدخال الاسم والملفات لا تزال تُحمَّل في الخلفية.
+حالياً `stopMenuMusic()` تُستدعى في 3 أماكن:
+1. `NameEntry.tsx` سطر 126 — عند الضغط على "ابدأ المعركة"
+2. `NameEntry.tsx` سطر 61 — عند unmount المكوّن
+3. `SkyfallGame.tsx` سطر 87 — في `handleNameSubmit`
+
+الموسيقى تتوقف فور إدخال الاسم، بينما المطلوب أن تستمر خلال شاشة Start Screen (PRESS ENTER) وتتوقف فقط عند بدء اللعب الفعلي.
 
 ## الحل
 
-### 1. `src/game/audio.ts` — إضافة `await` قبل `preloadAllAudio()`
-- السطر 41: تغيير `preloadAllAudio();` إلى `await preloadAllAudio();`
-- هذا يضمن أن `loadAudioSettings` لا تنتهي إلا بعد تحميل وفك تشفير جميع ملفات الصوت
+### 1. `src/components/NameEntry.tsx`
+- إزالة استدعاء `stopMenuMusic()` من `handleSubmit` (سطر 126)
+- إزالة `stopMenuMusic()` من cleanup في useEffect (سطر 61)
+- الموسيقى تبقى تعمل بعد إرسال الاسم
 
-### 2. `src/components/SkyfallGame.tsx` — تحسين تتبع التقدم
-- تقسيم التقدم بدقة أكبر: config+leaderboard = 40%، audio preload = 40%→95%، نهائي = 100%
-- تمرير callback للتقدم إلى `loadAudioSettings` لتحديث شريط التقدم أثناء تحميل كل ملف صوتي
+### 2. `src/components/SkyfallGame.tsx`
+- إزالة `stopMenuMusic()` من `handleNameSubmit` (سطر 87)
+- إضافة `stopMenuMusic()` عند انتقال حالة اللعبة من `start` إلى `intro` — داخل كتلة تتبع تغيير الحالة (سطر 189-196) عندما تصبح الحالة `intro`
 
-### 3. `src/game/audio.ts` — دعم callback للتقدم (اختياري لكن مفيد)
-- تعديل `loadAudioSettings` لقبول `onProgress?: (pct: number) => void`
-- داخل `preloadAllAudio`: حساب النسبة المئوية لكل ملف مُحمَّل وإرسالها عبر الـ callback
+```text
+التدفق الجديد:
+NameEntry → إدخال الاسم → Start Screen (الموسيقى مستمرة ♪)
+→ PRESS ENTER → resetGame → state='intro' → stopMenuMusic() ✓
+```
 
 ## الملفات المتأثرة
-- `src/game/audio.ts` — إصلاح `await` + إضافة progress callback
-- `src/components/SkyfallGame.tsx` — ربط progress callback بشريط التقدم
+- `src/components/NameEntry.tsx` — إزالة استدعاءات stopMenuMusic
+- `src/components/SkyfallGame.tsx` — نقل stopMenuMusic إلى لحظة بدء اللعبة
 
