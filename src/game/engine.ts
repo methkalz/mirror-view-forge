@@ -1620,6 +1620,15 @@ export function update(g: GameData, input: InputState, dt: number) {
     const fp = g.firePools[i];
     fp.life -= dt;
     if (fp.life <= 0) { g.firePools.splice(i, 1); continue; }
+    // Auto-extinguish when player approaches with extinguisher active
+    if (p.extinguisherTimer > 0 && dist(p.pos, fp.pos) < fp.size + p.size + 30) {
+      // Steam effect
+      spawnParticles(g, fp.pos, 8, '#e2e8f0', 60, false);
+      addFloatingText(g, '💨', { x: fp.pos.x, y: fp.pos.y - 20 }, '#94a3b8');
+      g.firePools.splice(i, 1);
+      g.score += 5;
+      continue;
+    }
     // Damage player if standing in fire (unless extinguisher active)
     if (p.extinguisherTimer <= 0 && dist(p.pos, fp.pos) < fp.size + p.size) {
       const fireDmg = fp.damagePerSec * dt;
