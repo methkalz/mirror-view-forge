@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { startMenuMusic, stopMenuMusic, resumeAudio } from '@/game/audio';
+import { startMenuMusic, stopMenuMusic, resumeAudio, isAudioRunning } from '@/game/audio';
 
 interface BrandingConfig {
   logoUrl: string | null;
@@ -26,10 +26,11 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   const [shake, setShake] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [audioHint, setAudioHint] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sparksRef = useRef<Spark[]>([]);
   const rafRef = useRef<number>(0);
-  const musicStarted = useRef(false);
+  const musicPlaying = useRef(false);
 
   const title = branding?.gameTitle || 'SKYFALL';
   const subtitle = branding?.gameSubtitle || 'SURVIVAL';
@@ -38,27 +39,45 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   const showTitle = branding?.showTitle ?? true;
   const hasName = name.trim().length > 0;
 
-  // Start menu music on first user interaction (required for iOS Safari/Chrome)
+  // Unified function to ensure audio is started
   useEffect(() => {
-    const startOnGesture = () => {
-      if (!musicStarted.current) {
-        musicStarted.current = true;
-        resumeAudio();
+    let disposed = false;
+
+    const ensureAudio = async () => {
+      if (musicPlaying.current || disposed) return;
+      const running = await resumeAudio();
+      if (running && !musicPlaying.current && !disposed) {
         startMenuMusic();
+        musicPlaying.current = true;
+        setAudioHint(false);
       }
     };
-    // Also try after a short delay for desktop browsers
-    const timer = setTimeout(() => {
-      startMenuMusic();
-      musicStarted.current = true;
-    }, 500);
-    document.addEventListener('touchstart', startOnGesture, { once: true, passive: true });
-    document.addEventListener('click', startOnGesture, { once: true });
+
+    // Attempt auto-start (works on desktop, fails silently on mobile)
+    const autoTimer = setTimeout(async () => {
+      await ensureAudio();
+      // If still not playing after 1.2s, show hint on mobile
+      if (!musicPlaying.current && !disposed) {
+        setAudioHint(true);
+      }
+    }, 400);
+
+    // Gesture-based fallback — stays active until music actually plays
+    const onGesture = () => {
+      ensureAudio();
+    };
+
+    const events = ['touchstart', 'click', 'pointerdown', 'keydown'] as const;
+    events.forEach(evt =>
+      document.addEventListener(evt, onGesture, { passive: true })
+    );
+
     return () => {
-      clearTimeout(timer);
-      document.removeEventListener('touchstart', startOnGesture);
-      document.removeEventListener('click', startOnGesture);
+      disposed = true;
+      clearTimeout(autoTimer);
+      events.forEach(evt => document.removeEventListener(evt, onGesture));
       stopMenuMusic();
+      musicPlaying.current = false;
     };
   }, []);
 
@@ -343,7 +362,19 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           </div>
         </div>
 
-        {/* Developer credit */}
+        {/* Audio hint for mobile */}
+        {audioHint && (
+          <p style={{
+            marginTop: 16,
+            fontFamily: "'Tajawal', system-ui, sans-serif",
+            fontSize: 12,
+            color: 'rgba(220,38,38,0.6)',
+            letterSpacing: 1,
+            animation: 'subtitleFlicker 2s ease-in-out infinite',
+          }}>
+            🔊 انقر لتفعيل الصوت
+          </p>
+        )}
         <div style={{ marginTop: 36, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 40, height: 1,
