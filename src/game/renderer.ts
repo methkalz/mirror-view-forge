@@ -3008,46 +3008,59 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
 
   // ── Legs ──
   if (sitting) {
-    // Bent legs for sitting on bike
-    // Back leg bent under
+    // Realistic straddling pose — thighs go outward/down, knees bend, feet on pegs
+    // Back leg (far side) — thigh angled back-down, shin drops to peg
     ctx.lineWidth = 5;
     ctx.strokeStyle = pantsColor;
     ctx.beginPath();
-    ctx.moveTo(-2, bodyBottomY);
-    ctx.lineTo(-6, bodyBottomY + 6);
+    ctx.moveTo(-3, bodyBottomY);
+    ctx.quadraticCurveTo(-8, bodyBottomY + 4, -10, bodyBottomY + 10); // thigh curves outward
     ctx.stroke();
     ctx.lineWidth = 4;
     ctx.strokeStyle = pantsHighlight;
     ctx.beginPath();
-    ctx.moveTo(-6, bodyBottomY + 6);
-    ctx.lineTo(-8, bodyBottomY + 12);
+    ctx.moveTo(-10, bodyBottomY + 10);
+    ctx.quadraticCurveTo(-9, bodyBottomY + 15, -6, bodyBottomY + 18); // shin to peg
     ctx.stroke();
-    // Shoe
+    // Boot on peg
     ctx.lineWidth = 4.5;
     ctx.strokeStyle = shoeColor;
     ctx.beginPath();
-    ctx.moveTo(-8, bodyBottomY + 12);
-    ctx.lineTo(-6, bodyBottomY + 14);
+    ctx.moveTo(-6, bodyBottomY + 18);
+    ctx.lineTo(-3, bodyBottomY + 19);
+    ctx.stroke();
+    // Sole
+    ctx.strokeStyle = '#8B4513';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-7, bodyBottomY + 19.5);
+    ctx.lineTo(-2, bodyBottomY + 19.5);
     ctx.stroke();
 
-    // Front leg bent forward
+    // Front leg (near side) — thigh forward-down, knee bent, foot on peg
     ctx.lineWidth = 5;
     ctx.strokeStyle = pantsColor;
     ctx.beginPath();
-    ctx.moveTo(2, bodyBottomY);
-    ctx.lineTo(6, bodyBottomY + 6);
+    ctx.moveTo(3, bodyBottomY);
+    ctx.quadraticCurveTo(8, bodyBottomY + 4, 10, bodyBottomY + 10);
     ctx.stroke();
     ctx.lineWidth = 4;
     ctx.strokeStyle = pantsHighlight;
     ctx.beginPath();
-    ctx.moveTo(6, bodyBottomY + 6);
-    ctx.lineTo(8, bodyBottomY + 12);
+    ctx.moveTo(10, bodyBottomY + 10);
+    ctx.quadraticCurveTo(9, bodyBottomY + 15, 6, bodyBottomY + 18);
     ctx.stroke();
     ctx.lineWidth = 4.5;
     ctx.strokeStyle = shoeColor;
     ctx.beginPath();
-    ctx.moveTo(8, bodyBottomY + 12);
-    ctx.lineTo(10, bodyBottomY + 14);
+    ctx.moveTo(6, bodyBottomY + 18);
+    ctx.lineTo(9, bodyBottomY + 19);
+    ctx.stroke();
+    ctx.strokeStyle = '#8B4513';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(5, bodyBottomY + 19.5);
+    ctx.lineTo(10, bodyBottomY + 19.5);
     ctx.stroke();
   } else {
     // Standing legs with animation
@@ -3161,40 +3174,50 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
   const armHighlight = isHit ? '#f87171' : '#5a9ae6';
 
   if (isDriver) {
-    // Back arm relaxed
+    // Both arms reaching forward to grip handlebars — realistic riding pose
+    // Back arm (left) — extends forward-up to left grip
     ctx.lineWidth = 4;
     ctx.strokeStyle = armColor;
     ctx.beginPath();
     ctx.moveTo(-5, bodyTopY + 3);
-    ctx.lineTo(-8, bodyTopY + 10);
+    ctx.quadraticCurveTo(-2, bodyTopY - 2, 6, bodyTopY - 6);
     ctx.stroke();
     ctx.lineWidth = 3.5;
     ctx.strokeStyle = armHighlight;
     ctx.beginPath();
-    ctx.moveTo(-8, bodyTopY + 10);
-    ctx.lineTo(-7, bodyTopY + 18);
+    ctx.moveTo(6, bodyTopY - 6);
+    ctx.lineTo(12, bodyTopY - 10);
     ctx.stroke();
-    ctx.fillStyle = skinColor;
+    // Gloved hand gripping
+    ctx.fillStyle = '#2a2a2a';
     ctx.beginPath();
-    ctx.arc(-7, bodyTopY + 18, 2, 0, Math.PI * 2);
+    ctx.arc(12, bodyTopY - 10, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = skinHighlight;
+    ctx.beginPath();
+    ctx.arc(12, bodyTopY - 10, 1.2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Front arm reaching to handlebar
+    // Front arm (right) — extends forward-up to right grip
     ctx.lineWidth = 4;
     ctx.strokeStyle = armColor;
     ctx.beginPath();
     ctx.moveTo(5, bodyTopY + 3);
-    ctx.lineTo(10, bodyTopY - 2);
+    ctx.quadraticCurveTo(8, bodyTopY - 2, 14, bodyTopY - 8);
     ctx.stroke();
     ctx.lineWidth = 3.5;
     ctx.strokeStyle = armHighlight;
     ctx.beginPath();
-    ctx.moveTo(10, bodyTopY - 2);
-    ctx.lineTo(14, bodyTopY - 6);
+    ctx.moveTo(14, bodyTopY - 8);
+    ctx.lineTo(16, bodyTopY - 10);
     ctx.stroke();
-    ctx.fillStyle = skinColor;
+    ctx.fillStyle = '#2a2a2a';
     ctx.beginPath();
-    ctx.arc(14, bodyTopY - 6, 2, 0, Math.PI * 2);
+    ctx.arc(16, bodyTopY - 10, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = skinHighlight;
+    ctx.beginPath();
+    ctx.arc(16, bodyTopY - 10, 1.2, 0, Math.PI * 2);
     ctx.fill();
   } else if (holdingDriver) {
     // Both arms reaching forward to hold driver's back
@@ -3643,31 +3666,32 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.ellipse(rearWX - 2, -10, 2, 1.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // ── Driver (detailed character) ──
+  // ── Driver (detailed character) — leaning forward in riding pose ──
+  const engineBob = Math.sin(g.elapsed * 12) * 0.3;
   drawCharacter(ctx, {
-    x: 2, y: -18,
+    x: 4, y: -20,
     scale: 0.55,
     sitting: true,
     facingRight: true,
     isDriver: true,
     helmetColor: '#dc2626',
-    bodyBob: Math.sin(g.elapsed * 12) * 0.3,
+    bodyBob: engineBob,
     armOffset: 0,
     legOffset: 0,
     isHit: false,
     elapsed: g.elapsed,
   });
 
-  // ── Passenger (player riding behind — identical to playable character) ──
+  // ── Passenger (player riding behind — sits upright, holds driver) ──
   if (showPassenger && !passengerDismounting) {
     drawCharacter(ctx, {
-      x: -10, y: -18,
+      x: -12, y: -19,
       scale: 0.55,
       sitting: true,
       facingRight: true,
       isDriver: false,
       helmetColor: '#334155',
-      bodyBob: Math.sin(g.elapsed * 12) * 0.3,
+      bodyBob: engineBob,
       armOffset: 0,
       legOffset: 0,
       isHit: false,
@@ -3676,24 +3700,52 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
     });
   }
 
-  // ── Dismounting passenger ──
+  // ── Dismounting passenger — 3-phase: leg swing → slide off → stand ──
   if (passengerDismounting) {
     const dp = dismountProgress;
-    // Interpolate from sitting on bike to standing beside it
-    const dismountX = -10 + dp * 18; // move right/off bike
-    const dismountY = -18 + dp * 12; // come down to ground level
-    const sittingLerp = 1 - dp; // 1=fully sitting, 0=standing
+    // Phase 1 (0-0.3): swing leg over — still on bike, leg lifts
+    // Phase 2 (0.3-0.7): slide off seat — body moves sideways and down
+    // Phase 3 (0.7-1.0): land and stand upright
+    let dismountX: number, dismountY: number, finalScale: number, isSitting: boolean, legAnim: number;
+    
+    if (dp < 0.3) {
+      // Leg swing phase — stay on bike, body tilts slightly
+      const t = dp / 0.3;
+      dismountX = -12 + t * 2;
+      dismountY = -19;
+      finalScale = 0.55;
+      isSitting = true;
+      legAnim = t * 5; // legs animate outward
+    } else if (dp < 0.7) {
+      // Slide off phase — move body off the seat
+      const t = (dp - 0.3) / 0.4;
+      const ease = t * t * (3 - 2 * t); // smoothstep
+      dismountX = -10 + ease * 16;
+      dismountY = -19 + ease * 14;
+      finalScale = 0.55 + ease * 0.12;
+      isSitting = t < 0.5;
+      legAnim = 5 - t * 3;
+    } else {
+      // Landing phase — straighten up
+      const t = (dp - 0.7) / 0.3;
+      const ease = 1 - (1 - t) * (1 - t); // ease out
+      dismountX = 6 + ease * 4;
+      dismountY = -5 - ease * 1;
+      finalScale = 0.67 + ease * 0.03;
+      isSitting = false;
+      legAnim = 2 * (1 - t);
+    }
 
     drawCharacter(ctx, {
       x: dismountX, y: dismountY,
-      scale: 0.55 + dp * 0.15, // grow slightly toward normal size
-      sitting: sittingLerp > 0.4,
+      scale: finalScale,
+      sitting: isSitting,
       facingRight: true,
       isDriver: false,
       helmetColor: '#334155',
       bodyBob: 0,
       armOffset: 0,
-      legOffset: dp * 3,
+      legOffset: legAnim,
       isHit: false,
       elapsed: g.elapsed,
     });
