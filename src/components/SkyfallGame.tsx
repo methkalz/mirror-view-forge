@@ -47,19 +47,20 @@ const SkyfallGame: React.FC = () => {
       try {
         const cfgPromise = fetchGameConfig();
         const lbPromise = fetchLeaderboard();
-        const audioPromise = loadAudioSettings();
-        setLoadProgress(20);
+        setLoadProgress(15);
 
         const [cfg, lb] = await Promise.all([cfgPromise, lbPromise]);
         if (!mounted) return;
-        setLoadProgress(55);
+        setLoadProgress(40);
 
         setRemoteConfig(cfg);
         remoteConfigRef.current = cfg;
         setLeaderboard(lb);
 
-        // Wait for audio preloading
-        await audioPromise;
+        // Load audio with progress tracking (40% → 95%)
+        await loadAudioSettings((pct) => {
+          if (mounted) setLoadProgress(40 + Math.round(pct * 55));
+        });
         if (!mounted) return;
         setLoadProgress(100);
       } catch (e) {
