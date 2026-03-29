@@ -188,6 +188,16 @@ export async function deleteWaveConfig(waveNumber: number): Promise<boolean> {
 
 // ─── Audio Config ───
 
+export type PlayMode = 'single' | 'random' | 'sequential' | 'loop';
+
+export interface AudioFileEntry {
+  id: string;
+  soundConfigId: string;
+  fileUrl: string;
+  fileName: string;
+  sortOrder: number;
+}
+
 export interface AudioConfigEntry {
   id: string;
   soundKey: string;
@@ -197,16 +207,37 @@ export interface AudioConfigEntry {
   volume: number;
   enabled: boolean;
   audioUrl: string | null;
+  playMode: PlayMode;
+  intervalSeconds: number | null;
+  maxConcurrent: number;
+  files: AudioFileEntry[];
 }
 
 export async function fetchAudioConfig(): Promise<AudioConfigEntry[]> {
   try {
-    const { data, error } = await supabase
-      .from('audio_config')
-      .select('*')
-      .order('category', { ascending: true });
-    if (error || !data) return [];
-    return data.map(r => ({
+    const [configRes, filesRes] = await Promise.all([
+      supabase.from('audio_config').select('*').order('category', { ascending: true }),
+      supabase.from('audio_files').select('*').order('sort_order', { ascending: true }),
+    ]);
+    if (configRes.error || !configRes.data) return [];
+    const filesData = filesRes.data || [];
+
+    // Group files by config id
+    const filesMap = new Map<string, AudioFileEntry[]>();
+    for (const f of filesData) {
+      const entry: AudioFileEntry = {
+        id: f.id,
+        soundConfigId: f.sound_config_id,
+        fileUrl: f.file_url,
+        fileName: f.file_name,
+        sortOrder: f.sort_order,
+      };
+      const arr = filesMap.get(f.sound_config_id) || [];
+      arr.push(entry);
+      filesMap.set(f.sound_config_id, arr);
+    }
+
+    return configRes.data.map(r => ({
       id: r.id,
       soundKey: r.sound_key,
       category: r.category,
@@ -215,22 +246,48 @@ export async function fetchAudioConfig(): Promise<AudioConfigEntry[]> {
       volume: r.volume,
       enabled: r.enabled,
       audioUrl: (r as any).audio_url ?? null,
+      playMode: ((r as any).play_mode || 'single') as PlayMode,
+      intervalSeconds: (r as any).interval_seconds ?? null,
+      maxConcurrent: (r as any).max_concurrent ?? 1,
+      files: filesMap.get(r.id) || [],
     }));
   } catch {
     return [];
   }
 }
 
-export async function updateAudioEntry(id: string, updates: { volume?: number; enabled?: boolean; audioUrl?: string | null }): Promise<boolean> {
+export async function updateAudioEntry(id: string, updates: {
+  volume?: number; enabled?: boolean; audioUrl?: string | null;
+  playMode?: PlayMode; intervalSeconds?: number | null; maxConcurrent?: number;
+}): Promise<boolean> {
   const mapped: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (updates.volume !== undefined) mapped.volume = updates.volume;
   if (updates.enabled !== undefined) mapped.enabled = updates.enabled;
   if (updates.audioUrl !== undefined) mapped.audio_url = updates.audioUrl;
+  if (updates.playMode !== undefined) mapped.play_mode = updates.playMode;
+  if (updates.intervalSeconds !== undefined) mapped.interval_seconds = updates.intervalSeconds;
+  if (updates.maxConcurrent !== undefined) mapped.max_concurrent = updates.maxConcurrent;
   const { error } = await supabase.from('audio_config').update(mapped).eq('id', id);
   return !error;
 }
 
-export async function uploadAudioFile(file: File, soundKey: string): Promise<string | null> {
+export async function addAudioFile(soundConfigId: string, fileUrl: string, fileName: string, sortOrder: number): Promise<AudioFileEntry | null> {
+  const { data, error } = await supabase.from('audio_files').insert({
+    sound_config_id: soundConfigId,
+    file_url: fileUrl,
+    file_name: fileName,
+    sort_order: sortOrder,
+  }).select().single();
+  if (error || !data) return null;
+  return { id: data.id, soundConfigId: data.sound_config_id, fileUrl: data.file_url, fileName: data.file_name, sortOrder: data.sort_order };
+}
+
+export async function removeAudioFile(id: string): Promise<boolean> {
+  const { error } = await supabase.from('audio_files').delete().eq('id', id);
+  return !error;
+}
+
+export async function uploadAudioFile(file: File, soundKey: string): Promise<{ url: string; name: string } | null> {
   const ext = file.name.split('.').pop() || 'mp3';
   const path = `${soundKey}_${Date.now()}.${ext}`;
   const { error } = await supabase.storage.from('game-audio').upload(path, file, {
@@ -239,11 +296,10 @@ export async function uploadAudioFile(file: File, soundKey: string): Promise<str
   });
   if (error) return null;
   const { data } = supabase.storage.from('game-audio').getPublicUrl(path);
-  return data.publicUrl;
+  return { url: data.publicUrl, name: file.name };
 }
 
 export async function deleteAudioFile(url: string): Promise<boolean> {
-  // Extract path from public URL
   const match = url.match(/game-audio\/(.+)$/);
   if (!match) return false;
   const { error } = await supabase.storage.from('game-audio').remove([match[1]]);
