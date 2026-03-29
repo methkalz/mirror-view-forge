@@ -173,7 +173,7 @@ export async function resumeAudio(): Promise<boolean> {
 }
 
 export function isAudioRunning(): boolean {
-  return audioCtx?.state === 'running' ?? false;
+  return audioCtx ? audioCtx.state === 'running' : false;
 }
 
 function playTone(freq: number, duration: number, type: OscillatorType = 'square', vol = 0.12) {
