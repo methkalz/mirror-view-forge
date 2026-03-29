@@ -117,6 +117,11 @@ export function createGame(w: number, h: number): GameData {
     selectedUpgrade: null,
     cardsShownTimer: 0,
     waveElapsed: 0,
+    cameraZoom: 1,
+    cameraZoomTarget: 1,
+    cameraFocusX: w / 2,
+    cameraFocusY: h * GROUND_RATIO,
+    bikeZoomTimer: 0,
   };
 }
 
@@ -757,6 +762,9 @@ export function applyUpgrade(g: GameData, cardId: string) {
   g.upgradeCards = [];
   g.cardsShownTimer = 0;
   spawnDeliveryBike(g);
+  // Start zoom-in towards bike
+  g.cameraZoomTarget = 1.5;
+  g.bikeZoomTimer = 2.0;
   addFloatingText(g, 'UPGRADE!', { x: g.width / 2, y: g.height * 0.35 }, '#fbbf24');
 }
 
@@ -918,8 +926,28 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
   } else if (g.wavePhase === 'bike') {
     updateDeliveryBike(g, dt);
 
+    // Track bike focus point
+    if (g.deliveryBike && g.deliveryBike.active) {
+      g.cameraFocusX += (g.deliveryBike.pos.x - g.cameraFocusX) * 0.08;
+      g.cameraFocusY += (g.deliveryBike.pos.y - 20 - g.cameraFocusY) * 0.08;
+    }
+
+    // Zoom timer countdown
+    if (g.bikeZoomTimer > 0) {
+      g.bikeZoomTimer -= dt;
+      if (g.bikeZoomTimer <= 0) {
+        g.cameraZoomTarget = 1.0; // zoom back out
+      }
+    }
+
+    // Smooth zoom lerp
+    g.cameraZoom += (g.cameraZoomTarget - g.cameraZoom) * 0.04;
+    if (Math.abs(g.cameraZoom - g.cameraZoomTarget) < 0.005) g.cameraZoom = g.cameraZoomTarget;
+
     // When bike is done (left the screen), start next wave
     if (!g.deliveryBike || !g.deliveryBike.active) {
+      g.cameraZoom = 1.0;
+      g.cameraZoomTarget = 1.0;
       g.wavePhase = 'active';
       g.waveNumber++;
       g.levelNumber = Math.floor((g.waveNumber - 1) / 3) + 1;
