@@ -1379,6 +1379,121 @@ export function update(g: GameData, input: InputState, dt: number) {
       continue;
     }
 
+    // === Incendiary drone: track player and drop fire ===
+    if (d.tier === 'incendiary') {
+      if (d.state === 'entering') {
+        const dx = d.entryTarget.x - d.pos.x;
+        const dy = d.entryTarget.y - d.pos.y;
+        const dd = Math.sqrt(dx * dx + dy * dy);
+        if (dd < 5) { d.state = 'tracking'; d.hoverTimer = d.aggroDelay; }
+        else { d.pos.x += (dx / dd) * d.speed * 2 * dt; d.pos.y += (dy / dd) * d.speed * 2 * dt; }
+      } else {
+        if (d.hoverTimer > 0) {
+          d.hoverTimer -= dt;
+          d.pos.x += Math.sin(d.wobble * 1.5) * 20 * dt;
+          d.pos.y += Math.cos(d.wobble * 1.2) * 8 * dt;
+        } else {
+          // Track player
+          const dx = p.pos.x - d.pos.x;
+          const targetY = p.pos.y - 70;
+          const dy = targetY - d.pos.y;
+          const dd = Math.sqrt(dx * dx + dy * dy);
+          if (dd > 0) {
+            d.vel.x += (dx / dd) * 80 * d.trackingAccuracy * dt;
+            d.vel.y += (dy / dd) * 80 * d.trackingAccuracy * dt;
+            const vLen = Math.sqrt(d.vel.x * d.vel.x + d.vel.y * d.vel.y);
+            if (vLen > d.speed) { d.vel.x = (d.vel.x / vLen) * d.speed; d.vel.y = (d.vel.y / vLen) * d.speed; }
+          }
+          d.pos.x += d.vel.x * g.slowMoFactor * dt;
+          d.pos.y += d.vel.y * g.slowMoFactor * dt;
+          d.pos.y = Math.max(g.height * 0.08, Math.min(g.height * 0.5, d.pos.y));
+          d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
+
+          // Drop firebomb when above player
+          d.bombTimer += dt;
+          if (d.bombTimer >= d.bombCooldown && Math.abs(d.pos.x - p.pos.x) < 50) {
+            d.bombTimer = 0;
+            const groundY = g.height * GROUND_RATIO;
+            const fireX = d.pos.x + (Math.random() - 0.5) * 20;
+            g.firePools.push({
+              pos: { x: fireX, y: groundY - 2 },
+              size: 40 + Math.random() * 20,
+              life: 4 + Math.random() * 2,
+              maxLife: 6,
+              damagePerSec: 3,
+            });
+            addFloatingText(g, '🔥', { x: d.pos.x, y: d.pos.y + 15 }, '#f97316');
+            spawnParticles(g, { x: fireX, y: groundY }, 8, '#f97316', 100);
+            addExplosion(g, { x: fireX, y: groundY }, 15);
+          }
+        }
+        // Collision with player (kamikaze)
+        if (dist(d.pos, p.pos) < d.size + p.size) {
+          damagePlayer(g, 10, d.pos);
+          spawnParticles(g, d.pos, 12, '#f97316', 120);
+          addExplosion(g, d.pos, 20);
+          d.active = false;
+        }
+      }
+      continue;
+    }
+
+    // === Chemical drone: track player and drop gas ===
+    if (d.tier === 'chemical') {
+      if (d.state === 'entering') {
+        const dx = d.entryTarget.x - d.pos.x;
+        const dy = d.entryTarget.y - d.pos.y;
+        const dd = Math.sqrt(dx * dx + dy * dy);
+        if (dd < 5) { d.state = 'tracking'; d.hoverTimer = d.aggroDelay; }
+        else { d.pos.x += (dx / dd) * d.speed * 2 * dt; d.pos.y += (dy / dd) * d.speed * 2 * dt; }
+      } else {
+        if (d.hoverTimer > 0) {
+          d.hoverTimer -= dt;
+          d.pos.x += Math.sin(d.wobble * 1.2) * 15 * dt;
+          d.pos.y += Math.cos(d.wobble * 0.9) * 6 * dt;
+        } else {
+          const dx = p.pos.x - d.pos.x;
+          const targetY = p.pos.y - 80;
+          const dy = targetY - d.pos.y;
+          const dd = Math.sqrt(dx * dx + dy * dy);
+          if (dd > 0) {
+            d.vel.x += (dx / dd) * 60 * d.trackingAccuracy * dt;
+            d.vel.y += (dy / dd) * 60 * d.trackingAccuracy * dt;
+            const vLen = Math.sqrt(d.vel.x * d.vel.x + d.vel.y * d.vel.y);
+            if (vLen > d.speed) { d.vel.x = (d.vel.x / vLen) * d.speed; d.vel.y = (d.vel.y / vLen) * d.speed; }
+          }
+          d.pos.x += d.vel.x * g.slowMoFactor * dt;
+          d.pos.y += d.vel.y * g.slowMoFactor * dt;
+          d.pos.y = Math.max(g.height * 0.08, Math.min(g.height * 0.5, d.pos.y));
+          d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
+
+          // Drop gas canister
+          d.bombTimer += dt;
+          if (d.bombTimer >= d.bombCooldown && Math.abs(d.pos.x - p.pos.x) < 60) {
+            d.bombTimer = 0;
+            const groundY = g.height * GROUND_RATIO;
+            const gasX = d.pos.x + (Math.random() - 0.5) * 30;
+            g.gasClouds.push({
+              pos: { x: gasX, y: groundY - 2 },
+              size: 50 + Math.random() * 20,
+              life: 5 + Math.random() * 3,
+              maxLife: 8,
+              damagePerSec: 2,
+            });
+            addFloatingText(g, '☣', { x: d.pos.x, y: d.pos.y + 15 }, '#16a34a');
+            spawnParticles(g, { x: gasX, y: groundY }, 6, '#16a34a', 80);
+          }
+        }
+        if (dist(d.pos, p.pos) < d.size + p.size) {
+          damagePlayer(g, 8, d.pos);
+          spawnParticles(g, d.pos, 12, '#16a34a', 120);
+          addExplosion(g, d.pos, 20);
+          d.active = false;
+        }
+      }
+      continue;
+    }
+
     // Emit damage smoke if health < maxHealth
     if (d.health < d.maxHealth && d.health > 0) {
       if (Math.random() < 0.4) {
