@@ -990,7 +990,23 @@ export function update(g: GameData, input: InputState, dt: number) {
   g.powerUpTimer -= dt;
   if (g.powerUpTimer <= 0) {
     g.powerUpTimer = 8 + Math.random() * 5;
-    spawnPowerUp(g);
+    if (!g.firstAmmoDropped && g.elapsed >= 10) {
+      // Force first drop to be ammo
+      g.firstAmmoDropped = true;
+      const pu = getFromPool<PowerUp>(g.powerUps, () => ({
+        active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
+        parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
+      }), 20);
+      pu.type = 'ammo';
+      pu.pos = { x: 40 + Math.random() * (g.width - 80), y: -20 };
+      pu.size = 14;
+      pu.parachuting = true;
+      pu.fallSpeed = 35 + Math.random() * 15;
+      pu.bobTimer = 0;
+      pu.groundTimer = 0;
+    } else {
+      spawnPowerUp(g);
+    }
   }
 
   for (const pu of g.powerUps) {
