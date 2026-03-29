@@ -3614,10 +3614,12 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.textBaseline = 'middle';
     ctx.fillText(card.name, cx + cardW / 2, cy + 105);
 
-    // Arabic name — larger with Tajawal font
+    // Arabic name — RTL with Tajawal font
     ctx.fillStyle = card.color;
     ctx.font = 'bold 13px Tajawal, Arial, sans-serif';
+    ctx.direction = 'rtl';
     ctx.fillText(card.nameAr, cx + cardW / 2, cy + 126);
+    ctx.direction = 'ltr';
 
     ctx.restore();
   }
