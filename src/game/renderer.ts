@@ -4296,7 +4296,7 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
     drawCharacter(ctx, {
       x: 0, y: 0, // Same as renderPlayer
       scale: 1, // Same as renderPlayer
-      sitting: dp < 0.25,
+      sitting: false,
       facingRight: true,
       isDriver: false,
       helmetColor: '#334155',
