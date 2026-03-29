@@ -167,9 +167,9 @@ const SkyfallGame: React.FC = () => {
         resumeAudio();
         scoreSubmittedRef.current = false;
         setGameOverData(null);
-        // Re-fetch config for next game
+        // Re-fetch config for next game (apply directly, no re-render)
         fetchGameConfig().then(cfg => {
-          setRemoteConfig(cfg);
+          remoteConfigRef.current = cfg;
           if (cfg) {
             g.player.speed = cfg.baseSpeed;
             g.spawnTimer = cfg.spawnInterval;
