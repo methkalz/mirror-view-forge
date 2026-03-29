@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { GameData, InputState } from '@/game/types';
 import { createGame, resetGame, update, updateIntro } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
-import { resumeAudio } from '@/game/audio';
+import { resumeAudio, stopMenuMusic } from '@/game/audio';
 import { fetchGameConfig, fetchLeaderboard, submitScore, type RemoteGameConfig, type LeaderboardEntry } from '@/game/config';
 import { supabase } from '@/integrations/supabase/client';
 import NameEntry from './NameEntry';
@@ -55,6 +55,7 @@ const SkyfallGame: React.FC = () => {
   const handleNameSubmit = useCallback((name: string) => {
     setPlayerName(name);
     localStorage.setItem('skyfall_name', name);
+    stopMenuMusic();
     setShowNameEntry(false);
   }, []);
 
@@ -272,7 +273,16 @@ const SkyfallGame: React.FC = () => {
   if (showNameEntry) {
     return (
       <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' }}>
-        <NameEntry onSubmit={handleNameSubmit} defaultName={playerName} />
+        <NameEntry
+          onSubmit={handleNameSubmit}
+          defaultName={playerName}
+          branding={remoteConfig ? {
+            logoUrl: remoteConfig.logoUrl,
+            gameTitle: remoteConfig.gameTitle,
+            gameSubtitle: remoteConfig.gameSubtitle,
+            developerName: remoteConfig.developerName,
+          } : undefined}
+        />
         {leaderboard.length > 0 && (
           <div style={{
             position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
