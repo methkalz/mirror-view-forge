@@ -1,54 +1,36 @@
 
 
-# عكس ترتيب البطاقات والدراجة + إضافة مفهوم Level vs Wave
-
-## التدفق الجديد
-
-```text
-Wave ends → Clearing → Cards (7s timeout) → Bike enters/stops 4s/leaves → Next Wave
-
-Level = كل 3 موجات (Level 1 = Waves 1-3, Level 2 = Waves 4-6...)
-Wave = موجة فردية داخل المستوى
-```
+# تحسين الدراجة + البطاقات + خط عربي احترافي
 
 ## التغييرات
 
-### 1. `src/game/types.ts`
-- إضافة `levelNumber: number` إلى `GameData`
-- تعديل `WavePhase` لإضافة `'bike'` كمرحلة منفصلة: `'active' | 'clearing' | 'cards' | 'bike'`
-- إزالة `restTimer` (لم يعد هناك مرحلة rest مستقلة)
+### 1. خط عربي احترافي — `index.html`
+- تحميل خط **Tajawal** (Google Fonts) — خط عربي عصري مناسب للألعاب
+- `<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap">`
 
-### 2. `src/game/engine.ts` — إعادة هيكلة تدفق الموجات
+### 2. تقليل اهتزاز الدراجة — `src/game/engine.ts`
+- مرحلة `idle`: تقليل الاهتزاز من `±1.3px` إلى `±0.3px` (اهتزاز خفيف جداً بالكاد ملحوظ)
+- مرحلة الحركة: تقليل من `±0.4px` إلى `±0.15px`
 
-**المرحلة `clearing`**: عند انتهاء التهديدات → الانتقال مباشرة لـ `cards` (بدلاً من `rest`)
+### 3. لا تبدأ الموجة قبل مغادرة الدراجة — `src/game/engine.ts`
+- تأكيد أن مرحلة `bike` لا تنتقل لـ `active` إلا عندما `!g.deliveryBike || !g.deliveryBike.active` (موجود حالياً — سليم، لكن نتحقق من عدم وجود shortcut آخر)
 
-**المرحلة `cards`** (الآن أولاً):
-- تظهر 3 بطاقات فوراً
-- مهلة **7 ثوانٍ** للاختيار (بدلاً من 8)
-- عند الاختيار أو انتهاء الوقت → الانتقال لـ `bike`
+### 4. تكبير الدراجة — `src/game/renderer.ts`
+- زيادة `ctx.scale` من `1.8` إلى `2.4`
+- تعديل OTLOP text scaling بالتناسب
 
-**المرحلة `bike`** (جديدة):
-- تدخل الدراجة فوراً
-- تتوقف **4 ثوانٍ** (بدلاً من 2.5)
-- عند مغادرة الدراجة → بدء الموجة التالية
+### 5. تبسيط بطاقات الترقية — `src/game/engine.ts` + `src/game/renderer.ts`
+- إزالة `description` من البطاقات (مزدحم وغير مقروء)
+- إبقاء فقط: أيقونة كبيرة + اسم إنجليزي + اسم عربي
+- إزالة `── TAP ──` (غير ضروري)
+- تكبير الأيقونة والنصوص لملء المساحة
 
-**`applyUpgrade`**: لا تبدأ الموجة مباشرة — تنتقل لـ `bike` فقط
-
-**Level System**:
-- `levelNumber` يزداد كل 3 موجات
-- يؤثر على الصعوبة (كثافة أعلى، أنواع جديدة)
-- يظهر في HUD
-
-### 3. `src/game/renderer.ts`
-- تعديل `renderUpgradeCards`: مهلة 7ث بدلاً من 8ث
-- تعديل `renderRestOverlay`: يعمل في مرحلة `bike` أيضاً
-- تعديل `renderWaveIndicator`: عرض Level + Wave (مثل `LVL 2 — WAVE 5`)
-- إظهار "LEVEL UP!" عند الانتقال لمستوى جديد
-
-### 4. `src/game/engine.ts` — تعديل `idleTimer` الدراجة لـ 4 ثوانٍ
+### 6. استخدام خط Tajawal للعربية — `src/game/renderer.ts`
+- استبدال كل `font: '...px Arial'` للنصوص العربية بـ `'...px Tajawal, Arial'`
+- يشمل: بطاقات الترقية، عنوان "اختر ترقية"، وأي نص عربي آخر
 
 ## الملفات المتأثرة
-1. **`src/game/types.ts`** — `levelNumber`, `WavePhase` += `'bike'`
-2. **`src/game/engine.ts`** — إعادة ترتيب التدفق + level system
-3. **`src/game/renderer.ts`** — HUD + توقيتات
+1. **`index.html`** — تحميل خط Tajawal
+2. **`src/game/engine.ts`** — اهتزاز أخف
+3. **`src/game/renderer.ts`** — scale 2.4x للدراجة + بطاقات مبسطة + خط Tajawal
 
