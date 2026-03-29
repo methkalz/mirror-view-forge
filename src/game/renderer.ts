@@ -3008,59 +3008,61 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
 
   // ── Legs ──
   if (sitting) {
-    // Realistic straddling pose — thighs go outward/down, knees bend, feet on pegs
-    // Back leg (far side) — thigh angled back-down, shin drops to peg
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = pantsColor;
-    ctx.beginPath();
-    ctx.moveTo(-3, bodyBottomY);
-    ctx.quadraticCurveTo(-8, bodyBottomY + 4, -10, bodyBottomY + 10); // thigh curves outward
-    ctx.stroke();
+    // Side-view riding pose: one visible leg in profile, far leg hint behind body
+    // The visible (near) leg: hip → thigh forward-down → knee bend → shin back to footpeg
+    const hipY = bodyBottomY;
+    const pegX = 6; // footpeg is forward-below
+    const pegY = bodyBottomY + 16;
+    const kneeX = 8; // knee projects forward
+    const kneeY = bodyBottomY + 8;
+
+    // Far leg hint (barely visible behind body — darker shade)
     ctx.lineWidth = 4;
-    ctx.strokeStyle = pantsHighlight;
+    ctx.strokeStyle = '#0f1f33';
     ctx.beginPath();
-    ctx.moveTo(-10, bodyBottomY + 10);
-    ctx.quadraticCurveTo(-9, bodyBottomY + 15, -6, bodyBottomY + 18); // shin to peg
+    ctx.moveTo(-1, hipY + 1);
+    ctx.quadraticCurveTo(3, hipY + 7, 4, pegY - 2);
     ctx.stroke();
-    // Boot on peg
-    ctx.lineWidth = 4.5;
-    ctx.strokeStyle = shoeColor;
+    // Far boot hint
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = '#111';
     ctx.beginPath();
-    ctx.moveTo(-6, bodyBottomY + 18);
-    ctx.lineTo(-3, bodyBottomY + 19);
-    ctx.stroke();
-    // Sole
-    ctx.strokeStyle = '#8B4513';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(-7, bodyBottomY + 19.5);
-    ctx.lineTo(-2, bodyBottomY + 19.5);
+    ctx.moveTo(4, pegY - 2);
+    ctx.lineTo(6, pegY);
     ctx.stroke();
 
-    // Front leg (near side) — thigh forward-down, knee bent, foot on peg
-    ctx.lineWidth = 5;
+    // Near leg (main visible leg) — thigh
+    ctx.lineWidth = 5.5;
     ctx.strokeStyle = pantsColor;
     ctx.beginPath();
-    ctx.moveTo(3, bodyBottomY);
-    ctx.quadraticCurveTo(8, bodyBottomY + 4, 10, bodyBottomY + 10);
+    ctx.moveTo(1, hipY);
+    ctx.quadraticCurveTo(5, hipY + 3, kneeX, kneeY);
     ctx.stroke();
-    ctx.lineWidth = 4;
+    // Knee highlight
+    ctx.fillStyle = pantsHighlight;
+    ctx.beginPath();
+    ctx.arc(kneeX, kneeY, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Shin — knee bends back-down to footpeg
+    ctx.lineWidth = 4.5;
     ctx.strokeStyle = pantsHighlight;
     ctx.beginPath();
-    ctx.moveTo(10, bodyBottomY + 10);
-    ctx.quadraticCurveTo(9, bodyBottomY + 15, 6, bodyBottomY + 18);
+    ctx.moveTo(kneeX, kneeY);
+    ctx.quadraticCurveTo(kneeX - 1, kneeY + 4, pegX, pegY - 2);
     ctx.stroke();
-    ctx.lineWidth = 4.5;
+    // Boot
+    ctx.lineWidth = 5;
     ctx.strokeStyle = shoeColor;
     ctx.beginPath();
-    ctx.moveTo(6, bodyBottomY + 18);
-    ctx.lineTo(9, bodyBottomY + 19);
+    ctx.moveTo(pegX, pegY - 2);
+    ctx.lineTo(pegX + 3, pegY);
     ctx.stroke();
+    // Boot sole
     ctx.strokeStyle = '#8B4513';
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(5, bodyBottomY + 19.5);
-    ctx.lineTo(10, bodyBottomY + 19.5);
+    ctx.moveTo(pegX - 1, pegY + 1);
+    ctx.lineTo(pegX + 4, pegY + 1);
     ctx.stroke();
   } else {
     // Standing legs with animation
@@ -3174,72 +3176,70 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
   const armHighlight = isHit ? '#f87171' : '#5a9ae6';
 
   if (isDriver) {
-    // Both arms reaching forward to grip handlebars — realistic riding pose
-    // Back arm (left) — extends forward-up to left grip
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = armColor;
+    // Side-view: one arm visible reaching forward to handlebar, other arm hint behind body
+    // Far arm hint (behind torso)
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#2a5a9a';
     ctx.beginPath();
-    ctx.moveTo(-5, bodyTopY + 3);
-    ctx.quadraticCurveTo(-2, bodyTopY - 2, 6, bodyTopY - 6);
+    ctx.moveTo(2, bodyTopY + 4);
+    ctx.quadraticCurveTo(8, bodyTopY, 14, bodyTopY - 6);
     ctx.stroke();
-    ctx.lineWidth = 3.5;
-    ctx.strokeStyle = armHighlight;
-    ctx.beginPath();
-    ctx.moveTo(6, bodyTopY - 6);
-    ctx.lineTo(12, bodyTopY - 10);
-    ctx.stroke();
-    // Gloved hand gripping
-    ctx.fillStyle = '#2a2a2a';
-    ctx.beginPath();
-    ctx.arc(12, bodyTopY - 10, 2.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = skinHighlight;
-    ctx.beginPath();
-    ctx.arc(12, bodyTopY - 10, 1.2, 0, Math.PI * 2);
-    ctx.fill();
 
-    // Front arm (right) — extends forward-up to right grip
-    ctx.lineWidth = 4;
+    // Near arm — upper arm from shoulder, elbow bend, forearm to handlebar grip
+    ctx.lineWidth = 4.5;
     ctx.strokeStyle = armColor;
     ctx.beginPath();
-    ctx.moveTo(5, bodyTopY + 3);
-    ctx.quadraticCurveTo(8, bodyTopY - 2, 14, bodyTopY - 8);
+    ctx.moveTo(4, bodyTopY + 3);
+    ctx.quadraticCurveTo(9, bodyTopY - 1, 12, bodyTopY - 5);
     ctx.stroke();
-    ctx.lineWidth = 3.5;
+    // Forearm
+    ctx.lineWidth = 4;
     ctx.strokeStyle = armHighlight;
     ctx.beginPath();
-    ctx.moveTo(14, bodyTopY - 8);
-    ctx.lineTo(16, bodyTopY - 10);
+    ctx.moveTo(12, bodyTopY - 5);
+    ctx.lineTo(16, bodyTopY - 9);
     ctx.stroke();
+    // Gloved hand gripping handlebar
     ctx.fillStyle = '#2a2a2a';
     ctx.beginPath();
-    ctx.arc(16, bodyTopY - 10, 2.2, 0, Math.PI * 2);
+    ctx.arc(16, bodyTopY - 9, 2.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = skinHighlight;
+    // Knuckle detail
+    ctx.fillStyle = '#444';
     ctx.beginPath();
-    ctx.arc(16, bodyTopY - 10, 1.2, 0, Math.PI * 2);
+    ctx.arc(16, bodyTopY - 10, 1, 0, Math.PI * 2);
     ctx.fill();
   } else if (holdingDriver) {
-    // Both arms reaching forward to hold driver's back
-    for (const side of [-1, 1]) {
-      const sx = side * 5;
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = armColor;
-      ctx.beginPath();
-      ctx.moveTo(sx, bodyTopY + 3);
-      ctx.lineTo(sx + 3, bodyTopY + 8);
-      ctx.stroke();
-      ctx.lineWidth = 3.5;
-      ctx.strokeStyle = armHighlight;
-      ctx.beginPath();
-      ctx.moveTo(sx + 3, bodyTopY + 8);
-      ctx.lineTo(sx + 6, bodyTopY + 5);
-      ctx.stroke();
-      ctx.fillStyle = skinColor;
-      ctx.beginPath();
-      ctx.arc(sx + 6, bodyTopY + 5, 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // Passenger side-view: near arm reaches forward to driver's back, far arm on grab rail behind
+    // Far arm — reaches back to grab rail (behind body, subtle)
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#2a5a9a';
+    ctx.beginPath();
+    ctx.moveTo(-3, bodyTopY + 4);
+    ctx.quadraticCurveTo(-7, bodyTopY + 8, -10, bodyTopY + 5);
+    ctx.stroke();
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(-10, bodyTopY + 5, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Near arm — reaches forward to hold driver's shoulder/back
+    ctx.lineWidth = 4.5;
+    ctx.strokeStyle = armColor;
+    ctx.beginPath();
+    ctx.moveTo(4, bodyTopY + 3);
+    ctx.quadraticCurveTo(8, bodyTopY + 2, 11, bodyTopY + 1);
+    ctx.stroke();
+    ctx.lineWidth = 3.8;
+    ctx.strokeStyle = armHighlight;
+    ctx.beginPath();
+    ctx.moveTo(11, bodyTopY + 1);
+    ctx.lineTo(14, bodyTopY - 1);
+    ctx.stroke();
+    ctx.fillStyle = skinColor;
+    ctx.beginPath();
+    ctx.arc(14, bodyTopY - 1, 2, 0, Math.PI * 2);
+    ctx.fill();
   } else if (isShooting && shootTimer && shootTimer > 0) {
     // Shooting arm raised with pistol
     const shoulderX = 5, shoulderY = bodyTopY + 3;
@@ -3669,8 +3669,8 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   // ── Driver (detailed character) — leaning forward in riding pose ──
   const engineBob = Math.sin(g.elapsed * 12) * 0.3;
   drawCharacter(ctx, {
-    x: 4, y: -20,
-    scale: 0.55,
+    x: 2, y: -18,
+    scale: 0.5,
     sitting: true,
     facingRight: true,
     isDriver: true,
@@ -3685,8 +3685,8 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   // ── Passenger (player riding behind — sits upright, holds driver) ──
   if (showPassenger && !passengerDismounting) {
     drawCharacter(ctx, {
-      x: -12, y: -19,
-      scale: 0.55,
+      x: -10, y: -17,
+      scale: 0.5,
       sitting: true,
       facingRight: true,
       isDriver: false,
@@ -3711,18 +3711,18 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
     if (dp < 0.3) {
       // Leg swing phase — stay on bike, body tilts slightly
       const t = dp / 0.3;
-      dismountX = -12 + t * 2;
-      dismountY = -19;
-      finalScale = 0.55;
+      dismountX = -10 + t * 2;
+      dismountY = -17;
+      finalScale = 0.5;
       isSitting = true;
-      legAnim = t * 5; // legs animate outward
+      legAnim = t * 5;
     } else if (dp < 0.7) {
       // Slide off phase — move body off the seat
       const t = (dp - 0.3) / 0.4;
       const ease = t * t * (3 - 2 * t); // smoothstep
-      dismountX = -10 + ease * 16;
-      dismountY = -19 + ease * 14;
-      finalScale = 0.55 + ease * 0.12;
+      dismountX = -8 + ease * 14;
+      dismountY = -17 + ease * 12;
+      finalScale = 0.5 + ease * 0.15;
       isSitting = t < 0.5;
       legAnim = 5 - t * 3;
     } else {
@@ -3731,7 +3731,7 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
       const ease = 1 - (1 - t) * (1 - t); // ease out
       dismountX = 6 + ease * 4;
       dismountY = -5 - ease * 1;
-      finalScale = 0.67 + ease * 0.03;
+      finalScale = 0.65 + ease * 0.05;
       isSitting = false;
       legAnim = 2 * (1 - t);
     }
