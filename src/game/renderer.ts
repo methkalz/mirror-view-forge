@@ -4131,7 +4131,7 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   // Layer 4: Specular highlight
   ctx.fillStyle = `rgba(255,180,160,${brakeIntensity * 0.35})`;
   ctx.beginPath();
-  ctx.ellipse(tailX + 0.5, tailY - 0.8, 0.8, 0.4, 0.3, 0, 0, Math.PI * 2);
+  ctx.ellipse(tailX + 0.5, tailY - 0.8, 0.8, 0.4, 0.3, 0, Math.PI * 2);
   ctx.fill();
 
   // ── Wet Asphalt Reflection (dynamic ground reflection) ──
