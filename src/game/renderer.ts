@@ -3669,8 +3669,8 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   // ── Driver (detailed character) — leaning forward in riding pose ──
   const engineBob = Math.sin(g.elapsed * 12) * 0.3;
   drawCharacter(ctx, {
-    x: 4, y: -20,
-    scale: 0.55,
+    x: 2, y: -18,
+    scale: 0.5,
     sitting: true,
     facingRight: true,
     isDriver: true,
@@ -3685,8 +3685,8 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   // ── Passenger (player riding behind — sits upright, holds driver) ──
   if (showPassenger && !passengerDismounting) {
     drawCharacter(ctx, {
-      x: -12, y: -19,
-      scale: 0.55,
+      x: -10, y: -17,
+      scale: 0.5,
       sitting: true,
       facingRight: true,
       isDriver: false,
