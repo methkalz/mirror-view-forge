@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   fetchGameConfig, updateGameConfig, fetchLeaderboard, deleteLeaderboardEntry, clearLeaderboard,
   fetchWaveConfigs, upsertWaveConfig, deleteWaveConfig,
-  fetchAudioConfig, updateAudioEntry, updateAudioCategory,
+  fetchAudioConfig, updateAudioEntry, updateAudioCategory, uploadAudioFile, deleteAudioFile, listAudioLibrary,
   type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry,
 } from '@/game/config';
 
