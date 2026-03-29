@@ -3621,7 +3621,7 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
   }
 
   // ── Timer bar ──
-  const maxTime = 7;
+  const maxTime = 10;
   const remaining = Math.max(0, maxTime - g.cardsShownTimer);
   const ratio = remaining / maxTime;
   const barW = totalW;

@@ -764,7 +764,7 @@ export function applyUpgrade(g: GameData, cardId: string) {
   spawnDeliveryBike(g);
   // Start zoom-in towards bike
   g.cameraZoomTarget = 1.5;
-  g.bikeZoomTimer = 2.0;
+  g.bikeZoomTimer = 3.0;
   addFloatingText(g, 'UPGRADE!', { x: g.width / 2, y: g.height * 0.35 }, '#fbbf24');
 }
 
@@ -878,16 +878,29 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
       }
     }
   } else if (g.wavePhase === 'clearing') {
+    // Force-clear all parachuting powerups, fire pools, gas clouds
+    for (const pu of g.powerUps) { if (pu.active) pu.active = false; }
+    g.firePools.length = 0;
+    g.gasClouds.length = 0;
+
     // Wait for all hazards & drones to clear
     const activeHazards = g.hazards.filter(h => h.active).length;
     const activeDrones = g.drones.filter(d => d.active && d.tier !== 'cargo').length;
-    // Also check falling hazards
     if (activeHazards === 0 && activeDrones === 0) {
-      // Cards first, then bike
-      g.wavePhase = 'cards';
-      g.upgradeCards = generateUpgradeCards(g);
-      g.cardsShownTimer = 0;
-      g.selectedUpgrade = null;
+      // Only show cards+bike at end of level (every 3 waves)
+      if (g.waveNumber % 3 === 0) {
+        g.wavePhase = 'cards';
+        g.upgradeCards = generateUpgradeCards(g);
+        g.cardsShownTimer = 0;
+        g.selectedUpgrade = null;
+      } else {
+        // Skip to next wave directly
+        g.wavePhase = 'active';
+        g.waveNumber++;
+        g.levelNumber = Math.floor((g.waveNumber - 1) / 3) + 1;
+        g.waveTimer = 60 + Math.random() * 10;
+        g.waveElapsed = 0;
+      }
     }
     // Force-clear drones that refuse to leave after 5s
     for (const d of g.drones) {
@@ -919,7 +932,7 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
     }
 
     // Auto-select after 7s if player hasn't chosen
-    if (g.cardsShownTimer > 7 && g.upgradeCards.length > 0) {
+    if (g.cardsShownTimer > 10 && g.upgradeCards.length > 0) {
       const randomCard = g.upgradeCards[Math.floor(Math.random() * g.upgradeCards.length)];
       applyUpgrade(g, randomCard.id);
     }
@@ -1056,8 +1069,8 @@ export function update(g: GameData, input: InputState, dt: number) {
     { time: 230, id: 'boss_warn', text: '⚠ تحذير: طائرة حربية!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626', duration: 2.0, type: 'warning' },
     { time: 233, id: 'boss_prep', text: '⬆ تطوير: إمدادات طارئة!', sub: 'EMERGENCY SUPPLIES DROPPED', color: '#22c55e', duration: 2.0, type: 'upgrade' },
     { time: 260, id: 'cluster_5', text: '⚠ تحذير: تشظي خماسي!', sub: 'MAX SPLIT — DANGER', color: '#991b1b', duration: 2.0, type: 'warning' },
-    { time: 155, id: 'extinguisher_prep', text: '⬆ إمدادات: طفاية حريق!', sub: 'FIRE EXTINGUISHER DROPPED', color: '#f97316', duration: 2.0, type: 'upgrade' },
-    { time: 160, id: 'drones_incendiary', text: '⚠ تحذير: طائرات حارقة!', sub: 'INCENDIARY DRONES — FIRE HAZARD', color: '#ea580c', duration: 2.0, type: 'warning' },
+    { time: 240, id: 'extinguisher_prep', text: '⬆ إمدادات: طفاية حريق!', sub: 'FIRE EXTINGUISHER DROPPED', color: '#f97316', duration: 2.0, type: 'upgrade' },
+    { time: 245, id: 'drones_incendiary', text: '⚠ تحذير: طائرات حارقة!', sub: 'INCENDIARY DRONES — FIRE HAZARD', color: '#ea580c', duration: 2.0, type: 'warning' },
     { time: 195, id: 'gasmask_prep', text: '⬆ إمدادات: كمامة غاز!', sub: 'GAS MASK DROPPED', color: '#16a34a', duration: 2.0, type: 'upgrade' },
     { time: 200, id: 'drones_chemical', text: '⚠ تحذير: طائرات كيميائية!', sub: 'CHEMICAL DRONES — TOXIC GAS', color: '#15803d', duration: 2.0, type: 'warning' },
   ];
@@ -1607,6 +1620,15 @@ export function update(g: GameData, input: InputState, dt: number) {
     const fp = g.firePools[i];
     fp.life -= dt;
     if (fp.life <= 0) { g.firePools.splice(i, 1); continue; }
+    // Auto-extinguish when player approaches with extinguisher active
+    if (p.extinguisherTimer > 0 && dist(p.pos, fp.pos) < fp.size + p.size + 30) {
+      // Steam effect
+      spawnParticles(g, fp.pos, 8, '#e2e8f0', 60, false);
+      addFloatingText(g, '💨', { x: fp.pos.x, y: fp.pos.y - 20 }, '#94a3b8');
+      g.firePools.splice(i, 1);
+      g.score += 5;
+      continue;
+    }
     // Damage player if standing in fire (unless extinguisher active)
     if (p.extinguisherTimer <= 0 && dist(p.pos, fp.pos) < fp.size + p.size) {
       const fireDmg = fp.damagePerSec * dt;
