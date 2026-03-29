@@ -753,6 +753,7 @@ function handleInterceptor(g: GameData) {
     spawnParticles(g, explodePos, 15, '#f97316', 200);
     addExplosion(g, explodePos, h.size * 2);
     h.active = false;
+    g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
   }
   const activeDrones = g.drones.filter(d => d.active)
     .sort((a, b) => dist(a.pos, g.player.pos) - dist(b.pos, g.player.pos));
@@ -1643,6 +1644,7 @@ export function update(g: GameData, input: InputState, dt: number) {
               addExplosion(g, h.pos, h.size * 2);
               spawnParticles(g, h.pos, 6, '#f97316', 150);
               h.active = false;
+              g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
               g.score += 15;
             }
           }
