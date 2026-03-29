@@ -232,6 +232,137 @@ export function resetGame(g: GameData) {
   g.waveEndSlowMo = 0;
   g.waveFinale = false;
   g.activeHazardCount = 0;
+  // Intro setup
+  g.introPhase = 'bikeEnter';
+  g.introTimer = 0;
+  g.introPlayerOffset = 0;
+  const bikeStartX = -80;
+  g.introBike = {
+    active: true,
+    pos: { x: bikeStartX, y: g.player.groundY },
+    speed: 280,
+    facingRight: true,
+    phase: 'entering',
+    dropX: g.width / 2,
+    dropped: false,
+    wheelAnim: 0,
+    idleTimer: 0,
+    shakeOffset: { x: 0, y: 0 },
+  };
+  g.player.pos = { x: bikeStartX, y: g.player.groundY };
+  g.cameraZoomTarget = 1.5;
+  g.cameraZoom = 1;
+  g.cameraFocusX = g.width / 2;
+  g.cameraFocusY = g.player.groundY;
+}
+
+// ─── Intro Sequence ──────────────────────────────────
+export function updateIntro(g: GameData, dt: number) {
+  g.introTimer += dt;
+  const bike = g.introBike;
+  if (!bike) return;
+
+  // Smooth camera zoom
+  const zoomSpeed = 1.5;
+  g.cameraZoom += (g.cameraZoomTarget - g.cameraZoom) * zoomSpeed * dt;
+
+  // Update wheel animation
+  bike.wheelAnim += bike.speed * dt * 0.05;
+
+  const centerX = g.width / 2;
+
+  switch (g.introPhase) {
+    case 'bikeEnter': {
+      // Bike enters from left, decelerates toward center
+      const distToCenter = centerX - bike.pos.x;
+      // Decelerate as we approach
+      const decelZone = 200;
+      if (distToCenter < decelZone) {
+        bike.speed = Math.max(30, 280 * (distToCenter / decelZone));
+      }
+      bike.pos.x += bike.speed * dt;
+      // Player rides with bike
+      g.player.pos.x = bike.pos.x;
+
+      // Camera follows bike
+      g.cameraFocusX = bike.pos.x;
+
+      if (bike.pos.x >= centerX) {
+        bike.pos.x = centerX;
+        g.player.pos.x = centerX;
+        bike.speed = 0;
+        g.introPhase = 'bikeStop';
+        g.introTimer = 0;
+        // Engine idle shake
+        bike.phase = 'idle';
+      }
+      break;
+    }
+    case 'bikeStop': {
+      // Brief pause, engine idling
+      bike.shakeOffset = {
+        x: (Math.random() - 0.5) * 0.6,
+        y: (Math.random() - 0.5) * 0.3,
+      };
+      g.cameraFocusX = bike.pos.x;
+
+      if (g.introTimer > 1.0) {
+        g.introPhase = 'playerDismount';
+        g.introTimer = 0;
+        g.introPlayerOffset = 0;
+      }
+      break;
+    }
+    case 'playerDismount': {
+      // Player walks away from bike to the right
+      bike.shakeOffset = {
+        x: (Math.random() - 0.5) * 0.6,
+        y: (Math.random() - 0.5) * 0.3,
+      };
+      const dismountSpeed = 60;
+      g.introPlayerOffset += dismountSpeed * dt;
+      g.player.pos.x = bike.pos.x + g.introPlayerOffset;
+      g.player.facingRight = true;
+      g.player.anim = 'walk';
+      g.player.animTimer += dt;
+
+      // Camera starts pulling back
+      g.cameraFocusX = (bike.pos.x + g.player.pos.x) / 2;
+
+      if (g.introTimer > 1.0) {
+        g.introPhase = 'bikeLeave';
+        g.introTimer = 0;
+        bike.phase = 'leaving';
+        bike.speed = 0;
+        bike.facingRight = true;
+        g.cameraZoomTarget = 1.0; // zoom out
+        g.player.anim = 'idle';
+      }
+      break;
+    }
+    case 'bikeLeave': {
+      // Bike accelerates and leaves to the right
+      bike.speed += 400 * dt;
+      bike.pos.x += bike.speed * dt;
+      bike.wheelAnim += bike.speed * dt * 0.05;
+      bike.shakeOffset = { x: 0, y: 0 };
+
+      // Exhaust smoke while leaving
+      g.cameraFocusX = g.player.pos.x;
+
+      if (bike.pos.x > g.width + 100) {
+        g.introPhase = 'done';
+        g.introTimer = 0;
+        g.introBike = null;
+        g.state = 'playing';
+        g.cameraZoomTarget = 1.0;
+        g.cameraZoom = 1.0;
+      }
+      break;
+    }
+    case 'done':
+      break;
+  }
 }
 
 function dist(a: Vec2, b: Vec2): number {
