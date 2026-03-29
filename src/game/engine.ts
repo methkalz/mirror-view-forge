@@ -279,7 +279,86 @@ function spawnAmbientParticle(g: GameData) {
   g.ambientParticles.push(ap);
 }
 
+const MAX_MISSILE_SPEED = 450; // missile can't cross screen in < 0.8s
+
+// ===== WAVE RECIPE SYSTEM =====
+interface WaveRecipe {
+  threats: HazardType[];
+  maxConcurrent: number;
+  spawnInterval: number;
+  droneInterval: number;
+  droneTiers: DroneTier[];
+  clusterSplits: number;
+  bulletLevel: number;
+  phaseInDelay: number;
+  hasChemical?: boolean;
+  hasIncendiary?: boolean;
+  hasBoss?: boolean;
+}
+
+function getWaveRecipe(wave: number): WaveRecipe {
+  if (wave <= 1) return { threats: ['shrapnel'], maxConcurrent: 3, spawnInterval: 2.5, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 1, phaseInDelay: 0 };
+  if (wave === 2) return { threats: ['shrapnel', 'missile'], maxConcurrent: 4, spawnInterval: 2.2, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 1, phaseInDelay: 12 };
+  if (wave === 3) return { threats: ['shrapnel', 'missile'], maxConcurrent: 5, spawnInterval: 2.0, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 2, phaseInDelay: 0 };
+  // Wave 4 — "psychological" wave, easier than 3!
+  if (wave === 4) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 4, spawnInterval: 2.1, droneInterval: 0, droneTiers: [], clusterSplits: 2, bulletLevel: 2, phaseInDelay: 15 };
+  // Wave 5 — "shock" with scout drones
+  if (wave === 5) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.8, droneInterval: 22, droneTiers: ['scout'], clusterSplits: 2, bulletLevel: 2, phaseInDelay: 12 };
+  if (wave === 6) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.7, droneInterval: 20, droneTiers: ['scout'], clusterSplits: 3, bulletLevel: 2, phaseInDelay: 0 };
+  if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.6, droneInterval: 18, droneTiers: ['scout', 'tracker'], clusterSplits: 3, bulletLevel: 2, phaseInDelay: 12 };
+  if (wave === 8) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.5, droneInterval: 16, droneTiers: ['scout', 'tracker'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15 };
+  if (wave === 9) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 8, spawnInterval: 1.4, droneInterval: 14, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 12 };
+  if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 8, spawnInterval: 1.3, droneInterval: 14, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15, hasChemical: true };
+  if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 9, spawnInterval: 1.2, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15, hasIncendiary: true };
+  if (wave === 12) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 5, bulletLevel: 3, phaseInDelay: 12, hasBoss: true, hasChemical: true, hasIncendiary: true };
+  // Wave 13+: everything, gradual scaling
+  const extra = wave - 12;
+  return {
+    threats: ['shrapnel', 'missile', 'cluster'],
+    maxConcurrent: Math.min(12, 10 + Math.floor(extra / 2)),
+    spawnInterval: Math.max(0.6, 0.9 - extra * 0.03),
+    droneInterval: Math.max(8, 11 - extra * 0.5),
+    droneTiers: ['scout', 'tracker', 'bomber'] as DroneTier[],
+    clusterSplits: Math.min(6, 5 + Math.floor(extra / 3)),
+    bulletLevel: 3,
+    phaseInDelay: 0,
+    hasBoss: extra % 3 === 0,
+    hasChemical: true,
+    hasIncendiary: true,
+  };
+}
+
+// Warning messages for new threats introduced in each wave
+const WAVE_WARNINGS: Record<number, { id: string; text: string; sub: string; color: string; type: 'warning' | 'upgrade' }[]> = {
+  1: [{ id: 'w1_shrapnel', text: '\u26A0 تحذير: شظايا متساقطة!', sub: 'SHRAPNEL INCOMING', color: '#ef4444', type: 'warning' }],
+  2: [{ id: 'w2_missile', text: '\u26A0 تحذير: صواريخ قادمة!', sub: 'MISSILES DETECTED', color: '#dc2626', type: 'warning' }],
+  3: [{ id: 'w3_bullet2', text: '\u2B06 تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e', type: 'upgrade' }],
+  4: [{ id: 'w4_cluster', text: '\u26A0 تحذير: صواريخ متشظية!', sub: 'SPLITTING MISSILES INCOMING', color: '#f43f5e', type: 'warning' }],
+  5: [{ id: 'w5_drone', text: '\u26A0 تحذير: طائرات استطلاع!', sub: 'SCOUT DRONES APPROACHING', color: '#ef4444', type: 'warning' }],
+  6: [{ id: 'w6_cluster3', text: '\u26A0 تحذير: تشظي ثلاثي!', sub: 'TRIPLE SPLIT MISSILES', color: '#ef4444', type: 'warning' }],
+  7: [{ id: 'w7_tracker', text: '\u26A0 تحذير: طائرات تتبع!', sub: 'TRACKER DRONES INBOUND', color: '#dc2626', type: 'warning' }],
+  8: [
+    { id: 'w8_bullet3', text: '\u2B06 تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#22c55e', type: 'upgrade' },
+    { id: 'w8_cluster4', text: '\u26A0 تحذير: تشظي رباعي!', sub: 'QUAD SPLIT MISSILES', color: '#dc2626', type: 'warning' },
+  ],
+  9: [{ id: 'w9_bomber', text: '\u26A0 تحذير: قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444', type: 'warning' }],
+  10: [
+    { id: 'w10_gasmask', text: '\u2B06 إمدادات: كمامة غاز!', sub: 'GAS MASK DROPPED', color: '#16a34a', type: 'upgrade' },
+    { id: 'w10_chemical', text: '\u26A0 تحذير: طائرات كيميائية!', sub: 'CHEMICAL DRONES — TOXIC GAS', color: '#15803d', type: 'warning' },
+  ],
+  11: [
+    { id: 'w11_extinguisher', text: '\u2B06 إمدادات: طفاية حريق!', sub: 'FIRE EXTINGUISHER DROPPED', color: '#f97316', type: 'upgrade' },
+    { id: 'w11_incendiary', text: '\u26A0 تحذير: طائرات حارقة!', sub: 'INCENDIARY DRONES — FIRE HAZARD', color: '#ea580c', type: 'warning' },
+  ],
+  12: [
+    { id: 'w12_boss', text: '\u26A0 تحذير: طائرة حربية!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626', type: 'warning' },
+    { id: 'w12_cluster5', text: '\u26A0 تحذير: تشظي خماسي!', sub: 'MAX SPLIT — DANGER', color: '#991b1b', type: 'warning' },
+  ],
+};
+
 function spawnHazard(g: GameData, type: HazardType) {
+  const recipe = getWaveRecipe(g.waveNumber);
+
   const h = getFromPool<Hazard>(g.hazards, () => ({
     active: false, type: 'shrapnel', pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
     speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
@@ -287,7 +366,7 @@ function spawnHazard(g: GameData, type: HazardType) {
   }));
   const groundY = g.height * GROUND_RATIO;
   const tx = 30 + Math.random() * (g.width - 60);
-  const ty = groundY - 5 + Math.random() * 10; // Impacts near ground level
+  const ty = groundY - 5 + Math.random() * 10;
   h.type = type;
   h.targetPos = { x: tx, y: ty };
   h.pos = { x: tx + (Math.random() - 0.5) * 80, y: -40 };
@@ -298,27 +377,26 @@ function spawnHazard(g: GameData, type: HazardType) {
 
   switch (type) {
     case 'shrapnel':
-      h.speed = 280 + g.difficulty * 20 + Math.random() * 140;
+      h.speed = Math.min(280 + g.difficulty * 20 + Math.random() * 140, MAX_MISSILE_SPEED * 0.8);
       h.size = 8;
       h.damage = 10;
       h.warningDuration = 0.7;
       break;
     case 'missile':
-      h.speed = 160 + g.difficulty * 15 + Math.random() * 100;
+      h.speed = Math.min(160 + g.difficulty * 15 + Math.random() * 100, MAX_MISSILE_SPEED);
       h.size = 12;
       h.damage = 22;
       h.warningDuration = 1.2;
       break;
     case 'cluster': {
-      // Horizontal flying ballistic missile with arc trajectory
       const fromRight = Math.random() > 0.5;
       const startX = fromRight ? g.width + 40 : -40;
       const flyY = g.height * (0.12 + Math.random() * 0.2);
       h.pos = { x: startX, y: flyY };
       h.targetPos = { x: g.width / 2, y: flyY };
-      const baseSpeed = 120 + g.difficulty * 5 + Math.random() * 40;
+      const baseSpeed = Math.min(120 + g.difficulty * 5 + Math.random() * 40, MAX_MISSILE_SPEED * 0.7);
       h.clusterVelX = fromRight ? -baseSpeed : baseSpeed;
-      h.clusterVelY = -(10 + Math.random() * 15); // gentle upward arc initially
+      h.clusterVelY = -(10 + Math.random() * 15);
       h.clusterStartSpeed = baseSpeed;
       h.clusterPhase = 'flying';
       h.clusterTimer = 0;
@@ -327,13 +405,12 @@ function spawnHazard(g: GameData, type: HazardType) {
       h.damage = 16;
       h.warningDuration = 0;
       h.warningTimer = 0;
-      h.falling = true; // skip warning phase
+      h.falling = true;
       break;
     }
   }
   h.warningTimer = h.warningDuration;
-  // Avoid repetitive heartbeat-like beeps from frequent shrapnel spawns
-  // warning sound disabled for regular hazard spawns to avoid repetitive heartbeat-like beeps
+  g.activeHazardCount++;
 }
 
 function spawnPowerUp(g: GameData) {
