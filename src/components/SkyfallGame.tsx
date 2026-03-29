@@ -39,11 +39,34 @@ const SkyfallGame: React.FC = () => {
 
   // Load leaderboard on mount + presence tracking
   useEffect(() => {
-    fetchLeaderboard().then(setLeaderboard);
-    fetchGameConfig().then(cfg => {
-      setRemoteConfig(cfg);
-      remoteConfigRef.current = cfg;
-    });
+    let mounted = true;
+    setLoadProgress(10);
+
+    const loadAll = async () => {
+      try {
+        // Load config
+        const cfgPromise = fetchGameConfig();
+        setLoadProgress(25);
+
+        // Load leaderboard in parallel
+        const lbPromise = fetchLeaderboard();
+        setLoadProgress(40);
+
+        const [cfg, lb] = await Promise.all([cfgPromise, lbPromise]);
+        if (!mounted) return;
+        setLoadProgress(70);
+
+        setRemoteConfig(cfg);
+        remoteConfigRef.current = cfg;
+        setLeaderboard(lb);
+        setLoadProgress(100);
+      } catch (e) {
+        console.error('Loading error:', e);
+        if (mounted) setLoadProgress(100);
+      }
+    };
+
+    loadAll();
 
     // Track online presence
     const channel = supabase.channel('online-players', { config: { presence: { key: `player_${Date.now()}_${Math.random().toString(36).slice(2)}` } } });
@@ -52,7 +75,7 @@ const SkyfallGame: React.FC = () => {
         await channel.track({ online_at: new Date().toISOString() });
       }
     });
-    return () => { supabase.removeChannel(channel); };
+    return () => { mounted = false; supabase.removeChannel(channel); };
   }, []);
 
   const handleNameSubmit = useCallback((name: string) => {
