@@ -186,19 +186,20 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map(pos => {
             const isTop = pos.includes('top');
             const isLeft = pos.includes('left');
+            const cornerRadius = 16;
             return (
               <div key={pos} style={{
                 position: 'absolute',
-                [isTop ? 'top' : 'bottom']: 8,
-                [isLeft ? 'left' : 'right']: 8,
-                width: 18, height: 18,
-                borderColor: 'rgba(220,38,38,0.35)',
+                [isTop ? 'top' : 'bottom']: 6,
+                [isLeft ? 'left' : 'right']: 6,
+                width: 22, height: 22,
+                borderColor: 'rgba(220,38,38,0.4)',
                 borderStyle: 'solid',
                 borderWidth: 0,
-                ...(isTop && isLeft ? { borderTopWidth: 1.5, borderLeftWidth: 1.5 } : {}),
-                ...(isTop && !isLeft ? { borderTopWidth: 1.5, borderRightWidth: 1.5 } : {}),
-                ...(!isTop && isLeft ? { borderBottomWidth: 1.5, borderLeftWidth: 1.5 } : {}),
-                ...(!isTop && !isLeft ? { borderBottomWidth: 1.5, borderRightWidth: 1.5 } : {}),
+                ...(isTop && isLeft ? { borderTopWidth: 1.5, borderLeftWidth: 1.5, borderTopLeftRadius: cornerRadius } : {}),
+                ...(isTop && !isLeft ? { borderTopWidth: 1.5, borderRightWidth: 1.5, borderTopRightRadius: cornerRadius } : {}),
+                ...(!isTop && isLeft ? { borderBottomWidth: 1.5, borderLeftWidth: 1.5, borderBottomLeftRadius: cornerRadius } : {}),
+                ...(!isTop && !isLeft ? { borderBottomWidth: 1.5, borderRightWidth: 1.5, borderBottomRightRadius: cornerRadius } : {}),
                 pointerEvents: 'none',
               }} />
             );
