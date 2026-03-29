@@ -7,7 +7,7 @@ import {
   fetchGameConfig, updateGameConfig, fetchLeaderboard, deleteLeaderboardEntry, clearLeaderboard,
   fetchWaveConfigs, upsertWaveConfig, deleteWaveConfig,
   fetchAudioConfig, updateAudioEntry, updateAudioCategory, uploadAudioFile, deleteAudioFile, listAudioLibrary,
-  addAudioFile, removeAudioFile, fetchAnalytics,
+  addAudioFile, removeAudioFile, fetchAnalytics, createAudioEntry, deleteAudioEntry,
   type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type GameAnalytics,
 } from '@/game/config';
 
@@ -637,6 +637,11 @@ const AudioPanel: React.FC<{
   const [library, setLibrary] = useState<{ name: string; url: string }[]>([]);
   const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [addingSound, setAddingSound] = useState(false);
+  const [newSoundKey, setNewSoundKey] = useState('');
+  const [newSoundLabel, setNewSoundLabel] = useState('');
+  const [newSoundLabelAr, setNewSoundLabelAr] = useState('');
+  const [newSoundCategory, setNewSoundCategory] = useState('ambient');
 
   const loadLibrary = useCallback(async () => { setLibrary(await listAudioLibrary()); }, []);
 
@@ -751,10 +756,24 @@ const AudioPanel: React.FC<{
               return (
                 <div key={item.id} style={{ padding: '12px 16px 12px 24px', borderTop: '1px solid rgba(255,255,255,0.03)', opacity: item.enabled ? 1 : 0.4, transition: 'opacity 0.2s' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    {/* Quick play button */}
+                    <button
+                      onClick={e => { e.stopPropagation(); item.files.length > 0 ? handlePreview(item.files[0].fileUrl) : null; }}
+                      style={{
+                        ...smallBtn(item.files.length > 0 ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.04)',
+                          item.files.length > 0 ? '#93c5fd' : 'rgba(148,163,184,0.25)'),
+                        fontSize: 12, padding: '4px 6px', flexShrink: 0,
+                        cursor: item.files.length > 0 ? 'pointer' : 'default',
+                      }}
+                      title={item.files.length > 0 ? 'Preview sound' : 'Synthesized (built-in)'}
+                    >▶</button>
                     <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => setExpandedItem(isOpen ? null : item.id)}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>
                         {item.label}
-                        {item.files.length > 0 && <span style={{ fontSize: 9, color: meta.color, marginLeft: 6 }}>🎵×{item.files.length}</span>}
+                        {item.files.length > 0
+                          ? <span style={{ fontSize: 9, color: meta.color, marginLeft: 6 }}>🎵×{item.files.length}</span>
+                          : <span style={{ fontSize: 9, color: 'rgba(148,163,184,0.25)', marginLeft: 6 }}>synth</span>
+                        }
                       </div>
                       <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.3)' }}>{item.labelAr}</div>
                     </div>
@@ -804,10 +823,16 @@ const AudioPanel: React.FC<{
                         ))}
                       </div>
 
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                         <button disabled={uploading === item.id} onClick={() => { if (fileInputRef.current) { fileInputRef.current.dataset.entryId = item.id; fileInputRef.current.dataset.soundKey = item.soundKey; fileInputRef.current.click(); } }}
                           style={smallBtn('rgba(59,130,246,0.12)', '#93c5fd')}>{uploading === item.id ? '⏳...' : '📁 Upload'}</button>
                         <button onClick={() => { setLibraryOpen(libraryOpen === item.id ? null : item.id); loadLibrary(); }} style={smallBtn('rgba(168,85,247,0.12)', '#c4b5fd')}>📚 Library</button>
+                        <div style={{ flex: 1 }} />
+                        <button onClick={async () => {
+                          if (!confirm(`Delete "${item.label}"?`)) return;
+                          await deleteAudioEntry(item.id);
+                          setEntries(prev => prev.filter(e => e.id !== item.id));
+                        }} style={smallBtn('rgba(220,38,38,0.1)', '#f87171')}>🗑 Delete Sound</button>
                       </div>
 
                       {libraryOpen === item.id && (
@@ -831,6 +856,63 @@ const AudioPanel: React.FC<{
           </div>
         );
       })}
+
+      {/* Add New Sound */}
+      <div style={{ marginTop: 16, padding: '16px 18px', borderRadius: 14, border: '1px dashed rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.01)' }}>
+        {!addingSound ? (
+          <button onClick={() => setAddingSound(true)} style={{ ...btnPrimary, width: '100%', textAlign: 'center', justifyContent: 'center', display: 'flex' }}>
+            ➕ Add New Sound
+          </button>
+        ) : (
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, color: '#e2e8f0' }}>New Sound Entry</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ ...labelStyle, fontSize: 10 }}>Sound Key (unique)</label>
+                <input value={newSoundKey} onChange={e => setNewSoundKey(e.target.value)} placeholder="e.g. laserBlast" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ ...labelStyle, fontSize: 10 }}>Category</label>
+                <select value={newSoundCategory} onChange={e => setNewSoundCategory(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                  {Object.entries(CATEGORY_META).map(([k, v]) => (
+                    <option key={k} value={k}>{v.icon} {v.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ ...labelStyle, fontSize: 10 }}>Label (EN)</label>
+                <input value={newSoundLabel} onChange={e => setNewSoundLabel(e.target.value)} placeholder="Laser Blast" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ ...labelStyle, fontSize: 10 }}>Label (AR)</label>
+                <input value={newSoundLabelAr} onChange={e => setNewSoundLabelAr(e.target.value)} placeholder="ليزر" style={inputStyle} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                disabled={!newSoundKey.trim() || !newSoundLabel.trim()}
+                onClick={async () => {
+                  const entry = await createAudioEntry({
+                    soundKey: newSoundKey.trim(),
+                    category: newSoundCategory,
+                    label: newSoundLabel.trim(),
+                    labelAr: newSoundLabelAr.trim(),
+                  });
+                  if (entry) {
+                    setEntries(prev => [...prev, entry]);
+                    setNewSoundKey(''); setNewSoundLabel(''); setNewSoundLabelAr('');
+                    setAddingSound(false);
+                  }
+                }}
+                style={{ ...btnPrimary, opacity: (!newSoundKey.trim() || !newSoundLabel.trim()) ? 0.4 : 1 }}
+              >
+                Create
+              </button>
+              <button onClick={() => setAddingSound(false)} style={btnGhost}>Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -885,6 +967,19 @@ const BrandingPanel: React.FC<{
             </div>
           </div>
 
+          {/* Show Title Toggle (when logo exists) */}
+          {config.logoUrl && (
+            <div style={{ marginBottom: 20, padding: '14px 18px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 13, flex: 1, color: 'rgba(148,163,184,0.7)' }}>Show title text with logo</span>
+              <button onClick={() => onSave({ showTitle: !config.showTitle })} style={{
+                width: 42, height: 22, borderRadius: 11, border: 'none', cursor: 'pointer',
+                background: config.showTitle ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.08)', position: 'relative', transition: 'background 0.2s',
+              }}>
+                <div style={{ width: 18, height: 18, borderRadius: 9, background: config.showTitle ? '#60a5fa' : 'rgba(148,163,184,0.3)', position: 'absolute', top: 2, left: config.showTitle ? 22 : 2, transition: 'all 0.2s' }} />
+              </button>
+            </div>
+          )}
+
           <div style={{ marginBottom: 16 }}>
             <label style={labelStyle}>Game Title</label>
             <input value={config.gameTitle} onChange={e => onSave({ gameTitle: e.target.value })} style={inputStyle} />
@@ -908,7 +1003,10 @@ const BrandingPanel: React.FC<{
         }}>
           <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.3)', marginBottom: 16, letterSpacing: 3 }}>PREVIEW</div>
           {config.logoUrl ? (
-            <img src={config.logoUrl} alt="Logo" style={{ width: 64, height: 64, objectFit: 'contain', marginBottom: 10 }} />
+            <div style={{ textAlign: 'center' }}>
+              <img src={config.logoUrl} alt="Logo" style={{ width: 64, height: 64, objectFit: 'contain', marginBottom: config.showTitle ? 6 : 10 }} />
+              {config.showTitle && <div style={{ fontSize: 18, fontWeight: 900, color: '#f1f5f9', marginBottom: 4 }}>{config.gameTitle}</div>}
+            </div>
           ) : (
             <div style={{ fontSize: 32, fontWeight: 900, color: '#f1f5f9', marginBottom: 6 }}>☄️ {config.gameTitle}</div>
           )}

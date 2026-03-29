@@ -1,0 +1,1 @@
+ALTER TABLE public.game_config ADD COLUMN show_title boolean NOT NULL DEFAULT true;

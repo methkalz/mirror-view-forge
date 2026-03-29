@@ -6,6 +6,7 @@ interface BrandingConfig {
   gameTitle: string;
   gameSubtitle: string;
   developerName: string;
+  showTitle: boolean;
 }
 
 interface NameEntryProps {
@@ -34,6 +35,7 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   const subtitle = branding?.gameSubtitle || 'SURVIVAL';
   const developer = branding?.developerName || 'CAILOR GG';
   const logoUrl = branding?.logoUrl || null;
+  const showTitle = branding?.showTitle ?? true;
   const hasName = name.trim().length > 0;
 
   useEffect(() => {
@@ -127,10 +129,28 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
 
         {/* Logo or Title */}
         {logoUrl ? (
-          <img src={logoUrl} alt={title} style={{
-            width: 'clamp(80px, 25vw, 140px)', height: 'auto', marginBottom: 12,
-            filter: 'drop-shadow(0 0 30px rgba(220,38,38,0.4))',
-          }} />
+          <div style={{ textAlign: 'center', marginBottom: 12 }}>
+            <img src={logoUrl} alt={title} style={{
+              width: 'clamp(80px, 25vw, 140px)', height: 'auto',
+              filter: 'drop-shadow(0 0 30px rgba(220,38,38,0.4))',
+              margin: '0 auto',
+            }} />
+            {showTitle && (
+              <h1 style={{
+                fontFamily: "'Tajawal', system-ui, sans-serif",
+                fontSize: 'clamp(20px, 5vw, 32px)',
+                fontWeight: 900,
+                color: 'transparent',
+                backgroundImage: 'linear-gradient(180deg, #f8fafc 0%, #94a3b8 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                marginTop: 8,
+                letterSpacing: -0.5,
+              }}>
+                {title}
+              </h1>
+            )}
+          </div>
         ) : (
           <h1 style={{
             fontFamily: "'Tajawal', system-ui, sans-serif",
