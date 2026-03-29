@@ -1233,7 +1233,7 @@ export function update(g: GameData, input: InputState, dt: number) {
           break;
         case 'shield':
           p.shielded = true;
-          p.shieldTimer = 8;
+          p.shieldTimer = p.shieldDuration;
           addFloatingText(g, 'Shield!', { x: p.pos.x, y: p.pos.y - 40 }, '#60a5fa');
           spawnParticles(g, p.pos, 8, '#60a5fa', 80);
           break;
@@ -1242,13 +1242,13 @@ export function update(g: GameData, input: InputState, dt: number) {
           addFloatingText(g, 'Interceptor!', { x: p.pos.x, y: p.pos.y - 40 }, '#f97316');
           break;
         case 'ammo':
-          p.ammo = Math.min(30, p.ammo + 8);
+          p.ammo = Math.min(p.maxAmmo, p.ammo + 8);
           p.dashCooldown = 0; // instant dash recharge
           addFloatingText(g, '+8 Ammo', { x: p.pos.x, y: p.pos.y - 40 }, '#a855f7');
           spawnParticles(g, p.pos, 8, '#a855f7', 80);
           break;
         case 'slowmo':
-          g.slowMoTimer = 5;
+          g.slowMoTimer = p.slowMoDuration;
           addFloatingText(g, 'SLOW-MO!', { x: p.pos.x, y: p.pos.y - 40 }, '#06b6d4');
           spawnParticles(g, p.pos, 12, '#06b6d4', 100);
           sfxSlowmo();
