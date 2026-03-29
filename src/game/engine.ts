@@ -4,7 +4,7 @@ import {
   FirePool, GasCloud, UpgradeCard, DeliveryBike, IntroPhase
 } from './types';
 import { getFromPool } from './pool';
-import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall } from './audio';
+import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameStart, sfxUpgradeSelect, startPeriodicAmbient, stopPeriodicAmbient } from './audio';
 
 const DASH_SPEED = 500;
 const DASH_DURATION = 0.25;
@@ -278,6 +278,8 @@ export function updateIntro(g: GameData, dt: number) {
 
   switch (g.introPhase) {
     case 'bikeEnter': {
+      // Play bike engine sound at start
+      if (g.introTimer < dt * 2) sfxBikeEngine();
       // Bike enters from left, decelerates toward center
       const distToCenter = centerX - bike.pos.x;
       // Decelerate as we approach
@@ -300,6 +302,8 @@ export function updateIntro(g: GameData, dt: number) {
         g.introTimer = 0;
         // Engine idle shake
         bike.phase = 'idle';
+        sfxBikeBrake();
+        sfxBikeIdle();
       }
       break;
     }
@@ -385,6 +389,8 @@ export function updateIntro(g: GameData, dt: number) {
       break;
     }
     case 'bikeLeave': {
+      // Play depart sound at start
+      if (g.introTimer < dt * 2) sfxBikeDepart();
       // Smooth transition timer for fade between intro char and real player
       g.introTransitionTimer += dt;
       
@@ -408,6 +414,8 @@ export function updateIntro(g: GameData, dt: number) {
         g.state = 'playing';
         g.cameraZoomTarget = 1.0;
         g.cameraZoom = 1.0;
+        sfxGameStart();
+        startPeriodicAmbient();
         g.player.facingRight = true; // reset facing for gameplay
       }
       break;
@@ -1277,6 +1285,8 @@ export function update(g: GameData, input: InputState, dt: number) {
       g.deathPhase = 'dead';
       g.state = 'gameover';
       g.stats.timeSurvived = g.elapsed;
+      sfxGameOver();
+      stopPeriodicAmbient();
       if (g.score > g.highScore) {
         g.highScore = g.score;
         localStorage.setItem('skyfall_hi', g.score.toString());
