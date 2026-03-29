@@ -3560,7 +3560,14 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   const dir = bike.facingRight ? 1 : -1;
   ctx.scale(dir, 1);
   ctx.scale(2.4, 2.4);
-  ctx.translate(bike.shakeOffset.x, bike.shakeOffset.y);
+
+  // Suspension physics: front fork compresses on braking
+  const isBrakingNow = bike.phase === 'idle' || bike.speed < 50;
+  const suspTarget = isBrakingNow ? -1.5 : 0;
+  const suspCompress = suspTarget; // simplified spring
+  const rearSuspCompress = suspTarget * 0.4; // rear reacts less
+
+  ctx.translate(bike.shakeOffset.x, bike.shakeOffset.y + suspCompress * 0.3);
 
   // ── Realistic Exhaust Puffs (multi-circle deformed, wind-driven) ──
   if (bike.phase === 'idle' || bike.phase === 'leaving' || bike.phase === 'entering') {
@@ -3622,40 +3629,94 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
     }
   }
 
-  // ── Wheels ──
+  // ── Wheels with suspension + treads + rotation blur ──
   const wheelR = 8;
   const wheelY = 0;
   const frontWX = 22, rearWX = -20;
+  const frontWY = wheelY + suspCompress; // front fork compressed
+  const rearWY = wheelY + rearSuspCompress;
 
-  // Tire outer
-  for (const wx of [frontWX, rearWX]) {
+  const highSpeed = Math.abs(bike.speed) > 150;
+
+  for (const [wx, wy] of [[frontWX, frontWY], [rearWX, rearWY]] as [number, number][]) {
+    // Tire outer
     ctx.strokeStyle = '#1a1a1a';
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.arc(wx, wheelY, wheelR, 0, Math.PI * 2);
+    ctx.arc(wx, wy, wheelR, 0, Math.PI * 2);
     ctx.stroke();
-    // Rim
-    ctx.strokeStyle = '#666';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(wx, wheelY, wheelR - 3, 0, Math.PI * 2);
-    ctx.stroke();
-    // Spokes
-    ctx.strokeStyle = '#888';
-    ctx.lineWidth = 0.7;
-    for (let i = 0; i < 6; i++) {
-      const a = bike.wheelAnim + i * Math.PI / 3;
+
+    // Tire tread marks (grooves on rubber)
+    ctx.strokeStyle = 'rgba(60,60,60,0.5)';
+    ctx.lineWidth = 0.8;
+    for (let t = 0; t < 12; t++) {
+      const tAngle = bike.wheelAnim + t * Math.PI / 6;
+      const innerR = wheelR - 1.8;
+      const outerR = wheelR + 0.5;
       ctx.beginPath();
-      ctx.moveTo(wx + Math.cos(a) * 2, wheelY + Math.sin(a) * 2);
-      ctx.lineTo(wx + Math.cos(a) * (wheelR - 3), wheelY + Math.sin(a) * (wheelR - 3));
+      ctx.moveTo(wx + Math.cos(tAngle) * innerR, wy + Math.sin(tAngle) * innerR);
+      ctx.lineTo(wx + Math.cos(tAngle) * outerR, wy + Math.sin(tAngle) * outerR);
       ctx.stroke();
     }
-    // Hub
-    ctx.fillStyle = '#555';
+
+    // Rim
+    ctx.strokeStyle = '#777';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(wx, wheelY, 2, 0, Math.PI * 2);
+    ctx.arc(wx, wy, wheelR - 3, 0, Math.PI * 2);
+    ctx.stroke();
+
+    if (highSpeed) {
+      // Rotation blur — replace spokes with motion arc
+      ctx.strokeStyle = 'rgba(150,150,150,0.15)';
+      ctx.lineWidth = wheelR - 4;
+      ctx.beginPath();
+      ctx.arc(wx, wy, (wheelR - 3) / 2 + 1, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      // Spokes (visible at low speed)
+      ctx.strokeStyle = '#888';
+      ctx.lineWidth = 0.7;
+      for (let i = 0; i < 6; i++) {
+        const a = bike.wheelAnim + i * Math.PI / 3;
+        ctx.beginPath();
+        ctx.moveTo(wx + Math.cos(a) * 2, wy + Math.sin(a) * 2);
+        ctx.lineTo(wx + Math.cos(a) * (wheelR - 3), wy + Math.sin(a) * (wheelR - 3));
+        ctx.stroke();
+      }
+    }
+
+    // Hub (chrome)
+    ctx.fillStyle = '#666';
+    ctx.beginPath();
+    ctx.arc(wx, wy, 2, 0, Math.PI * 2);
+    ctx.fill();
+    // Hub highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.beginPath();
+    ctx.arc(wx - 0.5, wy - 0.5, 1, 0, Math.PI * 2);
     ctx.fill();
   }
+
+  // ── Fork tubes (visual suspension) ──
+  ctx.strokeStyle = '#777';
+  ctx.lineWidth = 1.5;
+  // Front fork
+  ctx.beginPath();
+  ctx.moveTo(frontWX - 2, -12);
+  ctx.lineTo(frontWX - 1, frontWY - wheelR + 1);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(frontWX + 1, -11);
+  ctx.lineTo(frontWX + 2, frontWY - wheelR + 1);
+  ctx.stroke();
+  // Chrome fork highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(frontWX - 1.5, -12);
+  ctx.lineTo(frontWX - 0.5, frontWY - wheelR + 2);
+  ctx.stroke();
 
   // ── Fenders ──
   ctx.strokeStyle = '#333';
@@ -3957,6 +4018,23 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
     ctx.fill();
     ctx.restore();
     
+    // ── Enhanced Bloom Layers (3 extra radial layers) ──
+    const bloomLayers = [
+      { r: 20, alpha: 0.06 },
+      { r: 35, alpha: 0.035 },
+      { r: 50, alpha: 0.018 },
+    ];
+    for (const bl of bloomLayers) {
+      const bGrad = ctx.createRadialGradient(hlX, hlY, 0, hlX, hlY, bl.r);
+      bGrad.addColorStop(0, `rgba(255,255,220,${bl.alpha * flickerIntensity})`);
+      bGrad.addColorStop(0.5, `rgba(255,255,200,${bl.alpha * 0.4 * flickerIntensity})`);
+      bGrad.addColorStop(1, 'rgba(255,255,180,0)');
+      ctx.fillStyle = bGrad;
+      ctx.beginPath();
+      ctx.arc(hlX, hlY, bl.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
     // ── Headlight Lens (multi-layer glow) ──
     // Outer glow
     ctx.fillStyle = `rgba(255,255,200,${0.08 * flickerIntensity})`;
@@ -4005,29 +4083,72 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.ellipse(rearWX - 1.5, -11, 1, 0.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // ── Ground Reflection (faint inverted ghost) ──
+  // ── Wet Asphalt Reflection (dynamic ground reflection) ──
   ctx.save();
   ctx.translate(0, 10);
-  ctx.scale(1, -0.15);
-  ctx.globalAlpha = 0.06;
-  // Just draw a simplified reflection silhouette
+  // Headlight reflection on wet ground
+  const reflectFlicker = 0.85 + Math.sin(g.elapsed * 6) * 0.15;
+  const refGrad = ctx.createRadialGradient(frontWX + 10, 4, 2, frontWX + 10, 4, 35);
+  refGrad.addColorStop(0, `rgba(255,255,200,${0.07 * reflectFlicker})`);
+  refGrad.addColorStop(0.5, `rgba(255,255,180,${0.03 * reflectFlicker})`);
+  refGrad.addColorStop(1, 'rgba(255,255,150,0)');
+  ctx.fillStyle = refGrad;
+  ctx.beginPath();
+  ctx.ellipse(frontWX + 10, 4, 35, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Tail light reflection (red)
+  const tailRefAlpha = isBrakingNow ? 0.06 : 0.03;
+  const tailRefGrad = ctx.createRadialGradient(rearWX - 2, 4, 1, rearWX - 2, 4, 15);
+  tailRefGrad.addColorStop(0, `rgba(255,30,20,${tailRefAlpha})`);
+  tailRefGrad.addColorStop(1, 'rgba(255,0,0,0)');
+  ctx.fillStyle = tailRefGrad;
+  ctx.beginPath();
+  ctx.ellipse(rearWX - 2, 4, 15, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Silhouette ghost (faint inverted)
+  ctx.scale(1, -0.12);
+  ctx.globalAlpha = 0.05;
   ctx.fillStyle = '#222';
   ctx.beginPath();
   ctx.ellipse(0, -10, 30, 12, 0, 0, Math.PI * 2);
   ctx.fill();
+  // Sine wave ripple on reflection
+  ctx.globalAlpha = 0.03;
+  for (let r = 0; r < 3; r++) {
+    const rx = Math.sin(g.elapsed * 1.5 + r * 2) * 3;
+    ctx.beginPath();
+    ctx.ellipse(rx, -8 + r * 4, 25 - r * 5, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.globalAlpha = 1;
   ctx.restore();
 
-  // ── Heat Shimmer (above engine during idle) ──
+  // ── Dynamic Shadow (from overhead street light) ──
+  ctx.save();
+  ctx.globalAlpha = 0.08;
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  // Long shadow stretching to the right-back
+  ctx.moveTo(-25, 5);
+  ctx.lineTo(-40, 12);
+  ctx.lineTo(10, 12);
+  ctx.lineTo(25, 5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // ── Heat Shimmer (above engine during idle) — enhanced ──
   if (bike.phase === 'idle') {
     ctx.save();
-    ctx.globalAlpha = 0.04;
-    for (let h = 0; h < 5; h++) {
-      const hx = -6 + h * 3 + Math.sin(g.elapsed * 4 + h * 1.5) * 1.5;
-      const hy = -12 - h * 2 + Math.sin(g.elapsed * 3 + h) * 1;
-      ctx.fillStyle = 'rgba(255,200,100,0.3)';
+    ctx.globalAlpha = 0.06;
+    for (let h = 0; h < 8; h++) {
+      const hx = -6 + h * 2.5 + Math.sin(g.elapsed * 5 + h * 1.5) * 1.5;
+      const hy = -14 - h * 1.8 + Math.sin(g.elapsed * 3.5 + h) * 1;
+      const hSize = 1.5 + Math.sin(g.elapsed * 4 + h * 0.7) * 0.5;
+      ctx.fillStyle = `rgba(255,200,100,${0.15 + Math.sin(g.elapsed * 6 + h) * 0.08})`;
       ctx.beginPath();
-      ctx.ellipse(hx, hy, 2, 1.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(hx, hy, hSize * 1.3, hSize, g.elapsed * 0.5 + h, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -4035,14 +4156,19 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   }
 
   // ── Driver (blue helmet with goggles, waving during dismount) ──
-  const engineBob = Math.sin(g.elapsed * 12) * 0.3;
-  const driverIsWaving = passengerDismounting; // driver waves while player dismounts
+  const engineBob = Math.sin(g.elapsed * 12) * 0.3 + Math.sin(g.elapsed * 19) * 0.1;
+  const driverIsWaving = passengerDismounting;
+  
+  // Bike weight relief: bounce up slightly when passenger gets off
+  const weightRelief = passengerDismounting && dismountProgress > 0.65 
+    ? Math.sin((dismountProgress - 0.65) / 0.35 * Math.PI) * -1.2 : 0;
+  
   drawCharacter(ctx, {
-    x: 2, y: -18,
+    x: 2, y: -18 + weightRelief,
     scale: 0.5,
     sitting: true,
     facingRight: true,
-    isDriver: !driverIsWaving, // when waving, don't use driver grip pose
+    isDriver: !driverIsWaving,
     helmetColor: '#2563eb',
     bodyBob: engineBob,
     armOffset: 0,
