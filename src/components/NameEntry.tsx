@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { loadAudioSettings, startMenuMusic, stopMenuMusic } from '@/game/audio';
+import { startMenuMusic, stopMenuMusic } from '@/game/audio';
 
 interface BrandingConfig {
   logoUrl: string | null;
