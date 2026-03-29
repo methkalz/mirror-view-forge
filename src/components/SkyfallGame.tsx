@@ -317,6 +317,7 @@ const SkyfallGame: React.FC = () => {
 
   return (
     <div
+      ref={containerRef}
       onContextMenu={(e) => e.preventDefault()}
       style={{
         position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#000',
@@ -325,7 +326,7 @@ const SkyfallGame: React.FC = () => {
     >
       <canvas
         ref={canvasRef}
-        style={{ display: 'block', width: '100vw', height: '100vh', touchAction: 'none', userSelect: 'none' }}
+        style={{ display: 'block', width: '100%', height: '100%', touchAction: 'none', userSelect: 'none' }}
       />
 
       {/* Game Over overlay with leaderboard */}
