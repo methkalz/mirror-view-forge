@@ -1404,6 +1404,133 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
     const damageTilt = damaged ? Math.sin(d.wobble * 8) * 0.08 : 0;
     ctx.rotate(tilt + damageTilt);
 
+    // === CARGO DRONE ===
+    if (d.tier === 'cargo') {
+      const dir = facingRight ? 1 : -1;
+      const sz = d.size;
+
+      // Rope hanging down to crate
+      ctx.strokeStyle = '#8b7355';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-sz * 0.2, sz * 0.4);
+      ctx.lineTo(-sz * 0.15, sz * 1.8);
+      ctx.moveTo(sz * 0.2, sz * 0.4);
+      ctx.lineTo(sz * 0.15, sz * 1.8);
+      ctx.stroke();
+
+      // Golden crate below
+      const crateY = sz * 1.8;
+      const crateW = sz * 0.7;
+      const crateH = sz * 0.5;
+      const crateGrad = ctx.createLinearGradient(0, crateY - crateH / 2, 0, crateY + crateH / 2);
+      crateGrad.addColorStop(0, '#daa520');
+      crateGrad.addColorStop(0.5, '#b8860b');
+      crateGrad.addColorStop(1, '#8b6914');
+      ctx.fillStyle = crateGrad;
+      ctx.fillRect(-crateW / 2, crateY - crateH / 2, crateW, crateH);
+      // Crate edge
+      ctx.strokeStyle = '#6b4c0a';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-crateW / 2, crateY - crateH / 2, crateW, crateH);
+      // Cross straps
+      ctx.strokeStyle = 'rgba(100,70,20,0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-crateW / 2, crateY - crateH / 2);
+      ctx.lineTo(crateW / 2, crateY + crateH / 2);
+      ctx.moveTo(crateW / 2, crateY - crateH / 2);
+      ctx.lineTo(-crateW / 2, crateY + crateH / 2);
+      ctx.stroke();
+
+      // Orange fuselage
+      const bodyGrad = ctx.createLinearGradient(0, -sz * 0.35, 0, sz * 0.35);
+      bodyGrad.addColorStop(0, '#e8760a');
+      bodyGrad.addColorStop(0.4, '#d4680a');
+      bodyGrad.addColorStop(1, '#b05508');
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.moveTo(dir * sz * 1.2, 0);
+      ctx.lineTo(dir * sz * 0.5, -sz * 0.35);
+      ctx.lineTo(-dir * sz * 0.8, -sz * 0.3);
+      ctx.lineTo(-dir * sz * 1.0, 0);
+      ctx.lineTo(-dir * sz * 0.8, sz * 0.35);
+      ctx.lineTo(dir * sz * 0.5, sz * 0.4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#8b4500';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Wings
+      ctx.fillStyle = '#c25a08';
+      ctx.beginPath();
+      ctx.moveTo(dir * sz * 0.1, -sz * 0.3);
+      ctx.lineTo(-dir * sz * 0.3, -sz * 1.1);
+      ctx.lineTo(-dir * sz * 0.7, -sz * 0.9);
+      ctx.lineTo(-dir * sz * 0.5, -sz * 0.3);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(dir * sz * 0.1, sz * 0.35);
+      ctx.lineTo(-dir * sz * 0.3, sz * 1.1);
+      ctx.lineTo(-dir * sz * 0.7, sz * 0.9);
+      ctx.lineTo(-dir * sz * 0.5, sz * 0.35);
+      ctx.fill();
+
+      // Dual engines
+      for (const ey of [-sz * 0.15, sz * 0.15]) {
+        ctx.fillStyle = '#555';
+        ctx.beginPath();
+        ctx.ellipse(-dir * sz * 0.95, ey, 4, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Exhaust
+        ctx.fillStyle = `rgba(100,180,255,${0.3 + Math.random() * 0.2})`;
+        ctx.beginPath();
+        ctx.moveTo(-dir * sz * 0.95, ey - 1.5);
+        ctx.lineTo(-dir * (sz * 0.95 + 6 + Math.random() * 4), ey);
+        ctx.lineTo(-dir * sz * 0.95, ey + 1.5);
+        ctx.fill();
+      }
+
+      // "OTLOP" label on body
+      ctx.save();
+      ctx.scale(dir, 1);
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${Math.max(7, sz * 0.22)}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.globalAlpha = 0.85;
+      ctx.fillText(d.label || 'OTLOP', 0, -sz * 0.05);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+
+      // Blinking light on nose
+      if (Math.sin(g.elapsed * 3) > 0) {
+        ctx.fillStyle = '#22c55e';
+        ctx.shadowColor = '#22c55e';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(dir * sz * 1.1, 0, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      // Health bar
+      if (damaged) {
+        const barW = sz * 2;
+        const barH = 3;
+        const barY = -sz * 0.6;
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(-barW / 2 - 1, barY - 1, barW + 2, barH + 2);
+        const hpRatio = d.health / d.maxHealth;
+        ctx.fillStyle = hpRatio > 0.5 ? '#22c55e' : '#ef4444';
+        ctx.fillRect(-barW / 2, barY, barW * hpRatio, barH);
+      }
+
+      ctx.restore();
+      continue;
+    }
+
     // Searchlight beam (stronger for trackers/bombers)
     const beamAlpha = d.tier === 'scout' ? 0.03 : d.tier === 'tracker' ? 0.06 : 0.08;
     const beamColor = d.tier === 'bomber' ? '255, 150, 0' : '239, 68, 68';

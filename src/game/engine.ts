@@ -7,7 +7,7 @@ import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfx
 
 const DASH_SPEED = 500;
 const DASH_DURATION = 0.25;
-const DASH_COOLDOWN = 1.2;
+const DASH_COOLDOWN = 0.8;
 const CLOSE_CALL_DIST = 45;
 const PLAYER_RADIUS = 22;
 const GROUND_RATIO = 0.78; // Ground plane at 78% of screen height
@@ -56,7 +56,7 @@ export function createGame(w: number, h: number): GameData {
     elapsed: 0,
     difficulty: 1,
     spawnTimer: 0,
-    powerUpTimer: 8,
+    powerUpTimer: 10 + Math.random() * 5,
     droneTimer: 90,
     screenShake: { x: 0, y: 0 },
     damageFlash: 0,
@@ -91,6 +91,8 @@ export function createGame(w: number, h: number): GameData {
     microSlowTimer: 0,
     deathTimer: 0,
     deathPhase: 'alive',
+    firstAmmoDropped: false,
+    cargoTimer: 120,
   };
 }
 
@@ -132,7 +134,7 @@ export function resetGame(g: GameData) {
   g.elapsed = 0;
   g.difficulty = 1;
   g.spawnTimer = 3.5;
-  g.powerUpTimer = 8;
+  g.powerUpTimer = 10 + Math.random() * 5;
   g.droneTimer = 90;
   g.screenShake = { x: 0, y: 0 };
   g.damageFlash = 0;
@@ -164,6 +166,8 @@ export function resetGame(g: GameData) {
   g.microSlowTimer = 0;
   g.deathTimer = 0;
   g.deathPhase = 'alive';
+  g.firstAmmoDropped = false;
+  g.cargoTimer = 120;
 }
 
 function dist(a: Vec2, b: Vec2): number {
@@ -366,6 +370,38 @@ function spawnDrone(g: GameData, forcedTier?: DroneTier) {
   configureDroneByTier(d, selectedTier, g.elapsed);
 }
 
+function spawnCargoDrone(g: GameData) {
+  const d = getFromPool<Drone>(g.drones, () => ({
+    active: false, pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
+    speed: 0, size: 0, health: 0, maxHealth: 0, state: 'entering' as const, entryTarget: { x: 0, y: 0 },
+    tier: 'scout' as const, bombTimer: 0, bombCooldown: 0, hoverTimer: 0,
+    aggroDelay: 0, trackingAccuracy: 0, wobble: 0, altitudeOffset: 0, colorHue: 0
+  }), 10);
+  const fromRight = Math.random() > 0.5;
+  const startX = fromRight ? g.width + 40 : -40;
+  const flyY = g.height * (0.08 + Math.random() * 0.04);
+  const speed = 40 + Math.random() * 20;
+  d.pos = { x: startX, y: flyY };
+  d.entryTarget = { x: fromRight ? -60 : g.width + 60, y: flyY };
+  d.vel = { x: fromRight ? -speed : speed, y: 0 };
+  d.speed = speed;
+  d.size = 35;
+  d.health = 3;
+  d.maxHealth = 3;
+  d.state = 'tracking';
+  d.tier = 'cargo';
+  d.hoverTimer = 0;
+  d.aggroDelay = 0;
+  d.trackingAccuracy = 0;
+  d.bombTimer = 0;
+  d.bombCooldown = 0;
+  d.wobble = Math.random() * Math.PI * 2;
+  d.altitudeOffset = 0;
+  d.colorHue = 30;
+  d.cargoType = Math.random() > 0.5 ? 'airstrike' : 'medkit';
+  d.label = 'OTLOP';
+}
+
 function queueWaveEvent(
   g: GameData,
   event: { id: string; text: string; sub: string; color: string; duration: number; type: 'warning' | 'upgrade' }
@@ -479,7 +515,7 @@ function damagePlayer(g: GameData, dmg: number, sourcePos: Vec2) {
   p.hitTimer = 0.3;
   p.anim = 'hit';
   g.damageFlash = 0.35;
-  g.hitStopTimer = 0.06; // 60ms freeze on player hit
+  g.hitStopTimer = Math.max(g.hitStopTimer, 0.06);
   // Knockback
   const kdir = sourcePos.x < p.pos.x ? 1 : -1;
   p.velocity.x += kdir * 200;
@@ -489,7 +525,7 @@ function damagePlayer(g: GameData, dmg: number, sourcePos: Vec2) {
     g.deathPhase = 'dying';
     g.deathTimer = 1.5;
     g.slowMoFactor = 0.15;
-    g.hitStopTimer = 0.15; // longer freeze on death
+    g.hitStopTimer = Math.max(g.hitStopTimer, 0.15);
   }
 }
 
@@ -686,7 +722,7 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (g.bulletLevel >= 3) sfxShoot3();
     else if (g.bulletLevel >= 2) sfxShoot2();
     else sfxShoot1();
-    p.velocity.x += p.facingRight ? -60 : 60;
+    p.velocity.x += p.facingRight ? -18 : 18;
     const baseX = p.pos.x + (p.facingRight ? 10 : -10);
     const baseY = p.pos.y - 20;
     const angles = g.bulletLevel === 1 ? [0] : g.bulletLevel === 2 ? [-0.1, 0.1] : [-0.15, 0, 0.15];
@@ -986,7 +1022,23 @@ export function update(g: GameData, input: InputState, dt: number) {
   g.powerUpTimer -= dt;
   if (g.powerUpTimer <= 0) {
     g.powerUpTimer = 8 + Math.random() * 5;
-    spawnPowerUp(g);
+    if (!g.firstAmmoDropped && g.elapsed >= 10) {
+      // Force first drop to be ammo
+      g.firstAmmoDropped = true;
+      const pu = getFromPool<PowerUp>(g.powerUps, () => ({
+        active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
+        parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
+      }), 20);
+      pu.type = 'ammo';
+      pu.pos = { x: 40 + Math.random() * (g.width - 80), y: -20 };
+      pu.size = 14;
+      pu.parachuting = true;
+      pu.fallSpeed = 35 + Math.random() * 15;
+      pu.bobTimer = 0;
+      pu.groundTimer = 0;
+    } else {
+      spawnPowerUp(g);
+    }
   }
 
   for (const pu of g.powerUps) {
@@ -1018,6 +1070,7 @@ export function update(g: GameData, input: InputState, dt: number) {
       switch (pu.type) {
         case 'medkit':
           p.health = Math.min(p.maxHealth, p.health + 30);
+          p.dashCooldown = 0; // instant dash recharge
           addFloatingText(g, '+30 HP', { x: p.pos.x, y: p.pos.y - 40 }, '#22c55e');
           spawnParticles(g, p.pos, 8, '#22c55e', 80);
           break;
@@ -1033,6 +1086,7 @@ export function update(g: GameData, input: InputState, dt: number) {
           break;
         case 'ammo':
           p.ammo = Math.min(30, p.ammo + 8);
+          p.dashCooldown = 0; // instant dash recharge
           addFloatingText(g, '+8 Ammo', { x: p.pos.x, y: p.pos.y - 40 }, '#a855f7');
           spawnParticles(g, p.pos, 8, '#a855f7', 80);
           break;
@@ -1088,6 +1142,15 @@ export function update(g: GameData, input: InputState, dt: number) {
 
   // Magnet attraction removed — magnet now works instantly
 
+  // === Cargo Drone ===
+  if (g.elapsed >= 120) {
+    g.cargoTimer -= dt;
+    if (g.cargoTimer <= 0) {
+      g.cargoTimer = 60 + Math.random() * 30;
+      spawnCargoDrone(g);
+    }
+  }
+
   // === Drones ===
   if (g.activatedWaveEvents.has('drones_scout')) {
     g.droneTimer -= dt;
@@ -1105,6 +1168,17 @@ export function update(g: GameData, input: InputState, dt: number) {
   for (const d of g.drones) {
     if (!d.active) continue;
     d.wobble += dt;
+
+    // === Cargo drone: passive fly-through ===
+    if (d.tier === 'cargo') {
+      d.pos.x += d.vel.x * dt;
+      d.pos.y += Math.sin(d.wobble * 1.5) * 5 * dt; // gentle bob
+      // Remove when off-screen
+      if ((d.vel.x > 0 && d.pos.x > g.width + 80) || (d.vel.x < 0 && d.pos.x < -80)) {
+        d.active = false;
+      }
+      continue;
+    }
 
     // Emit damage smoke if health < maxHealth
     if (d.health < d.maxHealth && d.health > 0) {
@@ -1338,7 +1412,7 @@ export function update(g: GameData, input: InputState, dt: number) {
         const proximity = Math.max(0, 1 - distToPlayer / 200);
         const bonus = comboScore(g, Math.floor(20 + proximity * 80));
         g.score += bonus;
-        g.hitStopTimer = 0.05;
+        g.hitStopTimer = Math.max(g.hitStopTimer, 0.05);
         g.microSlowTimer = 0.2;
         const comboText = g.comboMultiplier > 1 ? ` ×${g.comboMultiplier}` : '';
         addFloatingText(g, `Shot! +${bonus}${comboText}`, h.pos, '#a855f7');
@@ -1368,18 +1442,33 @@ export function update(g: GameData, input: InputState, dt: number) {
           spawnParticles(g, d.pos, 15, '#f97316', 180);
           spawnParticles(g, d.pos, 8, '#555', 100);
           incrementCombo(g);
-          const base = d.tier === 'bomber' ? 80 : d.tier === 'tracker' ? 50 : 30;
+          // Cargo drone drops its payload
+          if (d.tier === 'cargo' && d.cargoType) {
+            const pu = getFromPool<PowerUp>(g.powerUps, () => ({
+              active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
+              parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
+            }), 20);
+            pu.type = d.cargoType;
+            pu.pos = { x: d.pos.x, y: d.pos.y };
+            pu.size = 14;
+            pu.parachuting = true;
+            pu.fallSpeed = 30;
+            pu.bobTimer = 0;
+            pu.groundTimer = 0;
+            addFloatingText(g, `CARGO DROP!`, d.pos, '#fbbf24');
+          }
+          const base = d.tier === 'cargo' ? 60 : d.tier === 'bomber' ? 80 : d.tier === 'tracker' ? 50 : 30;
           const bonus = comboScore(g, base);
           const comboText = g.comboMultiplier > 1 ? ` ×${g.comboMultiplier}` : '';
           addFloatingText(g, `Shot Down! +${bonus}${comboText}`, d.pos, '#a855f7');
           g.score += bonus;
           g.stats.dronesDestroyed++;
-          g.hitStopTimer = 0.08;
+          g.hitStopTimer = Math.max(g.hitStopTimer, 0.08);
           g.microSlowTimer = 0.2;
         } else {
           // Damaged but not destroyed — visual feedback
           addFloatingText(g, `HIT!`, b.pos, '#ff6b35');
-          g.hitStopTimer = 0.03;
+          g.hitStopTimer = Math.max(g.hitStopTimer, 0.03);
         }
         hit = true;
         break;

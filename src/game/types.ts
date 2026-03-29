@@ -8,7 +8,7 @@ export type GameState = 'start' | 'playing' | 'gameover';
 export type HazardType = 'shrapnel' | 'missile' | 'cluster';
 export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike';
 export type DroneState = 'entering' | 'tracking' | 'bombing';
-export type DroneTier = 'scout' | 'tracker' | 'bomber';
+export type DroneTier = 'scout' | 'tracker' | 'bomber' | 'cargo';
 export type PlayerAnim = 'idle' | 'walk' | 'roll' | 'hit';
 
 export interface Player {
@@ -130,6 +130,8 @@ export interface Drone {
   wobble: number;
   altitudeOffset: number; // unique Y offset to prevent stacking
   colorHue: number; // unique hue shift for visual distinction
+  cargoType?: PowerUpType; // for cargo drones
+  label?: string; // label drawn on cargo drone
 }
 
 export interface Cloud {
@@ -251,6 +253,8 @@ export interface GameData {
   microSlowTimer: number;
   deathTimer: number;
   deathPhase: 'alive' | 'dying' | 'dead';
+  firstAmmoDropped: boolean;
+  cargoTimer: number;
 }
 
 export interface InputState {
