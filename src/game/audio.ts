@@ -38,7 +38,7 @@ export async function loadAudioSettings() {
       });
     }
     settingsLoaded = true;
-    preloadAllAudio();
+    await preloadAllAudio();
   } catch {
     settingsLoaded = false;
   }
