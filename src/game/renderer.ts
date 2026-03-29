@@ -3305,14 +3305,44 @@ function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
   const dir = bike.facingRight ? 1 : -1;
   ctx.scale(dir, 1);
 
-  // Dust particles
-  if (Math.abs(bike.speed) > 50) {
-    for (let i = 0; i < 2; i++) {
-      const dx = -15 - Math.random() * 10;
-      const dy = -Math.random() * 4;
-      ctx.fillStyle = `rgba(160,140,120,${0.1 + Math.random() * 0.1})`;
+  // Scale up 1.8x for better visibility
+  ctx.scale(1.8, 1.8);
+
+  // Apply engine shake
+  ctx.translate(bike.shakeOffset.x, bike.shakeOffset.y);
+
+  // Exhaust smoke during idle
+  if (bike.phase === 'idle') {
+    for (let i = 0; i < 3; i++) {
+      const age = (g.elapsed * 2 + i * 0.7) % 2;
+      const sx = -22 - age * 8;
+      const sy = -6 - age * 12;
+      const sr = 2 + age * 3;
+      const sa = Math.max(0, 0.25 - age * 0.13);
+      ctx.fillStyle = `rgba(150,150,150,${sa})`;
       ctx.beginPath();
-      ctx.arc(dx, dy, 1.5 + Math.random() * 2, 0, Math.PI * 2);
+      ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Dust particles
+  if (Math.abs(bike.speed) > 30) {
+    for (let i = 0; i < 3; i++) {
+      const dx = -15 - Math.random() * 14;
+      const dy = -Math.random() * 5;
+      ctx.fillStyle = `rgba(160,140,120,${0.12 + Math.random() * 0.12})`;
+      ctx.beginPath();
+      ctx.arc(dx, dy, 2 + Math.random() * 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (bike.phase === 'idle') {
+    // Settled dust under wheels
+    for (let i = 0; i < 2; i++) {
+      const dx = (i === 0 ? 18 : -16) + (Math.random() - 0.5) * 6;
+      ctx.fillStyle = `rgba(160,140,120,${0.06 + Math.random() * 0.04})`;
+      ctx.beginPath();
+      ctx.arc(dx, 1, 3 + Math.random() * 2, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -3371,15 +3401,18 @@ function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.lineWidth = 1;
   ctx.strokeRect(-20, -30, 16, 14);
 
-  // "OTLOP" text — always readable
+  // "OTLOP" text — always readable (cancel parent mirrors)
   ctx.save();
-  ctx.scale(dir, 1); // Cancel parent mirror so text reads correctly
-  const textX = dir === 1 ? -12 : 12;
+  ctx.scale(dir, 1); // cancel first dir scale
+  ctx.scale(1 / 1.8, 1 / 1.8); // cancel the 1.8 scale for crisp text
+  // Position in original coordinate space
+  const boxCenterX = dir === 1 ? -12 * 1.8 : 12 * 1.8;
+  const boxCenterY = -23 * 1.8;
   ctx.fillStyle = '#fff';
-  ctx.font = 'bold 4px monospace';
+  ctx.font = 'bold 7px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('OTLOP', textX, -23);
+  ctx.fillText('OTLOP', boxCenterX, boxCenterY);
   ctx.restore();
 
   // Rider (simplified)
@@ -3403,11 +3436,19 @@ function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.lineTo(8, -16);
   ctx.stroke();
 
-  // Headlight
-  if (bike.phase !== 'dropping') {
-    ctx.fillStyle = 'rgba(255,255,200,0.6)';
+  // Headlight — blinks during idle
+  const showLight = bike.phase === 'idle'
+    ? Math.sin(g.elapsed * 6) > 0
+    : bike.phase !== 'dropping';
+  if (showLight) {
+    ctx.fillStyle = 'rgba(255,255,200,0.7)';
     ctx.beginPath();
-    ctx.arc(frontWX + 5, -8, 2, 0, Math.PI * 2);
+    ctx.arc(frontWX + 5, -8, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Light glow
+    ctx.fillStyle = 'rgba(255,255,200,0.15)';
+    ctx.beginPath();
+    ctx.arc(frontWX + 5, -8, 6, 0, Math.PI * 2);
     ctx.fill();
   }
 
