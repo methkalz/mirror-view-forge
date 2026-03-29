@@ -3512,103 +3512,170 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
   if (g.wavePhase !== 'cards' || g.upgradeCards.length === 0) return;
 
   // Dark overlay
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
   ctx.fillRect(0, 0, g.width, g.height);
-
-  // Title
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 16px monospace';
-  ctx.textAlign = 'center';
-  ctx.shadowColor = '#fbbf24';
-  ctx.shadowBlur = 12;
-  ctx.fillText('CHOOSE UPGRADE', g.width / 2, g.height * 0.25);
-  ctx.shadowBlur = 0;
-
-  const cardW = 100, cardH = 140, gap = 16;
-  const totalW = g.upgradeCards.length * cardW + (g.upgradeCards.length - 1) * gap;
-  const startX = (g.width - totalW) / 2;
-  const cardY = g.height * 0.35;
 
   // Animate cards sliding in
   const slideIn = Math.min(1, g.cardsShownTimer * 3);
   const eased = 1 - Math.pow(1 - slideIn, 3);
 
+  // ── Title ──
+  ctx.save();
+  ctx.globalAlpha = eased;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Main title
+  ctx.fillStyle = '#fbbf24';
+  ctx.font = 'bold 20px Arial, sans-serif';
+  ctx.shadowColor = 'rgba(251,191,36,0.3)';
+  ctx.shadowBlur = 8;
+  ctx.fillText('CHOOSE UPGRADE', g.width / 2, g.height * 0.22);
+  ctx.shadowBlur = 0;
+
+  // Arabic subtitle
+  ctx.fillStyle = 'rgba(251,191,36,0.6)';
+  ctx.font = '13px Arial, sans-serif';
+  ctx.fillText('اختر ترقية', g.width / 2, g.height * 0.22 + 22);
+  ctx.restore();
+
+  // ── Cards ──
+  const cardW = 130, cardH = 185, gap = 12;
+  const totalW = g.upgradeCards.length * cardW + (g.upgradeCards.length - 1) * gap;
+  const startX = (g.width - totalW) / 2;
+  const cardY = g.height * 0.30;
+
   for (let i = 0; i < g.upgradeCards.length; i++) {
     const card = g.upgradeCards[i];
     const cx = startX + i * (cardW + gap);
-    const cy = cardY + (1 - eased) * 60;
+    const cy = cardY + (1 - eased) * 80;
+
+    // No selection highlight needed — tap triggers immediately
+    const isSelected = false;
 
     ctx.save();
     ctx.globalAlpha = eased;
 
-    // Card background
+    // Scale effect for selected card
+    if (isSelected) {
+      const centerX = cx + cardW / 2;
+      const centerY = cy + cardH / 2;
+      ctx.translate(centerX, centerY);
+      ctx.scale(1.05, 1.05);
+      ctx.translate(-centerX, -centerY);
+    }
+
+    // Card shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 4;
+
+    // Card background — clean dark gradient
     const cardGrad = ctx.createLinearGradient(cx, cy, cx, cy + cardH);
-    cardGrad.addColorStop(0, 'rgba(30, 30, 50, 0.95)');
-    cardGrad.addColorStop(1, 'rgba(15, 15, 30, 0.95)');
+    cardGrad.addColorStop(0, 'rgba(28, 28, 45, 0.97)');
+    cardGrad.addColorStop(0.5, 'rgba(22, 22, 38, 0.97)');
+    cardGrad.addColorStop(1, 'rgba(16, 16, 30, 0.97)');
     ctx.fillStyle = cardGrad;
     ctx.beginPath();
-    ctx.roundRect(cx, cy, cardW, cardH, 10);
+    ctx.roundRect(cx, cy, cardW, cardH, 14);
     ctx.fill();
 
-    // Gold border
-    ctx.strokeStyle = card.color;
-    ctx.lineWidth = 2;
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+
+    // Subtle border
+    ctx.strokeStyle = isSelected ? card.color : `${card.color}88`;
+    ctx.lineWidth = isSelected ? 2 : 1.5;
     ctx.beginPath();
-    ctx.roundRect(cx, cy, cardW, cardH, 10);
+    ctx.roundRect(cx, cy, cardW, cardH, 14);
     ctx.stroke();
 
-    // Glow
-    ctx.shadowColor = card.color;
-    ctx.shadowBlur = 10;
-    ctx.strokeStyle = `${card.color}44`;
+    // Top accent line
+    ctx.strokeStyle = card.color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(cx + 20, cy + 1);
+    ctx.lineTo(cx + cardW - 20, cy + 1);
+    ctx.stroke();
+
+    // ── Icon area ──
+    const iconY = cy + 55;
+    // Icon circle background
+    ctx.fillStyle = `${card.color}15`;
+    ctx.beginPath();
+    ctx.arc(cx + cardW / 2, iconY, 28, 0, Math.PI * 2);
+    ctx.fill();
+    // Icon ring
+    ctx.strokeStyle = `${card.color}33`;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.roundRect(cx - 2, cy - 2, cardW + 4, cardH + 4, 12);
+    ctx.arc(cx + cardW / 2, iconY, 28, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
     // Icon
     ctx.fillStyle = '#fff';
-    ctx.font = '28px sans-serif';
+    ctx.font = '36px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(card.icon, cx + cardW / 2, cy + 35);
+    ctx.fillText(card.icon, cx + cardW / 2, iconY);
 
-    // Name
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 10px monospace';
-    ctx.fillText(card.name, cx + cardW / 2, cy + 70);
+    // ── Name ──
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(card.name, cx + cardW / 2, cy + 100);
 
     // Arabic name
     ctx.fillStyle = card.color;
-    ctx.font = '9px monospace';
-    ctx.fillText(card.nameAr, cx + cardW / 2, cy + 85);
+    ctx.font = '11px Arial, sans-serif';
+    ctx.fillText(card.nameAr, cx + cardW / 2, cy + 118);
 
-    // Description
-    ctx.fillStyle = 'rgba(200,200,200,0.7)';
-    ctx.font = '8px monospace';
-    ctx.fillText(card.description, cx + cardW / 2, cy + 105);
+    // ── Description ──
+    ctx.fillStyle = 'rgba(200,210,220,0.65)';
+    ctx.font = '10px Arial, sans-serif';
+    ctx.fillText(card.description, cx + cardW / 2, cy + 140);
 
-    // "TAP" hint
-    const pulse = 0.4 + Math.sin(g.elapsed * 4 + i) * 0.2;
+    // ── Separator line ──
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx + 16, cy + 155);
+    ctx.lineTo(cx + cardW - 16, cy + 155);
+    ctx.stroke();
+
+    // ── TAP hint ──
+    const pulse = 0.5 + Math.sin(g.elapsed * 4 + i * 1.2) * 0.3;
     ctx.fillStyle = `rgba(251,191,36,${pulse})`;
-    ctx.font = '8px monospace';
-    ctx.fillText('TAP', cx + cardW / 2, cy + cardH - 12);
+    ctx.font = '9px Arial, sans-serif';
+    ctx.letterSpacing = '3px';
+    ctx.fillText('── TAP ──', cx + cardW / 2, cy + cardH - 16);
+    ctx.letterSpacing = '0px';
 
     ctx.restore();
   }
 
-  // Timer bar at bottom
+  // ── Timer bar ──
   const maxTime = 8;
   const remaining = Math.max(0, maxTime - g.cardsShownTimer);
   const ratio = remaining / maxTime;
   const barW = totalW;
   const barX = startX;
-  const barY = cardY + cardH + 16;
-  ctx.fillStyle = 'rgba(255,255,255,0.1)';
-  ctx.fillRect(barX, barY, barW, 3);
-  ctx.fillStyle = ratio > 0.3 ? '#fbbf24' : '#ef4444';
-  ctx.fillRect(barX, barY, barW * ratio, 3);
+  const barY = cardY + cardH * eased + 20;
+
+  // Background track
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.beginPath();
+  ctx.roundRect(barX, barY, barW, 4, 2);
+  ctx.fill();
+
+  // Progress fill
+  const barColor = ratio > 0.3 ? '#fbbf24' : '#ef4444';
+  ctx.fillStyle = barColor;
+  ctx.beginPath();
+  ctx.roundRect(barX, barY, barW * ratio, 4, 2);
+  ctx.fill();
 }
 
 // ─── Wave Indicator ───────────────────────────────────
