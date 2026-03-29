@@ -2879,6 +2879,29 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillText(`SHIELD ${p.shieldTimer.toFixed(1)}s`, 30, effectY + 2);
     ctx.globalAlpha = 1;
   }
+  // Extinguisher timer
+  if (p.extinguisherTimer > 0) {
+    const blink = p.extinguisherTimer < 2 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
+    ctx.globalAlpha = blink;
+    drawCircularProgress(20, effectY - 2, 5, p.extinguisherTimer / 8, '#f97316');
+    ctx.fillStyle = '#f97316';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`FIRE ${p.extinguisherTimer.toFixed(1)}s`, 30, effectY + 2);
+    ctx.globalAlpha = 1;
+    effectY += 18;
+  }
+  // Gas mask timer
+  if (p.gasMaskTimer > 0) {
+    const blink = p.gasMaskTimer < 3 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
+    ctx.globalAlpha = blink;
+    drawCircularProgress(20, effectY - 2, 5, p.gasMaskTimer / 15, '#16a34a');
+    ctx.fillStyle = '#16a34a';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`MASK ${p.gasMaskTimer.toFixed(1)}s`, 30, effectY + 2);
+    ctx.globalAlpha = 1;
+  }
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
