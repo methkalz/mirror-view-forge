@@ -1288,6 +1288,68 @@ export function update(g: GameData, input: InputState, dt: number) {
     }
   }
 
+  // === Incendiary Drones ===
+  if (g.activatedWaveEvents.has('drones_incendiary')) {
+    g.incendiaryTimer -= dt;
+    if (g.incendiaryTimer <= 0) {
+      g.incendiaryTimer = 25 + Math.random() * 15;
+      spawnIncendiaryDrone(g);
+    }
+  }
+
+  // === Chemical Drones ===
+  if (g.activatedWaveEvents.has('drones_chemical')) {
+    g.chemicalTimer -= dt;
+    if (g.chemicalTimer <= 0) {
+      g.chemicalTimer = 30 + Math.random() * 20;
+      spawnChemicalDrone(g);
+    }
+  }
+
+  // === Player protection timers ===
+  if (p.gasMaskTimer > 0) p.gasMaskTimer -= dt;
+  if (p.extinguisherTimer > 0) p.extinguisherTimer -= dt;
+
+  // === Update Fire Pools ===
+  for (let i = g.firePools.length - 1; i >= 0; i--) {
+    const fp = g.firePools[i];
+    fp.life -= dt;
+    if (fp.life <= 0) { g.firePools.splice(i, 1); continue; }
+    // Damage player if standing in fire (unless extinguisher active)
+    if (p.extinguisherTimer <= 0 && dist(p.pos, fp.pos) < fp.size + p.size) {
+      const fireDmg = fp.damagePerSec * dt;
+      p.health = Math.max(0, p.health - fireDmg);
+      if (Math.random() < 0.2) addFloatingText(g, '🔥', { x: p.pos.x, y: p.pos.y - 30 }, '#f97316');
+      if (p.health <= 0 && g.deathPhase === 'alive') {
+        g.deathPhase = 'dying';
+        g.deathTimer = 1.5;
+        g.slowMoFactor = 0.15;
+        g.hitStopTimer = Math.max(g.hitStopTimer, 0.15);
+      }
+    }
+  }
+
+  // === Update Gas Clouds ===
+  for (let i = g.gasClouds.length - 1; i >= 0; i--) {
+    const gc = g.gasClouds[i];
+    gc.life -= dt;
+    if (gc.life <= 0) { g.gasClouds.splice(i, 1); continue; }
+    // Damage + slow player if in gas (unless gas mask active)
+    if (p.gasMaskTimer <= 0 && dist(p.pos, gc.pos) < gc.size + p.size) {
+      const gasDmg = gc.damagePerSec * dt;
+      p.health = Math.max(0, p.health - gasDmg);
+      // Slow movement by 50%
+      p.velocity.x *= (1 - 0.5 * dt * 5); // smooth slow
+      if (Math.random() < 0.15) addFloatingText(g, '☣', { x: p.pos.x, y: p.pos.y - 30 }, '#16a34a');
+      if (p.health <= 0 && g.deathPhase === 'alive') {
+        g.deathPhase = 'dying';
+        g.deathTimer = 1.5;
+        g.slowMoFactor = 0.15;
+        g.hitStopTimer = Math.max(g.hitStopTimer, 0.15);
+      }
+    }
+  }
+
   // === Drones ===
   if (g.activatedWaveEvents.has('drones_scout')) {
     g.droneTimer -= dt;
