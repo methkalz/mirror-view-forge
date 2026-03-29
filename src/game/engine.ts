@@ -1763,17 +1763,17 @@ export function update(g: GameData, input: InputState, dt: number) {
     }
   }
 
-  // === Drones ===
-  if (g.activatedWaveEvents.has('drones_scout') && g.wavePhase === 'active') {
+  // === Drones — Recipe-based ===
+  const droneRecipe = getWaveRecipe(g.waveNumber);
+  if (droneRecipe.droneInterval > 0 && g.wavePhase === 'active') {
     g.droneTimer -= dt;
     if (g.droneTimer <= 0) {
-      const hasTrackers = g.activatedWaveEvents.has('drones_tracker');
-      const hasBombers = g.activatedWaveEvents.has('drones_bomber');
-      const baseInterval = hasBombers ? 16 : hasTrackers ? 20 : 26;
-      const minInterval = hasBombers ? 8 : hasTrackers ? 10 : 12;
-      const interval = Math.max(minInterval, baseInterval - g.elapsed * 0.02);
-      g.droneTimer = interval + Math.random() * 4;
-      spawnDrone(g);
+      g.droneTimer = droneRecipe.droneInterval + Math.random() * 4;
+      // Pick a random tier from available tiers
+      if (droneRecipe.droneTiers.length > 0) {
+        const tier = droneRecipe.droneTiers[Math.floor(Math.random() * droneRecipe.droneTiers.length)];
+        spawnDrone(g, tier);
+      }
     }
   }
 
