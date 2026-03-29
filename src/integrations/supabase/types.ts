@@ -127,6 +127,48 @@ export type Database = {
         }
         Relationships: []
       }
+      game_sessions: {
+        Row: {
+          bosses_defeated: number
+          close_calls: number
+          created_at: string
+          drones_destroyed: number
+          duration_seconds: number
+          id: string
+          level_reached: number
+          player_name: string
+          powerups_collected: number
+          score: number
+          waves_reached: number
+        }
+        Insert: {
+          bosses_defeated?: number
+          close_calls?: number
+          created_at?: string
+          drones_destroyed?: number
+          duration_seconds?: number
+          id?: string
+          level_reached?: number
+          player_name: string
+          powerups_collected?: number
+          score?: number
+          waves_reached?: number
+        }
+        Update: {
+          bosses_defeated?: number
+          close_calls?: number
+          created_at?: string
+          drones_destroyed?: number
+          duration_seconds?: number
+          id?: string
+          level_reached?: number
+          player_name?: string
+          powerups_collected?: number
+          score?: number
+          waves_reached?: number
+        }
+        Relationships: []
+      }
       leaderboard: {
         Row: {
           created_at: string
