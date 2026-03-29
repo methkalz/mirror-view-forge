@@ -160,6 +160,9 @@ const Admin: React.FC = () => {
         ))}
       </div>
 
+      {/* ANALYTICS TAB */}
+      {tab === 'analytics' && analytics && <AnalyticsPanel data={analytics} onRefresh={async () => { const an = await fetchAnalytics(); setAnalytics(an); }} />}
+
       {/* CONFIG TAB */}
       {tab === 'config' && config && (
         <div style={sectionStyle}>
