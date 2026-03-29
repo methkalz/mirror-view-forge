@@ -3308,6 +3308,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderExplosions(ctx, g);
   renderPowerUps(ctx, g);
   renderFirePools(ctx, g);
+  renderDeliveryBike(ctx, g);
   renderGasClouds(ctx, g);
   renderDrones(ctx, g);
   renderBoss(ctx, g);
@@ -3523,6 +3524,11 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
 
   // Cinematic warning overlay (center screen + blur + slow-mo)
   renderCinematicWarning(ctx, g);
+
+  // Wave rest overlay + upgrade cards
+  renderRestOverlay(ctx, g);
+  renderUpgradeCards(ctx, g);
+  renderWaveIndicator(ctx, g);
 }
 
 // ─── Cinematic Warning (Full-Screen Center) ───────────
