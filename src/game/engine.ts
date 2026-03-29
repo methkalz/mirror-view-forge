@@ -254,7 +254,7 @@ export function resetGame(g: GameData) {
     shakeOffset: { x: 0, y: 0 },
   };
   g.player.pos = { x: bikeStartX, y: g.player.groundY };
-  g.cameraZoomTarget = 1.5;
+  g.cameraZoomTarget = 1.3;
   g.cameraZoom = 1;
   g.cameraFocusX = g.width / 2;
   g.cameraFocusY = g.player.groundY;
@@ -313,7 +313,7 @@ export function updateIntro(g: GameData, dt: number) {
 
       // Camera shake on brake impact — stronger, exponential decay
       if (g.introTimer < dt * 2) {
-        g.screenShake = { x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 2 };
+        g.screenShake = { x: (Math.random() - 0.5) * 2.5, y: (Math.random() - 0.5) * 1.2 };
       } else if (g.introTimer < 0.2) {
         const decay = Math.pow(0.85, (g.introTimer / dt));
         g.screenShake = { x: g.screenShake.x * decay, y: g.screenShake.y * decay };
@@ -321,7 +321,7 @@ export function updateIntro(g: GameData, dt: number) {
         g.screenShake = { x: 0, y: 0 };
       }
 
-      if (g.introTimer > 1.2) {
+      if (g.introTimer > 0.8) {
         g.introPhase = 'playerDismount';
         g.introTimer = 0;
         g.introPlayerOffset = 0;
@@ -335,35 +335,33 @@ export function updateIntro(g: GameData, dt: number) {
       const vibeYD = Math.sin(tD * 14) * 0.1;
       bike.shakeOffset = { x: vibeXD, y: vibeYD };
       
-      // 4-phase professional dismount with BACKWARD jump arc
-      const dismountDuration = 1.8;
+      // 3-phase dismount: lift → arc behind → gravity land
+      const dismountDuration = 1.4;
       const dp = Math.min(1, g.introTimer / dismountDuration);
       
-      // Phase 0: Anticipation [0→0.15] — still on bike
-      // Phase 1: Arc Leg Swing [0.15→0.40] — leg swings over seat
-      // Phase 2: Gravity Drop [0.40→0.70] — parabolic jump BEHIND bike
-      // Phase 3: Landing [0.70→1.0] — squat absorb + settle
-      if (dp < 0.15) {
-        // Still on bike, subtle weight shift
+      // Phase 0: Lift [0→0.25] — rise from seat
+      // Phase 1: Arc Swing [0.25→0.60] — swing behind bike
+      // Phase 2: Landing [0.60→1.0] — gravity drop to ground
+      if (dp < 0.25) {
+        const t = dp / 0.25;
         g.player.pos.x = bike.pos.x;
-        g.introPlayerJumpY = 0;
-      } else if (dp < 0.70) {
-        // Parabolic jump arc: up then down, moving BEHIND (left of) bike
-        const jumpT = (dp - 0.15) / 0.55; // 0→1 over phases 1+2
-        const horizontalEase = jumpT * jumpT * (3 - 2 * jumpT); // smoothstep
-        g.introPlayerOffset = -horizontalEase * 40; // negative = behind bike
+        g.introPlayerOffset = 0;
+        g.introPlayerJumpY = -t * 3; // rise slightly
+        // Bike tilts 1° opposite
+        bike.shakeOffset.x = t * 0.8;
+      } else if (dp < 0.60) {
+        const t = (dp - 0.25) / 0.35;
+        const ease = t * t * (3 - 2 * t);
+        g.introPlayerOffset = -ease * 35;
         g.player.pos.x = bike.pos.x + g.introPlayerOffset;
-        // Parabolic arc: initialVelocity * t - 0.5 * g * t²
-        const initialVelocity = 3.5;
-        const gravity = 5.0;
-        g.introPlayerJumpY = -(initialVelocity * jumpT - 0.5 * gravity * jumpT * jumpT) * 12;
+        // Arc up then down
+        g.introPlayerJumpY = -Math.sin(t * Math.PI) * 8;
       } else {
-        // Landing phase: ease to final position
-        const landT = (dp - 0.70) / 0.30;
-        const easeOut = 1 - (1 - landT) * (1 - landT);
-        g.introPlayerOffset = -40 + easeOut * 5; // settle slightly
+        const t = (dp - 0.60) / 0.40;
+        const easeOut = 1 - (1 - t) * (1 - t);
+        g.introPlayerOffset = -35 + easeOut * 3;
         g.player.pos.x = bike.pos.x + g.introPlayerOffset;
-        g.introPlayerJumpY = 0; // on the ground
+        g.introPlayerJumpY = 0;
       }
       g.player.facingRight = true;
 
@@ -371,7 +369,7 @@ export function updateIntro(g: GameData, dt: number) {
       g.cameraFocusX = (bike.pos.x + g.player.pos.x) / 2;
 
       if (g.introTimer > dismountDuration) {
-        g.player.pos.x = bike.pos.x - 35;
+        g.player.pos.x = bike.pos.x - 32;
         g.player.pos.y = g.player.groundY;
         g.introPhase = 'bikeLeave';
         g.introTimer = 0;
