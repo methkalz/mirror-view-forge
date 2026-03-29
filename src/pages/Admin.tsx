@@ -345,6 +345,7 @@ const AnalyticsPanel: React.FC<{ data: GameAnalytics; onRefresh: () => void }> =
 
       {/* Key Metrics */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+        {statCard('🟢', 'Online Now — متواجدون الآن', onlineCount, '#10b981')}
         {statCard('🎮', 'Total Sessions', data.totalSessions, '#3b82f6', `${data.sessionsToday} today · ${data.sessionsThisWeek} this week`)}
         {statCard('👥', 'Unique Players', data.uniquePlayers, '#8b5cf6')}
         {statCard('⏱️', 'Avg Duration', formatTime(data.avgDuration), '#f59e0b', `Max: ${formatTime(data.maxDuration)}`)}
