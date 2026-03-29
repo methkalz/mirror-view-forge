@@ -1693,7 +1693,8 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Incendiary Drones — Recipe-based ===
-  if (droneRecipe.hasIncendiary && g.wavePhase === 'active') {
+  const recipeForDrones = getWaveRecipe(g.waveNumber);
+  if (recipeForDrones.hasIncendiary && g.wavePhase === 'active') {
     g.incendiaryTimer -= dt;
     if (g.incendiaryTimer <= 0) {
       g.incendiaryTimer = 25 + Math.random() * 15;
@@ -1702,7 +1703,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Chemical Drones — Recipe-based ===
-  if (droneRecipe.hasChemical && g.wavePhase === 'active') {
+  if (recipeForDrones.hasChemical && g.wavePhase === 'active') {
     g.chemicalTimer -= dt;
     if (g.chemicalTimer <= 0) {
       g.chemicalTimer = 30 + Math.random() * 20;
@@ -1764,14 +1765,12 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Drones — Recipe-based ===
-  const droneRecipe = getWaveRecipe(g.waveNumber);
-  if (droneRecipe.droneInterval > 0 && g.wavePhase === 'active') {
+  if (recipeForDrones.droneInterval > 0 && g.wavePhase === 'active') {
     g.droneTimer -= dt;
     if (g.droneTimer <= 0) {
-      g.droneTimer = droneRecipe.droneInterval + Math.random() * 4;
-      // Pick a random tier from available tiers
-      if (droneRecipe.droneTiers.length > 0) {
-        const tier = droneRecipe.droneTiers[Math.floor(Math.random() * droneRecipe.droneTiers.length)];
+      g.droneTimer = recipeForDrones.droneInterval + Math.random() * 4;
+      if (recipeForDrones.droneTiers.length > 0) {
+        const tier = recipeForDrones.droneTiers[Math.floor(Math.random() * recipeForDrones.droneTiers.length)];
         spawnDrone(g, tier);
       }
     }
