@@ -4093,25 +4093,45 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
     ctx.fill();
   }
 
-  // ── Tail Light (enhanced braking glow) ──
+  // ── Tail Light — Physically correct RED with radial gradient bloom ──
   const isBraking = bike.phase === 'idle' || bike.speed < 30;
-  const brakeAlpha = isBraking ? (0.7 + Math.sin(g.elapsed * 4) * 0.2) : 0.5;
-  const brakeGlowSize = isBraking ? 7 : 4;
-  ctx.fillStyle = `rgba(255,0,0,${brakeAlpha * 0.2})`;
+  const brakeIntensity = isBraking ? (0.8 + Math.sin(g.elapsed * 4) * 0.15) : 0.5;
+  const tailX = rearWX - 2, tailY = -10;
+  
+  // Layer 1: Wide ambient red glow (bloom)
+  const outerGlow = ctx.createRadialGradient(tailX, tailY, 0, tailX, tailY, isBraking ? 14 : 8);
+  outerGlow.addColorStop(0, `rgba(255,0,0,${brakeIntensity * 0.15})`);
+  outerGlow.addColorStop(0.4, `rgba(200,0,0,${brakeIntensity * 0.08})`);
+  outerGlow.addColorStop(1, 'rgba(150,0,0,0)');
+  ctx.fillStyle = outerGlow;
   ctx.beginPath();
-  ctx.ellipse(rearWX - 2, -10, brakeGlowSize, brakeGlowSize * 0.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(tailX, tailY, isBraking ? 14 : 8, isBraking ? 7 : 4, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = `rgba(255,20,20,${brakeAlpha * 0.4})`;
+  
+  // Layer 2: Core red glow
+  const coreGlow = ctx.createRadialGradient(tailX, tailY, 0, tailX, tailY, 4);
+  coreGlow.addColorStop(0, `rgba(255,60,30,${brakeIntensity})`);
+  coreGlow.addColorStop(0.5, `rgba(220,20,10,${brakeIntensity * 0.7})`);
+  coreGlow.addColorStop(1, `rgba(180,0,0,${brakeIntensity * 0.2})`);
+  ctx.fillStyle = coreGlow;
   ctx.beginPath();
-  ctx.ellipse(rearWX - 2, -10, 4, 2.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(tailX, tailY, 4, 2.2, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = `rgba(255,50,30,${brakeAlpha})`;
+  
+  // Layer 3: Hot center (bright red-orange filament)
+  const hotCenter = ctx.createRadialGradient(tailX, tailY, 0, tailX, tailY, 1.8);
+  hotCenter.addColorStop(0, `rgba(255,120,80,${brakeIntensity * 0.9})`);
+  hotCenter.addColorStop(0.6, `rgba(255,40,20,${brakeIntensity * 0.6})`);
+  hotCenter.addColorStop(1, 'rgba(200,0,0,0)');
+  ctx.fillStyle = hotCenter;
   ctx.beginPath();
-  ctx.ellipse(rearWX - 2, -10, 2.5, 1.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(tailX, tailY, 1.8, 1.2, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = `rgba(255,150,150,${brakeAlpha * 0.4})`;
+  
+  // Layer 4: Specular highlight
+  ctx.fillStyle = `rgba(255,180,160,${brakeIntensity * 0.35})`;
   ctx.beginPath();
-  ctx.ellipse(rearWX - 1.5, -11, 1, 0.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(tailX + 0.5, tailY - 0.8, 0.8, 0.4, 0.3, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // ── Wet Asphalt Reflection (dynamic ground reflection) ──
@@ -4188,7 +4208,7 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
 
   // ── Driver (blue helmet with goggles, waving during dismount) ──
   const engineBob = Math.sin(g.elapsed * 12) * 0.3 + Math.sin(g.elapsed * 19) * 0.1;
-  const driverIsWaving = passengerDismounting;
+  const driverIsWaving = false; // Driver stays in riding pose during dismount
   
   // Bike weight relief: bounce up slightly when passenger gets off
   const weightRelief = passengerDismounting && dismountProgress > 0.65 
