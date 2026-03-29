@@ -1,7 +1,7 @@
 import {
   GameData, InputState, Hazard, PowerUp, Particle, Vec2, Crater, FloatingText, Drone, Bullet,
   HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning, Boss, DroneTier,
-  FirePool, GasCloud
+  FirePool, GasCloud, UpgradeCard, DeliveryBike
 } from './types';
 import { getFromPool } from './pool';
 import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall } from './audio';
@@ -42,6 +42,13 @@ export function createGame(w: number, h: number): GameData {
       shootTimer: 0,
       gasMaskTimer: 0,
       extinguisherTimer: 0,
+      maxAmmo: 30,
+      speedMultiplier: 1,
+      slowMoDuration: 5,
+      shieldDuration: 8,
+      pickupRange: 5,
+      bulletDamage: 1,
+      dashCooldownBase: DASH_COOLDOWN,
     },
     hazards: [],
     powerUps: [],
@@ -58,7 +65,7 @@ export function createGame(w: number, h: number): GameData {
     highScore: parseInt(localStorage.getItem('skyfall_hi') || '0'),
     elapsed: 0,
     difficulty: 1,
-    spawnTimer: 0,
+    spawnTimer: 3.5,
     powerUpTimer: 10 + Math.random() * 5,
     droneTimer: 90,
     screenShake: { x: 0, y: 0 },
@@ -86,7 +93,7 @@ export function createGame(w: number, h: number): GameData {
     warningLockUntil: 0,
     pendingWaveEvents: [],
     activatedWaveEvents: new Set(),
-    missileStartTime: 5 + Math.random() * 5, // 5-10s random
+    missileStartTime: 5 + Math.random() * 5,
     hitStopTimer: 0,
     comboCount: 0,
     comboTimer: 0,
@@ -100,6 +107,16 @@ export function createGame(w: number, h: number): GameData {
     gasClouds: [],
     incendiaryTimer: 160,
     chemicalTimer: 200,
+    // Wave system
+    waveNumber: 1,
+    wavePhase: 'active',
+    waveTimer: 60 + Math.random() * 10,
+    restTimer: 0,
+    deliveryBike: null,
+    upgradeCards: [],
+    selectedUpgrade: null,
+    cardsShownTimer: 0,
+    waveElapsed: 0,
   };
 }
 
@@ -112,7 +129,8 @@ export function resetGame(g: GameData) {
   g.state = 'playing';
   g.player.pos = { x: g.width / 2, y: groundY };
   g.player.groundY = groundY;
-  g.player.health = g.player.maxHealth;
+  g.player.health = 100;
+  g.player.maxHealth = 100;
   g.player.shielded = false;
   g.player.shieldTimer = 0;
   g.player.dashCooldown = 0;
@@ -128,6 +146,13 @@ export function resetGame(g: GameData) {
   g.player.shootTimer = 0;
   g.player.gasMaskTimer = 0;
   g.player.extinguisherTimer = 0;
+  g.player.maxAmmo = 30;
+  g.player.speedMultiplier = 1;
+  g.player.slowMoDuration = 5;
+  g.player.shieldDuration = 8;
+  g.player.pickupRange = 5;
+  g.player.bulletDamage = 1;
+  g.player.dashCooldownBase = DASH_COOLDOWN;
   g.hazards.forEach(h => h.active = false);
   g.powerUps.forEach(p => p.active = false);
   g.particles.forEach(p => p.active = false);
@@ -181,6 +206,16 @@ export function resetGame(g: GameData) {
   g.gasClouds = [];
   g.incendiaryTimer = 160;
   g.chemicalTimer = 200;
+  // Wave system reset
+  g.waveNumber = 1;
+  g.wavePhase = 'active';
+  g.waveTimer = 60 + Math.random() * 10;
+  g.restTimer = 0;
+  g.deliveryBike = null;
+  g.upgradeCards = [];
+  g.selectedUpgrade = null;
+  g.cardsShownTimer = 0;
+  g.waveElapsed = 0;
 }
 
 function dist(a: Vec2, b: Vec2): number {
@@ -678,6 +713,214 @@ function handleInterceptor(g: GameData) {
 
 let footstepTimer = 0;
 
+// ===== WAVE SYSTEM =====
+const ALL_UPGRADES: Omit<UpgradeCard, 'applied'>[] = [
+  { id: 'ammo_cap', name: 'Ammo Capacity+', nameAr: 'سعة ذخيرة+', description: 'Max ammo 30→40', icon: '🔫', color: '#a855f7' },
+  { id: 'max_health', name: 'Reinforced', nameAr: 'صحة محسّنة', description: 'Max HP 100→130', icon: '❤', color: '#22c55e' },
+  { id: 'speed_up', name: 'Speed Boost', nameAr: 'سرعة حركة+', description: 'Move speed +20%', icon: '🏃', color: '#06b6d4' },
+  { id: 'slowmo_ext', name: 'Time Warp', nameAr: 'تباطؤ مطوّل', description: 'Slow-Mo 5→7s', icon: '⏳', color: '#8b5cf6' },
+  { id: 'dash_fast', name: 'Quick Roll', nameAr: 'دحرجة سريعة', description: 'Dash CD 0.8→0.5s', icon: '💨', color: '#f59e0b' },
+  { id: 'shield_ext', name: 'Fortified', nameAr: 'درع ممتد', description: 'Shield 8→12s', icon: '🛡', color: '#3b82f6' },
+  { id: 'pickup_range', name: 'Magnetism', nameAr: 'جذب مغناطيسي', description: 'Pickup range +50%', icon: '🧲', color: '#94a3b8' },
+  { id: 'bullet_dmg', name: 'Heavy Rounds', nameAr: 'ضربة قوية', description: 'Bullet damage +1', icon: '💥', color: '#ef4444' },
+];
+
+function generateUpgradeCards(g: GameData): UpgradeCard[] {
+  // Shuffle and pick 3
+  const pool = ALL_UPGRADES.filter(u => {
+    // Don't offer already-maxed upgrades
+    if (u.id === 'ammo_cap' && g.player.maxAmmo >= 50) return false;
+    if (u.id === 'max_health' && g.player.maxHealth >= 200) return false;
+    if (u.id === 'speed_up' && g.player.speedMultiplier >= 1.6) return false;
+    if (u.id === 'bullet_dmg' && g.player.bulletDamage >= 4) return false;
+    return true;
+  });
+  const shuffled = pool.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 3).map(u => ({ ...u, applied: false }));
+}
+
+export function applyUpgrade(g: GameData, cardId: string) {
+  const p = g.player;
+  switch (cardId) {
+    case 'ammo_cap': p.maxAmmo += 10; break;
+    case 'max_health': p.maxHealth += 30; p.health = Math.min(p.health + 30, p.maxHealth); break;
+    case 'speed_up': p.speedMultiplier += 0.2; break;
+    case 'slowmo_ext': p.slowMoDuration += 2; break;
+    case 'dash_fast': p.dashCooldownBase = Math.max(0.3, p.dashCooldownBase - 0.3); break;
+    case 'shield_ext': p.shieldDuration += 4; break;
+    case 'pickup_range': p.pickupRange += 2.5; break;
+    case 'bullet_dmg': p.bulletDamage += 1; break;
+  }
+  g.selectedUpgrade = cardId;
+  g.wavePhase = 'active';
+  g.waveTimer = 60 + Math.random() * 10;
+  g.waveElapsed = 0;
+  g.waveNumber++;
+  g.upgradeCards = [];
+  g.cardsShownTimer = 0;
+  addFloatingText(g, 'UPGRADE!', { x: g.width / 2, y: g.height * 0.35 }, '#fbbf24');
+}
+
+function spawnDeliveryBike(g: GameData) {
+  const fromRight = Math.random() > 0.5;
+  const groundY = g.height * GROUND_RATIO;
+  const speed = 200 + Math.random() * 150;
+  const dropX = g.width * (0.2 + Math.random() * 0.6);
+  g.deliveryBike = {
+    active: true,
+    pos: { x: fromRight ? g.width + 60 : -60, y: groundY },
+    speed: fromRight ? -speed : speed,
+    facingRight: !fromRight,
+    phase: 'entering',
+    dropX,
+    dropped: false,
+    wheelAnim: 0,
+  };
+}
+
+function updateDeliveryBike(g: GameData, dt: number) {
+  const bike = g.deliveryBike;
+  if (!bike || !bike.active) return;
+
+  const groundY = g.height * GROUND_RATIO;
+  bike.pos.y = groundY;
+  bike.wheelAnim += Math.abs(bike.speed) * dt * 0.1;
+
+  if (bike.phase === 'entering') {
+    bike.pos.x += bike.speed * dt;
+    // Check if near drop point
+    const distToDrop = Math.abs(bike.pos.x - bike.dropX);
+    if (distToDrop < 30) {
+      bike.phase = 'slowing';
+    }
+  } else if (bike.phase === 'slowing') {
+    // Decelerate
+    const decel = bike.speed > 0 ? -400 : 400;
+    bike.speed += decel * dt;
+    bike.pos.x += bike.speed * dt;
+    if (Math.abs(bike.speed) < 30) {
+      bike.phase = 'dropping';
+      bike.speed = 0;
+    }
+  } else if (bike.phase === 'dropping') {
+    if (!bike.dropped) {
+      bike.dropped = true;
+      // Drop water bottle
+      const pu = getFromPool<PowerUp>(g.powerUps, () => ({
+        active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
+        parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
+      }), 20);
+      pu.type = 'water';
+      pu.pos = { x: bike.pos.x, y: groundY - 12 };
+      pu.size = 12;
+      pu.parachuting = false;
+      pu.fallSpeed = 0;
+      pu.bobTimer = 0;
+      pu.groundTimer = -999; // Don't expire during rest
+    }
+    // Brief pause then leave
+    bike.phase = 'leaving';
+    const leaveDir = bike.facingRight ? 1 : -1;
+    bike.speed = leaveDir * 50; // start slow
+  } else if (bike.phase === 'leaving') {
+    // Accelerate away
+    const accel = bike.facingRight ? 500 : -500;
+    bike.speed += accel * dt;
+    bike.pos.x += bike.speed * dt;
+    // Remove when off screen
+    if (bike.pos.x < -80 || bike.pos.x > g.width + 80) {
+      bike.active = false;
+      g.deliveryBike = null;
+    }
+  }
+}
+
+function updateWaveSystem(g: GameData, input: InputState, dt: number) {
+  if (g.wavePhase === 'active') {
+    g.waveTimer -= dt;
+    if (g.waveTimer <= 0) {
+      // Start clearing phase
+      g.wavePhase = 'clearing';
+      // Stop spawning — drones fly away
+      for (const d of g.drones) {
+        if (d.active && d.tier !== 'cargo') {
+          // Force drones to leave
+          const exitDir = d.pos.x < g.width / 2 ? -1 : 1;
+          d.vel.x = exitDir * d.speed * 3;
+          d.vel.y = -d.speed;
+        }
+      }
+    }
+  } else if (g.wavePhase === 'clearing') {
+    // Wait for all hazards & drones to clear
+    const activeHazards = g.hazards.filter(h => h.active).length;
+    const activeDrones = g.drones.filter(d => d.active && d.tier !== 'cargo').length;
+    // Also check falling hazards
+    if (activeHazards === 0 && activeDrones === 0) {
+      g.wavePhase = 'rest';
+      g.restTimer = 10;
+      // Spawn delivery bike after 2s
+      setTimeout(() => { if (g.wavePhase === 'rest') spawnDeliveryBike(g); }, 2000);
+    }
+    // Force-clear drones that refuse to leave after 5s
+    for (const d of g.drones) {
+      if (d.active && d.tier !== 'cargo') {
+        if (d.pos.x < -60 || d.pos.x > g.width + 60 || d.pos.y < -60) {
+          d.active = false;
+        }
+      }
+    }
+  } else if (g.wavePhase === 'rest') {
+    g.restTimer -= dt;
+    updateDeliveryBike(g, dt);
+
+    // Show cards at ~4s into rest
+    if (g.restTimer <= 6 && g.upgradeCards.length === 0 && !g.selectedUpgrade) {
+      g.upgradeCards = generateUpgradeCards(g);
+      g.cardsShownTimer = 0;
+      g.wavePhase = 'cards';
+    }
+
+    if (g.restTimer <= 0) {
+      // Time's up, force start next wave
+      g.wavePhase = 'active';
+      g.waveTimer = 60 + Math.random() * 10;
+      g.waveElapsed = 0;
+      g.waveNumber++;
+      g.upgradeCards = [];
+      g.selectedUpgrade = null;
+    }
+  } else if (g.wavePhase === 'cards') {
+    g.cardsShownTimer += dt;
+    updateDeliveryBike(g, dt);
+
+    // Handle card selection via input
+    if (input.cardClick && g.upgradeCards.length > 0) {
+      const { x, y } = input.cardClick;
+      input.cardClick = null;
+      // Check which card was clicked
+      const cardW = 100, cardH = 140, gap = 16;
+      const totalW = g.upgradeCards.length * cardW + (g.upgradeCards.length - 1) * gap;
+      const startX = (g.width - totalW) / 2;
+      const cardY = g.height * 0.35;
+      for (let i = 0; i < g.upgradeCards.length; i++) {
+        const cx = startX + i * (cardW + gap);
+        if (x >= cx && x <= cx + cardW && y >= cardY && y <= cardY + cardH) {
+          applyUpgrade(g, g.upgradeCards[i].id);
+          break;
+        }
+      }
+    }
+
+    // Auto-select after 8s if player hasn't chosen
+    if (g.cardsShownTimer > 8 && g.upgradeCards.length > 0) {
+      const randomCard = g.upgradeCards[Math.floor(Math.random() * g.upgradeCards.length)];
+      applyUpgrade(g, randomCard.id);
+    }
+  }
+}
+
+
 export function update(g: GameData, input: InputState, dt: number) {
   if (g.state !== 'playing') return;
 
@@ -728,9 +971,13 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   g.elapsed += dt;
+  g.waveElapsed += dt;
   g.difficulty = 1 + g.elapsed / 60;
-  g.score += Math.round(dt);
+  if (g.wavePhase === 'active') g.score += Math.round(dt);
   g.windOffset = Math.sin(g.elapsed * 0.3) * 0.5;
+
+  // === Wave Phase System ===
+  updateWaveSystem(g, input, dt);
 
   // === Cinematic warning timer ===
   if (g.cinematicWarning) {
@@ -819,7 +1066,7 @@ export function update(g: GameData, input: InputState, dt: number) {
     p.isDashing = true;
     p.dashTimer = DASH_DURATION;
     p.dashDir = { x: moveX > 0 ? 1 : -1, y: 0 };
-    p.dashCooldown = DASH_COOLDOWN;
+    p.dashCooldown = p.dashCooldownBase;
     p.anim = 'roll';
     p.animFrame = 0;
     sfxDash();
@@ -925,7 +1172,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   // Clouds removed — stars only
 
   // === Spawn hazards (safety period + staggered types) ===
-  if (g.elapsed >= 3 && !g.cinematicWarning) {
+  if (g.elapsed >= 3 && !g.cinematicWarning && g.wavePhase === 'active') {
     g.spawnTimer -= dt;
     if (g.spawnTimer <= 0) {
       const types: HazardType[] = [];
@@ -1198,7 +1445,7 @@ export function update(g: GameData, input: InputState, dt: number) {
           break;
         case 'shield':
           p.shielded = true;
-          p.shieldTimer = 8;
+          p.shieldTimer = p.shieldDuration;
           addFloatingText(g, 'Shield!', { x: p.pos.x, y: p.pos.y - 40 }, '#60a5fa');
           spawnParticles(g, p.pos, 8, '#60a5fa', 80);
           break;
@@ -1207,13 +1454,13 @@ export function update(g: GameData, input: InputState, dt: number) {
           addFloatingText(g, 'Interceptor!', { x: p.pos.x, y: p.pos.y - 40 }, '#f97316');
           break;
         case 'ammo':
-          p.ammo = Math.min(30, p.ammo + 8);
+          p.ammo = Math.min(p.maxAmmo, p.ammo + 8);
           p.dashCooldown = 0; // instant dash recharge
           addFloatingText(g, '+8 Ammo', { x: p.pos.x, y: p.pos.y - 40 }, '#a855f7');
           spawnParticles(g, p.pos, 8, '#a855f7', 80);
           break;
         case 'slowmo':
-          g.slowMoTimer = 5;
+          g.slowMoTimer = p.slowMoDuration;
           addFloatingText(g, 'SLOW-MO!', { x: p.pos.x, y: p.pos.y - 40 }, '#06b6d4');
           spawnParticles(g, p.pos, 12, '#06b6d4', 100);
           sfxSlowmo();
@@ -1273,6 +1520,13 @@ export function update(g: GameData, input: InputState, dt: number) {
           p.gasMaskTimer = 15;
           break;
         }
+        case 'water': {
+          const heal = 20;
+          p.health = Math.min(p.maxHealth, p.health + heal);
+          addFloatingText(g, `+${heal} HP`, { x: p.pos.x, y: p.pos.y - 40 }, '#38bdf8');
+          spawnParticles(g, p.pos, 8, '#38bdf8', 80);
+          break;
+        }
       }
     }
   }
@@ -1280,7 +1534,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   // Magnet attraction removed — magnet now works instantly
 
   // === Cargo Drone ===
-  if (g.elapsed >= 120) {
+  if (g.elapsed >= 120 && g.wavePhase === 'active') {
     g.cargoTimer -= dt;
     if (g.cargoTimer <= 0) {
       g.cargoTimer = 60 + Math.random() * 30;
@@ -1289,7 +1543,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Incendiary Drones ===
-  if (g.activatedWaveEvents.has('drones_incendiary')) {
+  if (g.activatedWaveEvents.has('drones_incendiary') && g.wavePhase === 'active') {
     g.incendiaryTimer -= dt;
     if (g.incendiaryTimer <= 0) {
       g.incendiaryTimer = 25 + Math.random() * 15;
@@ -1298,7 +1552,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Chemical Drones ===
-  if (g.activatedWaveEvents.has('drones_chemical')) {
+  if (g.activatedWaveEvents.has('drones_chemical') && g.wavePhase === 'active') {
     g.chemicalTimer -= dt;
     if (g.chemicalTimer <= 0) {
       g.chemicalTimer = 30 + Math.random() * 20;
@@ -1351,7 +1605,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Drones ===
-  if (g.activatedWaveEvents.has('drones_scout')) {
+  if (g.activatedWaveEvents.has('drones_scout') && g.wavePhase === 'active') {
     g.droneTimer -= dt;
     if (g.droneTimer <= 0) {
       const hasTrackers = g.activatedWaveEvents.has('drones_tracker');
