@@ -3569,53 +3569,69 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
 
   ctx.translate(bike.shakeOffset.x, bike.shakeOffset.y + suspCompress * 0.3);
 
-  // ── Realistic Exhaust Puffs (multi-circle deformed, wind-driven) ──
+  // ── Advanced Exhaust with Vortex Turbulence ──
   if (bike.phase === 'idle' || bike.phase === 'leaving' || bike.phase === 'entering') {
     const isLeaving = bike.phase === 'leaving';
-    const puffCount = isLeaving ? 8 : (bike.phase === 'idle' ? 4 : 6);
+    const puffCount = isLeaving ? 10 : (bike.phase === 'idle' ? 5 : 7);
     for (let i = 0; i < puffCount; i++) {
       const age = (g.elapsed * (isLeaving ? 2.5 : 1.5) + i * 0.6) % 2.5;
       const friction = Math.pow(0.92, age * 10);
-      const baseVx = isLeaving ? -18 : -8;
+      const baseVx = isLeaving ? -20 : -8;
       const baseVy = isLeaving ? -6 : -8;
-      const windDrift = Math.sin(g.elapsed * 2 + i * 1.3) * 2;
+      // Vortex turbulence: local swirl offset
+      const seedAngle = i * 2.3 + g.elapsed * 0.5;
+      const vortex = Math.sin(age * 5 + seedAngle) * 2;
+      const vortexY = Math.cos(age * 4 + seedAngle) * 1.5;
+      const windDrift = Math.sin(g.elapsed * 2 + i * 1.3) * 2 + vortex;
       const sx = -28 + baseVx * age * friction + windDrift;
-      const sy = -5 + baseVy * age * friction + Math.sin(g.elapsed * 3 + i) * 1.5;
-      const scaleX = 1 + age * 0.8; // puffs stretch horizontally with age
-      const baseR = 2 + age * (isLeaving ? 5 : 3.5);
+      const sy = -5 + baseVy * age * friction + Math.sin(g.elapsed * 3 + i) * 1.5 + vortexY;
+      const scaleX = 1 + age * 1.0;
+      const baseR = 2 + age * (isLeaving ? 5.5 : 3.5);
       const lifeAlpha = Math.max(0, 1 - age / 2.5);
-      // Color ages: white-grey → dark grey → transparent
-      const grey = Math.round(180 - age * 50);
-      const alpha = lifeAlpha * (isLeaving ? 0.35 : 0.25);
-      // Each puff = 3 overlapping circles for organic shape
+      // 4-stage color: bright white → white-grey → grey-brown → transparent
+      const ageRatio = age / 2.5;
+      let r: number, gr: number, b: number;
+      if (ageRatio < 0.2) {
+        r = 220; gr = 220; b = 225; // bright white
+      } else if (ageRatio < 0.5) {
+        r = 200 - (ageRatio - 0.2) * 130; gr = 200 - (ageRatio - 0.2) * 140; b = 210 - (ageRatio - 0.2) * 160;
+      } else if (ageRatio < 0.8) {
+        r = 160 - (ageRatio - 0.5) * 100; gr = 155 - (ageRatio - 0.5) * 120; b = 160 - (ageRatio - 0.5) * 140;
+      } else {
+        r = 130; gr = 119; b = 118;
+      }
+      const alpha = lifeAlpha * (isLeaving ? 0.38 : 0.28);
+      // Each puff = 4 overlapping circles for organic turbulent shape
       ctx.save();
       ctx.translate(sx, sy);
       ctx.scale(scaleX, 1);
-      for (let c = 0; c < 3; c++) {
-        const cx = Math.cos(c * 2.1 + i) * baseR * 0.3;
-        const cy = Math.sin(c * 2.1 + i) * baseR * 0.25;
-        const cr = baseR * (0.6 + c * 0.15);
-        ctx.fillStyle = `rgba(${grey},${grey},${grey + 10},${alpha * (1 - c * 0.15)})`;
+      for (let c = 0; c < 4; c++) {
+        const cx2 = Math.cos(c * 1.6 + i + age * 2) * baseR * 0.35;
+        const cy2 = Math.sin(c * 1.6 + i + age * 1.5) * baseR * 0.3;
+        const cr = baseR * (0.55 + c * 0.12);
+        ctx.fillStyle = `rgba(${Math.round(r)},${Math.round(gr)},${Math.round(b)},${alpha * (1 - c * 0.12)})`;
         ctx.beginPath();
-        ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+        ctx.arc(cx2, cy2, cr, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
     }
   }
 
-  // ── Physics-Based Dust Particles ──
+  // ── Physics-Based Dust with Skid on Braking ──
   if (Math.abs(bike.speed) > 30) {
-    const dustCount = Math.min(8, Math.floor(Math.abs(bike.speed) / 40));
+    const isDecelerating = bike.phase === 'entering' && bike.speed < 200;
+    const dustCount = Math.min(10, Math.floor(Math.abs(bike.speed) / 35) + (isDecelerating ? 3 : 0));
     for (let i = 0; i < dustCount; i++) {
       const seed = (g.elapsed * 3 + i * 1.7) % 2;
-      const friction = Math.pow(0.95, seed * 15);
+      const friction = Math.pow(0.93, seed * 15);
       const vx = -(3 + i * 1.2) * friction;
       const vy = -(2 + Math.sin(i * 2.3) * 2) * friction;
+      const gravity = seed * seed * 1.5;
       const dx = -20 + vx * seed * 4;
-      const dy = 0 + vy * seed * 3;
+      const dy = 0 + vy * seed * 3 + gravity;
       const dustSize = (1.5 + i * 0.4) * (1 + seed * 0.5);
-      const dustAlpha = Math.max(0, 0.25 - seed * 0.12);
+      const dustAlpha = Math.max(0, 0.28 - seed * 0.14);
       const rotation = seed * (i * 0.8);
       const brown = 140 + Math.round(i * 5);
       ctx.save();
@@ -3623,7 +3639,7 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
       ctx.rotate(rotation);
       ctx.fillStyle = `rgba(${brown},${brown - 20},${brown - 40},${dustAlpha})`;
       ctx.beginPath();
-      ctx.ellipse(0, 0, dustSize * 1.2, dustSize * 0.8, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, dustSize * 1.3, dustSize * 0.7, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
