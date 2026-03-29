@@ -24,7 +24,7 @@ const SkyfallGame: React.FC = () => {
   const [playerAmmo, setPlayerAmmo] = useState(0);
   const [bulletLevel, setBulletLevel] = useState(1);
 
-  // LiveOps state
+  // LiveOps state — always show name entry on mount (different player may use same device)
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('skyfall_name') || '');
   const [showNameEntry, setShowNameEntry] = useState(true);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -40,11 +40,6 @@ const SkyfallGame: React.FC = () => {
       setRemoteConfig(cfg);
       remoteConfigRef.current = cfg;
     });
-  }, []);
-
-  // Check if name already exists
-  useEffect(() => {
-    if (playerName) setShowNameEntry(false);
   }, []);
 
   const handleNameSubmit = useCallback((name: string) => {
