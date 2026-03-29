@@ -786,6 +786,11 @@ export async function startMenuMusic() {
   menuMusicGain.gain.value = getSoundVolume('menuMusic', 0.3);
   menuMusicNode.connect(menuMusicGain).connect(ctx.destination);
   menuMusicNode.start();
+  } catch (e) {
+    console.warn('startMenuMusic error:', e);
+  } finally {
+    menuMusicStarting = false;
+  }
 }
 
 export function stopMenuMusic() {
