@@ -255,36 +255,80 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
             }}
           />
 
-          <button
-            onClick={handleSubmit}
-            onPointerDown={e => { if (name.trim()) (e.currentTarget as HTMLElement).style.transform = 'scale(0.95)'; }}
-            onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
-            onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
-            style={{
-              width: '100%',
-              padding: '15px 0',
-              borderRadius: 50,
-              border: 'none',
-              background: name.trim()
-                ? 'linear-gradient(90deg, #b91c1c, #dc2626, #ef4444)'
-                : 'rgba(255,255,255,0.06)',
-              color: name.trim() ? '#fff' : 'rgba(255,255,255,0.2)',
-              fontSize: 16,
-              fontFamily: "'Tajawal', system-ui, sans-serif",
-              fontWeight: 700,
-              letterSpacing: 1,
-              cursor: name.trim() ? 'pointer' : 'default',
-              transition: 'all 0.2s ease',
-              boxShadow: name.trim()
-                ? '0 0 20px rgba(220,38,38,0.4), 0 4px 16px rgba(0,0,0,0.3)'
-                : 'none',
-              zIndex: 1,
-              transform: 'scale(1)',
-              direction: 'rtl',
-            }}
-          >
-            ⚔️ ابدأ المعركة
-          </button>
+          {/* Hexagonal Military Button */}
+          <div style={{ width: '100%', position: 'relative', zIndex: 1 }}>
+            <button
+              onClick={handleSubmit}
+              onPointerDown={e => { if (name.trim()) (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'; }}
+              onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+              onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+              style={{
+                width: '100%',
+                padding: '16px 24px',
+                border: 'none',
+                background: 'transparent',
+                color: name.trim() ? '#fff' : 'rgba(255,255,255,0.25)',
+                fontSize: 17,
+                fontFamily: "'Tajawal', system-ui, sans-serif",
+                fontWeight: 800,
+                cursor: name.trim() ? 'pointer' : 'default',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                transform: 'scale(1)',
+                direction: 'rtl',
+                position: 'relative',
+                clipPath: 'polygon(12px 0%, calc(100% - 12px) 0%, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0% calc(100% - 12px), 0% 12px)',
+                textShadow: name.trim() ? '0 0 12px rgba(220,38,38,0.6)' : 'none',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Button background */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                background: name.trim()
+                  ? 'linear-gradient(135deg, rgba(220,38,38,0.2) 0%, rgba(127,29,29,0.3) 100%)'
+                  : 'rgba(255,255,255,0.03)',
+                transition: 'background 0.3s ease',
+              }} />
+
+              {/* Scan line effect */}
+              {name.trim() && (
+                <div style={{
+                  position: 'absolute', left: 0, right: 0,
+                  height: '2px',
+                  background: 'linear-gradient(90deg, transparent, rgba(220,38,38,0.5), transparent)',
+                  animation: 'scanLine 2.5s linear infinite',
+                  pointerEvents: 'none',
+                }} />
+              )}
+
+              {/* Text */}
+              <span style={{ position: 'relative', zIndex: 2, letterSpacing: 0 }}>
+                ابدأ المعركة
+              </span>
+            </button>
+
+            {/* Hexagonal border overlay (SVG) */}
+            <svg
+              style={{
+                position: 'absolute', inset: 0, width: '100%', height: '100%',
+                pointerEvents: 'none', zIndex: 2,
+              }}
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+            >
+              <polygon
+                points="4,0 96,0 100,4 100,96 96,100 4,100 0,96 0,4"
+                fill="none"
+                stroke={name.trim() ? 'rgba(220,38,38,0.6)' : 'rgba(255,255,255,0.08)'}
+                strokeWidth="0.8"
+                style={{
+                  filter: name.trim() ? 'drop-shadow(0 0 4px rgba(220,38,38,0.4))' : 'none',
+                  transition: 'stroke 0.3s, filter 0.3s',
+                  animation: name.trim() ? 'borderPulse 2s ease-in-out infinite' : 'none',
+                }}
+              />
+            </svg>
+          </div>
         </div>
 
         {/* Developer credit */}
