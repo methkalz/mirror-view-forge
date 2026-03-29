@@ -1110,6 +1110,15 @@ export function update(g: GameData, input: InputState, dt: number) {
 
   // Magnet attraction removed — magnet now works instantly
 
+  // === Cargo Drone ===
+  if (g.elapsed >= 120) {
+    g.cargoTimer -= dt;
+    if (g.cargoTimer <= 0) {
+      g.cargoTimer = 60 + Math.random() * 30;
+      spawnCargoDrone(g);
+    }
+  }
+
   // === Drones ===
   if (g.activatedWaveEvents.has('drones_scout')) {
     g.droneTimer -= dt;
