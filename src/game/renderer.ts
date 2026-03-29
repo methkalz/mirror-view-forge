@@ -4312,14 +4312,13 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
     
     const dismountX = bike.pos.x + posX;
     const dismountY = bike.pos.y + posY;
-    const finalScale = 0.7 * 1.6; // Full player scale from the start
 
     ctx.save();
     ctx.translate(dismountX, dismountY);
-    ctx.scale(finalScale, finalScale);
+    ctx.scale(1.6, 1.6); // Same scale as renderPlayer
     drawCharacter(ctx, {
-      x: 0, y: -12,
-      scale: 0.7,
+      x: 0, y: 0, // Same as renderPlayer
+      scale: 1, // Same as renderPlayer
       sitting: dp < 0.25,
       facingRight: true,
       isDriver: false,
@@ -4342,8 +4341,8 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.translate(p.pos.x, p.pos.y);
     ctx.scale(1.6, 1.6);
     drawCharacter(ctx, {
-      x: 0, y: -12,
-      scale: 0.7,
+      x: 0, y: 0, // Same as renderPlayer
+      scale: 1, // Same as renderPlayer
       sitting: false,
       facingRight: true,
       isDriver: false,
