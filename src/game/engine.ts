@@ -1392,6 +1392,7 @@ export function update(g: GameData, input: InputState, dt: number) {
         // Off-screen removal
         if (h.pos.x < -100 || h.pos.x > g.width + 100 || h.pos.y > g.height + 50) {
           h.active = false;
+          g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
         }
       } else if (h.clusterPhase === 'opening') {
         h.clusterTimer! -= dt;
@@ -1465,6 +1466,7 @@ export function update(g: GameData, input: InputState, dt: number) {
         h.clusterTimer! -= dt;
         if (h.clusterTimer! <= 0) {
           h.active = false;
+          g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
         }
       }
       continue; // skip normal hazard logic for clusters
@@ -1491,7 +1493,7 @@ export function update(g: GameData, input: InputState, dt: number) {
       if (d < 8) {
         // Impact
         h.active = false;
-        if (h.type === 'shrapnel') sfxImpactLight();
+        g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
         else if (h.type === 'missile') sfxImpactHeavy();
         else sfxExplosion();
         
