@@ -6,10 +6,11 @@ export interface Vec2 {
 export type GameState = 'start' | 'playing' | 'gameover';
 
 export type HazardType = 'shrapnel' | 'missile' | 'cluster';
-export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike' | 'gasmask' | 'extinguisher';
+export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike' | 'gasmask' | 'extinguisher' | 'water';
 export type DroneState = 'entering' | 'tracking' | 'bombing';
 export type DroneTier = 'scout' | 'tracker' | 'bomber' | 'cargo' | 'incendiary' | 'chemical';
 export type PlayerAnim = 'idle' | 'walk' | 'roll' | 'hit';
+export type WavePhase = 'active' | 'clearing' | 'rest' | 'cards';
 
 export interface Player {
   pos: Vec2;
@@ -24,7 +25,6 @@ export interface Player {
   isDashing: boolean;
   dashDir: Vec2;
   velocity: Vec2;
-  // New side-view fields
   facingRight: boolean;
   anim: PlayerAnim;
   animFrame: number;
@@ -35,6 +35,14 @@ export interface Player {
   shootTimer: number;
   gasMaskTimer: number;
   extinguisherTimer: number;
+  // Upgrade-enhanced stats
+  maxAmmo: number;
+  speedMultiplier: number;
+  slowMoDuration: number;
+  shieldDuration: number;
+  pickupRange: number;
+  bulletDamage: number;
+  dashCooldownBase: number;
 }
 
 export interface Hazard {
@@ -52,7 +60,6 @@ export interface Hazard {
   isClusterBomb?: boolean;
   rotation: number;
   trailTimer: number;
-  // Cluster missile phases
   clusterPhase?: 'flying' | 'opening' | 'releasing' | 'done';
   clusterTimer?: number;
   clusterVelX?: number;
@@ -130,12 +137,12 @@ export interface Drone {
   aggroDelay: number;
   trackingAccuracy: number;
   wobble: number;
-  altitudeOffset: number; // unique Y offset to prevent stacking
-  colorHue: number; // unique hue shift for visual distinction
-  cargoType?: PowerUpType; // for cargo drones
-  label?: string; // label drawn on cargo drone
-  fireDropTimer?: number; // for incendiary drones
-  gasDropTimer?: number; // for chemical drones
+  altitudeOffset: number;
+  colorHue: number;
+  cargoType?: PowerUpType;
+  label?: string;
+  fireDropTimer?: number;
+  gasDropTimer?: number;
 }
 
 export interface FirePool {
@@ -218,6 +225,27 @@ export interface Bullet {
   damage: number;
 }
 
+export interface DeliveryBike {
+  active: boolean;
+  pos: Vec2;
+  speed: number;
+  facingRight: boolean;
+  phase: 'entering' | 'slowing' | 'dropping' | 'leaving';
+  dropX: number;
+  dropped: boolean;
+  wheelAnim: number;
+}
+
+export interface UpgradeCard {
+  id: string;
+  name: string;
+  nameAr: string;
+  description: string;
+  icon: string;
+  color: string;
+  applied: boolean;
+}
+
 export interface GameData {
   state: GameState;
   player: Player;
@@ -279,6 +307,16 @@ export interface GameData {
   gasClouds: GasCloud[];
   incendiaryTimer: number;
   chemicalTimer: number;
+  // Wave system
+  waveNumber: number;
+  wavePhase: WavePhase;
+  waveTimer: number;
+  restTimer: number;
+  deliveryBike: DeliveryBike | null;
+  upgradeCards: UpgradeCard[];
+  selectedUpgrade: string | null;
+  cardsShownTimer: number;
+  waveElapsed: number; // time within current wave
 }
 
 export interface InputState {
@@ -288,4 +326,5 @@ export interface InputState {
   keys: Set<string>;
   touchJoystick: { active: boolean; origin: Vec2; current: Vec2 };
   touchDash: boolean;
+  cardClick?: { x: number; y: number } | null;
 }
