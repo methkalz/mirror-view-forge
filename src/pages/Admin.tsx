@@ -300,6 +300,17 @@ function formatTime(seconds: number): string {
 }
 
 const AnalyticsPanel: React.FC<{ data: GameAnalytics; onRefresh: () => void }> = ({ data, onRefresh }) => {
+  const [onlineCount, setOnlineCount] = useState(0);
+
+  useEffect(() => {
+    const channel = supabase.channel('online-players');
+    channel.on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState();
+      setOnlineCount(Object.keys(state).length);
+    });
+    channel.subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
   const panelStyle: React.CSSProperties = {
     background: 'rgba(255,255,255,0.04)', borderRadius: 16,
     border: '1px solid rgba(255,255,255,0.08)', padding: '20px 16px', marginBottom: 16,
@@ -334,6 +345,7 @@ const AnalyticsPanel: React.FC<{ data: GameAnalytics; onRefresh: () => void }> =
 
       {/* Key Metrics */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+        {statCard('🟢', 'Online Now — متواجدون الآن', onlineCount, '#10b981')}
         {statCard('🎮', 'Total Sessions', data.totalSessions, '#3b82f6', `${data.sessionsToday} today · ${data.sessionsThisWeek} this week`)}
         {statCard('👥', 'Unique Players', data.uniquePlayers, '#8b5cf6')}
         {statCard('⏱️', 'Avg Duration', formatTime(data.avgDuration), '#f59e0b', `Max: ${formatTime(data.maxDuration)}`)}
