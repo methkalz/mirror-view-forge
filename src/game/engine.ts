@@ -415,6 +415,62 @@ function spawnCargoDrone(g: GameData) {
   d.label = 'OTLOP';
 }
 
+function spawnIncendiaryDrone(g: GameData) {
+  const d = getFromPool<Drone>(g.drones, () => ({
+    active: false, pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
+    speed: 0, size: 0, health: 0, maxHealth: 0, state: 'entering' as const, entryTarget: { x: 0, y: 0 },
+    tier: 'scout' as const, bombTimer: 0, bombCooldown: 0, hoverTimer: 0,
+    aggroDelay: 0, trackingAccuracy: 0, wobble: 0, altitudeOffset: 0, colorHue: 0
+  }), 10);
+  const side = Math.random() < 0.5 ? 0 : 1;
+  d.pos = { x: side === 0 ? -20 : g.width + 20, y: g.height * 0.15 + Math.random() * g.height * 0.15 };
+  d.entryTarget = { x: g.width * 0.2 + Math.random() * g.width * 0.6, y: g.height * 0.2 + Math.random() * g.height * 0.1 };
+  d.state = 'entering';
+  d.vel = { x: 0, y: 0 };
+  d.speed = 50 + Math.min(20, g.elapsed * 0.05);
+  d.size = 24;
+  d.health = 2;
+  d.maxHealth = 2;
+  d.tier = 'incendiary';
+  d.hoverTimer = 0;
+  d.aggroDelay = 1.5 + Math.random() * 1.0;
+  d.trackingAccuracy = 0.5;
+  d.bombTimer = 0;
+  d.bombCooldown = 3.5 + Math.random() * 2;
+  d.wobble = Math.random() * Math.PI * 2;
+  d.altitudeOffset = 0;
+  d.colorHue = 15; // orange-red
+  d.fireDropTimer = 0;
+}
+
+function spawnChemicalDrone(g: GameData) {
+  const d = getFromPool<Drone>(g.drones, () => ({
+    active: false, pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
+    speed: 0, size: 0, health: 0, maxHealth: 0, state: 'entering' as const, entryTarget: { x: 0, y: 0 },
+    tier: 'scout' as const, bombTimer: 0, bombCooldown: 0, hoverTimer: 0,
+    aggroDelay: 0, trackingAccuracy: 0, wobble: 0, altitudeOffset: 0, colorHue: 0
+  }), 10);
+  const side = Math.random() < 0.5 ? 0 : 1;
+  d.pos = { x: side === 0 ? -20 : g.width + 20, y: g.height * 0.12 + Math.random() * g.height * 0.15 };
+  d.entryTarget = { x: g.width * 0.2 + Math.random() * g.width * 0.6, y: g.height * 0.18 + Math.random() * g.height * 0.1 };
+  d.state = 'entering';
+  d.vel = { x: 0, y: 0 };
+  d.speed = 35 + Math.min(15, g.elapsed * 0.04);
+  d.size = 24;
+  d.health = 2;
+  d.maxHealth = 2;
+  d.tier = 'chemical';
+  d.hoverTimer = 0;
+  d.aggroDelay = 1.0 + Math.random() * 1.0;
+  d.trackingAccuracy = 0.4;
+  d.bombTimer = 0;
+  d.bombCooldown = 4.0 + Math.random() * 2;
+  d.wobble = Math.random() * Math.PI * 2;
+  d.altitudeOffset = 0;
+  d.colorHue = 120; // green
+  d.gasDropTimer = 0;
+}
+
 function queueWaveEvent(
   g: GameData,
   event: { id: string; text: string; sub: string; color: string; duration: number; type: 'warning' | 'upgrade' }
