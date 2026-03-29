@@ -3550,8 +3550,8 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
     const cx = startX + i * (cardW + gap);
     const cy = cardY + (1 - eased) * 80;
 
-    // Check if this card is being hovered/selected
-    const isSelected = g.selectedCardIndex === i;
+    // No selection highlight needed — tap triggers immediately
+    const isSelected = false;
 
     ctx.save();
     ctx.globalAlpha = eased;
