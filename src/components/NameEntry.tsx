@@ -257,46 +257,33 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
 
           <button
             onClick={handleSubmit}
-            onPointerDown={e => { if (name.trim()) (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'; }}
+            onPointerDown={e => { if (name.trim()) (e.currentTarget as HTMLElement).style.transform = 'scale(0.95)'; }}
             onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
             onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
             style={{
               width: '100%',
-              padding: '16px 0',
-              borderRadius: 14,
-              border: name.trim() ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.04)',
+              padding: '15px 0',
+              borderRadius: 50,
+              border: 'none',
               background: name.trim()
-                ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 50%, #7f1d1d 100%)'
-                : 'rgba(100,100,100,0.1)',
+                ? 'linear-gradient(90deg, #b91c1c, #dc2626, #ef4444)'
+                : 'rgba(255,255,255,0.06)',
               color: name.trim() ? '#fff' : 'rgba(255,255,255,0.2)',
-              fontSize: 17,
+              fontSize: 16,
               fontFamily: "'Tajawal', system-ui, sans-serif",
-              fontWeight: 800,
-              letterSpacing: 3,
+              fontWeight: 700,
+              letterSpacing: 1,
               cursor: name.trim() ? 'pointer' : 'default',
-              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              transition: 'all 0.2s ease',
               boxShadow: name.trim()
-                ? '0 6px 28px rgba(220,38,38,0.35), 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -2px 4px rgba(0,0,0,0.2)'
+                ? '0 0 20px rgba(220,38,38,0.4), 0 4px 16px rgba(0,0,0,0.3)'
                 : 'none',
               zIndex: 1,
-              position: 'relative',
-              overflow: 'hidden',
               transform: 'scale(1)',
+              direction: 'rtl',
             }}
           >
-            {/* Shine sweep overlay */}
-            {name.trim() && (
-              <span style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.12) 45%, rgba(255,255,255,0.06) 50%, transparent 55%)',
-                animation: 'btnShineSweep 3s ease-in-out infinite',
-                pointerEvents: 'none',
-              }} />
-            )}
-            <span style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <span>ابدأ المعركة</span>
-              <span style={{ fontSize: 20, filter: name.trim() ? 'drop-shadow(0 0 4px rgba(255,200,50,0.5))' : 'none' }}>⚔️</span>
-            </span>
+            ⚔️ ابدأ المعركة
           </button>
         </div>
 
