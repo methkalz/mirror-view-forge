@@ -42,6 +42,13 @@ export function createGame(w: number, h: number): GameData {
       shootTimer: 0,
       gasMaskTimer: 0,
       extinguisherTimer: 0,
+      maxAmmo: 30,
+      speedMultiplier: 1,
+      slowMoDuration: 5,
+      shieldDuration: 8,
+      pickupRange: 5,
+      bulletDamage: 1,
+      dashCooldownBase: DASH_COOLDOWN,
     },
     hazards: [],
     powerUps: [],
@@ -58,7 +65,7 @@ export function createGame(w: number, h: number): GameData {
     highScore: parseInt(localStorage.getItem('skyfall_hi') || '0'),
     elapsed: 0,
     difficulty: 1,
-    spawnTimer: 0,
+    spawnTimer: 3.5,
     powerUpTimer: 10 + Math.random() * 5,
     droneTimer: 90,
     screenShake: { x: 0, y: 0 },
@@ -86,7 +93,7 @@ export function createGame(w: number, h: number): GameData {
     warningLockUntil: 0,
     pendingWaveEvents: [],
     activatedWaveEvents: new Set(),
-    missileStartTime: 5 + Math.random() * 5, // 5-10s random
+    missileStartTime: 5 + Math.random() * 5,
     hitStopTimer: 0,
     comboCount: 0,
     comboTimer: 0,
@@ -100,6 +107,16 @@ export function createGame(w: number, h: number): GameData {
     gasClouds: [],
     incendiaryTimer: 160,
     chemicalTimer: 200,
+    // Wave system
+    waveNumber: 1,
+    wavePhase: 'active',
+    waveTimer: 60 + Math.random() * 10,
+    restTimer: 0,
+    deliveryBike: null,
+    upgradeCards: [],
+    selectedUpgrade: null,
+    cardsShownTimer: 0,
+    waveElapsed: 0,
   };
 }
 
