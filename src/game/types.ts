@@ -3,7 +3,8 @@ export interface Vec2 {
   y: number;
 }
 
-export type GameState = 'start' | 'playing' | 'gameover';
+export type GameState = 'start' | 'intro' | 'playing' | 'gameover';
+export type IntroPhase = 'bikeEnter' | 'bikeStop' | 'playerDismount' | 'bikeLeave' | 'done';
 
 export type HazardType = 'shrapnel' | 'missile' | 'cluster';
 export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike' | 'gasmask' | 'extinguisher' | 'water';
@@ -329,6 +330,11 @@ export interface GameData {
   waveEndSlowMo: number;
   waveFinale: boolean;
   activeHazardCount: number;
+  // Intro system
+  introPhase: IntroPhase;
+  introTimer: number;
+  introBike: DeliveryBike | null;
+  introPlayerOffset: number; // player's visual offset during dismount
 }
 
 export interface InputState {
