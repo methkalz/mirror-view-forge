@@ -291,9 +291,9 @@ const Admin: React.FC = () => {
         {/* ─── TAB CONTENT ─── */}
         {tab === 'analytics' && analytics && <AnalyticsPanel data={analytics} onRefresh={async () => setAnalytics(await fetchAnalytics())} isMobile={isMobile} isDesktop={isDesktop} />}
 
-        {tab === 'config' && config && <ConfigPanel config={config} saving={saving} onSave={saveConfig} isDesktop={isDesktop} />}
+        {tab === 'config' && config && <ConfigPanel config={config} saving={saving} onSave={stageChange} isDesktop={isDesktop} />}
 
-        {tab === 'branding' && config && <BrandingPanel config={config} onSave={saveConfig} isDesktop={isDesktop} />}
+        {tab === 'branding' && config && <BrandingPanel config={config} onSave={stageChange} isDesktop={isDesktop} />}
 
         {tab === 'waves' && (
           <WavesPanel waves={waves} editingWave={editingWave} setEditingWave={setEditingWave} onSaveWave={handleSaveWave} onDeleteWave={handleDeleteWave} isDesktop={isDesktop} />
