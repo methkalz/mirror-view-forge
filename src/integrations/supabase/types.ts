@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       audio_config: {
         Row: {
+          audio_url: string | null
           category: string
           enabled: boolean
           id: string
@@ -26,6 +27,7 @@ export type Database = {
           volume: number
         }
         Insert: {
+          audio_url?: string | null
           category: string
           enabled?: boolean
           id?: string
@@ -36,6 +38,7 @@ export type Database = {
           volume?: number
         }
         Update: {
+          audio_url?: string | null
           category?: string
           enabled?: boolean
           id?: string
