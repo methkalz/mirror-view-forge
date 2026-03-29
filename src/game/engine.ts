@@ -1117,7 +1117,7 @@ export function update(g: GameData, input: InputState, dt: number) {
 
   g.elapsed += dt;
   g.waveElapsed += dt;
-  g.difficulty = 1 + g.elapsed / 60;
+  g.difficulty = 1 + g.elapsed / 120; // slower difficulty scaling
   if (g.wavePhase === 'active') g.score += Math.round(dt);
   g.windOffset = Math.sin(g.elapsed * 0.3) * 0.5;
 
@@ -1137,43 +1137,32 @@ export function update(g: GameData, input: InputState, dt: number) {
   resolvePendingWaveEvents(g);
 
   // === Slow-mo & Magnet timers ===
-  if (!g.cinematicWarning && g.slowMoTimer > 0) {
+  if (!g.cinematicWarning && g.waveEndSlowMo <= 0 && g.slowMoTimer > 0) {
     g.slowMoTimer -= dt;
     g.slowMoFactor = 0.3;
     if (g.slowMoTimer <= 0) { g.slowMoFactor = 1; g.slowMoTimer = 0; }
-  } else if (!g.cinematicWarning && g.slowMoTimer <= 0) {
+  } else if (!g.cinematicWarning && g.waveEndSlowMo <= 0 && g.slowMoTimer <= 0) {
     g.slowMoFactor = 1;
   }
   if (g.magnetTimer > 0) g.magnetTimer -= dt;
   if (g.magnetFlashTimer > 0) g.magnetFlashTimer -= dt;
 
-  // === Wave warnings ===
-  // === Cinematic warning system ===
-  const waveEvents: { time: number; id: string; text: string; sub: string; color: string; duration: number; type: 'warning' | 'upgrade' }[] = [
-    { time: 3, id: 'shrapnel_start', text: '⚠ تحذير: شظايا متساقطة!', sub: 'SHRAPNEL INCOMING', color: '#ef4444', duration: 2.0, type: 'warning' },
-    { time: g.missileStartTime, id: 'missiles', text: '⚠ تحذير: صواريخ قادمة!', sub: 'MISSILES DETECTED', color: '#dc2626', duration: 2.0, type: 'warning' },
-    { time: 75, id: 'clusters', text: '⚠ تحذير: صواريخ متشظية!', sub: 'SPLITTING MISSILES INCOMING', color: '#f43f5e', duration: 2.0, type: 'warning' },
-    { time: 85, id: 'drones_scout', text: '⚠ تحذير: طائرات استطلاع!', sub: 'SCOUT DRONES APPROACHING', color: '#ef4444', duration: 2.0, type: 'warning' },
-    { time: 115, id: 'bullet_2', text: '⬆ تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e', duration: 2.0, type: 'upgrade' },
-    { time: 125, id: 'cluster_3', text: '⚠ تحذير: تشظي ثلاثي!', sub: 'TRIPLE SPLIT MISSILES', color: '#ef4444', duration: 2.0, type: 'warning' },
-    { time: 150, id: 'drones_tracker', text: '⚠ تحذير: طائرات تتبع!', sub: 'TRACKER DRONES INBOUND', color: '#dc2626', duration: 2.0, type: 'warning' },
-    { time: 190, id: 'bullet_3', text: '⬆ تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#22c55e', duration: 2.0, type: 'upgrade' },
-    { time: 200, id: 'cluster_4', text: '⚠ تحذير: تشظي رباعي!', sub: 'QUAD SPLIT MISSILES', color: '#dc2626', duration: 2.0, type: 'warning' },
-    { time: 210, id: 'drones_bomber', text: '⚠ تحذير: قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444', duration: 2.0, type: 'warning' },
-    { time: 230, id: 'boss_warn', text: '⚠ تحذير: طائرة حربية!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626', duration: 2.0, type: 'warning' },
-    { time: 233, id: 'boss_prep', text: '⬆ تطوير: إمدادات طارئة!', sub: 'EMERGENCY SUPPLIES DROPPED', color: '#22c55e', duration: 2.0, type: 'upgrade' },
-    { time: 260, id: 'cluster_5', text: '⚠ تحذير: تشظي خماسي!', sub: 'MAX SPLIT — DANGER', color: '#991b1b', duration: 2.0, type: 'warning' },
-    { time: 240, id: 'extinguisher_prep', text: '⬆ إمدادات: طفاية حريق!', sub: 'FIRE EXTINGUISHER DROPPED', color: '#f97316', duration: 2.0, type: 'upgrade' },
-    { time: 245, id: 'drones_incendiary', text: '⚠ تحذير: طائرات حارقة!', sub: 'INCENDIARY DRONES — FIRE HAZARD', color: '#ea580c', duration: 2.0, type: 'warning' },
-    { time: 195, id: 'gasmask_prep', text: '⬆ إمدادات: كمامة غاز!', sub: 'GAS MASK DROPPED', color: '#16a34a', duration: 2.0, type: 'upgrade' },
-    { time: 200, id: 'drones_chemical', text: '⚠ تحذير: طائرات كيميائية!', sub: 'CHEMICAL DRONES — TOXIC GAS', color: '#15803d', duration: 2.0, type: 'warning' },
-  ];
-  for (const we of waveEvents) {
-    if (g.elapsed >= we.time && !g.waveTriggered.has(we.id)) {
-      if (g.cinematicWarning || g.pendingWaveEvents.length > 0 || g.elapsed < g.warningLockUntil) continue;
-      queueWaveEvent(g, we);
+  // === Wave-based warning system ===
+  const recipe = getWaveRecipe(g.waveNumber);
+  const warnings = WAVE_WARNINGS[g.waveNumber];
+  if (warnings && g.wavePhase === 'active') {
+    for (const w of warnings) {
+      if (g.waveTriggered.has(w.id)) continue;
+      // Check phaseInDelay — trigger after delay seconds into the wave
+      const delay = recipe.phaseInDelay || 0;
+      if (g.waveElapsed >= delay) {
+        if (!g.cinematicWarning && g.pendingWaveEvents.length === 0 && g.elapsed >= g.warningLockUntil) {
+          queueWaveEvent(g, { ...w, duration: 2.0 });
+        }
+      }
     }
   }
+
   // Update wave warnings
   for (let i = g.waveWarnings.length - 1; i >= 0; i--) {
     g.waveWarnings[i].life -= dt;
