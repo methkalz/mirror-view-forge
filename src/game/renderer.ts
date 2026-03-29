@@ -1068,13 +1068,15 @@ function drawInterceptorIcon(ctx: CanvasRenderingContext2D, s: number) {
 // ─── Power-ups ────────────────────────────────────────
 function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
   const puColors: Record<string, { base: string; light: string; dark: string }> = {
-    medkit:      { base: '#22c55e', light: '#4ade80', dark: '#15803d' },
-    shield:      { base: '#60a5fa', light: '#93c5fd', dark: '#2563eb' },
-    ammo:        { base: '#4a5c2a', light: '#6b7d3a', dark: '#2d3a1a' },
-    slowmo:      { base: '#06b6d4', light: '#22d3ee', dark: '#0e7490' },
-    magnet:      { base: '#b91c1c', light: '#ef4444', dark: '#7f1d1d' },
-    airstrike:   { base: '#fbbf24', light: '#fcd34d', dark: '#b45309' },
-    interceptor: { base: '#f97316', light: '#fb923c', dark: '#c2410c' },
+    medkit:       { base: '#22c55e', light: '#4ade80', dark: '#15803d' },
+    shield:       { base: '#60a5fa', light: '#93c5fd', dark: '#2563eb' },
+    ammo:         { base: '#4a5c2a', light: '#6b7d3a', dark: '#2d3a1a' },
+    slowmo:       { base: '#06b6d4', light: '#22d3ee', dark: '#0e7490' },
+    magnet:       { base: '#b91c1c', light: '#ef4444', dark: '#7f1d1d' },
+    airstrike:    { base: '#fbbf24', light: '#fcd34d', dark: '#b45309' },
+    interceptor:  { base: '#f97316', light: '#fb923c', dark: '#c2410c' },
+    extinguisher: { base: '#dc2626', light: '#ef4444', dark: '#991b1b' },
+    gasmask:      { base: '#16a34a', light: '#22c55e', dark: '#14532d' },
   };
 
   for (const pu of g.powerUps) {
@@ -1358,6 +1360,8 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     else if (pu.type === 'magnet') drawMagnetIcon(ctx, iconScale);
     else if (pu.type === 'airstrike') drawAirstrikeIcon(ctx, iconScale);
     else if (pu.type === 'interceptor') drawInterceptorIcon(ctx, iconScale);
+    else if (pu.type === 'extinguisher') drawExtinguisherIcon(ctx, iconScale);
+    else if (pu.type === 'gasmask') drawGasMaskIcon(ctx, iconScale);
     ctx.restore();
 
     // ── Sparkles ──
