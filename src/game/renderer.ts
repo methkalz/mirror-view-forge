@@ -3553,45 +3553,63 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.scale(2.4, 2.4);
   ctx.translate(bike.shakeOffset.x, bike.shakeOffset.y);
 
-  // Exhaust smoke — denser when leaving
+  // ── Realistic Exhaust Puffs (multi-circle deformed, wind-driven) ──
   if (bike.phase === 'idle' || bike.phase === 'leaving' || bike.phase === 'entering') {
     const isLeaving = bike.phase === 'leaving';
-    const smokeCount = isLeaving ? 10 : (bike.phase === 'idle' ? 3 : 5);
-    for (let i = 0; i < smokeCount; i++) {
-      const age = (g.elapsed * (isLeaving ? 3 : 2) + i * 0.5) % 2;
-      const sx = -28 - age * (isLeaving ? 16 : 10);
-      const sy = -4 - age * (isLeaving ? 10 : 14);
-      const sr = 2 + age * (isLeaving ? 6 : 4);
-      const sa = Math.max(0, (isLeaving ? 0.4 : 0.3) - age * 0.15);
-      ctx.fillStyle = `rgba(${isLeaving ? '120,120,130' : '150,150,150'},${sa})`;
-      ctx.beginPath();
-      ctx.arc(sx, sy, sr, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // Extra dark exhaust puffs when leaving
-    if (isLeaving) {
-      for (let i = 0; i < 4; i++) {
-        const age = (g.elapsed * 4 + i * 1.1) % 1.5;
-        const sx = -30 - age * 20;
-        const sy = -2 - age * 6;
-        const sr = 3 + age * 5;
-        ctx.fillStyle = `rgba(60,60,70,${Math.max(0, 0.25 - age * 0.18)})`;
+    const puffCount = isLeaving ? 8 : (bike.phase === 'idle' ? 4 : 6);
+    for (let i = 0; i < puffCount; i++) {
+      const age = (g.elapsed * (isLeaving ? 2.5 : 1.5) + i * 0.6) % 2.5;
+      const friction = Math.pow(0.92, age * 10);
+      const baseVx = isLeaving ? -18 : -8;
+      const baseVy = isLeaving ? -6 : -8;
+      const windDrift = Math.sin(g.elapsed * 2 + i * 1.3) * 2;
+      const sx = -28 + baseVx * age * friction + windDrift;
+      const sy = -5 + baseVy * age * friction + Math.sin(g.elapsed * 3 + i) * 1.5;
+      const scaleX = 1 + age * 0.8; // puffs stretch horizontally with age
+      const baseR = 2 + age * (isLeaving ? 5 : 3.5);
+      const lifeAlpha = Math.max(0, 1 - age / 2.5);
+      // Color ages: white-grey → dark grey → transparent
+      const grey = Math.round(180 - age * 50);
+      const alpha = lifeAlpha * (isLeaving ? 0.35 : 0.25);
+      // Each puff = 3 overlapping circles for organic shape
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.scale(scaleX, 1);
+      for (let c = 0; c < 3; c++) {
+        const cx = Math.cos(c * 2.1 + i) * baseR * 0.3;
+        const cy = Math.sin(c * 2.1 + i) * baseR * 0.25;
+        const cr = baseR * (0.6 + c * 0.15);
+        ctx.fillStyle = `rgba(${grey},${grey},${grey + 10},${alpha * (1 - c * 0.15)})`;
         ctx.beginPath();
-        ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+        ctx.arc(cx, cy, cr, 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.restore();
     }
   }
 
-  // Dust particles when moving
+  // ── Physics-Based Dust Particles ──
   if (Math.abs(bike.speed) > 30) {
-    for (let i = 0; i < 4; i++) {
-      const dx = -20 - Math.random() * 16;
-      const dy = -Math.random() * 4;
-      ctx.fillStyle = `rgba(160,140,120,${0.15 + Math.random() * 0.15})`;
+    const dustCount = Math.min(8, Math.floor(Math.abs(bike.speed) / 40));
+    for (let i = 0; i < dustCount; i++) {
+      const seed = (g.elapsed * 3 + i * 1.7) % 2;
+      const friction = Math.pow(0.95, seed * 15);
+      const vx = -(3 + i * 1.2) * friction;
+      const vy = -(2 + Math.sin(i * 2.3) * 2) * friction;
+      const dx = -20 + vx * seed * 4;
+      const dy = 0 + vy * seed * 3;
+      const dustSize = (1.5 + i * 0.4) * (1 + seed * 0.5);
+      const dustAlpha = Math.max(0, 0.25 - seed * 0.12);
+      const rotation = seed * (i * 0.8);
+      const brown = 140 + Math.round(i * 5);
+      ctx.save();
+      ctx.translate(dx, dy);
+      ctx.rotate(rotation);
+      ctx.fillStyle = `rgba(${brown},${brown - 20},${brown - 40},${dustAlpha})`;
       ctx.beginPath();
-      ctx.arc(dx, dy, 2 + Math.random() * 3, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, dustSize * 1.2, dustSize * 0.8, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
     }
   }
 
@@ -3867,60 +3885,94 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.fillText('OTLOP', boxCenterX, boxCenterY);
   ctx.restore();
 
-  // ── Headlight (oval with reflection glow) ──
-  const showLight = bike.phase === 'idle'
-    ? Math.sin(g.elapsed * 6) > 0
-    : true;
+  // ── Volumetric Headlight System ──
+  const flickerIntensity = 0.85 + Math.sin(g.elapsed * 8) * 0.1 + Math.sin(g.elapsed * 13) * 0.05;
+  const showLight = bike.phase === 'idle' ? flickerIntensity > 0.82 : true;
   if (showLight) {
-    // Outer glow
-    ctx.fillStyle = 'rgba(255,255,200,0.1)';
-    ctx.beginPath();
-    ctx.ellipse(frontWX + 5, -10, 12, 8, 0.1, 0, Math.PI * 2);
-    ctx.fill();
-    // Mid glow
-    ctx.fillStyle = 'rgba(255,255,200,0.2)';
-    ctx.beginPath();
-    ctx.ellipse(frontWX + 5, -10, 6, 4, 0.1, 0, Math.PI * 2);
-    ctx.fill();
-    // Headlight lens
-    const hlGrad = ctx.createRadialGradient(frontWX + 5, -10, 0, frontWX + 5, -10, 3.5);
-    hlGrad.addColorStop(0, 'rgba(255,255,240,0.95)');
-    hlGrad.addColorStop(0.6, 'rgba(255,255,200,0.7)');
-    hlGrad.addColorStop(1, 'rgba(255,230,150,0.3)');
-    ctx.fillStyle = hlGrad;
-    ctx.beginPath();
-    ctx.ellipse(frontWX + 5, -10, 3.5, 2.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Lens reflection
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.beginPath();
-    ctx.ellipse(frontWX + 4, -11, 1.5, 0.8, -0.3, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // ── Tail light ──
-  ctx.fillStyle = 'rgba(255,30,30,0.8)';
-  ctx.beginPath();
-  ctx.ellipse(rearWX - 2, -10, 2.5, 1.5, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Tail light glow
-  ctx.fillStyle = 'rgba(255,0,0,0.15)';
-  ctx.beginPath();
-  ctx.ellipse(rearWX - 2, -10, 5, 3, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // ── Headlight ground pool (cone of light on ground) ──
-  if (showLight) {
+    const hlX = frontWX + 5;
+    const hlY = -10;
+    
+    // ── Volumetric Light Cone (triangle from headlight forward) ──
     ctx.save();
-    const groundPoolGrad = ctx.createRadialGradient(frontWX + 15, 4, 2, frontWX + 15, 4, 20);
-    groundPoolGrad.addColorStop(0, 'rgba(255,255,200,0.15)');
-    groundPoolGrad.addColorStop(0.5, 'rgba(255,255,180,0.06)');
-    groundPoolGrad.addColorStop(1, 'rgba(255,255,150,0)');
-    ctx.fillStyle = groundPoolGrad;
+    const coneLen = 50;
+    const coneAngle = 0.22; // ~25° half-angle
+    const coneGrad = ctx.createLinearGradient(hlX, hlY, hlX + coneLen, hlY);
+    coneGrad.addColorStop(0, `rgba(255,255,200,${0.12 * flickerIntensity})`);
+    coneGrad.addColorStop(0.4, `rgba(255,255,180,${0.06 * flickerIntensity})`);
+    coneGrad.addColorStop(1, 'rgba(255,255,150,0)');
+    ctx.fillStyle = coneGrad;
     ctx.beginPath();
-    ctx.ellipse(frontWX + 15, 4, 20, 6, 0, 0, Math.PI * 2);
+    ctx.moveTo(hlX + 3, hlY);
+    ctx.lineTo(hlX + coneLen, hlY - Math.sin(coneAngle) * coneLen);
+    ctx.lineTo(hlX + coneLen, hlY + Math.sin(coneAngle) * coneLen + 8);
+    ctx.closePath();
+    ctx.fill();
+    
+    // ── Light Rays (oscillating thin lines inside cone) ──
+    for (let r = 0; r < 4; r++) {
+      const rayAngle = (r - 1.5) * 0.08 + Math.sin(g.elapsed * 1.5 + r * 2) * 0.03;
+      const rayLen = 35 + r * 8;
+      const rayAlpha = (0.06 + Math.sin(g.elapsed * 2 + r * 1.7) * 0.03) * flickerIntensity;
+      ctx.strokeStyle = `rgba(255,255,220,${rayAlpha})`;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(hlX + 3, hlY);
+      ctx.lineTo(hlX + Math.cos(rayAngle) * rayLen, hlY + Math.sin(rayAngle) * rayLen);
+      ctx.stroke();
+    }
+    ctx.restore();
+    
+    // ── Multi-Layer Ground Pool ──
+    ctx.save();
+    // Outer pool (wide, faint)
+    const poolX = frontWX + 18;
+    const poolY = 4;
+    const poolFlicker = 0.9 + Math.sin(g.elapsed * 6) * 0.1;
+    const outerGrad = ctx.createRadialGradient(poolX, poolY, 3, poolX, poolY, 28);
+    outerGrad.addColorStop(0, `rgba(255,255,200,${0.12 * flickerIntensity * poolFlicker})`);
+    outerGrad.addColorStop(0.3, `rgba(255,255,180,${0.07 * flickerIntensity * poolFlicker})`);
+    outerGrad.addColorStop(0.7, `rgba(255,255,150,${0.03 * flickerIntensity})`);
+    outerGrad.addColorStop(1, 'rgba(255,255,150,0)');
+    ctx.fillStyle = outerGrad;
+    ctx.beginPath();
+    ctx.ellipse(poolX, poolY, 28, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Inner bright pool
+    const innerGrad = ctx.createRadialGradient(poolX - 2, poolY, 1, poolX - 2, poolY, 12);
+    innerGrad.addColorStop(0, `rgba(255,255,230,${0.18 * flickerIntensity})`);
+    innerGrad.addColorStop(0.5, `rgba(255,255,200,${0.08 * flickerIntensity})`);
+    innerGrad.addColorStop(1, 'rgba(255,255,180,0)');
+    ctx.fillStyle = innerGrad;
+    ctx.beginPath();
+    ctx.ellipse(poolX - 2, poolY, 12, 4, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+    
+    // ── Headlight Lens (multi-layer glow) ──
+    // Outer glow
+    ctx.fillStyle = `rgba(255,255,200,${0.08 * flickerIntensity})`;
+    ctx.beginPath();
+    ctx.ellipse(hlX, hlY, 14, 9, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    // Mid glow
+    ctx.fillStyle = `rgba(255,255,200,${0.18 * flickerIntensity})`;
+    ctx.beginPath();
+    ctx.ellipse(hlX, hlY, 7, 4.5, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    // Lens body
+    const hlGrad = ctx.createRadialGradient(hlX, hlY, 0, hlX, hlY, 3.5);
+    hlGrad.addColorStop(0, `rgba(255,255,240,${0.95 * flickerIntensity})`);
+    hlGrad.addColorStop(0.6, `rgba(255,255,200,${0.7 * flickerIntensity})`);
+    hlGrad.addColorStop(1, `rgba(255,230,150,${0.3 * flickerIntensity})`);
+    ctx.fillStyle = hlGrad;
+    ctx.beginPath();
+    ctx.ellipse(hlX, hlY, 3.5, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Lens reflection
+    ctx.fillStyle = `rgba(255,255,255,${0.5 * flickerIntensity})`;
+    ctx.beginPath();
+    ctx.ellipse(hlX - 1, hlY - 1, 1.5, 0.8, -0.3, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   // ── Driver (blue helmet with goggles, waving during dismount) ──
