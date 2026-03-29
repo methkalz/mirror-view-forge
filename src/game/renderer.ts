@@ -3294,6 +3294,286 @@ function renderOffscreenIndicators(ctx: CanvasRenderingContext2D, g: GameData) {
   }
 }
 
+// ─── Delivery Bike ────────────────────────────────────
+function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
+  const bike = g.deliveryBike;
+  if (!bike || !bike.active) return;
+  ctx.save();
+  ctx.translate(bike.pos.x, bike.pos.y);
+  const dir = bike.facingRight ? 1 : -1;
+  ctx.scale(dir, 1);
+
+  // Dust particles
+  if (Math.abs(bike.speed) > 50) {
+    for (let i = 0; i < 2; i++) {
+      const dx = -15 - Math.random() * 10;
+      const dy = -Math.random() * 4;
+      ctx.fillStyle = `rgba(160,140,120,${0.1 + Math.random() * 0.1})`;
+      ctx.beginPath();
+      ctx.arc(dx, dy, 1.5 + Math.random() * 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Wheels
+  const wheelR = 7;
+  const wheelY = -2;
+  const frontWX = 18, rearWX = -16;
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(frontWX, wheelY, wheelR, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(rearWX, wheelY, wheelR, 0, Math.PI * 2);
+  ctx.stroke();
+  // Spokes
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 0.8;
+  for (const wx of [frontWX, rearWX]) {
+    for (let i = 0; i < 4; i++) {
+      const a = bike.wheelAnim + i * Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(wx + Math.cos(a) * 2, wheelY + Math.sin(a) * 2);
+      ctx.lineTo(wx + Math.cos(a) * (wheelR - 1), wheelY + Math.sin(a) * (wheelR - 1));
+      ctx.stroke();
+    }
+  }
+  // Tire fill
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.arc(frontWX, wheelY, wheelR - 2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(rearWX, wheelY, wheelR - 2, 0, Math.PI * 2); ctx.fill();
+
+  // Frame
+  ctx.strokeStyle = '#444';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(rearWX, wheelY);
+  ctx.lineTo(-5, -14);
+  ctx.lineTo(frontWX, wheelY);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-5, -14);
+  ctx.lineTo(5, -14);
+  ctx.lineTo(frontWX + 3, wheelY - 5);
+  ctx.stroke();
+
+  // Seat
+  ctx.fillStyle = '#333';
+  ctx.fillRect(-8, -17, 10, 3);
+
+  // Orange delivery box
+  ctx.fillStyle = '#e8760a';
+  ctx.fillRect(-20, -30, 16, 14);
+  ctx.strokeStyle = '#b05508';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(-20, -30, 16, 14);
+
+  // "OTLOP" text — always readable
+  ctx.save();
+  ctx.scale(dir, 1); // Cancel parent mirror so text reads correctly
+  const textX = dir === 1 ? -12 : 12;
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 4px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('OTLOP', textX, -23);
+  ctx.restore();
+
+  // Rider (simplified)
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.ellipse(-2, -22, 4, 3.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Helmet
+  ctx.fillStyle = '#dc2626';
+  ctx.beginPath();
+  ctx.arc(-2, -28, 4, 0, Math.PI * 2);
+  ctx.fill();
+  // Visor
+  ctx.fillStyle = '#111';
+  ctx.fillRect(-1, -29, 4, 2);
+  // Arms
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(2, -22);
+  ctx.lineTo(8, -16);
+  ctx.stroke();
+
+  // Headlight
+  if (bike.phase !== 'dropping') {
+    ctx.fillStyle = 'rgba(255,255,200,0.6)';
+    ctx.beginPath();
+    ctx.arc(frontWX + 5, -8, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+// ─── Water Bottle Icon ────────────────────────────────
+function drawWaterIcon(ctx: CanvasRenderingContext2D, s: number) {
+  // Blue bottle shape
+  const bw = s * 0.3, bh = s * 0.8;
+  const bg = ctx.createLinearGradient(-bw, 0, bw, 0);
+  bg.addColorStop(0, '#0284c7');
+  bg.addColorStop(0.3, '#38bdf8');
+  bg.addColorStop(0.7, '#0ea5e9');
+  bg.addColorStop(1, '#0284c7');
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.roundRect(-bw, -bh * 0.3, bw * 2, bh * 0.8, 3);
+  ctx.fill();
+  // Cap
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(-bw * 0.5, -bh * 0.5, bw, bh * 0.22);
+  // Water drops
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.beginPath();
+  ctx.arc(-bw * 0.2, -bh * 0.05, s * 0.1, 0, Math.PI * 2);
+  ctx.fill();
+  // Label
+  ctx.fillStyle = '#fff';
+  ctx.font = `${s * 0.18}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('💧', 0, bh * 0.1);
+}
+
+// ─── Rest Overlay ─────────────────────────────────────
+function renderRestOverlay(ctx: CanvasRenderingContext2D, g: GameData) {
+  if (g.wavePhase !== 'rest' && g.wavePhase !== 'cards') return;
+  // Subtle calm overlay
+  ctx.fillStyle = 'rgba(0, 10, 30, 0.15)';
+  ctx.fillRect(0, 0, g.width, g.height);
+
+  // "WAVE COMPLETE" text
+  if (g.wavePhase === 'rest' && g.restTimer > 7) {
+    const alpha = Math.min(1, (10 - g.restTimer) * 2);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 22px monospace';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = '#fbbf24';
+    ctx.shadowBlur = 15;
+    ctx.fillText(`WAVE ${g.waveNumber} COMPLETE`, g.width / 2, g.height * 0.25);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+}
+
+// ─── Upgrade Cards ────────────────────────────────────
+function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
+  if (g.wavePhase !== 'cards' || g.upgradeCards.length === 0) return;
+
+  // Dark overlay
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.fillRect(0, 0, g.width, g.height);
+
+  // Title
+  ctx.fillStyle = '#fbbf24';
+  ctx.font = 'bold 16px monospace';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = '#fbbf24';
+  ctx.shadowBlur = 12;
+  ctx.fillText('CHOOSE UPGRADE', g.width / 2, g.height * 0.25);
+  ctx.shadowBlur = 0;
+
+  const cardW = 100, cardH = 140, gap = 16;
+  const totalW = g.upgradeCards.length * cardW + (g.upgradeCards.length - 1) * gap;
+  const startX = (g.width - totalW) / 2;
+  const cardY = g.height * 0.35;
+
+  // Animate cards sliding in
+  const slideIn = Math.min(1, g.cardsShownTimer * 3);
+  const eased = 1 - Math.pow(1 - slideIn, 3);
+
+  for (let i = 0; i < g.upgradeCards.length; i++) {
+    const card = g.upgradeCards[i];
+    const cx = startX + i * (cardW + gap);
+    const cy = cardY + (1 - eased) * 60;
+
+    ctx.save();
+    ctx.globalAlpha = eased;
+
+    // Card background
+    const cardGrad = ctx.createLinearGradient(cx, cy, cx, cy + cardH);
+    cardGrad.addColorStop(0, 'rgba(30, 30, 50, 0.95)');
+    cardGrad.addColorStop(1, 'rgba(15, 15, 30, 0.95)');
+    ctx.fillStyle = cardGrad;
+    ctx.beginPath();
+    ctx.roundRect(cx, cy, cardW, cardH, 10);
+    ctx.fill();
+
+    // Gold border
+    ctx.strokeStyle = card.color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(cx, cy, cardW, cardH, 10);
+    ctx.stroke();
+
+    // Glow
+    ctx.shadowColor = card.color;
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = `${card.color}44`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(cx - 2, cy - 2, cardW + 4, cardH + 4, 12);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Icon
+    ctx.fillStyle = '#fff';
+    ctx.font = '28px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(card.icon, cx + cardW / 2, cy + 35);
+
+    // Name
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText(card.name, cx + cardW / 2, cy + 70);
+
+    // Arabic name
+    ctx.fillStyle = card.color;
+    ctx.font = '9px monospace';
+    ctx.fillText(card.nameAr, cx + cardW / 2, cy + 85);
+
+    // Description
+    ctx.fillStyle = 'rgba(200,200,200,0.7)';
+    ctx.font = '8px monospace';
+    ctx.fillText(card.description, cx + cardW / 2, cy + 105);
+
+    // "TAP" hint
+    const pulse = 0.4 + Math.sin(g.elapsed * 4 + i) * 0.2;
+    ctx.fillStyle = `rgba(251,191,36,${pulse})`;
+    ctx.font = '8px monospace';
+    ctx.fillText('TAP', cx + cardW / 2, cy + cardH - 12);
+
+    ctx.restore();
+  }
+
+  // Timer bar at bottom
+  const maxTime = 8;
+  const remaining = Math.max(0, maxTime - g.cardsShownTimer);
+  const ratio = remaining / maxTime;
+  const barW = totalW;
+  const barX = startX;
+  const barY = cardY + cardH + 16;
+  ctx.fillStyle = 'rgba(255,255,255,0.1)';
+  ctx.fillRect(barX, barY, barW, 3);
+  ctx.fillStyle = ratio > 0.3 ? '#fbbf24' : '#ef4444';
+  ctx.fillRect(barX, barY, barW * ratio, 3);
+}
+
+// ─── Wave Indicator ───────────────────────────────────
+function renderWaveIndicator(ctx: CanvasRenderingContext2D, g: GameData) {
+  if (g.wavePhase !== 'active') return;
+  // Already shown in HUD wave section - just update the number
+}
+
 // ─── Main Render ──────────────────────────────────────
 export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.save();
