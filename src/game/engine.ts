@@ -1,7 +1,7 @@
 import {
   GameData, InputState, Hazard, PowerUp, Particle, Vec2, Crater, FloatingText, Drone, Bullet,
   HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning, Boss, DroneTier,
-  FirePool, GasCloud, UpgradeCard, DeliveryBike
+  FirePool, GasCloud, UpgradeCard, DeliveryBike, IntroPhase
 } from './types';
 import { getFromPool } from './pool';
 import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall } from './audio';
@@ -125,6 +125,11 @@ export function createGame(w: number, h: number): GameData {
     waveEndSlowMo: 0,
     waveFinale: false,
     activeHazardCount: 0,
+    // Intro system
+    introPhase: 'done' as IntroPhase,
+    introTimer: 0,
+    introBike: null,
+    introPlayerOffset: 0,
   };
 }
 
