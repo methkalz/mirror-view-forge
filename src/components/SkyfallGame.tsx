@@ -121,8 +121,8 @@ const SkyfallGame: React.FC = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx) { rafRef.current = requestAnimationFrame(loop); return; }
 
-      const w = window.innerWidth;
-      const h = window.innerHeight;
+      const w = g.width;
+      const h = g.height;
 
       try {
         ctx.save();
