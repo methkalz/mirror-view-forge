@@ -320,7 +320,7 @@ const SkyfallGame: React.FC = () => {
   // Loading screen
   if (isLoading) {
     return (
-      <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' }}>
+      <div style={{ position: 'relative', width: '100vw', height: '100dvh', overflow: 'hidden', background: '#000' }}>
         <LoadingScreen
           loadingProgress={loadingProgress}
           loadingText={loadingText}
@@ -333,7 +333,7 @@ const SkyfallGame: React.FC = () => {
   // Name entry screen
   if (showNameEntry) {
     return (
-      <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' }}>
+      <div style={{ position: 'relative', width: '100vw', height: '100dvh', overflow: 'hidden', background: '#000' }}>
         <NameEntry
           onSubmit={handleNameSubmit}
           defaultName={playerName}

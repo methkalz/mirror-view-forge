@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { loadAudioSettings, startMenuMusic, stopMenuMusic } from '@/game/audio';
+import { startMenuMusic, stopMenuMusic, resumeAudio } from '@/game/audio';
 
 interface BrandingConfig {
   logoUrl: string | null;
@@ -38,14 +38,28 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   const showTitle = branding?.showTitle ?? true;
   const hasName = name.trim().length > 0;
 
+  // Start menu music on first user interaction (required for iOS Safari/Chrome)
   useEffect(() => {
-    const init = async () => {
-      await loadAudioSettings();
+    const startOnGesture = () => {
+      if (!musicStarted.current) {
+        musicStarted.current = true;
+        resumeAudio();
+        startMenuMusic();
+      }
+    };
+    // Also try after a short delay for desktop browsers
+    const timer = setTimeout(() => {
       startMenuMusic();
       musicStarted.current = true;
+    }, 500);
+    document.addEventListener('touchstart', startOnGesture, { once: true, passive: true });
+    document.addEventListener('click', startOnGesture, { once: true });
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('touchstart', startOnGesture);
+      document.removeEventListener('click', startOnGesture);
+      stopMenuMusic();
     };
-    const timer = setTimeout(init, 300);
-    return () => { clearTimeout(timer); stopMenuMusic(); };
   }, []);
 
   // Spark particles
