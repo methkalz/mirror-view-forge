@@ -734,15 +734,20 @@ export function sfxScoreSubmit() {
 // ─── Menu Music ───
 let menuMusicNode: AudioBufferSourceNode | null = null;
 let menuMusicGain: GainNode | null = null;
+let menuMusicStarting = false;
 
 export async function startMenuMusic() {
-  if (menuMusicNode) return;
+  if (menuMusicNode || menuMusicStarting) return;
   if (!isSoundEnabled('menuMusic')) return;
 
-  const ctx = getCtx();
-  if (ctx.state === 'suspended') {
-    await ctx.resume();
-  }
+  menuMusicStarting = true;
+  try {
+    const ctx = getCtx();
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+    // Double-check after await — another call may have created the node
+    if (menuMusicNode) { menuMusicStarting = false; return; }
 
   // Try custom audio
   const url = pickFileUrl('menuMusic');
@@ -781,6 +786,11 @@ export async function startMenuMusic() {
   menuMusicGain.gain.value = getSoundVolume('menuMusic', 0.3);
   menuMusicNode.connect(menuMusicGain).connect(ctx.destination);
   menuMusicNode.start();
+  } catch (e) {
+    console.warn('startMenuMusic error:', e);
+  } finally {
+    menuMusicStarting = false;
+  }
 }
 
 export function stopMenuMusic() {
