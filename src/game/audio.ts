@@ -725,11 +725,14 @@ export function sfxScoreSubmit() {
 let menuMusicNode: AudioBufferSourceNode | null = null;
 let menuMusicGain: GainNode | null = null;
 
-export function startMenuMusic() {
+export async function startMenuMusic() {
   if (menuMusicNode) return;
   if (!isSoundEnabled('menuMusic')) return;
 
   const ctx = getCtx();
+  if (ctx.state === 'suspended') {
+    await ctx.resume();
+  }
 
   // Try custom audio
   const url = pickFileUrl('menuMusic');
