@@ -1,33 +1,62 @@
 
 
-# إبقاء الموسيقى تعمل حتى بدء اللعبة الفعلي
+# إصلاح توقيت تشغيل موسيقى الشاشة الأولى
 
-## المشكلة
-حالياً `stopMenuMusic()` تُستدعى في 3 أماكن:
-1. `NameEntry.tsx` سطر 126 — عند الضغط على "ابدأ المعركة"
-2. `NameEntry.tsx` سطر 61 — عند unmount المكوّن
-3. `SkyfallGame.tsx` سطر 87 — في `handleNameSubmit`
+## السبب الجذري — تحليل دقيق
 
-الموسيقى تتوقف فور إدخال الاسم، بينما المطلوب أن تستمر خلال شاشة Start Screen (PRESS ENTER) وتتوقف فقط عند بدء اللعب الفعلي.
+المشكلة هي **سباق بين استدعاءين متزامنين** لـ `startMenuMusic()`:
+
+```text
+التسلسل الفعلي:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. التحميل: AudioContext يُنشأ (حالة: suspended)
+2. GameLoader ينتهي تلقائياً (بدون نقرة!)
+3. NameEntry يظهر → useEffect يستدعي startMenuMusic()
+   ↳ Call 1: ctx.state='suspended' → await ctx.resume() → عالق ⏳
+     (لا يوجد تفاعل من المستخدم = المتصفح يرفض التشغيل)
+   ↳ menuMusicNode لا يزال null
+4. المستخدم يكتب/ينقر → tryStart يستدعي startMenuMusic()
+   ↳ Call 2: menuMusicNode=null → يدخل الدالة
+   ↳ await ctx.resume() → ينجح (تفاعل مستخدم) ✓
+   ↳ يُنشئ node ويشغّل الموسيقى ✓
+   ↳ لكن Call 1 المعلّق يستيقظ أيضاً!
+   ↳ Call 1 يُنشئ node ثاني ويكتب فوق menuMusicNode
+   ↳ الآن يوجد عقدتان صوتيتان + واحدة يتيمة
+5. المستخدم يضغط "ابدأ المعركة" → ينتقل لشاشة Start
+6. Start screen → المستخدم يضغط Enter
+   ↳ startOrRestart → resumeAudio()
+   ↳ stopMenuMusic() يوقف node واحدة فقط
+   ↳ العقدة اليتيمة تستمر أو تُعيد الأمور
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**السبب المحدد**: `startMenuMusic()` في useEffect (سطر 43) يعلق عند `await ctx.resume()` بدون تفاعل مستخدم. عندما يتفاعل المستخدم لاحقاً، يستيقظ الاستدعاء القديم ويتداخل مع الاستدعاء الجديد.
 
 ## الحل
 
-### 1. `src/components/NameEntry.tsx`
-- إزالة استدعاء `stopMenuMusic()` من `handleSubmit` (سطر 126)
-- إزالة `stopMenuMusic()` من cleanup في useEffect (سطر 61)
-- الموسيقى تبقى تعمل بعد إرسال الاسم
-
-### 2. `src/components/SkyfallGame.tsx`
-- إزالة `stopMenuMusic()` من `handleNameSubmit` (سطر 87)
-- إضافة `stopMenuMusic()` عند انتقال حالة اللعبة من `start` إلى `intro` — داخل كتلة تتبع تغيير الحالة (سطر 189-196) عندما تصبح الحالة `intro`
+### 1. `src/game/audio.ts` — إضافة حماية ضد التنفيذ المتزامن
+- إضافة متغير `menuMusicStarting = false` كـ mutex
+- في بداية `startMenuMusic()`: إذا `menuMusicStarting` أو `menuMusicNode` موجود → return
+- تعيين `menuMusicStarting = true` قبل `await ctx.resume()`
+- بعد إنشاء node: `menuMusicStarting = false`
+- في حالة الخطأ: `menuMusicStarting = false`
 
 ```text
-التدفق الجديد:
-NameEntry → إدخال الاسم → Start Screen (الموسيقى مستمرة ♪)
-→ PRESS ENTER → resetGame → state='intro' → stopMenuMusic() ✓
+startMenuMusic() الجديدة:
+├─ if (menuMusicNode || menuMusicStarting) → return
+├─ menuMusicStarting = true
+├─ await ctx.resume()
+├─ if (menuMusicNode) → menuMusicStarting=false; return  ← فحص ثاني
+├─ إنشاء node وتشغيل الموسيقى
+└─ menuMusicStarting = false
 ```
 
+### 2. `src/components/NameEntry.tsx` — عدم استدعاء startMenuMusic من useEffect مباشرة
+- إزالة `startMenuMusic()` من السطر 43 (الاستدعاء المباشر في useEffect)
+- الإبقاء فقط على مستمعات الأحداث (click/touchstart/keydown) كطريقة وحيدة لبدء الموسيقى
+- هذا يضمن أن الموسيقى تبدأ فقط بتفاعل مستخدم حقيقي
+
 ## الملفات المتأثرة
-- `src/components/NameEntry.tsx` — إزالة استدعاءات stopMenuMusic
-- `src/components/SkyfallGame.tsx` — نقل stopMenuMusic إلى لحظة بدء اللعبة
+- `src/game/audio.ts` — إضافة mutex لمنع التنفيذ المتزامن
+- `src/components/NameEntry.tsx` — إزالة الاستدعاء المباشر في useEffect
 
