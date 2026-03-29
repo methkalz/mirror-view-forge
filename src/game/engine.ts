@@ -763,9 +763,13 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   g.elapsed += dt;
+  g.waveElapsed += dt;
   g.difficulty = 1 + g.elapsed / 60;
-  g.score += Math.round(dt);
+  if (g.wavePhase === 'active') g.score += Math.round(dt);
   g.windOffset = Math.sin(g.elapsed * 0.3) * 0.5;
+
+  // === Wave Phase System ===
+  updateWaveSystem(g, input, dt);
 
   // === Cinematic warning timer ===
   if (g.cinematicWarning) {
