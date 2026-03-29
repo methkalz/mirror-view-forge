@@ -30,12 +30,16 @@ const SkyfallGame: React.FC = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [gameOverData, setGameOverData] = useState<{ score: number; rank: number | null; waves: number } | null>(null);
   const [remoteConfig, setRemoteConfig] = useState<RemoteGameConfig | null>(null);
+  const remoteConfigRef = useRef<RemoteGameConfig | null>(null);
   const scoreSubmittedRef = useRef(false);
 
   // Load leaderboard on mount
   useEffect(() => {
     fetchLeaderboard().then(setLeaderboard);
-    fetchGameConfig().then(setRemoteConfig);
+    fetchGameConfig().then(cfg => {
+      setRemoteConfig(cfg);
+      remoteConfigRef.current = cfg;
+    });
   }, []);
 
   // Check if name already exists
@@ -56,11 +60,12 @@ const SkyfallGame: React.FC = () => {
     const g = createGame(window.innerWidth, window.innerHeight);
     gameRef.current = g;
 
-    // Apply remote config
-    if (remoteConfig) {
-      g.player.speed = remoteConfig.baseSpeed;
-      g.spawnTimer = remoteConfig.spawnInterval;
-      g.difficulty = remoteConfig.difficultyMultiplier;
+    // Apply remote config from ref (not state dependency)
+    const cfg = remoteConfigRef.current;
+    if (cfg) {
+      g.player.speed = cfg.baseSpeed;
+      g.spawnTimer = cfg.spawnInterval;
+      g.difficulty = cfg.difficultyMultiplier;
     }
 
     const resize = () => {
@@ -162,9 +167,9 @@ const SkyfallGame: React.FC = () => {
         resumeAudio();
         scoreSubmittedRef.current = false;
         setGameOverData(null);
-        // Re-fetch config for next game
+        // Re-fetch config for next game (apply directly, no re-render)
         fetchGameConfig().then(cfg => {
-          setRemoteConfig(cfg);
+          remoteConfigRef.current = cfg;
           if (cfg) {
             g.player.speed = cfg.baseSpeed;
             g.spawnTimer = cfg.spawnInterval;
@@ -216,7 +221,7 @@ const SkyfallGame: React.FC = () => {
       document.removeEventListener('contextmenu', preventContext);
       canvas.removeEventListener('touchstart', preventTouch);
     };
-  }, [showNameEntry, playerName, remoteConfig]);
+  }, [showNameEntry, playerName]);
 
   const hapticRef = useRef<{ checkbox: HTMLInputElement; label: HTMLLabelElement } | null>(null);
   useEffect(() => {
