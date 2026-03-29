@@ -1534,7 +1534,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   // Magnet attraction removed — magnet now works instantly
 
   // === Cargo Drone ===
-  if (g.elapsed >= 120) {
+  if (g.elapsed >= 120 && g.wavePhase === 'active') {
     g.cargoTimer -= dt;
     if (g.cargoTimer <= 0) {
       g.cargoTimer = 60 + Math.random() * 30;
@@ -1543,7 +1543,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Incendiary Drones ===
-  if (g.activatedWaveEvents.has('drones_incendiary')) {
+  if (g.activatedWaveEvents.has('drones_incendiary') && g.wavePhase === 'active') {
     g.incendiaryTimer -= dt;
     if (g.incendiaryTimer <= 0) {
       g.incendiaryTimer = 25 + Math.random() * 15;
@@ -1552,7 +1552,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Chemical Drones ===
-  if (g.activatedWaveEvents.has('drones_chemical')) {
+  if (g.activatedWaveEvents.has('drones_chemical') && g.wavePhase === 'active') {
     g.chemicalTimer -= dt;
     if (g.chemicalTimer <= 0) {
       g.chemicalTimer = 30 + Math.random() * 20;
