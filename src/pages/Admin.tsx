@@ -13,7 +13,7 @@ const Admin: React.FC = () => {
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'analytics' | 'config' | 'waves' | 'leaderboard' | 'audio'>('analytics');
+  const [tab, setTab] = useState<'analytics' | 'config' | 'branding' | 'waves' | 'leaderboard' | 'audio'>('analytics');
 
   // Config state
   const [config, setConfig] = useState<RemoteGameConfig | null>(null);
@@ -141,6 +141,7 @@ const Admin: React.FC = () => {
         {([
           { key: 'analytics' as const, icon: '📊', label: 'Analytics' },
           { key: 'config' as const, icon: '🎮', label: 'Config' },
+          { key: 'branding' as const, icon: '🎨', label: 'Brand' },
           { key: 'waves' as const, icon: '🌊', label: 'Waves' },
           { key: 'audio' as const, icon: '🔊', label: 'Audio' },
           { key: 'leaderboard' as const, icon: '🏆', label: 'Leaders' },
@@ -152,7 +153,7 @@ const Admin: React.FC = () => {
               flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', fontSize: 12, fontWeight: 600,
               background: tab === t.key ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
               color: tab === t.key ? '#60a5fa' : 'rgba(255,255,255,0.5)',
-              cursor: 'pointer', minWidth: 70,
+              cursor: 'pointer', minWidth: 60,
             }}
           >
             {t.icon} {t.label}
