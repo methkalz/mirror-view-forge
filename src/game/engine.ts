@@ -1411,11 +1411,9 @@ export function update(g: GameData, input: InputState, dt: number) {
         // Keep moving at 50% speed while releasing
         h.pos.x += (h.clusterVelX! * 0.5) * g.slowMoFactor * dt;
 
-        // Release glowing bombs downward
-        let splitCount = 2;
-        if (g.activatedWaveEvents.has('cluster_3')) splitCount = 3;
-        if (g.activatedWaveEvents.has('cluster_4')) splitCount = 4;
-        if (g.activatedWaveEvents.has('cluster_5')) splitCount = 5;
+        // Release glowing bombs downward — use recipe cluster splits
+        const recipe = getWaveRecipe(g.waveNumber);
+        let splitCount = Math.max(2, recipe.clusterSplits);
 
         for (let i = 0; i < splitCount; i++) {
           const spreadX = (i - (splitCount - 1) / 2) * 35 + (Math.random() - 0.5) * 20;
