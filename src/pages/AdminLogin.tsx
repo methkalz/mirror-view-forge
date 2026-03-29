@@ -21,7 +21,6 @@ const AdminLogin: React.FC = () => {
       return;
     }
 
-    // Check admin role
     const { data: roles } = await supabase
       .from('user_roles')
       .select('role')
@@ -41,86 +40,93 @@ const AdminLogin: React.FC = () => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0f172a',
+      background: '#0a0f1a',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       padding: 20,
     }}>
       <form onSubmit={handleLogin} style={{
-        background: 'rgba(255,255,255,0.05)',
-        backdropFilter: 'blur(20px)',
+        background: 'rgba(255,255,255,0.03)',
         borderRadius: 20,
-        border: '1px solid rgba(255,255,255,0.1)',
-        padding: '40px 32px',
-        width: 'min(380px, 90vw)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        padding: '44px 36px',
+        width: 'min(420px, 90vw)',
         display: 'flex',
         flexDirection: 'column',
         gap: 16,
       }}>
-        <h2 style={{
-          fontFamily: "'SF Pro Display', system-ui, sans-serif",
-          fontSize: 22,
-          fontWeight: 700,
-          color: '#f1f5f9',
-          textAlign: 'center',
-          marginBottom: 8,
-        }}>
-          🔐 Admin Panel
-        </h2>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 8 }}>
+          <div style={{ fontSize: 36, marginBottom: 8 }}>☄️</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', letterSpacing: 0.5 }}>Skyfall Admin</div>
+          <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.4)', letterSpacing: 3, marginTop: 4 }}>CONTROL PANEL</div>
+        </div>
 
         {error && (
           <div style={{
             padding: '10px 14px',
-            borderRadius: 10,
-            background: 'rgba(220,38,38,0.15)',
-            border: '1px solid rgba(220,38,38,0.3)',
-            color: '#fca5a5',
-            fontSize: 13,
+            borderRadius: 12,
+            background: 'rgba(220,38,38,0.08)',
+            border: '1px solid rgba(220,38,38,0.15)',
+            color: '#f87171',
+            fontSize: 12,
             textAlign: 'center',
           }}>{error}</div>
         )}
 
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          required
-          style={{
-            padding: '12px 16px', borderRadius: 10,
-            border: '1px solid rgba(255,255,255,0.15)',
-            background: 'rgba(0,0,0,0.3)', color: '#f1f5f9',
-            fontSize: 15, outline: 'none',
-          }}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          required
-          style={{
-            padding: '12px 16px', borderRadius: 10,
-            border: '1px solid rgba(255,255,255,0.15)',
-            background: 'rgba(0,0,0,0.3)', color: '#f1f5f9',
-            fontSize: 15, outline: 'none',
-          }}
-        />
+        <div>
+          <label style={{ fontSize: 11, color: 'rgba(148,163,184,0.5)', marginBottom: 6, display: 'block', fontWeight: 500 }}>Email</label>
+          <input
+            type="email"
+            placeholder="admin@example.com"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            required
+            style={{
+              width: '100%',
+              padding: '12px 16px', borderRadius: 12,
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(0,0,0,0.25)', color: '#f1f5f9',
+              fontSize: 14, outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+        <div>
+          <label style={{ fontSize: 11, color: 'rgba(148,163,184,0.5)', marginBottom: 6, display: 'block', fontWeight: 500 }}>Password</label>
+          <input
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            required
+            style={{
+              width: '100%',
+              padding: '12px 16px', borderRadius: 12,
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(0,0,0,0.25)', color: '#f1f5f9',
+              fontSize: 14, outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
 
         <button
           type="submit"
           disabled={loading}
           style={{
             padding: '14px',
-            borderRadius: 12,
-            border: 'none',
-            background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-            color: '#fff',
-            fontSize: 15,
+            borderRadius: 14,
+            border: '1px solid rgba(59,130,246,0.2)',
+            background: 'rgba(59,130,246,0.12)',
+            color: '#60a5fa',
+            fontSize: 14,
             fontWeight: 700,
             cursor: loading ? 'wait' : 'pointer',
-            opacity: loading ? 0.7 : 1,
+            opacity: loading ? 0.6 : 1,
+            marginTop: 4,
+            letterSpacing: 0.5,
           }}
         >
           {loading ? 'Signing in...' : 'Sign In'}
