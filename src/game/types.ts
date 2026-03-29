@@ -319,6 +319,12 @@ export interface GameData {
   selectedUpgrade: string | null;
   cardsShownTimer: number;
   waveElapsed: number; // time within current wave
+  // Camera zoom system
+  cameraZoom: number;
+  cameraZoomTarget: number;
+  cameraFocusX: number;
+  cameraFocusY: number;
+  bikeZoomTimer: number;
 }
 
 export interface InputState {

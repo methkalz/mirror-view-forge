@@ -3683,6 +3683,17 @@ function renderWaveIndicator(ctx: CanvasRenderingContext2D, g: GameData) {
 // ─── Main Render ──────────────────────────────────────
 export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.save();
+
+  // Camera zoom effect (bike entrance)
+  const zoom = g.cameraZoom || 1;
+  if (zoom !== 1) {
+    const fx = g.cameraFocusX || g.width / 2;
+    const fy = g.cameraFocusY || g.height * 0.78;
+    ctx.translate(fx, fy);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-fx, -fy);
+  }
+
   ctx.translate(g.screenShake.x - g.camera.x, g.screenShake.y);
 
   renderBackground(ctx, g);
