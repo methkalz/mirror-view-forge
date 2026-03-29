@@ -14,6 +14,7 @@ export interface RemoteGameConfig {
   gameSubtitle: string;
   developerName: string;
   developerUrl: string | null;
+  showTitle: boolean;
 }
 
 export interface RemoteWaveConfig {
@@ -48,6 +49,7 @@ const DEFAULT_CONFIG: RemoteGameConfig = {
   gameSubtitle: 'SURVIVAL',
   developerName: 'CAILOR GG',
   developerUrl: null,
+  showTitle: true,
 };
 
 export async function fetchGameConfig(): Promise<RemoteGameConfig> {
@@ -70,6 +72,7 @@ export async function fetchGameConfig(): Promise<RemoteGameConfig> {
       gameSubtitle: (data as any).game_subtitle ?? 'SURVIVAL',
       developerName: (data as any).developer_name ?? 'CAILOR GG',
       developerUrl: (data as any).developer_url ?? null,
+      showTitle: (data as any).show_title ?? true,
     };
   } catch {
     return DEFAULT_CONFIG;
