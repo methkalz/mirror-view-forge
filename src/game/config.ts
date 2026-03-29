@@ -196,6 +196,7 @@ export interface AudioConfigEntry {
   labelAr: string;
   volume: number;
   enabled: boolean;
+  audioUrl: string | null;
 }
 
 export async function fetchAudioConfig(): Promise<AudioConfigEntry[]> {
@@ -213,18 +214,51 @@ export async function fetchAudioConfig(): Promise<AudioConfigEntry[]> {
       labelAr: r.label_ar,
       volume: r.volume,
       enabled: r.enabled,
+      audioUrl: (r as any).audio_url ?? null,
     }));
   } catch {
     return [];
   }
 }
 
-export async function updateAudioEntry(id: string, updates: { volume?: number; enabled?: boolean }): Promise<boolean> {
+export async function updateAudioEntry(id: string, updates: { volume?: number; enabled?: boolean; audioUrl?: string | null }): Promise<boolean> {
   const mapped: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (updates.volume !== undefined) mapped.volume = updates.volume;
   if (updates.enabled !== undefined) mapped.enabled = updates.enabled;
+  if (updates.audioUrl !== undefined) mapped.audio_url = updates.audioUrl;
   const { error } = await supabase.from('audio_config').update(mapped).eq('id', id);
   return !error;
+}
+
+export async function uploadAudioFile(file: File, soundKey: string): Promise<string | null> {
+  const ext = file.name.split('.').pop() || 'mp3';
+  const path = `${soundKey}_${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from('game-audio').upload(path, file, {
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) return null;
+  const { data } = supabase.storage.from('game-audio').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+export async function deleteAudioFile(url: string): Promise<boolean> {
+  // Extract path from public URL
+  const match = url.match(/game-audio\/(.+)$/);
+  if (!match) return false;
+  const { error } = await supabase.storage.from('game-audio').remove([match[1]]);
+  return !error;
+}
+
+export async function listAudioLibrary(): Promise<{ name: string; url: string }[]> {
+  const { data, error } = await supabase.storage.from('game-audio').list('', { limit: 200 });
+  if (error || !data) return [];
+  return data
+    .filter(f => f.name && !f.name.startsWith('.'))
+    .map(f => ({
+      name: f.name,
+      url: supabase.storage.from('game-audio').getPublicUrl(f.name).data.publicUrl,
+    }));
 }
 
 export async function updateAudioCategory(category: string, updates: { volume?: number; enabled?: boolean }): Promise<boolean> {
