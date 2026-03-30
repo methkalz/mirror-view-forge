@@ -16,6 +16,7 @@ export interface RemoteGameConfig {
   developerUrl: string | null;
   showTitle: boolean;
   cameraMargin: number;
+  bgLoop: boolean;
 }
 
 export interface RemoteWaveConfig {
