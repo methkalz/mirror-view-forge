@@ -1533,7 +1533,7 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
         // Serial number
         ctx.font = '3px monospace';
         ctx.fillStyle = 'rgba(229,229,208,0.35)';
-        ctx.fillText('MIL-STD', -cW * 0.55, cY - cH * 0.55);
+        ctx.fillText('عسكري', -cW * 0.55, cY - cH * 0.55);
         ctx.globalAlpha = fadeAlpha;
       }
 
