@@ -158,7 +158,7 @@ const SkyfallGame: React.FC = () => {
         ctx.clearRect(0, 0, w, h);
 
         if (g.state === 'start') {
-          renderStartScreen(ctx, w, h, g.highScore);
+          renderStartScreen(ctx, w, h, g.highScore, g.tutorialPage);
         } else if (g.state === 'intro') {
           updateIntro(g, dt);
           render(ctx, g);
