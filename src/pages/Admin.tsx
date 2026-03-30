@@ -434,48 +434,255 @@ const LeaderboardPanel: React.FC<{ leaders: LeaderboardEntry[]; onDelete: (id: s
 );
 
 // ─── Waves Panel ───
+
+// Helper: generate preview of auto-scaled waves
+function generatePreviewWaves(profile: DifficultyProfile, count: number = 20) {
+  const previews: { wave: number; threats: string[]; maxConcurrent: number; spawnInterval: number; droneTiers: string[]; clusterSplits: number; bulletLevel: number; hasBoss: boolean; hasChemical: boolean; hasIncendiary: boolean }[] = [];
+  for (let w = 1; w <= count; w++) {
+    const threats: string[] = [];
+    for (const [type, unlockWave] of Object.entries(profile.threatsUnlock)) {
+      if (w >= unlockWave) threats.push(type);
+    }
+    if (threats.length === 0) threats.push('shrapnel');
+    const droneTiers: string[] = [];
+    for (const [type, unlockWave] of Object.entries(profile.dronesUnlock)) {
+      if (w >= unlockWave) droneTiers.push(type);
+    }
+    const maxConcurrent = Math.min(profile.maxConcurrentCap, Math.round(profile.baseMaxConcurrent + profile.concurrentGrowth * (w - 1)));
+    const spawnInterval = Math.max(profile.minSpawnInterval, +(profile.baseSpawnInterval - profile.spawnIntervalDecay * (w - 1)).toFixed(2));
+    const clusterUnlock = profile.threatsUnlock['cluster'] || 999;
+    let clusterSplits = 0;
+    if (w >= clusterUnlock) clusterSplits = Math.min(profile.clusterSplitsCap, Math.round(profile.clusterSplitsBase + profile.clusterSplitsGrowth * (w - clusterUnlock)));
+    let bulletLevel = 1;
+    for (const [level, unlockWave] of Object.entries(profile.bulletLevelWaves)) {
+      if (w >= unlockWave) bulletLevel = Math.max(bulletLevel, parseInt(level));
+    }
+    const hasBoss = w >= profile.bossStartWave && ((w - profile.bossStartWave) % profile.bossEveryNWaves === 0);
+    const hasChemical = w >= (profile.dronesUnlock['chemical'] || 999);
+    const hasIncendiary = w >= (profile.dronesUnlock['incendiary'] || 999);
+    previews.push({ wave: w, threats, maxConcurrent, spawnInterval, droneTiers, clusterSplits, bulletLevel, hasBoss, hasChemical, hasIncendiary });
+  }
+  return previews;
+}
+
+const THREAT_ICONS: Record<string, string> = { shrapnel: '💥', missile: '🚀', cluster: '🎯' };
+const DRONE_ICONS: Record<string, string> = { scout: '🔍', tracker: '📡', bomber: '💣', chemical: '☣️', incendiary: '🔥', cargo: '📦' };
+
 const WavesPanel: React.FC<{
   waves: RemoteWaveConfig[]; editingWave: RemoteWaveConfig | null;
   setEditingWave: (w: RemoteWaveConfig | null) => void;
   onSaveWave: (w: RemoteWaveConfig) => void; onDeleteWave: (n: number) => void; isDesktop: boolean;
-}> = ({ waves, editingWave, setEditingWave, onSaveWave, onDeleteWave, isDesktop }) => (
-  <div style={cardStyle}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-      <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Wave Recipes</h3>
-      <button onClick={() => setEditingWave({
-        waveNumber: waves.length > 0 ? Math.max(...waves.map(w => w.waveNumber)) + 1 : 1,
-        duration: 60, threats: ['shrapnel'], maxConcurrent: 5, spawnRate: 3.5, surgeMultiplier: 1.0, droneTypes: [],
-        clusterSplits: 0, bulletLevel: 1, phaseInDelay: 0, droneInterval: 0,
-        hasBoss: false, hasChemical: false, hasIncendiary: false,
-        warningText: null, warningColor: '#ef4444', warningType: 'warning',
-      })} style={btnPrimary}>+ Add Wave</button>
-    </div>
+  diffProfile: DifficultyProfile | null;
+  onSaveDiffProfile: (updates: Partial<DifficultyProfile>) => void;
+}> = ({ waves, editingWave, setEditingWave, onSaveWave, onDeleteWave, isDesktop, diffProfile, onSaveDiffProfile }) => {
+  const [showAutoScale, setShowAutoScale] = useState(true);
+  const [previewCount, setPreviewCount] = useState(20);
 
-    <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: 8 }}>
-      {waves.map(w => (
-        <div key={w.waveNumber} style={{
-          display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12,
-          background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
-        }}>
-          <span style={{ fontWeight: 700, color: '#60a5fa', fontSize: 14 }}>W{w.waveNumber}</span>
-          <span style={{ flex: 1, fontSize: 11, color: 'rgba(148,163,184,0.5)' }}>
-            {w.threats.join(', ')} · {w.duration}s · max:{w.maxConcurrent}
-          </span>
-          <button onClick={() => setEditingWave({ ...w })} style={btnPrimary}>Edit</button>
-          <button onClick={() => onDeleteWave(w.waveNumber)} style={{ ...btnDanger, padding: '6px 10px' }}>✕</button>
+  const previews = diffProfile ? generatePreviewWaves(diffProfile, previewCount) : [];
+  const overrideNums = new Set(waves.map(w => w.waveNumber));
+
+  return (
+    <div>
+      {/* Toggle between Auto-Scaling and Manual Overrides */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <button onClick={() => setShowAutoScale(true)} style={{
+          ...btnPrimary, background: showAutoScale ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.04)',
+          color: showAutoScale ? '#60a5fa' : 'rgba(148,163,184,0.5)',
+        }}>⚙️ التصاعد التلقائي</button>
+        <button onClick={() => setShowAutoScale(false)} style={{
+          ...btnPrimary, background: !showAutoScale ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.04)',
+          color: !showAutoScale ? '#60a5fa' : 'rgba(148,163,184,0.5)',
+        }}>✏️ تخصيص يدوي ({waves.length})</button>
+      </div>
+
+      {showAutoScale && diffProfile && (
+        <div>
+          {/* Auto-Scaling Settings */}
+          <div style={cardStyle}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 18, color: '#f1f5f9' }}>⚙️ إعدادات التصاعد التلقائي</h3>
+
+            <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: 14 }}>
+              {/* Spawn Settings */}
+              {([
+                { label: 'تهديدات متزامنة (بداية)', key: 'baseMaxConcurrent' as const, min: 1, max: 10, step: 1, val: diffProfile.baseMaxConcurrent },
+                { label: 'سقف التهديدات المتزامنة', key: 'maxConcurrentCap' as const, min: 5, max: 30, step: 1, val: diffProfile.maxConcurrentCap },
+                { label: 'نمو لكل موجة', key: 'concurrentGrowth' as const, min: 0.1, max: 2, step: 0.1, val: diffProfile.concurrentGrowth },
+                { label: 'فترة الإسقاط (بداية)', key: 'baseSpawnInterval' as const, min: 0.5, max: 5, step: 0.1, val: diffProfile.baseSpawnInterval },
+                { label: 'أسرع فترة إسقاط', key: 'minSpawnInterval' as const, min: 0.2, max: 2, step: 0.1, val: diffProfile.minSpawnInterval },
+                { label: 'تسارع الإسقاط', key: 'spawnIntervalDecay' as const, min: 0.01, max: 0.5, step: 0.01, val: diffProfile.spawnIntervalDecay },
+                { label: 'شظايا أولية', key: 'clusterSplitsBase' as const, min: 1, max: 6, step: 1, val: diffProfile.clusterSplitsBase },
+                { label: 'سقف الشظايا', key: 'clusterSplitsCap' as const, min: 2, max: 12, step: 1, val: diffProfile.clusterSplitsCap },
+                { label: 'نمو الشظايا', key: 'clusterSplitsGrowth' as const, min: 0.1, max: 1, step: 0.1, val: diffProfile.clusterSplitsGrowth },
+                { label: 'فترة الطائرات (بداية)', key: 'droneIntervalBase' as const, min: 5, max: 60, step: 1, val: diffProfile.droneIntervalBase },
+                { label: 'أسرع فترة طائرات', key: 'droneIntervalMin' as const, min: 2, max: 15, step: 1, val: diffProfile.droneIntervalMin },
+                { label: 'معامل تسارع الطائرات', key: 'droneIntervalDecay' as const, min: 0.5, max: 1, step: 0.05, val: diffProfile.droneIntervalDecay },
+                { label: 'بوس كل كم موجة', key: 'bossEveryNWaves' as const, min: 2, max: 20, step: 1, val: diffProfile.bossEveryNWaves },
+                { label: 'أول بوس في موجة', key: 'bossStartWave' as const, min: 3, max: 30, step: 1, val: diffProfile.bossStartWave },
+                { label: 'مدة الموجة (ثوانٍ)', key: 'waveDuration' as const, min: 20, max: 180, step: 5, val: diffProfile.waveDuration },
+                { label: 'تأخير التهديدات الجديدة', key: 'phaseInDelay' as const, min: 0, max: 30, step: 1, val: diffProfile.phaseInDelay },
+              ]).map(({ label, key, min, max, step, val }) => (
+                <div key={key} style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.7)' }}>{label}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa' }}>{val}</span>
+                  </div>
+                  <input type="range" min={min} max={max} step={step} value={val}
+                    onChange={e => onSaveDiffProfile({ [key]: parseFloat(e.target.value) })}
+                    style={{ width: '100%', accentColor: '#3b82f6' }} />
+                </div>
+              ))}
+            </div>
+
+            {/* Unlock Thresholds */}
+            <div style={{ marginTop: 20 }}>
+              <h4 style={{ fontSize: 13, fontWeight: 600, color: 'rgba(148,163,184,0.7)', marginBottom: 12 }}>🔓 فتح التهديدات (رقم الموجة)</h4>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                {Object.entries(diffProfile.threatsUnlock).map(([type, wave]) => (
+                  <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <span style={{ fontSize: 14 }}>{THREAT_ICONS[type] || '❓'}</span>
+                    <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.6)' }}>{type}</span>
+                    <input type="number" min={1} max={50} value={wave} style={{ ...inputStyle, width: 50, padding: '4px 6px', fontSize: 12, textAlign: 'center' as const }}
+                      onChange={e => onSaveDiffProfile({ threatsUnlock: { ...diffProfile.threatsUnlock, [type]: parseInt(e.target.value) || 1 } })} />
+                  </div>
+                ))}
+              </div>
+
+              <h4 style={{ fontSize: 13, fontWeight: 600, color: 'rgba(148,163,184,0.7)', marginBottom: 12 }}>🛩️ فتح الطائرات (رقم الموجة)</h4>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                {Object.entries(diffProfile.dronesUnlock).map(([type, wave]) => (
+                  <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <span style={{ fontSize: 14 }}>{DRONE_ICONS[type] || '🛩️'}</span>
+                    <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.6)' }}>{type}</span>
+                    <input type="number" min={1} max={50} value={wave} style={{ ...inputStyle, width: 50, padding: '4px 6px', fontSize: 12, textAlign: 'center' as const }}
+                      onChange={e => onSaveDiffProfile({ dronesUnlock: { ...diffProfile.dronesUnlock, [type]: parseInt(e.target.value) || 1 } })} />
+                  </div>
+                ))}
+              </div>
+
+              <h4 style={{ fontSize: 13, fontWeight: 600, color: 'rgba(148,163,184,0.7)', marginBottom: 12 }}>🔫 ترقية السلاح (رقم الموجة)</h4>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {Object.entries(diffProfile.bulletLevelWaves).map(([level, wave]) => (
+                  <div key={level} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.6)' }}>مستوى {level}</span>
+                    <input type="number" min={1} max={50} value={wave} style={{ ...inputStyle, width: 50, padding: '4px 6px', fontSize: 12, textAlign: 'center' as const }}
+                      onChange={e => onSaveDiffProfile({ bulletLevelWaves: { ...diffProfile.bulletLevelWaves, [level]: parseInt(e.target.value) || 1 } })} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Live Preview Table */}
+          <div style={cardStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: '#f1f5f9' }}>📋 معاينة فورية</h3>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.4)' }}>عرض</span>
+                <select value={previewCount} onChange={e => setPreviewCount(parseInt(e.target.value))}
+                  style={{ ...inputStyle, width: 70, padding: '4px 6px', fontSize: 12 }}>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={30}>30</option>
+                  <option value={50}>50</option>
+                </select>
+                <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.4)' }}>موجة</span>
+              </div>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>#</th>
+                    <th style={{ padding: '8px 6px', textAlign: 'right', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>التهديدات</th>
+                    <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>متزامن</th>
+                    <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>فترة</th>
+                    <th style={{ padding: '8px 6px', textAlign: 'right', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>طائرات</th>
+                    <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>شظايا</th>
+                    <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>سلاح</th>
+                    <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>بوس</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {previews.map(p => {
+                    const isOverride = overrideNums.has(p.wave);
+                    const difficulty = Math.min(100, (p.maxConcurrent / diffProfile.maxConcurrentCap) * 50 + ((diffProfile.baseSpawnInterval - p.spawnInterval) / diffProfile.baseSpawnInterval) * 30 + (p.hasBoss ? 20 : 0));
+                    return (
+                      <tr key={p.wave} style={{
+                        borderBottom: '1px solid rgba(255,255,255,0.03)',
+                        background: isOverride ? 'rgba(251,191,36,0.06)' : p.hasBoss ? 'rgba(220,38,38,0.04)' : 'transparent',
+                      }}>
+                        <td style={{ padding: '6px', textAlign: 'center', fontWeight: 700, color: isOverride ? '#fbbf24' : '#60a5fa' }}>
+                          {p.wave} {isOverride && '✏️'}
+                        </td>
+                        <td style={{ padding: '6px', textAlign: 'right' }}>
+                          {p.threats.map(t => <span key={t} title={t} style={{ marginLeft: 2 }}>{THREAT_ICONS[t] || t}</span>)}
+                        </td>
+                        <td style={{ padding: '6px', textAlign: 'center', fontWeight: 600, color: p.maxConcurrent >= 10 ? '#f87171' : '#e2e8f0' }}>{p.maxConcurrent}</td>
+                        <td style={{ padding: '6px', textAlign: 'center', color: p.spawnInterval <= 1 ? '#f87171' : '#e2e8f0' }}>{p.spawnInterval}s</td>
+                        <td style={{ padding: '6px', textAlign: 'right' }}>
+                          {p.droneTiers.length === 0 ? <span style={{ color: 'rgba(148,163,184,0.2)' }}>—</span> :
+                            p.droneTiers.map(t => <span key={t} title={t} style={{ marginLeft: 2 }}>{DRONE_ICONS[t] || t}</span>)}
+                        </td>
+                        <td style={{ padding: '6px', textAlign: 'center', color: p.clusterSplits >= 5 ? '#f87171' : '#e2e8f0' }}>{p.clusterSplits || '—'}</td>
+                        <td style={{ padding: '6px', textAlign: 'center' }}>{'⭐'.repeat(p.bulletLevel)}</td>
+                        <td style={{ padding: '6px', textAlign: 'center' }}>{p.hasBoss ? '👹' : ''}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      ))}
+      )}
+
+      {!showAutoScale && (
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>✏️ موجات مخصصة يدوياً</h3>
+            <button onClick={() => setEditingWave({
+              waveNumber: waves.length > 0 ? Math.max(...waves.map(w => w.waveNumber)) + 1 : 1,
+              duration: 60, threats: ['shrapnel'], maxConcurrent: 5, spawnRate: 3.5, surgeMultiplier: 1.0, droneTypes: [],
+              clusterSplits: 0, bulletLevel: 1, phaseInDelay: 0, droneInterval: 0,
+              hasBoss: false, hasChemical: false, hasIncendiary: false,
+              warningText: null, warningColor: '#ef4444', warningType: 'warning',
+            })} style={btnPrimary}>+ إضافة موجة</button>
+          </div>
+
+          <p style={{ fontSize: 11, color: 'rgba(148,163,184,0.4)', marginBottom: 16, lineHeight: 1.6 }}>
+            الموجات المخصصة تأخذ الأولوية على التوليد التلقائي. إذا لم تُعرّف موجة يدوياً، يستخدم النظام إعدادات التصاعد التلقائي.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: 8 }}>
+            {waves.map(w => (
+              <div key={w.waveNumber} style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', borderRadius: 12,
+                background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.12)',
+              }}>
+                <span style={{ fontWeight: 700, color: '#fbbf24', fontSize: 14, minWidth: 32 }}>W{w.waveNumber}</span>
+                <div style={{ flex: 1, fontSize: 10, color: 'rgba(148,163,184,0.5)', lineHeight: 1.5 }}>
+                  <div>{w.threats.map(t => THREAT_ICONS[t] || t).join(' ')} · {w.duration}s · max:{w.maxConcurrent}</div>
+                  <div>{w.droneTypes.length > 0 ? w.droneTypes.map(t => DRONE_ICONS[t] || t).join(' ') : ''} {w.hasBoss ? '👹' : ''} {w.hasChemical ? '☣️' : ''} {w.hasIncendiary ? '🔥' : ''}</div>
+                </div>
+                <button onClick={() => setEditingWave({ ...w })} style={{ ...btnPrimary, padding: '5px 10px', fontSize: 11 }}>تعديل</button>
+                <button onClick={() => onDeleteWave(w.waveNumber)} style={{ ...btnDanger, padding: '5px 8px', fontSize: 11 }}>✕</button>
+              </div>
+            ))}
+          </div>
+
+          {waves.length === 0 && (
+            <p style={{ color: 'rgba(148,163,184,0.3)', fontSize: 13, textAlign: 'center', padding: 24 }}>
+              لا توجد موجات مخصصة — النظام يستخدم التوليد التلقائي
+            </p>
+          )}
+        </div>
+      )}
+
+      {editingWave && <WaveEditor wave={editingWave} onSave={onSaveWave} onCancel={() => setEditingWave(null)} />}
     </div>
-
-    {waves.length === 0 && (
-      <p style={{ color: 'rgba(148,163,184,0.3)', fontSize: 13, textAlign: 'center', padding: 24 }}>
-        No wave configs — game uses built-in defaults
-      </p>
-    )}
-
-    {editingWave && <WaveEditor wave={editingWave} onSave={onSaveWave} onCancel={() => setEditingWave(null)} />}
-  </div>
-);
+  );
+};
 
 // ─── Analytics Panel ───
 function formatTime(seconds: number): string {
