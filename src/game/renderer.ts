@@ -21,6 +21,7 @@ let bgPhases: BackgroundPhase[] = [];
 let bgConfigLoaded = false;
 let bgCameraMargin = 400;
 let bgLoopEnabled = false;
+let bgLoopFadeDuration = 60;
 
 /** Set camera margin from game config (legacy — per-phase margin takes priority) */
 export function setCameraMargin(margin: number) {
@@ -28,10 +29,11 @@ export function setCameraMargin(margin: number) {
 }
 
 /** Called once from GameLoader to inject background config */
-export function setBackgroundConfig(phases: BackgroundPhase[], loop?: boolean) {
+export function setBackgroundConfig(phases: BackgroundPhase[], loop?: boolean, loopFadeDuration?: number) {
   bgPhases = phases;
   bgConfigLoaded = true;
   bgLoopEnabled = loop ?? false;
+  bgLoopFadeDuration = loopFadeDuration ?? 60;
   // Load images from URLs
   bgLayers = phases.map(p => {
     const img = new Image();
@@ -89,13 +91,21 @@ function getPhaseBlend(elapsed: number): {
 
   if (!bgConfigLoaded || bgPhases.length === 0) return defaultResult;
 
-  // ─── Loop support: wrap elapsed time ───
+  // ─── Loop support: wrap elapsed time with smooth fade back to first phase ───
   let effectiveElapsed = elapsed;
+  let loopFadeBlend = -1; // -1 means not in loop-fade zone
   if (bgLoopEnabled && bgPhases.length >= 2) {
     const lastPhase = bgPhases[bgPhases.length - 1];
-    const cycleLength = lastPhase.transitionStart + Math.max(0.001, lastPhase.fadeDuration || 60);
-    if (cycleLength > 0 && elapsed >= cycleLength) {
-      effectiveElapsed = elapsed % cycleLength;
+    const lastPhaseEnd = lastPhase.transitionStart + Math.max(0.001, lastPhase.fadeDuration || 60);
+    const fadeDur = Math.max(0.001, bgLoopFadeDuration);
+    const cycleLength = lastPhaseEnd + fadeDur;
+    if (elapsed >= cycleLength) {
+      // Past first full cycle — wrap
+      effectiveElapsed = ((elapsed - cycleLength) % cycleLength);
+    } else if (elapsed >= lastPhaseEnd) {
+      // In the loop-fade zone: blend last phase → first phase
+      const t = (elapsed - lastPhaseEnd) / fadeDur;
+      loopFadeBlend = applyEasing(Math.min(1, t), bgPhases[0].easingType || 'smoothstep');
     }
   }
 
@@ -162,9 +172,30 @@ function getPhaseBlend(elapsed: number): {
 
   const resolved = bgPhases[resolvedIdx];
   const resolvedLayer = bgLayers[resolvedIdx];
+  const resolvedImg = resolvedLayer?.loaded ? resolvedLayer.image : (fallbackLoaded ? fallbackImg : null);
+
+  // ─── Loop fade: blend last phase → first phase ───
+  if (loopFadeBlend >= 0) {
+    const first = bgPhases[0];
+    const firstLayer = bgLayers[0];
+    const firstImg = firstLayer?.loaded ? firstLayer.image : null;
+    return {
+      imgA: resolvedImg,
+      imgB: firstImg,
+      fade: loopFadeBlend,
+      overlayTop: lerpColor(parseRGB(resolved.overlayTop), parseRGB(first.overlayTop), loopFadeBlend),
+      overlayMid: lerpColor(parseRGB(resolved.overlayMid), parseRGB(first.overlayMid), loopFadeBlend),
+      overlayBottom: lerpColor(parseRGB(resolved.overlayBottom), parseRGB(first.overlayBottom), loopFadeBlend),
+      overlayOpacity: resolved.overlayOpacity + (first.overlayOpacity - resolved.overlayOpacity) * loopFadeBlend,
+      displayModeA: resolved.displayMode || 'single',
+      displayModeB: first.displayMode || 'single',
+      bgMarginA: resolved.bgMargin ?? bgCameraMargin,
+      bgMarginB: first.bgMargin ?? bgCameraMargin,
+    };
+  }
 
   return {
-    imgA: resolvedLayer?.loaded ? resolvedLayer.image : (fallbackLoaded ? fallbackImg : null),
+    imgA: resolvedImg,
     imgB: null,
     fade: 0,
     overlayTop: parseRGB(resolved.overlayTop),

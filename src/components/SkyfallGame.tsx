@@ -69,7 +69,7 @@ const SkyfallGame: React.FC = () => {
         
         // Inject background config into renderer
         if (bgPhases.length > 0) {
-          setBackgroundConfig(bgPhases, cfg.bgLoop);
+          setBackgroundConfig(bgPhases, cfg.bgLoop, cfg.bgLoopFadeDuration);
         }
 
         // Load audio with progress tracking (40% → 95%)
@@ -98,7 +98,7 @@ const SkyfallGame: React.FC = () => {
       .channel('bg-config-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'background_config' }, () => {
         fetchBackgroundConfig().then(phases => {
-          if (phases.length > 0) setBackgroundConfig(phases, remoteConfigRef.current?.bgLoop);
+          if (phases.length > 0) setBackgroundConfig(phases, remoteConfigRef.current?.bgLoop, remoteConfigRef.current?.bgLoopFadeDuration);
         });
       })
       .subscribe();

@@ -1,0 +1,1 @@
+ALTER TABLE public.game_config ADD COLUMN bg_loop_fade_duration real NOT NULL DEFAULT 60;

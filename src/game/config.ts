@@ -17,6 +17,7 @@ export interface RemoteGameConfig {
   showTitle: boolean;
   cameraMargin: number;
   bgLoop: boolean;
+  bgLoopFadeDuration: number;
 }
 
 export interface RemoteWaveConfig {
@@ -88,6 +89,7 @@ const DEFAULT_CONFIG: RemoteGameConfig = {
   showTitle: true,
   cameraMargin: 400,
   bgLoop: false,
+  bgLoopFadeDuration: 60,
 };
 
 export async function fetchGameConfig(): Promise<RemoteGameConfig> {
@@ -113,6 +115,7 @@ export async function fetchGameConfig(): Promise<RemoteGameConfig> {
       showTitle: (data as any).show_title ?? true,
       cameraMargin: (data as any).camera_margin ?? 400,
       bgLoop: (data as any).bg_loop ?? false,
+      bgLoopFadeDuration: (data as any).bg_loop_fade_duration ?? 60,
     };
   } catch {
     return DEFAULT_CONFIG;
@@ -431,6 +434,7 @@ export async function updateGameConfig(config: Partial<RemoteGameConfig>): Promi
   if (config.showTitle !== undefined) mapped.show_title = config.showTitle;
   if (config.cameraMargin !== undefined) mapped.camera_margin = config.cameraMargin;
   if (config.bgLoop !== undefined) mapped.bg_loop = config.bgLoop;
+  if (config.bgLoopFadeDuration !== undefined) mapped.bg_loop_fade_duration = config.bgLoopFadeDuration;
 
   const { data: rows } = await supabase.from('game_config').select('id').limit(1);
   if (!rows || rows.length === 0) return false;
