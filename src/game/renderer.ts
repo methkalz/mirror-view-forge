@@ -5728,12 +5728,18 @@ function renderTutorialSlide3(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.save();
   ctx.textAlign = 'center';
 
-  // ─ SKYFALL metallic title — enhanced ─
-  ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  ctx.font = 'bold 48px monospace';
-  ctx.fillText('SKYFALL', w / 2 + 2, h * 0.24 + 2);
+  // ─ Glass card behind title ─
+  const cardW = w * 0.75, cardH = h * 0.22;
+  const cardX = w / 2 - cardW / 2, cardY = h * 0.12;
+  const floatY = Math.sin(t * 1.2) * 2;
+  drawGlassCard(ctx, cardX, cardY + floatY, cardW, cardH, 'rgba(251, 191, 36, 0.5)');
 
-  const titleGrad = ctx.createLinearGradient(w / 2 - 120, h * 0.18, w / 2 + 120, h * 0.28);
+  // ─ SKYFALL metallic title — larger ─
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.font = 'bold 52px monospace';
+  ctx.fillText('SKYFALL', w / 2 + 2, h * 0.22 + floatY + 2);
+
+  const titleGrad = ctx.createLinearGradient(w / 2 - 140, h * 0.16, w / 2 + 140, h * 0.26);
   titleGrad.addColorStop(0, '#a0a0a0');
   titleGrad.addColorStop(0.2, '#e0d8c0');
   titleGrad.addColorStop(0.4, '#ffd700');
@@ -5741,12 +5747,12 @@ function renderTutorialSlide3(ctx: CanvasRenderingContext2D, w: number, h: numbe
   titleGrad.addColorStop(0.8, '#e0d8c0');
   titleGrad.addColorStop(1, '#a0a0a0');
   ctx.fillStyle = titleGrad;
-  ctx.shadowColor = 'rgba(255,200,50,0.2)';
-  ctx.shadowBlur = 35;
-  ctx.fillText('SKYFALL', w / 2, h * 0.24);
-  ctx.shadowColor = 'rgba(255,200,50,0.5)';
-  ctx.shadowBlur = 15;
-  ctx.fillText('SKYFALL', w / 2, h * 0.24);
+  ctx.shadowColor = 'rgba(255,200,50,0.25)';
+  ctx.shadowBlur = 40;
+  ctx.fillText('SKYFALL', w / 2, h * 0.22 + floatY);
+  ctx.shadowColor = 'rgba(255,200,50,0.6)';
+  ctx.shadowBlur = 18;
+  ctx.fillText('SKYFALL', w / 2, h * 0.22 + floatY);
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
 
@@ -5758,43 +5764,67 @@ function renderTutorialSlide3(ctx: CanvasRenderingContext2D, w: number, h: numbe
   survGrad.addColorStop(1, `rgba(200, 40, 40, ${survPulse})`);
   ctx.fillStyle = survGrad;
   ctx.font = 'bold 18px monospace';
-  ctx.fillText('SURVIVAL', w / 2, h * 0.30);
+  ctx.fillText('SURVIVAL', w / 2, h * 0.28 + floatY);
+
+  // ─ "هل أنت مستعد؟" pulsing subtitle ─
+  const readyPulse = 0.4 + Math.sin(t * 2) * 0.3;
+  ctx.direction = 'rtl';
+  ctx.fillStyle = `rgba(251, 191, 36, ${readyPulse})`;
+  ctx.font = '15px Tajawal, sans-serif';
+  ctx.fillText('هل أنت مستعد؟', w / 2, h * 0.38);
+  ctx.direction = 'ltr';
 
   // Divider
-  drawGoldDivider(ctx, w, h * 0.35, t);
+  drawGoldDivider(ctx, w, h * 0.42, t);
 
   if (highScore > 0) {
     ctx.fillStyle = '#fbbf24';
     ctx.font = '12px monospace';
-    ctx.fillText(`Best: ${highScore}`, w / 2, h * 0.42);
+    ctx.fillText(`Best: ${highScore}`, w / 2, h * 0.48);
   }
 
-  // ─ TAP TO START button ─
-  const btnW = 180, btnH = 38;
-  const btnX = w / 2 - btnW / 2, btnY = h * 0.60 - btnH / 2;
+  // ─ "يلا يلا" button — larger & enhanced ─
+  const btnW = 200, btnH = 44;
+  const btnX = w / 2 - btnW / 2, btnY = h * 0.58 - btnH / 2;
   const btnPulse = 0.5 + Math.sin(t * 3) * 0.3;
 
-  ctx.shadowColor = `rgba(251, 191, 36, ${btnPulse * 0.4})`;
-  ctx.shadowBlur = 20;
+  // Button glow
+  ctx.shadowColor = `rgba(251, 191, 36, ${btnPulse * 0.5})`;
+  ctx.shadowBlur = 25;
+
+  // Button border gradient
   const btnBorderGrad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY + btnH);
-  btnBorderGrad.addColorStop(0, `rgba(251, 191, 36, ${0.3 + btnPulse * 0.2})`);
-  btnBorderGrad.addColorStop(0.5, `rgba(251, 191, 36, ${0.5 + btnPulse * 0.3})`);
-  btnBorderGrad.addColorStop(1, `rgba(251, 191, 36, ${0.3 + btnPulse * 0.2})`);
+  btnBorderGrad.addColorStop(0, `rgba(251, 191, 36, ${0.35 + btnPulse * 0.25})`);
+  btnBorderGrad.addColorStop(0.5, `rgba(251, 191, 36, ${0.6 + btnPulse * 0.3})`);
+  btnBorderGrad.addColorStop(1, `rgba(251, 191, 36, ${0.35 + btnPulse * 0.25})`);
   ctx.strokeStyle = btnBorderGrad;
   ctx.lineWidth = 1.5;
-  roundRect(ctx, btnX, btnY, btnW, btnH, 8);
+  roundRect(ctx, btnX, btnY, btnW, btnH, 10);
   ctx.stroke();
-  ctx.fillStyle = 'rgba(251, 191, 36, 0.06)';
-  roundRect(ctx, btnX, btnY, btnW, btnH, 8);
+
+  // Button fill — stronger gradient
+  const btnFillGrad = ctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH);
+  btnFillGrad.addColorStop(0, 'rgba(251, 191, 36, 0.12)');
+  btnFillGrad.addColorStop(0.5, 'rgba(251, 191, 36, 0.06)');
+  btnFillGrad.addColorStop(1, 'rgba(251, 191, 36, 0.10)');
+  ctx.fillStyle = btnFillGrad;
+  roundRect(ctx, btnX, btnY, btnW, btnH, 10);
   ctx.fill();
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
 
-  // Button text — Arabic
+  // Button text
   ctx.direction = 'rtl';
-  ctx.fillStyle = `rgba(251, 191, 36, ${0.7 + btnPulse * 0.3})`;
-  ctx.font = 'bold 16px Tajawal, sans-serif';
-  ctx.fillText('ابدأ المعركة', w / 2, h * 0.60 + 5);
+  ctx.fillStyle = `rgba(251, 191, 36, ${0.75 + btnPulse * 0.25})`;
+  ctx.font = 'bold 20px Tajawal, sans-serif';
+  ctx.fillText('يلا يلا', w / 2, h * 0.58 + 6);
+  ctx.direction = 'ltr';
+
+  // ─ Developer credit ─
+  ctx.direction = 'rtl';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.font = '14px Tajawal, sans-serif';
+  ctx.fillText('تطوير: مثقال زيدان', w / 2, h * 0.72);
   ctx.direction = 'ltr';
 
   ctx.restore();
