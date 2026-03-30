@@ -46,6 +46,7 @@ const Admin: React.FC = () => {
   const [audioEntries, setAudioEntries] = useState<AudioConfigEntry[]>([]);
   const [analytics, setAnalytics] = useState<GameAnalytics | null>(null);
   const [bgPhases, setBgPhases] = useState<BackgroundPhase[]>([]);
+  const [diffProfile, setDiffProfile] = useState<DifficultyProfile | null>(null);
 
   useEffect(() => {
     const check = async () => {
