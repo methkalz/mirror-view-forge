@@ -597,6 +597,11 @@ function remoteToRecipe(r: RemoteWaveConfig): WaveRecipe {
     hasChemical: r.hasChemical,
     hasIncendiary: r.hasIncendiary,
     hasBoss: r.hasBoss,
+    duration: r.duration,
+    surgeMultiplier: r.surgeMultiplier,
+    warningText: r.warningText,
+    warningColor: r.warningColor,
+    warningType: r.warningType,
   };
 }
 
