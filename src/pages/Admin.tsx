@@ -1802,7 +1802,9 @@ const BackgroundsPanel: React.FC<{
   phases: BackgroundPhase[];
   setPhases: React.Dispatch<React.SetStateAction<BackgroundPhase[]>>;
   isDesktop: boolean;
-}> = ({ phases, setPhases, isDesktop }) => {
+  config: RemoteGameConfig | null;
+  onSaveConfig: (updates: Partial<RemoteGameConfig>) => Promise<void>;
+}> = ({ phases, setPhases, isDesktop, config, onSaveConfig }) => {
   const [uploading, setUploading] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [timelineHover, setTimelineHover] = useState<number | null>(null);
