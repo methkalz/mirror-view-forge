@@ -5816,23 +5816,34 @@ function renderTutorialSlide3(ctx: CanvasRenderingContext2D, w: number, h: numbe
     ctx.fillText(`🏆  ${highScore}`, w / 2, h * 0.66);
   }
 
-  // ── 7. Developer signature ──
+  // ── 7. Developer signature — prominent ──
   const sigY = h * 0.92;
 
   // "تطوير"
   ctx.direction = 'rtl';
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-  ctx.font = '11px Tajawal, sans-serif';
-  ctx.fillText('تطوير', w / 2, sigY - 16);
-
-  // Name
   ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-  ctx.font = '16px Tajawal, sans-serif';
+  ctx.font = '13px Tajawal, sans-serif';
+  ctx.fillText('تطوير', w / 2, sigY - 22);
+
+  // Name — bold, larger, gold glow
+  ctx.shadowColor = 'rgba(251, 191, 36, 0.15)';
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = 'rgba(212, 175, 55, 0.6)';
+  ctx.font = 'bold 20px Tajawal, sans-serif';
   ctx.fillText('مثقال زيدان', w / 2, sigY);
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
   ctx.direction = 'ltr';
 
+  // English name below
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.font = '11px monospace';
+  ctx.letterSpacing = '3px';
+  ctx.fillText('METHKAL ZIDANE', w / 2, sigY + 16);
+  ctx.letterSpacing = '0px';
+
   // Static gold divider under signature
-  const sigDivY = sigY + 10;
+  const sigDivY = sigY + 26;
   const sigDivGrad = ctx.createLinearGradient(w * 0.3, 0, w * 0.7, 0);
   sigDivGrad.addColorStop(0, 'rgba(251, 191, 36, 0)');
   sigDivGrad.addColorStop(0.4, 'rgba(251, 191, 36, 0.2)');
