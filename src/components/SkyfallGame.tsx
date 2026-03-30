@@ -190,6 +190,7 @@ const SkyfallGame: React.FC = () => {
         prevState = g.state;
         setShowButtons(g.state === 'playing');
         if (wasStart && g.state === 'intro') {
+          cancelMenuMusicStart();
           stopMenuMusic();
         }
         if (g.state === 'start') {
