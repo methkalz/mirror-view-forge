@@ -38,6 +38,8 @@ const SkyfallGame: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
   const remoteConfigRef = useRef<RemoteGameConfig | null>(null);
+  const difficultyProfileRef = useRef<DifficultyProfile | null>(null);
+  const waveOverridesRef = useRef<RemoteWaveConfig[]>([]);
   const scoreSubmittedRef = useRef(false);
 
   // Load leaderboard on mount + presence tracking
