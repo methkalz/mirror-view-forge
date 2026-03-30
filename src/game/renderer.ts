@@ -5445,7 +5445,7 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
   if (tutorialPage < 3) {
     const pulse = 0.4 + Math.sin(t * 3) * 0.2;
     ctx.fillStyle = `rgba(200, 200, 200, ${pulse})`;
-    ctx.font = '12px Tajawal, sans-serif';
+    ctx.font = '14px Tajawal, sans-serif';
     ctx.textAlign = 'center';
     ctx.direction = 'rtl';
     ctx.fillText('انقر للمتابعة', w / 2, h * 0.87);
