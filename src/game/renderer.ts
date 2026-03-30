@@ -77,52 +77,70 @@ function getPhaseBlend(elapsed: number): {
 
   if (!bgConfigLoaded || bgPhases.length === 0) return defaultResult;
 
-  let currentIdx = bgPhases.length - 1;
+  let resolvedIdx = 0;
+
   for (let i = 0; i < bgPhases.length - 1; i++) {
-    if (elapsed < bgPhases[i + 1].transitionStart) {
-      currentIdx = i;
-      break;
-    }
-  }
+    const current = bgPhases[i];
+    const next = bgPhases[i + 1];
+    const currentLayer = bgLayers[i];
+    const nextLayer = bgLayers[i + 1];
+    const imgA = currentLayer?.loaded ? currentLayer.image : (fallbackLoaded ? fallbackImg : null);
 
-  const current = bgPhases[currentIdx];
-  const currentLayer = bgLayers[currentIdx];
-  const imgA = currentLayer?.loaded ? currentLayer.image : (fallbackLoaded ? fallbackImg : null);
-
-  const nextIdx = currentIdx + 1;
-  if (nextIdx < bgPhases.length) {
-    const next = bgPhases[nextIdx];
-    const nextLayer = bgLayers[nextIdx];
-
-    const fadeDuration = next.fadeDuration || 60;
-    const easingType = next.easingType || 'smoothstep';
     const fadeStart = next.transitionStart;
-    const fadeEnd = next.transitionStart + Math.min(fadeDuration, (next.transitionEnd - next.transitionStart) * 0.5);
+    const fadeDuration = Math.max(0.001, next.fadeDuration || 0.001);
+    const fadeEnd = Math.max(fadeStart + 0.001, Math.min(next.transitionEnd, fadeStart + fadeDuration));
+    const easingType = next.easingType || 'smoothstep';
 
-    if (elapsed >= fadeStart && elapsed <= fadeEnd) {
+    if (elapsed < fadeStart) {
+      return {
+        imgA,
+        imgB: null,
+        fade: 0,
+        overlayTop: parseRGB(current.overlayTop),
+        overlayMid: parseRGB(current.overlayMid),
+        overlayBottom: parseRGB(current.overlayBottom),
+        overlayOpacity: current.overlayOpacity,
+      };
+    }
+
+    if (elapsed < fadeEnd) {
       const linearFade = (elapsed - fadeStart) / (fadeEnd - fadeStart);
       const fade = applyEasing(linearFade, easingType);
       const imgB = nextLayer?.loaded ? nextLayer.image : null;
-      const topA = parseRGB(current.overlayTop), topB = parseRGB(next.overlayTop);
-      const midA = parseRGB(current.overlayMid), midB = parseRGB(next.overlayMid);
-      const botA = parseRGB(current.overlayBottom), botB = parseRGB(next.overlayBottom);
-      const opA = current.overlayOpacity, opB = next.overlayOpacity;
+      const topA = parseRGB(current.overlayTop);
+      const topB = parseRGB(next.overlayTop);
+      const midA = parseRGB(current.overlayMid);
+      const midB = parseRGB(next.overlayMid);
+      const botA = parseRGB(current.overlayBottom);
+      const botB = parseRGB(next.overlayBottom);
+      const opA = current.overlayOpacity;
+      const opB = next.overlayOpacity;
+
       return {
-        imgA, imgB, fade,
+        imgA,
+        imgB,
+        fade,
         overlayTop: lerpColor(topA, topB, fade),
         overlayMid: lerpColor(midA, midB, fade),
         overlayBottom: lerpColor(botA, botB, fade),
         overlayOpacity: opA + (opB - opA) * fade,
       };
     }
+
+    resolvedIdx = i + 1;
   }
 
+  const resolved = bgPhases[resolvedIdx];
+  const resolvedLayer = bgLayers[resolvedIdx];
+
   return {
-    imgA, imgB: null, fade: 0,
-    overlayTop: parseRGB(current.overlayTop),
-    overlayMid: parseRGB(current.overlayMid),
-    overlayBottom: parseRGB(current.overlayBottom),
-    overlayOpacity: current.overlayOpacity,
+    imgA: resolvedLayer?.loaded ? resolvedLayer.image : (fallbackLoaded ? fallbackImg : null),
+    imgB: null,
+    fade: 0,
+    overlayTop: parseRGB(resolved.overlayTop),
+    overlayMid: parseRGB(resolved.overlayMid),
+    overlayBottom: parseRGB(resolved.overlayBottom),
+    overlayOpacity: resolved.overlayOpacity,
   };
 }
 
