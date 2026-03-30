@@ -434,6 +434,7 @@ export async function updateGameConfig(config: Partial<RemoteGameConfig>): Promi
   if (config.showTitle !== undefined) mapped.show_title = config.showTitle;
   if (config.cameraMargin !== undefined) mapped.camera_margin = config.cameraMargin;
   if (config.bgLoop !== undefined) mapped.bg_loop = config.bgLoop;
+  if (config.bgLoopFadeDuration !== undefined) mapped.bg_loop_fade_duration = config.bgLoopFadeDuration;
 
   const { data: rows } = await supabase.from('game_config').select('id').limit(1);
   if (!rows || rows.length === 0) return false;
