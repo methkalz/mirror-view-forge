@@ -26,6 +26,40 @@ export interface RemoteWaveConfig {
   spawnRate: number;
   surgeMultiplier: number;
   droneTypes: string[];
+  clusterSplits: number;
+  bulletLevel: number;
+  phaseInDelay: number;
+  droneInterval: number;
+  hasBoss: boolean;
+  hasChemical: boolean;
+  hasIncendiary: boolean;
+  warningText: string | null;
+  warningColor: string;
+  warningType: string;
+}
+
+export interface DifficultyProfile {
+  id: string;
+  baseMaxConcurrent: number;
+  maxConcurrentCap: number;
+  concurrentGrowth: number;
+  baseSpawnInterval: number;
+  minSpawnInterval: number;
+  spawnIntervalDecay: number;
+  threatsUnlock: Record<string, number>;
+  dronesUnlock: Record<string, number>;
+  clusterSplitsBase: number;
+  clusterSplitsGrowth: number;
+  clusterSplitsCap: number;
+  droneIntervalBase: number;
+  droneIntervalMin: number;
+  droneIntervalDecay: number;
+  bossEveryNWaves: number;
+  bossStartWave: number;
+  bulletLevelWaves: Record<string, number>;
+  waveDuration: number;
+  phaseInDelay: number;
+  scalingFormula: string;
 }
 
 export interface LeaderboardEntry {
