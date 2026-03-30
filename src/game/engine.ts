@@ -2556,7 +2556,7 @@ function spawnBoss(g: GameData, showWarning = true) {
   };
   sfxBossSiren();
   if (showWarning) {
-    g.cinematicWarning = { text: '⚠ تحذير: طائرة حربية!', subText: 'PREPARE FOR HEAVY ASSAULT', color: '#dc2626', timer: 1.5, duration: 1.5, type: 'warning' };
+    g.cinematicWarning = { text: '⚠ تحذير: طائرة حربية!', subText: '', color: '#dc2626', timer: 1.5, duration: 1.5, type: 'warning' };
     g.slowMoFactor = 0.1;
   }
 }
