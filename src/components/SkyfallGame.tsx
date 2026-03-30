@@ -242,6 +242,7 @@ const SkyfallGame: React.FC = () => {
             if (Math.abs(clickX - skipBtnX) < 50 && Math.abs(clickY - skipBtnY) < 20) {
               g.tutorialPage = 3;
               g.tutorialFade = 0;
+              sfxSlideTransition();
               delete (inputRef.current as any)._lastClickX;
               delete (inputRef.current as any)._lastClickY;
               return;
