@@ -144,30 +144,23 @@ function getPhaseBlend(elapsed: number): {
   };
 }
 
-/** Draw a single image with mirror tiling */
-function drawTiledImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, camX: number, left: number, right: number, parallax: number) {
+/** Draw a single centered image that covers the viewport with margin for camera movement */
+function drawSingleImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, viewportW: number, camX: number, parallax: number) {
   const imgAspect = img.width / img.height;
   const drawH = h;
-  const baseDrawW = drawH * imgAspect;
-  const drawW = Math.ceil(baseDrawW);
-  const renderW = drawW + 1; // +1px overlap to eliminate sub-pixel gaps
-  const imgOffset = camX * parallax;
-  const startTile = Math.floor((left + imgOffset) / baseDrawW) - 1;
-  const endTile = Math.ceil((right + imgOffset) / baseDrawW) + 1;
+  let drawW = drawH * imgAspect;
 
-  for (let tile = startTile; tile <= endTile; tile++) {
-    const drawX = Math.round(tile * baseDrawW - imgOffset);
-    const isMirrored = ((tile % 2) + 2) % 2 === 1;
-    if (isMirrored) {
-      ctx.save();
-      ctx.translate(drawX + renderW, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(img, 0, 0, renderW, drawH);
-      ctx.restore();
-    } else {
-      ctx.drawImage(img, drawX, 0, renderW, drawH);
-    }
+  // Ensure image is wide enough to cover viewport + extra margin for parallax camera movement
+  const cameraMargin = 400;
+  const minWidth = viewportW + cameraMargin;
+  if (drawW < minWidth) {
+    drawW = minWidth;
   }
+
+  // Center the image horizontally, then shift by parallax
+  const drawX = (viewportW - drawW) / 2 - camX * parallax;
+
+  ctx.drawImage(img, drawX, 0, drawW, drawH);
 }
 
 // ─── Background with Cross-fade ───────────────────────
