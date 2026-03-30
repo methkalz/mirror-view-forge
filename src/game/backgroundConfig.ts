@@ -1,5 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 
+export type DisplayMode = 'single' | 'tiled' | 'blur-edge';
+
 export interface BackgroundPhase {
   id: string;
   phase: string;
@@ -13,6 +15,8 @@ export interface BackgroundPhase {
   sortOrder: number;
   fadeDuration: number;
   easingType: string;
+  displayMode: DisplayMode;
+  bgMargin: number;
 }
 
 export async function fetchBackgroundConfig(): Promise<BackgroundPhase[]> {
