@@ -27,6 +27,7 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   const [focused, setFocused] = useState(false);
   const [phase, setPhase] = useState<'sound-hint' | 'name-entry'>('sound-hint');
   const [hintFading, setHintFading] = useState(false);
+  const hintWords = ['فعّل', 'الصوت', 'لتجربة', 'أفضل'];
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sparksRef = useRef<Spark[]>([]);
   const rafRef = useRef<number>(0);
@@ -40,7 +41,7 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
 
   // Phase transition: sound-hint → name-entry after 3s
   useEffect(() => {
-    const fadeTimer = setTimeout(() => setHintFading(true), 2600);
+    const fadeTimer = setTimeout(() => setHintFading(true), 2400);
     const phaseTimer = setTimeout(() => setPhase('name-entry'), 3000);
     return () => { clearTimeout(fadeTimer); clearTimeout(phaseTimer); };
   }, []);
@@ -125,10 +126,18 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
       {phase === 'sound-hint' && (
         <div style={{
           position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', gap: 24,
-          animation: hintFading ? 'hintFadeOut 0.4s ease-in forwards' : 'hintFadeIn 0.3s ease-out',
+          alignItems: 'center', justifyContent: 'center', gap: 20,
+          animation: hintFading ? 'hintContainerOut 0.6s ease-in forwards' : undefined,
         }}>
-          {/* Text */}
+          {/* Speaker icon with pulse */}
+          <span style={{
+            fontSize: 36,
+            animation: 'iconPulse 2s ease-in-out infinite',
+            opacity: hintFading ? 0 : 1,
+            transition: 'opacity 0.3s',
+          }}>🔊</span>
+
+          {/* Staggered words */}
           <p style={{
             fontFamily: "'Tajawal', system-ui, sans-serif",
             fontSize: 22,
@@ -137,8 +146,23 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
             direction: 'rtl',
             textAlign: 'center',
             letterSpacing: 0.5,
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            justifyContent: 'center',
           }}>
-            🔊 فعّل الصوت لتجربة أفضل
+            {hintWords.map((word, i) => (
+              <span key={i} style={{
+                display: 'inline-block',
+                opacity: 0,
+                animation: hintFading
+                  ? `wordFadeOut 0.2s ease-in ${(hintWords.length - 1 - i) * 0.08}s forwards`
+                  : `wordReveal 0.45s ease-out ${i * 0.15}s forwards`,
+                textShadow: '0 0 20px rgba(251,191,36,0.15)',
+              }}>
+                {word}
+              </span>
+            ))}
           </p>
         </div>
       )}
@@ -407,6 +431,22 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
         @keyframes hintFadeOut {
           from { opacity: 1; transform: scale(1); }
           to { opacity: 0; transform: scale(1.05); }
+        }
+        @keyframes hintContainerOut {
+          from { opacity: 1; }
+          to { opacity: 0; transform: translateY(-8px); }
+        }
+        @keyframes wordReveal {
+          from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+          to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+        @keyframes wordFadeOut {
+          from { opacity: 1; transform: translateY(0); filter: blur(0); }
+          to { opacity: 0; transform: translateY(-6px); filter: blur(3px); }
+        }
+        @keyframes iconPulse {
+          0%, 100% { transform: scale(1); opacity: 0.8; }
+          50% { transform: scale(1.12); opacity: 1; }
         }
         @keyframes nameEntryFadeIn {
           from { opacity: 0; transform: translateY(10px); }
