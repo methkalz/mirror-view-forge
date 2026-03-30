@@ -1533,7 +1533,7 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
         // Serial number
         ctx.font = '3px monospace';
         ctx.fillStyle = 'rgba(229,229,208,0.35)';
-        ctx.fillText('MIL-STD', -cW * 0.55, cY - cH * 0.55);
+        ctx.fillText('عسكري', -cW * 0.55, cY - cH * 0.55);
         ctx.globalAlpha = fadeAlpha;
       }
 
@@ -2704,7 +2704,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.font = '10px monospace';
   ctx.fillStyle = '#666';
   ctx.textAlign = 'right';
-  ctx.fillText(`HI: ${g.highScore}`, w - 14, 42);
+  ctx.fillText(`أعلى: ${g.highScore}`, w - 14, 42);
 
   // ─ Wave (removed — shown by renderWaveIndicator instead) ─
 
@@ -2713,12 +2713,12 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
     ctx.font = '10px monospace';
     ctx.textAlign = 'right';
-    ctx.fillText(`ROLL ${p.dashCooldown.toFixed(1)}s`, w - 14, h - 14);
+    ctx.fillText(`تدحرج ${p.dashCooldown.toFixed(1)}`, w - 14, h - 14);
   } else {
     ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 10px monospace';
+    ctx.font = 'bold 10px Tajawal, Arial, sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('ROLL ●', w - 14, h - 14);
+    ctx.fillText('تدحرج ●', w - 14, h - 14);
   }
 
   // ─ Ammo indicator (visual bullet icons) ─
@@ -2770,11 +2770,11 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = comboGrad;
     ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(`×${g.comboMultiplier.toFixed(1)} COMBO`, 0, 0);
+    ctx.fillText(`×${g.comboMultiplier.toFixed(1)}`, 0, 0);
     // Combo count below
     ctx.fillStyle = 'rgba(251,191,36,0.6)';
-    ctx.font = '9px monospace';
-    ctx.fillText(`${g.comboCount} hits`, 0, 13);
+    ctx.font = '9px Tajawal, Arial, sans-serif';
+    ctx.fillText(`${g.comboCount} إصابة`, 0, 13);
 
     // Gold sparks around combo counter at ×2+
     if (g.comboMultiplier >= 2) {
@@ -2803,7 +2803,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = g.bulletLevel >= 3 ? '#fbbf24' : '#22c55e';
     ctx.font = '9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`SHOT LV.${g.bulletLevel}`, 14, 64);
+    ctx.fillText(`سلاح ×${g.bulletLevel}`, 14, 64);
   }
 
   // ─ Active effects with circular progress ─
@@ -2828,7 +2828,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = '#06b6d4';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`SLOW ${g.slowMoTimer.toFixed(1)}s`, 30, effectY + 2);
+    ctx.fillText(`بطيء ${g.slowMoTimer.toFixed(1)}`, 30, effectY + 2);
     ctx.globalAlpha = 1;
     effectY += 18;
   }
@@ -2839,7 +2839,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = '#94a3b8';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText('MAGNET', 30, effectY + 2);
+    ctx.fillText('مغناطيس', 30, effectY + 2);
     ctx.globalAlpha = 1;
     effectY += 18;
   }
@@ -2850,7 +2850,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = '#60a5fa';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`SHIELD ${p.shieldTimer.toFixed(1)}s`, 30, effectY + 2);
+    ctx.fillText(`درع ${p.shieldTimer.toFixed(1)}`, 30, effectY + 2);
     ctx.globalAlpha = 1;
   }
   // Extinguisher timer
@@ -2861,7 +2861,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = '#f97316';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`FIRE ${p.extinguisherTimer.toFixed(1)}s`, 30, effectY + 2);
+    ctx.fillText(`إطفاء ${p.extinguisherTimer.toFixed(1)}`, 30, effectY + 2);
     ctx.globalAlpha = 1;
     effectY += 18;
   }
@@ -2873,7 +2873,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = '#16a34a';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`MASK ${p.gasMaskTimer.toFixed(1)}s`, 30, effectY + 2);
+    ctx.fillText(`كمامة ${p.gasMaskTimer.toFixed(1)}`, 30, effectY + 2);
     ctx.globalAlpha = 1;
   }
 }
@@ -3064,7 +3064,7 @@ function renderBoss(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 8px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('GUNSHIP', 0, barY - 4);
+  ctx.fillText('طائرة حربية', 0, barY - 4);
 
   ctx.globalAlpha = 1;
   ctx.restore();
@@ -5023,20 +5023,15 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // Main title
+  // Title (Arabic only)
   ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 22px Arial, sans-serif';
+  ctx.font = 'bold 22px Tajawal, Arial, sans-serif';
   ctx.shadowColor = 'rgba(251,191,36,0.3)';
   ctx.shadowBlur = 8;
-  ctx.fillText('CHOOSE UPGRADE', g.width / 2, g.height * 0.20);
-  ctx.shadowBlur = 0;
-
-  // Arabic subtitle (RTL)
-  ctx.fillStyle = 'rgba(251,191,36,0.6)';
-  ctx.font = '15px Tajawal, Arial, sans-serif';
   ctx.direction = 'rtl';
-  ctx.fillText('اختر ترقية', g.width / 2, g.height * 0.20 + 26);
+  ctx.fillText('اختر ترقية', g.width / 2, g.height * 0.20);
   ctx.direction = 'ltr';
+  ctx.shadowBlur = 0;
   ctx.restore();
 
   // ── Cards ──
@@ -5120,18 +5115,13 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.textBaseline = 'middle';
     ctx.fillText(card.icon, cx + cardW / 2, iconY);
 
-    // ── Name (English) ──
+    // Arabic name only — RTL with Tajawal font
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 14px Arial, sans-serif';
+    ctx.font = 'bold 15px Tajawal, Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(card.name, cx + cardW / 2, cy + 105);
-
-    // Arabic name — RTL with Tajawal font
-    ctx.fillStyle = card.color;
-    ctx.font = 'bold 13px Tajawal, Arial, sans-serif';
     ctx.direction = 'rtl';
-    ctx.fillText(card.nameAr, cx + cardW / 2, cy + 126);
+    ctx.fillText(card.nameAr, cx + cardW / 2, cy + 115);
     ctx.direction = 'ltr';
 
     ctx.restore();
@@ -5757,12 +5747,7 @@ function renderCinematicWarning(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.shadowBlur = 20;
   ctx.fillText(cw.text, w / 2, centerY + 6);
 
-  // Sub text (English — LTR)
   ctx.direction = 'ltr';
-  ctx.shadowBlur = 8;
-  ctx.fillStyle = cw.color;
-  ctx.font = 'bold 11px monospace';
-  ctx.fillText(cw.subText, w / 2, centerY + 28);
 
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
@@ -5828,11 +5813,7 @@ function renderWaveWarnings(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.font = 'bold 13px Tajawal, Arial';
     ctx.fillText(ww.text, w / 2, y - 2);
 
-    // Sub text (English — LTR)
     ctx.direction = 'ltr';
-    ctx.fillStyle = 'rgba(200,200,200,0.8)';
-    ctx.font = '9px monospace';
-    ctx.fillText(ww.subText, w / 2, y + 12);
 
     ctx.restore();
   }

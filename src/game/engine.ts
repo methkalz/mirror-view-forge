@@ -529,29 +529,29 @@ function getWaveRecipe(wave: number): WaveRecipe {
 
 // Warning messages for new threats introduced in each wave
 const WAVE_WARNINGS: Record<number, { id: string; text: string; sub: string; color: string; type: 'warning' | 'upgrade' }[]> = {
-  1: [{ id: 'w1_shrapnel', text: '\u26A0 تحذير: شظايا متساقطة!', sub: 'SHRAPNEL INCOMING', color: '#ef4444', type: 'warning' }],
-  2: [{ id: 'w2_missile', text: '\u26A0 تحذير: صواريخ قادمة!', sub: 'MISSILES DETECTED', color: '#dc2626', type: 'warning' }],
-  3: [{ id: 'w3_bullet2', text: '\u2B06 تطوير: طلقة مزدوجة', sub: 'DOUBLE SHOT UNLOCKED', color: '#22c55e', type: 'upgrade' }],
-  4: [{ id: 'w4_cluster', text: '\u26A0 تحذير: صواريخ متشظية!', sub: 'SPLITTING MISSILES INCOMING', color: '#f43f5e', type: 'warning' }],
-  5: [{ id: 'w5_drone', text: '\u26A0 تحذير: طائرات استطلاع!', sub: 'SCOUT DRONES APPROACHING', color: '#ef4444', type: 'warning' }],
-  6: [{ id: 'w6_cluster3', text: '\u26A0 تحذير: تشظي ثلاثي!', sub: 'TRIPLE SPLIT MISSILES', color: '#ef4444', type: 'warning' }],
-  7: [{ id: 'w7_tracker', text: '\u26A0 تحذير: طائرات تتبع!', sub: 'TRACKER DRONES INBOUND', color: '#dc2626', type: 'warning' }],
+  1: [{ id: 'w1_shrapnel', text: '\u26A0 تحذير: شظايا متساقطة!', sub: '', color: '#ef4444', type: 'warning' }],
+  2: [{ id: 'w2_missile', text: '\u26A0 تحذير: صواريخ قادمة!', sub: '', color: '#dc2626', type: 'warning' }],
+  3: [{ id: 'w3_bullet2', text: '\u2B06 تطوير: طلقة مزدوجة', sub: '', color: '#22c55e', type: 'upgrade' }],
+  4: [{ id: 'w4_cluster', text: '\u26A0 تحذير: صواريخ متشظية!', sub: '', color: '#f43f5e', type: 'warning' }],
+  5: [{ id: 'w5_drone', text: '\u26A0 تحذير: طائرات استطلاع!', sub: '', color: '#ef4444', type: 'warning' }],
+  6: [{ id: 'w6_cluster3', text: '\u26A0 تحذير: تشظي ثلاثي!', sub: '', color: '#ef4444', type: 'warning' }],
+  7: [{ id: 'w7_tracker', text: '\u26A0 تحذير: طائرات تتبع!', sub: '', color: '#dc2626', type: 'warning' }],
   8: [
-    { id: 'w8_bullet3', text: '\u2B06 تطوير: طلقة ثلاثية', sub: 'TRIPLE SHOT UNLOCKED', color: '#22c55e', type: 'upgrade' },
-    { id: 'w8_cluster4', text: '\u26A0 تحذير: تشظي رباعي!', sub: 'QUAD SPLIT MISSILES', color: '#dc2626', type: 'warning' },
+    { id: 'w8_bullet3', text: '\u2B06 تطوير: طلقة ثلاثية', sub: '', color: '#22c55e', type: 'upgrade' },
+    { id: 'w8_cluster4', text: '\u26A0 تحذير: تشظي رباعي!', sub: '', color: '#dc2626', type: 'warning' },
   ],
-  9: [{ id: 'w9_bomber', text: '\u26A0 تحذير: قاذفات قنابل!', sub: 'BOMBERS DETECTED — TAKE COVER', color: '#ef4444', type: 'warning' }],
+  9: [{ id: 'w9_bomber', text: '\u26A0 تحذير: قاذفات قنابل!', sub: '', color: '#ef4444', type: 'warning' }],
   10: [
-    { id: 'w10_gasmask', text: '\u2B06 إمدادات: كمامة غاز!', sub: 'GAS MASK DROPPED', color: '#16a34a', type: 'upgrade' },
-    { id: 'w10_chemical', text: '\u26A0 تحذير: طائرات كيميائية!', sub: 'CHEMICAL DRONES — TOXIC GAS', color: '#15803d', type: 'warning' },
+    { id: 'w10_gasmask', text: '\u2B06 إمدادات: كمامة غاز!', sub: '', color: '#16a34a', type: 'upgrade' },
+    { id: 'w10_chemical', text: '\u26A0 تحذير: طائرات كيميائية!', sub: '', color: '#15803d', type: 'warning' },
   ],
   11: [
-    { id: 'w11_extinguisher', text: '\u2B06 إمدادات: طفاية حريق!', sub: 'FIRE EXTINGUISHER DROPPED', color: '#f97316', type: 'upgrade' },
-    { id: 'w11_incendiary', text: '\u26A0 تحذير: طائرات حارقة!', sub: 'INCENDIARY DRONES — FIRE HAZARD', color: '#ea580c', type: 'warning' },
+    { id: 'w11_extinguisher', text: '\u2B06 إمدادات: طفاية حريق!', sub: '', color: '#f97316', type: 'upgrade' },
+    { id: 'w11_incendiary', text: '\u26A0 تحذير: طائرات حارقة!', sub: '', color: '#ea580c', type: 'warning' },
   ],
   12: [
-    { id: 'w12_boss', text: '\u26A0 تحذير: طائرة حربية!', sub: 'GUNSHIP APPROACHING — STAY ALERT', color: '#dc2626', type: 'warning' },
-    { id: 'w12_cluster5', text: '\u26A0 تحذير: تشظي خماسي!', sub: 'MAX SPLIT — DANGER', color: '#991b1b', type: 'warning' },
+    { id: 'w12_boss', text: '\u26A0 تحذير: طائرة حربية!', sub: '', color: '#dc2626', type: 'warning' },
+    { id: 'w12_cluster5', text: '\u26A0 تحذير: تشظي خماسي!', sub: '', color: '#991b1b', type: 'warning' },
   ],
 };
 
@@ -2556,7 +2556,7 @@ function spawnBoss(g: GameData, showWarning = true) {
   };
   sfxBossSiren();
   if (showWarning) {
-    g.cinematicWarning = { text: '⚠ تحذير: طائرة حربية!', subText: 'PREPARE FOR HEAVY ASSAULT', color: '#dc2626', timer: 1.5, duration: 1.5, type: 'warning' };
+    g.cinematicWarning = { text: '⚠ تحذير: طائرة حربية!', subText: '', color: '#dc2626', timer: 1.5, duration: 1.5, type: 'warning' };
     g.slowMoFactor = 0.1;
   }
 }
@@ -2589,8 +2589,8 @@ function updateBoss(g: GameData, dt: number) {
     boss.phase = newPhase;
     // Phase transition: 2s cooldown + warning + power-up drop
     boss.attackTimer = 2.0;
-    const phaseText = newPhase === 2 ? 'PHASE 2!' : 'PHASE 3!';
-    g.cinematicWarning = { text: `⚡ ${phaseText}`, subText: 'BOSS PATTERN SHIFT', color: '#fbbf24', timer: 1.0, duration: 1.0, type: 'warning' };
+    const phaseText = newPhase === 2 ? '⚡ المرحلة الثانية!' : '⚡ المرحلة الأخيرة!';
+    g.cinematicWarning = { text: phaseText, subText: '', color: '#fbbf24', timer: 1.0, duration: 1.0, type: 'warning' };
     g.slowMoFactor = 0.1;
     // Drop a random power-up as mid-fight reward
     const rewardTypes: PowerUpType[] = ['medkit', 'ammo', 'shield'];
