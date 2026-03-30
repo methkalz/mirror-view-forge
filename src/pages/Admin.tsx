@@ -1291,7 +1291,7 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Active phase indicator */}
           {playingUI && phases[activePhaseIdx] && (() => {
-            const meta = PHASE_META[phases[activePhaseIdx].phase] || { icon: '🖼️', label: phases[activePhaseIdx].phase, color: '#94a3b8' };
+            const meta = getDynamicMeta(phases[activePhaseIdx].phase, activePhaseIdx);
             return (
               <span style={{ fontSize: 10, color: meta.color, fontWeight: 700 }}>
                 {meta.icon} {meta.label}
