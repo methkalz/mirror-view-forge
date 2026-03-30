@@ -5563,18 +5563,7 @@ function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.textAlign = 'center';
   ctx.direction = 'rtl';
 
-  // Title
-  const titleGrad = ctx.createLinearGradient(w / 2 - 80, 0, w / 2 + 80, 0);
-  titleGrad.addColorStop(0, '#c0a040');
-  titleGrad.addColorStop(0.5, '#ffd700');
-  titleGrad.addColorStop(1, '#c0a040');
-  ctx.fillStyle = titleGrad;
-  ctx.font = 'bold 26px Tajawal, sans-serif';
-  ctx.shadowColor = 'rgba(255,200,50,0.25)';
-  ctx.shadowBlur = 15;
-  ctx.fillText('التحكم والمعدات', w / 2, h * 0.14);
-  ctx.shadowBlur = 0;
-  ctx.shadowColor = 'transparent';
+  drawSlideTitle(ctx, w, h, 'التحكم والمعدات', 0.14);
 
   drawGoldDivider(ctx, w, h * 0.18, t);
 
