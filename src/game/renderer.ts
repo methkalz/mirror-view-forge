@@ -3064,7 +3064,7 @@ function renderBoss(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 8px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('GUNSHIP', 0, barY - 4);
+  ctx.fillText('طائرة حربية', 0, barY - 4);
 
   ctx.globalAlpha = 1;
   ctx.restore();
