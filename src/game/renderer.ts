@@ -4297,22 +4297,20 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.restore();
   }
 
-  renderMotorcycle(ctx, bike, g, showPassenger, isDismounting, dismountProg);
-
-  // Panel 2: Player standing alone — no waving, just idle pose
+  // Panel 2: Player standing alone — drawn BEFORE bike so player stays behind it
   if (g.introPhase === 'bikeLeave') {
     const p = g.player;
     ctx.save();
     ctx.translate(p.pos.x, p.pos.y);
     ctx.scale(1.6, 1.6);
     drawCharacter(ctx, {
-      x: 0, y: 0, // Same as renderPlayer
-      scale: 1, // Same as renderPlayer
+      x: 0, y: 0,
+      scale: 1,
       sitting: false,
       facingRight: true,
       isDriver: false,
       helmetColor: '#334155',
-      bodyBob: Math.sin(g.elapsed * 2.5) * 0.8, // Same idle bob as renderPlayer
+      bodyBob: Math.sin(g.elapsed * 2.5) * 0.8,
       armOffset: 0,
       legOffset: 0,
       isHit: false,
@@ -4320,6 +4318,8 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
     });
     ctx.restore();
   }
+
+  renderMotorcycle(ctx, bike, g, showPassenger, isDismounting, dismountProg);
 }
 
 // ─── Water Bottle Icon ────────────────────────────────
