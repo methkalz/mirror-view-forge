@@ -10,13 +10,18 @@ import {
   addAudioFile, removeAudioFile, fetchAnalytics, createAudioEntry, deleteAudioEntry,
   type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type GameAnalytics,
 } from '@/game/config';
+import {
+  fetchBackgroundConfig, updateBackgroundPhase, uploadBackgroundImage, deleteBackgroundImage,
+  type BackgroundPhase,
+} from '@/game/backgroundConfig';
 
-type TabKey = 'analytics' | 'config' | 'branding' | 'waves' | 'leaderboard' | 'audio';
+type TabKey = 'analytics' | 'config' | 'branding' | 'backgrounds' | 'waves' | 'leaderboard' | 'audio';
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'analytics', icon: '📊', label: 'Analytics' },
   { key: 'config', icon: '🎮', label: 'Config' },
   { key: 'branding', icon: '🎨', label: 'Brand' },
+  { key: 'backgrounds', icon: '🌅', label: 'Backgrounds' },
   { key: 'waves', icon: '🌊', label: 'Waves' },
   { key: 'audio', icon: '🔊', label: 'Audio' },
   { key: 'leaderboard', icon: '🏆', label: 'Leaders' },
@@ -37,6 +42,7 @@ const Admin: React.FC = () => {
   const [leaders, setLeaders] = useState<LeaderboardEntry[]>([]);
   const [audioEntries, setAudioEntries] = useState<AudioConfigEntry[]>([]);
   const [analytics, setAnalytics] = useState<GameAnalytics | null>(null);
+  const [bgPhases, setBgPhases] = useState<BackgroundPhase[]>([]);
 
   useEffect(() => {
     const check = async () => {
@@ -52,8 +58,8 @@ const Admin: React.FC = () => {
   }, [navigate]);
 
   const loadAll = useCallback(async () => {
-    const [c, w, l, a, an] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard(), fetchAudioConfig(), fetchAnalytics()]);
-    setConfig(c); setWaves(w); setLeaders(l); setAudioEntries(a); setAnalytics(an);
+    const [c, w, l, a, an, bg] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard(), fetchAudioConfig(), fetchAnalytics(), fetchBackgroundConfig()]);
+    setConfig(c); setWaves(w); setLeaders(l); setAudioEntries(a); setAnalytics(an); setBgPhases(bg);
   }, []);
 
   useEffect(() => { if (isAdmin) loadAll(); }, [isAdmin, loadAll]);
@@ -259,6 +265,7 @@ const Admin: React.FC = () => {
                 {tab === 'analytics' ? 'Real-time game analytics & player insights' :
                  tab === 'config' ? 'Game physics & difficulty settings' :
                  tab === 'branding' ? 'Logo, title & developer branding' :
+                 tab === 'backgrounds' ? 'Day/night cycle & background images' :
                  tab === 'waves' ? 'Wave configuration & enemy patterns' :
                  tab === 'audio' ? 'Professional audio system management' :
                  'Leaderboard management'}
@@ -279,6 +286,8 @@ const Admin: React.FC = () => {
         {tab === 'config' && config && <ConfigPanel config={config} saving={saving} onSave={saveConfig} isDesktop={isDesktop} />}
 
         {tab === 'branding' && config && <BrandingPanel config={config} onSave={saveConfig} isDesktop={isDesktop} />}
+
+        {tab === 'backgrounds' && <BackgroundsPanel phases={bgPhases} setPhases={setBgPhases} isDesktop={isDesktop} />}
 
         {tab === 'waves' && (
           <WavesPanel waves={waves} editingWave={editingWave} setEditingWave={setEditingWave} onSaveWave={handleSaveWave} onDeleteWave={handleDeleteWave} isDesktop={isDesktop} />
@@ -913,6 +922,194 @@ const AudioPanel: React.FC<{
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+// ─── Backgrounds Panel ───
+const PHASE_META: Record<string, { icon: string; label: string; color: string }> = {
+  day:    { icon: '☀️', label: 'Day',    color: '#f59e0b' },
+  sunset: { icon: '🌅', label: 'Sunset', color: '#f97316' },
+  night:  { icon: '🌙', label: 'Night',  color: '#6366f1' },
+};
+
+const BackgroundsPanel: React.FC<{
+  phases: BackgroundPhase[];
+  setPhases: React.Dispatch<React.SetStateAction<BackgroundPhase[]>>;
+  isDesktop: boolean;
+}> = ({ phases, setPhases, isDesktop }) => {
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [saving, setSaving] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUpload = async (phaseId: string, phaseName: string, file: File) => {
+    setUploading(phaseId);
+    const url = await uploadBackgroundImage(file, phaseName);
+    if (url) {
+      await updateBackgroundPhase(phaseId, { imageUrl: url });
+      setPhases(prev => prev.map(p => p.id === phaseId ? { ...p, imageUrl: url } : p));
+    }
+    setUploading(null);
+  };
+
+  const handleRemoveImage = async (phaseId: string, imageUrl: string) => {
+    await deleteBackgroundImage(imageUrl);
+    await updateBackgroundPhase(phaseId, { imageUrl: null });
+    setPhases(prev => prev.map(p => p.id === phaseId ? { ...p, imageUrl: null } : p));
+  };
+
+  const handleUpdateTiming = async (phaseId: string, field: 'transitionStart' | 'transitionEnd', value: number) => {
+    setSaving(phaseId);
+    setPhases(prev => prev.map(p => p.id === phaseId ? { ...p, [field]: value } : p));
+    await updateBackgroundPhase(phaseId, { [field]: value });
+    setSaving(null);
+  };
+
+  const handleUpdateOverlay = async (phaseId: string, field: 'overlayOpacity', value: number) => {
+    setSaving(phaseId);
+    setPhases(prev => prev.map(p => p.id === phaseId ? { ...p, [field]: value } : p));
+    await updateBackgroundPhase(phaseId, { [field]: value });
+    setSaving(null);
+  };
+
+  // Timeline visualization
+  const maxTime = Math.max(...phases.map(p => p.transitionEnd), 600);
+
+  return (
+    <div style={cardStyle}>
+      <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
+        const file = e.target.files?.[0];
+        const phaseId = fileInputRef.current?.dataset.phaseId;
+        const phaseName = fileInputRef.current?.dataset.phaseName;
+        if (file && phaseId && phaseName) handleUpload(phaseId, phaseName, file);
+        e.target.value = '';
+      }} />
+
+      <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>🌅 Background Cycle</h3>
+      <p style={{ fontSize: 11, color: 'rgba(148,163,184,0.4)', marginBottom: 24 }}>
+        Day → Sunset → Night with smooth cross-fade transitions
+      </p>
+
+      {/* Timeline bar */}
+      <div style={{ marginBottom: 28, padding: '16px 18px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+        <div style={{ fontSize: 11, color: 'rgba(148,163,184,0.5)', marginBottom: 10, fontWeight: 600 }}>📊 Timeline (seconds)</div>
+        <div style={{ display: 'flex', height: 28, borderRadius: 8, overflow: 'hidden', background: 'rgba(0,0,0,0.3)' }}>
+          {phases.map((p, i) => {
+            const meta = PHASE_META[p.phase] || { icon: '🖼️', label: p.phase, color: '#94a3b8' };
+            const start = p.transitionStart;
+            const end = i < phases.length - 1 ? phases[i + 1].transitionStart : maxTime;
+            const widthPct = ((end - start) / maxTime) * 100;
+            return (
+              <div key={p.id} style={{
+                width: `${widthPct}%`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: `${meta.color}25`, borderRight: i < phases.length - 1 ? `2px solid ${meta.color}40` : 'none',
+                fontSize: 10, color: meta.color, fontWeight: 700, gap: 4,
+              }}>
+                {meta.icon} {Math.round(start)}s–{Math.round(end)}s
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Phase Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr 1fr' : '1fr', gap: 16 }}>
+        {phases.map(p => {
+          const meta = PHASE_META[p.phase] || { icon: '🖼️', label: p.phase, color: '#94a3b8' };
+          const isUploading = uploading === p.id;
+          const isSaving = saving === p.id;
+
+          return (
+            <div key={p.id} style={{
+              padding: '20px 18px', borderRadius: 16,
+              background: `${meta.color}06`, border: `1px solid ${meta.color}15`,
+            }}>
+              {/* Phase header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <span style={{ fontSize: 22 }}>{meta.icon}</span>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: meta.color }}>{meta.label}</div>
+                  {isSaving && <span style={{ fontSize: 9, color: 'rgba(59,130,246,0.6)' }}>Saving...</span>}
+                </div>
+              </div>
+
+              {/* Image preview / upload */}
+              <div style={{
+                width: '100%', aspectRatio: '16/9', borderRadius: 12, marginBottom: 14,
+                background: 'rgba(0,0,0,0.3)', overflow: 'hidden', position: 'relative',
+                border: '1px solid rgba(255,255,255,0.06)',
+              }}>
+                {p.imageUrl ? (
+                  <img src={p.imageUrl} alt={p.phase} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'rgba(148,163,184,0.25)' }}>
+                    <span style={{ fontSize: 32, marginBottom: 6 }}>🖼️</span>
+                    <span style={{ fontSize: 10 }}>No image</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Upload / Remove buttons */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+                <button
+                  onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.dataset.phaseId = p.id;
+                      fileInputRef.current.dataset.phaseName = p.phase;
+                      fileInputRef.current.click();
+                    }
+                  }}
+                  disabled={isUploading}
+                  style={{ ...btnPrimary, flex: 1, fontSize: 11, padding: '8px 10px' }}
+                >
+                  {isUploading ? '⏳ Uploading...' : '📁 Upload'}
+                </button>
+                {p.imageUrl && (
+                  <button onClick={() => handleRemoveImage(p.id, p.imageUrl!)} style={{ ...btnDanger, fontSize: 11, padding: '8px 10px' }}>✕</button>
+                )}
+              </div>
+
+              {/* Timing sliders */}
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <label style={{ ...labelStyle, marginBottom: 0 }}>Start (sec)</label>
+                  <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{p.transitionStart}s</span>
+                </div>
+                <input type="range" min={0} max={600} step={10} value={p.transitionStart}
+                  onChange={e => handleUpdateTiming(p.id, 'transitionStart', parseFloat(e.target.value))}
+                  style={{ width: '100%', accentColor: meta.color }} />
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <label style={{ ...labelStyle, marginBottom: 0 }}>End (sec)</label>
+                  <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{p.transitionEnd}s</span>
+                </div>
+                <input type="range" min={0} max={900} step={10} value={p.transitionEnd}
+                  onChange={e => handleUpdateTiming(p.id, 'transitionEnd', parseFloat(e.target.value))}
+                  style={{ width: '100%', accentColor: meta.color }} />
+              </div>
+
+              {/* Overlay opacity */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <label style={{ ...labelStyle, marginBottom: 0 }}>Overlay Opacity</label>
+                  <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{(p.overlayOpacity * 100).toFixed(0)}%</span>
+                </div>
+                <input type="range" min={0} max={1} step={0.05} value={p.overlayOpacity}
+                  onChange={e => handleUpdateOverlay(p.id, 'overlayOpacity', parseFloat(e.target.value))}
+                  style={{ width: '100%', accentColor: meta.color }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {phases.length === 0 && (
+        <p style={{ color: 'rgba(148,163,184,0.3)', fontSize: 13, textAlign: 'center', padding: 24 }}>
+          No background phases configured
+        </p>
+      )}
     </div>
   );
 };
