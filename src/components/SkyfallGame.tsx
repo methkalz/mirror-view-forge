@@ -335,6 +335,7 @@ const SkyfallGame: React.FC = () => {
           g.tutorialPage = Math.max(0, g.tutorialPage - 1);
         }
         g.tutorialFade = 0;
+        sfxSlideTransition();
         return;
       }
 
