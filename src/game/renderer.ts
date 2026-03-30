@@ -1007,32 +1007,13 @@ function drawMedkitIcon(ctx: CanvasRenderingContext2D, s: number) {
 
 function drawShieldIcon(ctx: CanvasRenderingContext2D, s: number) {
   const h = s * 0.85, w = s * 0.7;
-  // Shield shape
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.moveTo(0, -h);
   ctx.quadraticCurveTo(w, -h * 0.6, w, -h * 0.1);
   ctx.quadraticCurveTo(w * 0.8, h * 0.6, 0, h);
   ctx.quadraticCurveTo(-w * 0.8, h * 0.6, -w, -h * 0.1);
   ctx.quadraticCurveTo(-w, -h * 0.6, 0, -h);
-  ctx.closePath();
-  const sg = ctx.createLinearGradient(0, -h, 0, h);
-  sg.addColorStop(0, '#93c5fd');
-  sg.addColorStop(0.5, '#3b82f6');
-  sg.addColorStop(1, '#1d4ed8');
-  ctx.fillStyle = sg;
-  ctx.fill();
-  ctx.strokeStyle = '#bfdbfe';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-  // Star
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  for (let i = 0; i < 5; i++) {
-    const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-    const r = i % 2 === 0 ? s * 0.3 : s * 0.12;
-    const method = i === 0 ? 'moveTo' : 'lineTo';
-    ctx[method](Math.cos(a) * r, Math.sin(a) * r + h * 0.05);
-  }
   ctx.closePath();
   ctx.fill();
 }
