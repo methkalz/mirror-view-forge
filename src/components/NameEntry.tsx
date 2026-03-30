@@ -38,10 +38,10 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   const showTitle = branding?.showTitle ?? true;
   const hasName = name.trim().length > 0;
 
-  // Phase transition: sound-hint → name-entry after 2s
+  // Phase transition: sound-hint → name-entry after 3s
   useEffect(() => {
-    const fadeTimer = setTimeout(() => setHintFading(true), 1600);
-    const phaseTimer = setTimeout(() => setPhase('name-entry'), 2000);
+    const fadeTimer = setTimeout(() => setHintFading(true), 2600);
+    const phaseTimer = setTimeout(() => setPhase('name-entry'), 3000);
     return () => { clearTimeout(fadeTimer); clearTimeout(phaseTimer); };
   }, []);
 
@@ -128,27 +128,6 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           alignItems: 'center', justifyContent: 'center', gap: 24,
           animation: hintFading ? 'hintFadeOut 0.4s ease-in forwards' : 'hintFadeIn 0.3s ease-out',
         }}>
-          {/* Phone icon with sound waves */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            animation: 'phoneSwing 2s ease-in-out infinite',
-          }}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="5" y="2" width="14" height="20" rx="3" />
-              <line x1="12" y1="18" x2="12" y2="18.01" />
-            </svg>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {[0, 1, 2].map(i => (
-                <div key={i} style={{
-                  width: 6 + i * 5, height: 2.5,
-                  background: 'rgba(255,255,255,0.45)',
-                  borderRadius: 2,
-                  animation: `soundWave 1.5s ease-in-out ${i * 0.2}s infinite`,
-                }} />
-              ))}
-            </div>
-          </div>
-
           {/* Text */}
           <p style={{
             fontFamily: "'Tajawal', system-ui, sans-serif",
