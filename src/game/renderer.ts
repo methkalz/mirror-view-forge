@@ -5386,6 +5386,23 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
     ctx.fill();
   }
 
+  // Ember/Spark particles — rising golden sparks
+  const emberColors = ['255,160,30', '255,120,20', '251,191,36', '255,80,20'];
+  for (let i = 0; i < 15; i++) {
+    const speed = 0.3 + (i % 5) * 0.15;
+    const lifeT = ((t * speed + i * 3.7) % 6) / 6; // 0→1 lifecycle
+    const ex = w * (0.1 + ((i * 0.0731 + Math.sin(i * 2.3) * 0.1) % 0.8)) + Math.sin(t * 1.5 + i * 4.1) * 15;
+    const ey = h * (1.0 - lifeT * 0.9);
+    const eAlpha = Math.sin(lifeT * Math.PI) * 0.6;
+    const eSize = 1 + (i % 3);
+    if (eAlpha > 0.02) {
+      ctx.fillStyle = `rgba(${emberColors[i % emberColors.length]}, ${eAlpha})`;
+      ctx.beginPath();
+      ctx.arc(ex, ey, eSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   // Red glow at bottom
   const bottomGlow = ctx.createRadialGradient(w / 2, h, 0, w / 2, h, h * 0.5);
   bottomGlow.addColorStop(0, 'rgba(180, 30, 20, 0.12)');
