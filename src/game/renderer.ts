@@ -5542,7 +5542,7 @@ function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: numbe
   titleGrad.addColorStop(0.5, '#ffd700');
   titleGrad.addColorStop(1, '#c0a040');
   ctx.fillStyle = titleGrad;
-  ctx.font = 'bold 22px Tajawal, sans-serif';
+  ctx.font = 'bold 26px Tajawal, sans-serif';
   ctx.shadowColor = 'rgba(255,200,50,0.25)';
   ctx.shadowBlur = 15;
   ctx.fillText('التحكم والمعدات', w / 2, h * 0.14);
