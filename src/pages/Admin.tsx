@@ -12,6 +12,7 @@ import {
 } from '@/game/config';
 import {
   fetchBackgroundConfig, updateBackgroundPhase, uploadBackgroundImage, deleteBackgroundImage,
+  createBackgroundPhase, deleteBackgroundPhase,
   type BackgroundPhase,
 } from '@/game/backgroundConfig';
 import { playSynthesizedPreview } from '@/game/audio';
@@ -957,6 +958,11 @@ const PHASE_META: Record<string, { icon: string; label: string; color: string }>
   sunset: { icon: '🌅', label: 'Sunset', color: '#f97316' },
   night:  { icon: '🌙', label: 'Night',  color: '#6366f1' },
 };
+const DYNAMIC_COLORS = ['#10b981', '#ec4899', '#8b5cf6', '#14b8a6', '#f43f5e', '#06b6d4', '#84cc16', '#a855f7'];
+const getDynamicMeta = (phase: string, index: number) => {
+  if (PHASE_META[phase]) return PHASE_META[phase];
+  return { icon: '🖼️', label: phase, color: DYNAMIC_COLORS[index % DYNAMIC_COLORS.length] };
+};
 
 // Helper: RGB string "R,G,B" → hex "#RRGGBB"
 const rgbToHex = (rgb: string): string => {
@@ -1285,7 +1291,7 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Active phase indicator */}
           {playingUI && phases[activePhaseIdx] && (() => {
-            const meta = PHASE_META[phases[activePhaseIdx].phase] || { icon: '🖼️', label: phases[activePhaseIdx].phase, color: '#94a3b8' };
+            const meta = getDynamicMeta(phases[activePhaseIdx].phase, activePhaseIdx);
             return (
               <span style={{ fontSize: 10, color: meta.color, fontWeight: 700 }}>
                 {meta.icon} {meta.label}
@@ -1323,7 +1329,7 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
         {/* Phase markers */}
         <div style={{ display: 'flex', marginTop: 4 }}>
           {phases.map((p, i) => {
-            const meta = PHASE_META[p.phase] || { icon: '🖼️', label: p.phase, color: '#94a3b8' };
+            const meta = getDynamicMeta(p.phase, i);
             return (
               <div key={p.id} style={{
                 flex: 1, textAlign: 'center', fontSize: 9, color: activePhaseIdx === i && playingUI ? meta.color : 'rgba(148,163,184,0.3)',
@@ -1361,6 +1367,7 @@ const BackgroundsPanel: React.FC<{
   const [uploading, setUploading] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [timelineHover, setTimelineHover] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (phaseId: string, phaseName: string, file: File) => {
@@ -1386,7 +1393,59 @@ const BackgroundsPanel: React.FC<{
     setSaving(null);
   };
 
+  const handleAddPhase = async () => {
+    const name = prompt('Enter phase name (e.g. dawn, dusk, storm):');
+    if (!name?.trim()) return;
+    const newPhase = await createBackgroundPhase(name.trim().toLowerCase());
+    if (newPhase) setPhases(prev => [...prev, newPhase]);
+  };
+
+  const handleDeletePhase = async (p: BackgroundPhase) => {
+    if (!confirm(`Delete phase "${p.phase}"? This cannot be undone.`)) return;
+    const ok = await deleteBackgroundPhase(p.id, p.imageUrl);
+    if (ok) setPhases(prev => prev.filter(x => x.id !== p.id));
+  };
+
+  const handleRenameSave = async (phaseId: string, newName: string) => {
+    const trimmed = newName.trim().toLowerCase();
+    if (!trimmed) return;
+    await handleUpdate(phaseId, { phase: trimmed });
+    setEditingName(null);
+  };
+
   const maxTime = Math.max(...phases.map(p => p.transitionEnd), 600);
+
+  // Slider + Number input combo helper
+  const SliderWithInput = ({ label, value, min, max, step, unit, color, onChange }: {
+    label: string; value: number; min: number; max: number; step: number; unit: string; color: string;
+    onChange: (v: number) => void;
+  }) => (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+        <label style={{ ...labelStyle, marginBottom: 0 }}>{label}</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <input
+            type="number"
+            min={min} max={max} step={step}
+            value={value}
+            onChange={e => {
+              const v = parseFloat(e.target.value);
+              if (!isNaN(v)) onChange(Math.max(min, Math.min(max, v)));
+            }}
+            style={{
+              width: 64, padding: '3px 6px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(0,0,0,0.3)', color, fontSize: 12, fontWeight: 700, textAlign: 'right',
+              outline: 'none',
+            }}
+          />
+          <span style={{ color: 'rgba(148,163,184,0.4)', fontSize: 10 }}>{unit}</span>
+        </div>
+      </div>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(parseFloat(e.target.value))}
+        style={{ width: '100%', accentColor: color }} />
+    </div>
+  );
 
   return (
     <div style={cardStyle}>
@@ -1398,9 +1457,14 @@ const BackgroundsPanel: React.FC<{
         e.target.value = '';
       }} />
 
-      <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>🌅 Background Cycle</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600 }}>🌅 Background Cycle</h3>
+        <button onClick={handleAddPhase} style={{ ...btnPrimary, padding: '6px 14px', fontSize: 12 }}>
+          + Add Phase
+        </button>
+      </div>
       <p style={{ fontSize: 11, color: 'rgba(148,163,184,0.4)', marginBottom: 24 }}>
-        Day → Sunset → Night with smooth cross-fade transitions
+        Manage background phases with smooth cross-fade transitions
       </p>
 
       {/* ─── Enhanced Timeline ─── */}
@@ -1423,7 +1487,7 @@ const BackgroundsPanel: React.FC<{
         {/* Thumbnails row */}
         <div style={{ display: 'flex', height: 36, borderRadius: 8, overflow: 'hidden', background: 'rgba(0,0,0,0.3)', position: 'relative' }}>
           {phases.map((p, i) => {
-            const meta = PHASE_META[p.phase] || { icon: '🖼️', label: p.phase, color: '#94a3b8' };
+            const meta = getDynamicMeta(p.phase, i);
             const start = p.transitionStart;
             const end = i < phases.length - 1 ? phases[i + 1].transitionStart : maxTime;
             const widthPct = ((end - start) / maxTime) * 100;
@@ -1466,11 +1530,12 @@ const BackgroundsPanel: React.FC<{
       <BackgroundPreviewPlayer phases={phases} />
 
       {/* ─── Phase Cards ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr 1fr' : '1fr', gap: 16 }}>
-        {phases.map(p => {
-          const meta = PHASE_META[p.phase] || { icon: '🖼️', label: p.phase, color: '#94a3b8' };
+      <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(auto-fill, minmax(320px, 1fr))' : '1fr', gap: 16 }}>
+        {phases.map((p, idx) => {
+          const meta = getDynamicMeta(p.phase, idx);
           const isUploading = uploading === p.id;
           const isSaving = saving === p.id;
+          const isEditing = editingName === p.id;
 
           return (
             <div key={p.id} style={{
@@ -1482,16 +1547,31 @@ const BackgroundsPanel: React.FC<{
               <div style={{ padding: '16px 18px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${meta.color}10` }}>
                 <span style={{ fontSize: 22 }}>{meta.icon}</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: meta.color }}>{meta.label}</div>
+                  {isEditing ? (
+                    <input
+                      autoFocus
+                      defaultValue={p.phase}
+                      onBlur={e => handleRenameSave(p.id, e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleRenameSave(p.id, (e.target as HTMLInputElement).value); if (e.key === 'Escape') setEditingName(null); }}
+                      style={{ ...inputStyle, padding: '4px 8px', fontSize: 13, fontWeight: 700, color: meta.color, width: '100%' }}
+                    />
+                  ) : (
+                    <div
+                      onClick={() => setEditingName(p.id)}
+                      style={{ fontSize: 14, fontWeight: 700, color: meta.color, cursor: 'pointer' }}
+                      title="Click to rename"
+                    >
+                      {meta.label} ✏️
+                    </div>
+                  )}
                 </div>
                 {isSaving && <span style={{ fontSize: 9, color: 'rgba(59,130,246,0.6)', fontWeight: 600 }}>✓ Saving...</span>}
+                <button onClick={() => handleDeletePhase(p)} style={{ ...btnDanger, padding: '4px 8px', fontSize: 13 }} title="Delete phase">🗑</button>
               </div>
 
               {/* ─── Section: Image ─── */}
               <div style={{ padding: '14px 18px' }}>
                 <div style={sectionHeaderStyle}>📷 Image</div>
-
-                {/* Image preview with overlay gradient preview */}
                 <div style={{
                   width: '100%', aspectRatio: '16/9', borderRadius: 12, marginBottom: 10,
                   background: 'rgba(0,0,0,0.3)', overflow: 'hidden', position: 'relative',
@@ -1505,7 +1585,6 @@ const BackgroundsPanel: React.FC<{
                       <span style={{ fontSize: 10 }}>No image</span>
                     </div>
                   )}
-                  {/* Live overlay gradient preview */}
                   <div style={{
                     position: 'absolute', inset: 0, pointerEvents: 'none',
                     background: `linear-gradient(180deg, rgba(${p.overlayTop},${p.overlayOpacity}) 0%, rgba(${p.overlayMid},${p.overlayOpacity * 0.8}) 50%, rgba(${p.overlayBottom},${p.overlayOpacity}) 100%)`,
@@ -1515,7 +1594,6 @@ const BackgroundsPanel: React.FC<{
                     background: 'rgba(0,0,0,0.5)', padding: '2px 6px', borderRadius: 4,
                   }}>OVERLAY PREVIEW</div>
                 </div>
-
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button onClick={() => {
                     if (fileInputRef.current) {
@@ -1535,54 +1613,22 @@ const BackgroundsPanel: React.FC<{
               {/* ─── Section: Timing ─── */}
               <div style={{ padding: '14px 18px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                 <div style={sectionHeaderStyle}>⏱ Timing</div>
-
-                <div style={{ marginBottom: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <label style={{ ...labelStyle, marginBottom: 0 }}>Start</label>
-                    <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{p.transitionStart}s</span>
-                  </div>
-                  <input type="range" min={0} max={600} step={1} value={p.transitionStart}
-                    onChange={e => handleUpdate(p.id, { transitionStart: parseFloat(e.target.value) })}
-                    style={{ width: '100%', accentColor: meta.color }} />
-                </div>
-
-                <div style={{ marginBottom: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <label style={{ ...labelStyle, marginBottom: 0 }}>End</label>
-                    <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{p.transitionEnd}s</span>
-                  </div>
-                  <input type="range" min={0} max={900} step={1} value={p.transitionEnd}
-                    onChange={e => handleUpdate(p.id, { transitionEnd: parseFloat(e.target.value) })}
-                    style={{ width: '100%', accentColor: meta.color }} />
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <label style={{ ...labelStyle, marginBottom: 0 }}>Fade Duration</label>
-                    <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{p.fadeDuration || 60}s</span>
-                  </div>
-                  <input type="range" min={1} max={300} step={1} value={p.fadeDuration || 60}
-                    onChange={e => handleUpdate(p.id, { fadeDuration: parseFloat(e.target.value) })}
-                    style={{ width: '100%', accentColor: meta.color }} />
-                </div>
+                <SliderWithInput label="Start" value={p.transitionStart} min={0} max={1800} step={0.5} unit="s" color={meta.color}
+                  onChange={v => handleUpdate(p.id, { transitionStart: v })} />
+                <SliderWithInput label="End" value={p.transitionEnd} min={0} max={1800} step={0.5} unit="s" color={meta.color}
+                  onChange={v => handleUpdate(p.id, { transitionEnd: v })} />
+                <SliderWithInput label="Fade Duration" value={p.fadeDuration || 60} min={0.5} max={600} step={0.5} unit="s" color={meta.color}
+                  onChange={v => handleUpdate(p.id, { fadeDuration: v })} />
               </div>
 
               {/* ─── Section: Overlay ─── */}
               <div style={{ padding: '14px 18px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                 <div style={sectionHeaderStyle}>🎨 Overlay</div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <label style={{ ...labelStyle, marginBottom: 0 }}>Opacity</label>
-                    <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{(p.overlayOpacity * 100).toFixed(0)}%</span>
-                  </div>
-                  <input type="range" min={0} max={1} step={0.05} value={p.overlayOpacity}
-                    onChange={e => handleUpdate(p.id, { overlayOpacity: parseFloat(e.target.value) })}
-                    style={{ width: '100%', accentColor: meta.color }} />
-                </div>
+                <SliderWithInput label="Opacity" value={p.overlayOpacity} min={0} max={1} step={0.01} unit="%" color={meta.color}
+                  onChange={v => handleUpdate(p.id, { overlayOpacity: v })} />
 
                 {/* Color pickers */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 8 }}>
                   {([
                     { key: 'overlayTop' as const, label: 'Top' },
                     { key: 'overlayMid' as const, label: 'Mid' },
@@ -1610,7 +1656,6 @@ const BackgroundsPanel: React.FC<{
               {/* ─── Section: Easing ─── */}
               <div style={{ padding: '14px 18px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                 <div style={sectionHeaderStyle}>⚡ Easing</div>
-
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ flex: 1 }}>
                     <select
@@ -1634,14 +1679,13 @@ const BackgroundsPanel: React.FC<{
 
       {phases.length === 0 && (
         <p style={{ color: 'rgba(148,163,184,0.3)', fontSize: 13, textAlign: 'center', padding: 24 }}>
-          No background phases configured
+          No background phases configured. Click "+ Add Phase" to create one.
         </p>
       )}
     </div>
   );
 };
 
-// ─── Branding Panel ───
 const BrandingPanel: React.FC<{
   config: RemoteGameConfig;
   onSave: (updates: Partial<RemoteGameConfig>) => void;

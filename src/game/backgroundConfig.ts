@@ -43,6 +43,7 @@ export async function fetchBackgroundConfig(): Promise<BackgroundPhase[]> {
 
 export async function updateBackgroundPhase(id: string, updates: Partial<BackgroundPhase>): Promise<boolean> {
   const mapped: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (updates.phase !== undefined) mapped.phase = updates.phase;
   if (updates.imageUrl !== undefined) mapped.image_url = updates.imageUrl;
   if (updates.transitionStart !== undefined) mapped.transition_start = updates.transitionStart;
   if (updates.transitionEnd !== undefined) mapped.transition_end = updates.transitionEnd;
@@ -52,7 +53,41 @@ export async function updateBackgroundPhase(id: string, updates: Partial<Backgro
   if (updates.overlayOpacity !== undefined) mapped.overlay_opacity = updates.overlayOpacity;
   if (updates.fadeDuration !== undefined) mapped.fade_duration = updates.fadeDuration;
   if (updates.easingType !== undefined) mapped.easing_type = updates.easingType;
+  if (updates.sortOrder !== undefined) mapped.sort_order = updates.sortOrder;
   const { error } = await supabase.from('background_config').update(mapped).eq('id', id);
+  return !error;
+}
+
+export async function createBackgroundPhase(phase: string): Promise<BackgroundPhase | null> {
+  // Get max sort_order
+  const { data: existing } = await supabase.from('background_config').select('sort_order').order('sort_order', { ascending: false }).limit(1);
+  const nextOrder = (existing?.[0]?.sort_order ?? -1) + 1;
+  const { data, error } = await supabase.from('background_config').insert({
+    phase,
+    transition_start: nextOrder * 120,
+    transition_end: nextOrder * 120 + 90,
+    sort_order: nextOrder,
+  }).select().single();
+  if (error || !data) return null;
+  return {
+    id: data.id,
+    phase: data.phase,
+    imageUrl: data.image_url,
+    transitionStart: data.transition_start,
+    transitionEnd: data.transition_end,
+    overlayTop: data.overlay_top ?? '12,20,69',
+    overlayMid: data.overlay_mid ?? '26,16,46',
+    overlayBottom: data.overlay_bottom ?? '26,10,46',
+    overlayOpacity: data.overlay_opacity ?? 0.4,
+    sortOrder: data.sort_order ?? 0,
+    fadeDuration: data.fade_duration ?? 60,
+    easingType: data.easing_type ?? 'smoothstep',
+  };
+}
+
+export async function deleteBackgroundPhase(id: string, imageUrl: string | null): Promise<boolean> {
+  if (imageUrl) await deleteBackgroundImage(imageUrl);
+  const { error } = await supabase.from('background_config').delete().eq('id', id);
   return !error;
 }
 
