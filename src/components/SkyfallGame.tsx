@@ -252,6 +252,7 @@ const SkyfallGame: React.FC = () => {
           }
           g.tutorialPage++;
           g.tutorialFade = 0;
+          sfxSlideTransition();
           return;
         }
         // Last slide — start game
