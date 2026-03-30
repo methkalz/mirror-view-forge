@@ -52,9 +52,11 @@ const SkyfallGame: React.FC = () => {
         const cfgPromise = fetchGameConfig();
         const lbPromise = fetchLeaderboard();
         const bgPromise = fetchBackgroundConfig();
+        const dpPromise = fetchDifficultyProfile();
+        const wcPromise = fetchWaveConfigs();
         setLoadProgress(15);
 
-        const [cfg, lb, bgPhases] = await Promise.all([cfgPromise, lbPromise, bgPromise]);
+        const [cfg, lb, bgPhases, dp, wc] = await Promise.all([cfgPromise, lbPromise, bgPromise, dpPromise, wcPromise]);
         if (!mounted) return;
         setLoadProgress(40);
 
