@@ -933,6 +933,48 @@ const PHASE_META: Record<string, { icon: string; label: string; color: string }>
   night:  { icon: '🌙', label: 'Night',  color: '#6366f1' },
 };
 
+// Helper: RGB string "R,G,B" → hex "#RRGGBB"
+const rgbToHex = (rgb: string): string => {
+  const parts = rgb.split(',').map(s => parseInt(s.trim(), 10));
+  if (parts.length < 3 || parts.some(isNaN)) return '#000000';
+  return '#' + parts.map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('');
+};
+
+// Helper: hex "#RRGGBB" → RGB string "R,G,B"
+const hexToRgb = (hex: string): string => {
+  const h = hex.replace('#', '');
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)].join(',');
+};
+
+// Easing curve SVG preview
+const EasingCurvePreview: React.FC<{ type: string; color: string }> = ({ type, color }) => {
+  const points: string[] = [];
+  const w = 80, h = 40;
+  for (let i = 0; i <= 20; i++) {
+    const t = i / 20;
+    let v: number;
+    switch (type) {
+      case 'ease-in': v = t * t; break;
+      case 'ease-out': v = 1 - (1 - t) * (1 - t); break;
+      case 'smoothstep': v = t * t * (3 - 2 * t); break;
+      default: v = t;
+    }
+    points.push(`${(t * w).toFixed(1)},${(h - v * h).toFixed(1)}`);
+  }
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: 'block' }}>
+      <rect x={0} y={0} width={w} height={h} rx={6} fill="rgba(0,0,0,0.25)" />
+      <line x1={0} y1={h} x2={w} y2={0} stroke="rgba(255,255,255,0.06)" strokeWidth={1} strokeDasharray="3,3" />
+      <polyline points={points.join(' ')} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+};
+
+const sectionHeaderStyle: React.CSSProperties = {
+  fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const,
+  color: 'rgba(148,163,184,0.45)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6,
+};
+
 const BackgroundsPanel: React.FC<{
   phases: BackgroundPhase[];
   setPhases: React.Dispatch<React.SetStateAction<BackgroundPhase[]>>;
@@ -940,6 +982,7 @@ const BackgroundsPanel: React.FC<{
 }> = ({ phases, setPhases, isDesktop }) => {
   const [uploading, setUploading] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
+  const [timelineHover, setTimelineHover] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (phaseId: string, phaseName: string, file: File) => {
@@ -958,35 +1001,13 @@ const BackgroundsPanel: React.FC<{
     setPhases(prev => prev.map(p => p.id === phaseId ? { ...p, imageUrl: null } : p));
   };
 
-  const handleUpdateTiming = async (phaseId: string, field: 'transitionStart' | 'transitionEnd', value: number) => {
+  const handleUpdate = async (phaseId: string, updates: Partial<BackgroundPhase>) => {
     setSaving(phaseId);
-    setPhases(prev => prev.map(p => p.id === phaseId ? { ...p, [field]: value } : p));
-    await updateBackgroundPhase(phaseId, { [field]: value });
+    setPhases(prev => prev.map(p => p.id === phaseId ? { ...p, ...updates } : p));
+    await updateBackgroundPhase(phaseId, updates);
     setSaving(null);
   };
 
-  const handleUpdateOverlay = async (phaseId: string, field: 'overlayOpacity', value: number) => {
-    setSaving(phaseId);
-    setPhases(prev => prev.map(p => p.id === phaseId ? { ...p, [field]: value } : p));
-    await updateBackgroundPhase(phaseId, { [field]: value });
-    setSaving(null);
-  };
-
-  const handleUpdateFadeDuration = async (phaseId: string, value: number) => {
-    setSaving(phaseId);
-    setPhases(prev => prev.map(p => p.id === phaseId ? { ...p, fadeDuration: value } : p));
-    await updateBackgroundPhase(phaseId, { fadeDuration: value });
-    setSaving(null);
-  };
-
-  const handleUpdateEasingType = async (phaseId: string, value: string) => {
-    setSaving(phaseId);
-    setPhases(prev => prev.map(p => p.id === phaseId ? { ...p, easingType: value } : p));
-    await updateBackgroundPhase(phaseId, { easingType: value });
-    setSaving(null);
-  };
-
-  // Timeline visualization
   const maxTime = Math.max(...phases.map(p => p.transitionEnd), 600);
 
   return (
@@ -1004,10 +1025,25 @@ const BackgroundsPanel: React.FC<{
         Day → Sunset → Night with smooth cross-fade transitions
       </p>
 
-      {/* Timeline bar */}
-      <div style={{ marginBottom: 28, padding: '16px 18px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-        <div style={{ fontSize: 11, color: 'rgba(148,163,184,0.5)', marginBottom: 10, fontWeight: 600 }}>📊 Timeline (seconds)</div>
-        <div style={{ display: 'flex', height: 28, borderRadius: 8, overflow: 'hidden', background: 'rgba(0,0,0,0.3)' }}>
+      {/* ─── Enhanced Timeline ─── */}
+      <div style={{ marginBottom: 28, padding: '16px 18px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}
+        onMouseMove={e => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = (e.clientX - rect.left - 18) / (rect.width - 36);
+          setTimelineHover(Math.max(0, Math.min(1, x)) * maxTime);
+        }}
+        onMouseLeave={() => setTimelineHover(null)}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>📊 Timeline</span>
+          {timelineHover !== null && (
+            <span style={{ fontSize: 11, color: '#60a5fa', fontWeight: 700 }}>
+              ▶ {Math.round(timelineHover)}s
+            </span>
+          )}
+        </div>
+        {/* Thumbnails row */}
+        <div style={{ display: 'flex', height: 36, borderRadius: 8, overflow: 'hidden', background: 'rgba(0,0,0,0.3)', position: 'relative' }}>
           {phases.map((p, i) => {
             const meta = PHASE_META[p.phase] || { icon: '🖼️', label: p.phase, color: '#94a3b8' };
             const start = p.transitionStart;
@@ -1016,17 +1052,39 @@ const BackgroundsPanel: React.FC<{
             return (
               <div key={p.id} style={{
                 width: `${widthPct}%`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: `${meta.color}25`, borderRight: i < phases.length - 1 ? `2px solid ${meta.color}40` : 'none',
-                fontSize: 10, color: meta.color, fontWeight: 700, gap: 4,
+                backgroundImage: p.imageUrl ? `url(${p.imageUrl})` : undefined,
+                backgroundSize: 'cover', backgroundPosition: 'center',
+                borderRight: i < phases.length - 1 ? `2px solid ${meta.color}60` : 'none',
+                position: 'relative',
               }}>
-                {meta.icon} {Math.round(start)}s–{Math.round(end)}s
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: p.imageUrl ? `${meta.color}55` : `${meta.color}25`,
+                }} />
+                <span style={{ position: 'relative', fontSize: 10, color: '#fff', fontWeight: 700, textShadow: '0 1px 3px rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', gap: 3 }}>
+                  {meta.icon} {Math.round(start)}s–{Math.round(end)}s
+                </span>
               </div>
             );
           })}
+          {/* NOW indicator */}
+          {timelineHover !== null && (
+            <div style={{
+              position: 'absolute', top: 0, bottom: 0, width: 2,
+              left: `${(timelineHover / maxTime) * 100}%`,
+              background: '#60a5fa', boxShadow: '0 0 8px rgba(96,165,250,0.6)',
+              pointerEvents: 'none', zIndex: 5,
+            }}>
+              <div style={{
+                position: 'absolute', top: -6, left: -4, width: 10, height: 10,
+                borderRadius: '50%', background: '#60a5fa', border: '2px solid #0a0f1a',
+              }} />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Phase Cards */}
+      {/* ─── Phase Cards ─── */}
       <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr 1fr' : '1fr', gap: 16 }}>
         {phases.map(p => {
           const meta = PHASE_META[p.phase] || { icon: '🖼️', label: p.phase, color: '#94a3b8' };
@@ -1035,114 +1093,157 @@ const BackgroundsPanel: React.FC<{
 
           return (
             <div key={p.id} style={{
-              padding: '20px 18px', borderRadius: 16,
+              borderRadius: 16,
               background: `${meta.color}06`, border: `1px solid ${meta.color}15`,
+              overflow: 'hidden',
             }}>
               {/* Phase header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <div style={{ padding: '16px 18px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${meta.color}10` }}>
                 <span style={{ fontSize: 22 }}>{meta.icon}</span>
-                <div>
+                <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: meta.color }}>{meta.label}</div>
-                  {isSaving && <span style={{ fontSize: 9, color: 'rgba(59,130,246,0.6)' }}>Saving...</span>}
                 </div>
+                {isSaving && <span style={{ fontSize: 9, color: 'rgba(59,130,246,0.6)', fontWeight: 600 }}>✓ Saving...</span>}
               </div>
 
-              {/* Image preview / upload */}
-              <div style={{
-                width: '100%', aspectRatio: '16/9', borderRadius: 12, marginBottom: 14,
-                background: 'rgba(0,0,0,0.3)', overflow: 'hidden', position: 'relative',
-                border: '1px solid rgba(255,255,255,0.06)',
-              }}>
-                {p.imageUrl ? (
-                  <img src={p.imageUrl} alt={p.phase} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'rgba(148,163,184,0.25)' }}>
-                    <span style={{ fontSize: 32, marginBottom: 6 }}>🖼️</span>
-                    <span style={{ fontSize: 10 }}>No image</span>
-                  </div>
-                )}
-              </div>
+              {/* ─── Section: Image ─── */}
+              <div style={{ padding: '14px 18px' }}>
+                <div style={sectionHeaderStyle}>📷 Image</div>
 
-              {/* Upload / Remove buttons */}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-                <button
-                  onClick={() => {
+                {/* Image preview with overlay gradient preview */}
+                <div style={{
+                  width: '100%', aspectRatio: '16/9', borderRadius: 12, marginBottom: 10,
+                  background: 'rgba(0,0,0,0.3)', overflow: 'hidden', position: 'relative',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                }}>
+                  {p.imageUrl ? (
+                    <img src={p.imageUrl} alt={p.phase} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'rgba(148,163,184,0.25)' }}>
+                      <span style={{ fontSize: 32, marginBottom: 6 }}>🖼️</span>
+                      <span style={{ fontSize: 10 }}>No image</span>
+                    </div>
+                  )}
+                  {/* Live overlay gradient preview */}
+                  <div style={{
+                    position: 'absolute', inset: 0, pointerEvents: 'none',
+                    background: `linear-gradient(180deg, rgba(${p.overlayTop},${p.overlayOpacity}) 0%, rgba(${p.overlayMid},${p.overlayOpacity * 0.8}) 50%, rgba(${p.overlayBottom},${p.overlayOpacity}) 100%)`,
+                  }} />
+                  <div style={{
+                    position: 'absolute', bottom: 4, right: 4, fontSize: 8, color: 'rgba(255,255,255,0.4)',
+                    background: 'rgba(0,0,0,0.5)', padding: '2px 6px', borderRadius: 4,
+                  }}>OVERLAY PREVIEW</div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={() => {
                     if (fileInputRef.current) {
                       fileInputRef.current.dataset.phaseId = p.id;
                       fileInputRef.current.dataset.phaseName = p.phase;
                       fileInputRef.current.click();
                     }
-                  }}
-                  disabled={isUploading}
-                  style={{ ...btnPrimary, flex: 1, fontSize: 11, padding: '8px 10px' }}
-                >
-                  {isUploading ? '⏳ Uploading...' : '📁 Upload'}
-                </button>
-                {p.imageUrl && (
-                  <button onClick={() => handleRemoveImage(p.id, p.imageUrl!)} style={{ ...btnDanger, fontSize: 11, padding: '8px 10px' }}>✕</button>
-                )}
-              </div>
-
-              {/* Timing sliders */}
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <label style={{ ...labelStyle, marginBottom: 0 }}>Start (sec)</label>
-                  <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{p.transitionStart}s</span>
+                  }} disabled={isUploading} style={{ ...btnPrimary, flex: 1, fontSize: 11, padding: '8px 10px' }}>
+                    {isUploading ? '⏳ Uploading...' : '📁 Upload'}
+                  </button>
+                  {p.imageUrl && (
+                    <button onClick={() => handleRemoveImage(p.id, p.imageUrl!)} style={{ ...btnDanger, fontSize: 11, padding: '8px 10px' }}>✕</button>
+                  )}
                 </div>
-                <input type="range" min={0} max={600} step={10} value={p.transitionStart}
-                  onChange={e => handleUpdateTiming(p.id, 'transitionStart', parseFloat(e.target.value))}
-                  style={{ width: '100%', accentColor: meta.color }} />
               </div>
 
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <label style={{ ...labelStyle, marginBottom: 0 }}>End (sec)</label>
-                  <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{p.transitionEnd}s</span>
-                </div>
-                <input type="range" min={0} max={900} step={10} value={p.transitionEnd}
-                  onChange={e => handleUpdateTiming(p.id, 'transitionEnd', parseFloat(e.target.value))}
-                  style={{ width: '100%', accentColor: meta.color }} />
-              </div>
+              {/* ─── Section: Timing ─── */}
+              <div style={{ padding: '14px 18px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                <div style={sectionHeaderStyle}>⏱ Timing</div>
 
-              {/* Overlay opacity */}
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <label style={{ ...labelStyle, marginBottom: 0 }}>Overlay Opacity</label>
-                  <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{(p.overlayOpacity * 100).toFixed(0)}%</span>
-                </div>
-                <input type="range" min={0} max={1} step={0.05} value={p.overlayOpacity}
-                  onChange={e => handleUpdateOverlay(p.id, 'overlayOpacity', parseFloat(e.target.value))}
-                  style={{ width: '100%', accentColor: meta.color }} />
-              </div>
-
-              {/* Transition Settings */}
-              <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)', fontWeight: 600, marginBottom: 10, letterSpacing: 1 }}>⚡ TRANSITION</div>
-
-                {/* Easing Type */}
                 <div style={{ marginBottom: 10 }}>
-                  <label style={{ ...labelStyle, marginBottom: 4 }}>Easing</label>
-                  <select
-                    value={p.easingType || 'smoothstep'}
-                    onChange={e => handleUpdateEasingType(p.id, e.target.value)}
-                    style={{ ...inputStyle, padding: '8px 10px', fontSize: 12 }}
-                  >
-                    <option value="linear">Linear</option>
-                    <option value="smoothstep">Smoothstep</option>
-                    <option value="ease-in">Ease In</option>
-                    <option value="ease-out">Ease Out</option>
-                  </select>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <label style={{ ...labelStyle, marginBottom: 0 }}>Start</label>
+                    <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{p.transitionStart}s</span>
+                  </div>
+                  <input type="range" min={0} max={600} step={10} value={p.transitionStart}
+                    onChange={e => handleUpdate(p.id, { transitionStart: parseFloat(e.target.value) })}
+                    style={{ width: '100%', accentColor: meta.color }} />
                 </div>
 
-                {/* Fade Duration */}
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <label style={{ ...labelStyle, marginBottom: 0 }}>End</label>
+                    <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{p.transitionEnd}s</span>
+                  </div>
+                  <input type="range" min={0} max={900} step={10} value={p.transitionEnd}
+                    onChange={e => handleUpdate(p.id, { transitionEnd: parseFloat(e.target.value) })}
+                    style={{ width: '100%', accentColor: meta.color }} />
+                </div>
+
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                     <label style={{ ...labelStyle, marginBottom: 0 }}>Fade Duration</label>
                     <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{p.fadeDuration || 60}s</span>
                   </div>
                   <input type="range" min={10} max={180} step={5} value={p.fadeDuration || 60}
-                    onChange={e => handleUpdateFadeDuration(p.id, parseFloat(e.target.value))}
+                    onChange={e => handleUpdate(p.id, { fadeDuration: parseFloat(e.target.value) })}
                     style={{ width: '100%', accentColor: meta.color }} />
+                </div>
+              </div>
+
+              {/* ─── Section: Overlay ─── */}
+              <div style={{ padding: '14px 18px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                <div style={sectionHeaderStyle}>🎨 Overlay</div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <label style={{ ...labelStyle, marginBottom: 0 }}>Opacity</label>
+                    <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{(p.overlayOpacity * 100).toFixed(0)}%</span>
+                  </div>
+                  <input type="range" min={0} max={1} step={0.05} value={p.overlayOpacity}
+                    onChange={e => handleUpdate(p.id, { overlayOpacity: parseFloat(e.target.value) })}
+                    style={{ width: '100%', accentColor: meta.color }} />
+                </div>
+
+                {/* Color pickers */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                  {([
+                    { key: 'overlayTop' as const, label: 'Top' },
+                    { key: 'overlayMid' as const, label: 'Mid' },
+                    { key: 'overlayBottom' as const, label: 'Bottom' },
+                  ]).map(({ key, label }) => (
+                    <div key={key} style={{ textAlign: 'center' }}>
+                      <label style={{ ...labelStyle, marginBottom: 4, fontSize: 10 }}>{label}</label>
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <input
+                          type="color"
+                          value={rgbToHex(p[key])}
+                          onChange={e => handleUpdate(p.id, { [key]: hexToRgb(e.target.value) })}
+                          style={{
+                            width: 36, height: 36, borderRadius: 8, border: '2px solid rgba(255,255,255,0.1)',
+                            cursor: 'pointer', background: 'transparent', padding: 0,
+                          }}
+                        />
+                      </div>
+                      <div style={{ fontSize: 9, color: 'rgba(148,163,184,0.35)', marginTop: 2 }}>{p[key]}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ─── Section: Easing ─── */}
+              <div style={{ padding: '14px 18px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                <div style={sectionHeaderStyle}>⚡ Easing</div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <select
+                      value={p.easingType || 'smoothstep'}
+                      onChange={e => handleUpdate(p.id, { easingType: e.target.value })}
+                      style={{ ...inputStyle, padding: '8px 10px', fontSize: 12 }}
+                    >
+                      <option value="linear">Linear</option>
+                      <option value="smoothstep">Smoothstep</option>
+                      <option value="ease-in">Ease In</option>
+                      <option value="ease-out">Ease Out</option>
+                    </select>
+                  </div>
+                  <EasingCurvePreview type={p.easingType || 'smoothstep'} color={meta.color} />
                 </div>
               </div>
             </div>
