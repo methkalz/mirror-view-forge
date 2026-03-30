@@ -1,5 +1,5 @@
 import { GameData, Player, FirePool, GasCloud } from './types';
-import bgCityUrl from '../assets/bg-city.jpeg';
+import bgCityUrl from '../assets/bg-skyfall.jpeg';
 
 // ─── Background Image ─────────────────────────────────
 const bgImage = new Image();
