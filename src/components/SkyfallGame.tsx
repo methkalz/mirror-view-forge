@@ -354,6 +354,7 @@ const SkyfallGame: React.FC = () => {
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointerup', onPointerUp);
 
     return () => {
       cancelAnimationFrame(rafRef.current);
@@ -361,6 +362,7 @@ const SkyfallGame: React.FC = () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointerup', onPointerUp);
       document.removeEventListener('selectstart', preventSelect);
       document.removeEventListener('contextmenu', preventContext);
       canvas.removeEventListener('touchstart', preventTouch);
