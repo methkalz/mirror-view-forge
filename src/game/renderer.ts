@@ -5728,141 +5728,104 @@ function renderTutorialSlide3(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.save();
   ctx.textAlign = 'center';
 
-  // ── 1. SKYFALL — letter-spaced, single gold glow ──
-  ctx.font = 'bold 48px monospace';
-  const titleText = 'S K Y F A L L';
-
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  ctx.fillText(titleText, w / 2 + 1, h * 0.22 + 1);
-
-  // Metallic gradient
-  const titleGrad = ctx.createLinearGradient(w / 2 - 130, h * 0.22 - 20, w / 2 + 130, h * 0.22 + 20);
-  titleGrad.addColorStop(0, '#b8a060');
-  titleGrad.addColorStop(0.3, '#ffd700');
-  titleGrad.addColorStop(0.5, '#fff8e0');
-  titleGrad.addColorStop(0.7, '#ffd700');
-  titleGrad.addColorStop(1, '#b8a060');
-  ctx.fillStyle = titleGrad;
-  ctx.shadowColor = 'rgba(255, 200, 50, 0.25)';
-  ctx.shadowBlur = 15;
-  ctx.fillText(titleText, w / 2, h * 0.22);
-  ctx.shadowBlur = 0;
-  ctx.shadowColor = 'transparent';
-
-  // ── 2. Gold divider — static, thin ──
-  const divY = h * 0.27;
-  const divGrad = ctx.createLinearGradient(w * 0.3, 0, w * 0.7, 0);
-  divGrad.addColorStop(0, 'rgba(251, 191, 36, 0)');
-  divGrad.addColorStop(0.3, 'rgba(251, 191, 36, 0.25)');
-  divGrad.addColorStop(0.5, 'rgba(251, 191, 36, 0.35)');
-  divGrad.addColorStop(0.7, 'rgba(251, 191, 36, 0.25)');
-  divGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
-  ctx.strokeStyle = divGrad;
+  // ── 1. Logo placeholder area (h*0.15 → h*0.38) ──
+  const logoY = h * 0.265;
+  const logoW = 160, logoH = h * 0.18;
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.15)';
   ctx.lineWidth = 0.5;
-  ctx.beginPath();
-  ctx.moveTo(w * 0.3, divY);
-  ctx.lineTo(w * 0.7, divY);
+  ctx.setLineDash([4, 4]);
+  roundRect(ctx, w / 2 - logoW / 2, logoY - logoH / 2, logoW, logoH, 8);
   ctx.stroke();
-  // Diamond center
-  ctx.fillStyle = 'rgba(251, 191, 36, 0.35)';
-  ctx.save();
-  ctx.translate(w / 2, divY);
-  ctx.rotate(Math.PI / 4);
-  ctx.fillRect(-2.5, -2.5, 5, 5);
-  ctx.restore();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(212, 175, 55, 0.12)';
+  ctx.font = '11px monospace';
+  ctx.fillText('LOGO', w / 2, logoY + 4);
 
-  // ── 3. SURVIVAL — muted red, static ──
-  ctx.fillStyle = 'rgba(200, 50, 50, 0.5)';
-  ctx.font = 'bold 14px monospace';
-  ctx.letterSpacing = '3px';
-  ctx.fillText('SURVIVAL', w / 2, h * 0.32);
-  ctx.letterSpacing = '0px';
-
-  // ── 4. "هل أنت مستعد؟" — static gold, subtle ──
+  // ── 2. "هل أنت مستعد؟" ──
   ctx.direction = 'rtl';
-  ctx.fillStyle = 'rgba(251, 191, 36, 0.35)';
-  ctx.font = '15px Tajawal, sans-serif';
-  ctx.fillText('هل أنت مستعد؟', w / 2, h * 0.42);
+  ctx.fillStyle = 'rgba(251, 191, 36, 0.45)';
+  ctx.font = '16px Tajawal, sans-serif';
+  ctx.fillText('هل أنت مستعد؟', w / 2, h * 0.48);
   ctx.direction = 'ltr';
 
-  // ── 5. Button "يلا يلا" — thin gold border, minimal ──
-  const btnW = 180, btnH = 44;
-  const btnX = w / 2 - btnW / 2, btnY = h * 0.52;
+  // ── 3. Button "يلا يلا" — larger, elegant ──
+  const btnW = 200, btnH = 48;
+  const btnX = w / 2 - btnW / 2, btnY = h * 0.53;
   const borderAlpha = 0.2 + Math.sin(t * 1.5) * 0.1;
 
-  // Nearly transparent fill
   ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
   roundRect(ctx, btnX, btnY, btnW, btnH, 8);
   ctx.fill();
 
-  // Thin gold border with subtle pulse
   ctx.strokeStyle = `rgba(212, 175, 55, ${borderAlpha})`;
   ctx.lineWidth = 0.8;
   roundRect(ctx, btnX, btnY, btnW, btnH, 8);
   ctx.stroke();
 
-  // Button text
   ctx.direction = 'rtl';
   ctx.fillStyle = 'rgba(235, 210, 150, 0.85)';
-  ctx.font = '18px Tajawal, sans-serif';
-  ctx.fillText('يلا يلا', w / 2, btnY + btnH / 2 + 6);
+  ctx.font = '20px Tajawal, sans-serif';
+  ctx.fillText('يلا يلا', w / 2, btnY + btnH / 2 + 7);
   ctx.direction = 'ltr';
 
-  // ── 6. High score — simple text ──
+  // ── 4. High score ──
   if (highScore > 0) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-    ctx.font = '13px monospace';
-    ctx.fillText(`🏆  ${highScore}`, w / 2, h * 0.66);
+    ctx.font = '14px monospace';
+    ctx.fillText(`🏆  ${highScore}`, w / 2, h * 0.65);
   }
 
-  // ── 7. Developer signature — prominent ──
-  const sigY = h * 0.92;
+  // ── 5. Developer signature block with gold frame ──
+  // Top divider ─── ◆ ───
+  const drawDivider = (y: number, alpha: number) => {
+    const dg = ctx.createLinearGradient(w * 0.25, 0, w * 0.75, 0);
+    dg.addColorStop(0, 'rgba(251, 191, 36, 0)');
+    dg.addColorStop(0.3, `rgba(251, 191, 36, ${alpha})`);
+    dg.addColorStop(0.5, `rgba(251, 191, 36, ${alpha * 1.4})`);
+    dg.addColorStop(0.7, `rgba(251, 191, 36, ${alpha})`);
+    dg.addColorStop(1, 'rgba(251, 191, 36, 0)');
+    ctx.strokeStyle = dg;
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.25, y);
+    ctx.lineTo(w * 0.75, y);
+    ctx.stroke();
+    // Diamond
+    ctx.fillStyle = `rgba(251, 191, 36, ${alpha * 1.2})`;
+    ctx.save();
+    ctx.translate(w / 2, y);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillRect(-2.5, -2.5, 5, 5);
+    ctx.restore();
+  };
+
+  drawDivider(h * 0.82, 0.2);
 
   // "تطوير"
   ctx.direction = 'rtl';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
   ctx.font = '13px Tajawal, sans-serif';
-  ctx.fillText('تطوير', w / 2, sigY - 22);
+  ctx.fillText('تطوير', w / 2, h * 0.86);
 
-  // Name — bold, larger, gold glow
+  // Arabic name — bold, gold glow
   ctx.shadowColor = 'rgba(251, 191, 36, 0.15)';
   ctx.shadowBlur = 8;
-  ctx.fillStyle = 'rgba(212, 175, 55, 0.6)';
+  ctx.fillStyle = 'rgba(212, 175, 55, 0.65)';
   ctx.font = 'bold 20px Tajawal, sans-serif';
-  ctx.fillText('مثقال زيدان', w / 2, sigY);
+  ctx.fillText('مثقال زيدان', w / 2, h * 0.90);
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
   ctx.direction = 'ltr';
 
-  // English name below
+  // English name
   ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
   ctx.font = '11px monospace';
   ctx.letterSpacing = '3px';
-  ctx.fillText('METHKAL ZIDANE', w / 2, sigY + 16);
+  ctx.fillText('METHKAL ZIDANE', w / 2, h * 0.935);
   ctx.letterSpacing = '0px';
 
-  // Static gold divider under signature
-  const sigDivY = sigY + 26;
-  const sigDivGrad = ctx.createLinearGradient(w * 0.3, 0, w * 0.7, 0);
-  sigDivGrad.addColorStop(0, 'rgba(251, 191, 36, 0)');
-  sigDivGrad.addColorStop(0.4, 'rgba(251, 191, 36, 0.2)');
-  sigDivGrad.addColorStop(0.5, 'rgba(251, 191, 36, 0.3)');
-  sigDivGrad.addColorStop(0.6, 'rgba(251, 191, 36, 0.2)');
-  sigDivGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
-  ctx.strokeStyle = sigDivGrad;
-  ctx.lineWidth = 0.5;
-  ctx.beginPath();
-  ctx.moveTo(w * 0.3, sigDivY);
-  ctx.lineTo(w * 0.7, sigDivY);
-  ctx.stroke();
-  // Diamond
-  ctx.fillStyle = 'rgba(251, 191, 36, 0.25)';
-  ctx.save();
-  ctx.translate(w / 2, sigDivY);
-  ctx.rotate(Math.PI / 4);
-  ctx.fillRect(-2, -2, 4, 4);
-  ctx.restore();
+  // Bottom divider
+  drawDivider(h * 0.96, 0.15);
 
   ctx.restore();
 }
