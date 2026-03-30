@@ -91,13 +91,21 @@ function getPhaseBlend(elapsed: number): {
 
   if (!bgConfigLoaded || bgPhases.length === 0) return defaultResult;
 
-  // ─── Loop support: wrap elapsed time ───
+  // ─── Loop support: wrap elapsed time with smooth fade back to first phase ───
   let effectiveElapsed = elapsed;
+  let loopFadeBlend = -1; // -1 means not in loop-fade zone
   if (bgLoopEnabled && bgPhases.length >= 2) {
     const lastPhase = bgPhases[bgPhases.length - 1];
-    const cycleLength = lastPhase.transitionStart + Math.max(0.001, lastPhase.fadeDuration || 60);
-    if (cycleLength > 0 && elapsed >= cycleLength) {
-      effectiveElapsed = elapsed % cycleLength;
+    const lastPhaseEnd = lastPhase.transitionStart + Math.max(0.001, lastPhase.fadeDuration || 60);
+    const fadeDur = Math.max(0.001, bgLoopFadeDuration);
+    const cycleLength = lastPhaseEnd + fadeDur;
+    if (elapsed >= cycleLength) {
+      // Past first full cycle — wrap
+      effectiveElapsed = ((elapsed - cycleLength) % cycleLength);
+    } else if (elapsed >= lastPhaseEnd) {
+      // In the loop-fade zone: blend last phase → first phase
+      const t = (elapsed - lastPhaseEnd) / fadeDur;
+      loopFadeBlend = applyEasing(Math.min(1, t), bgPhases[0].easingType || 'smoothstep');
     }
   }
 
