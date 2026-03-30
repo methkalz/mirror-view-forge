@@ -2828,7 +2828,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = '#06b6d4';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`SLOW ${g.slowMoTimer.toFixed(1)}s`, 30, effectY + 2);
+    ctx.fillText(`بطيء ${g.slowMoTimer.toFixed(1)}`, 30, effectY + 2);
     ctx.globalAlpha = 1;
     effectY += 18;
   }
