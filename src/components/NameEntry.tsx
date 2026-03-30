@@ -406,6 +406,20 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           70% { opacity: 0.5; }
           85% { opacity: 0.75; }
         }
+        @keyframes silentHintFade {
+          0% { opacity: 0; }
+          10% { opacity: 0.7; }
+          70% { opacity: 0.7; }
+          100% { opacity: 0; }
+        }
+        @keyframes phoneSwing {
+          0%, 100% { transform: rotate(-12deg); }
+          50% { transform: rotate(0deg); }
+        }
+        @keyframes soundWave {
+          0%, 100% { opacity: 0.2; transform: scaleX(0.5); }
+          50% { opacity: 0.7; transform: scaleX(1); }
+        }
       `}</style>
     </div>
   );
