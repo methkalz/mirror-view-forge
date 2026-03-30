@@ -2803,7 +2803,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = g.bulletLevel >= 3 ? '#fbbf24' : '#22c55e';
     ctx.font = '9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`SHOT LV.${g.bulletLevel}`, 14, 64);
+    ctx.fillText(`سلاح ×${g.bulletLevel}`, 14, 64);
   }
 
   // ─ Active effects with circular progress ─
