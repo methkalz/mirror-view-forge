@@ -38,10 +38,10 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   const showTitle = branding?.showTitle ?? true;
   const hasName = name.trim().length > 0;
 
-  // Phase transition: sound-hint → name-entry after 2s
+  // Phase transition: sound-hint → name-entry after 3s
   useEffect(() => {
-    const fadeTimer = setTimeout(() => setHintFading(true), 1600);
-    const phaseTimer = setTimeout(() => setPhase('name-entry'), 2000);
+    const fadeTimer = setTimeout(() => setHintFading(true), 2600);
+    const phaseTimer = setTimeout(() => setPhase('name-entry'), 3000);
     return () => { clearTimeout(fadeTimer); clearTimeout(phaseTimer); };
   }, []);
 
