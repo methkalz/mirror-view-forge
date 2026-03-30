@@ -184,7 +184,7 @@ function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
     }
   } else {
     ctx.fillStyle = '#0c1445';
-    ctx.fillRect(left, 0, totalW, h);
+    ctx.fillRect(0, 0, w, h);
   }
 
   // Dynamic color overlay from config
@@ -194,7 +194,7 @@ function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
   overlayGrad.addColorStop(0.5, `rgba(${blend.overlayMid[0]},${blend.overlayMid[1]},${blend.overlayMid[2]},${op * 0.85})`);
   overlayGrad.addColorStop(1, `rgba(${blend.overlayBottom[0]},${blend.overlayBottom[1]},${blend.overlayBottom[2]},${op * 0.95})`);
   ctx.fillStyle = overlayGrad;
-  ctx.fillRect(left, 0, totalW, h);
+  ctx.fillRect(0, 0, w, h);
 
   // Stars — more visible at night (later elapsed)
   const groundY = h * 0.78;
