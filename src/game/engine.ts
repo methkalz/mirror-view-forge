@@ -1225,8 +1225,15 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         g.selectedUpgrade = null;
         sfxLevelUp();
       } else {
-        startNextWave(g);
+        // Enter announce phase instead of starting next wave immediately
+        g.wavePhase = 'announce';
+        g.waveAnnounceTimer = 3.0; // 3 seconds
       }
+    }
+  } else if (g.wavePhase === 'announce') {
+    g.waveAnnounceTimer -= dt;
+    if (g.waveAnnounceTimer <= 0) {
+      startNextWave(g);
     }
   } else if (g.wavePhase === 'cards') {
     g.cardsShownTimer += dt;

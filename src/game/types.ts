@@ -329,6 +329,7 @@ export interface GameData {
   // Wave recipe system
   waveEndSlowMo: number;
   waveFinale: boolean;
+  waveAnnounceTimer: number;
   activeHazardCount: number;
   // Intro system
   introPhase: IntroPhase;

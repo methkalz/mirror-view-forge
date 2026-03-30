@@ -5474,9 +5474,18 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.restore();
     }
 
-    // Full-screen dimmed overlay + centered wave banner
+  }
+
+  // Wave Announce phase — full-screen banner after all threats cleared
+  if (g.wavePhase === 'announce' && g.waveAnnounceTimer > 0) {
+    const duration = 3.0;
+    const elapsed = duration - g.waveAnnounceTimer;
+    // Fade in first 0.3s, hold, fade out last 0.5s
+    let textAlpha = 1;
+    if (elapsed < 0.3) textAlpha = elapsed / 0.3;
+    else if (g.waveAnnounceTimer < 0.5) textAlpha = g.waveAnnounceTimer / 0.5;
+
     const nextWave = g.waveNumber + 1;
-    const textAlpha = progress < 0.15 ? progress / 0.15 : progress > 0.8 ? (1 - progress) / 0.2 : 1;
     ctx.save();
 
     // Dim the entire screen
