@@ -2839,7 +2839,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = '#94a3b8';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText('MAGNET', 30, effectY + 2);
+    ctx.fillText('مغناطيس', 30, effectY + 2);
     ctx.globalAlpha = 1;
     effectY += 18;
   }
