@@ -51,6 +51,7 @@ const DEFAULT_CONFIG: RemoteGameConfig = {
   developerName: 'CAILOR GG',
   developerUrl: null,
   showTitle: true,
+  cameraMargin: 400,
 };
 
 export async function fetchGameConfig(): Promise<RemoteGameConfig> {
