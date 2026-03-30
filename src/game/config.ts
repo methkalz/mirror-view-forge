@@ -75,6 +75,7 @@ export async function fetchGameConfig(): Promise<RemoteGameConfig> {
       developerName: (data as any).developer_name ?? 'CAILOR GG',
       developerUrl: (data as any).developer_url ?? null,
       showTitle: (data as any).show_title ?? true,
+      cameraMargin: (data as any).camera_margin ?? 400,
     };
   } catch {
     return DEFAULT_CONFIG;
