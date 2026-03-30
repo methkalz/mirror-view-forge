@@ -618,18 +618,19 @@ function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
   }
 
   // 3. Fallback to hardcoded recipes
-  if (wave <= 1) return { threats: ['shrapnel'], maxConcurrent: 3, spawnInterval: 2.5, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 1, phaseInDelay: 0 };
-  if (wave === 2) return { threats: ['shrapnel', 'missile'], maxConcurrent: 4, spawnInterval: 2.2, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 1, phaseInDelay: 12 };
-  if (wave === 3) return { threats: ['shrapnel', 'missile'], maxConcurrent: 5, spawnInterval: 2.0, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 2, phaseInDelay: 0 };
-  if (wave === 4) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 4, spawnInterval: 2.1, droneInterval: 0, droneTiers: [], clusterSplits: 2, bulletLevel: 2, phaseInDelay: 15 };
-  if (wave === 5) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.8, droneInterval: 22, droneTiers: ['scout'], clusterSplits: 2, bulletLevel: 2, phaseInDelay: 12 };
-  if (wave === 6) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.7, droneInterval: 20, droneTiers: ['scout'], clusterSplits: 3, bulletLevel: 2, phaseInDelay: 0 };
-  if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.6, droneInterval: 18, droneTiers: ['scout', 'tracker'], clusterSplits: 3, bulletLevel: 2, phaseInDelay: 12 };
-  if (wave === 8) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.5, droneInterval: 16, droneTiers: ['scout', 'tracker'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15 };
-  if (wave === 9) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 8, spawnInterval: 1.4, droneInterval: 14, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 12 };
-  if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 8, spawnInterval: 1.3, droneInterval: 14, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15, hasChemical: true };
-  if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 9, spawnInterval: 1.2, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15, hasIncendiary: true };
-  if (wave === 12) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 5, bulletLevel: 3, phaseInDelay: 12, hasBoss: true, hasChemical: true, hasIncendiary: true };
+  const D = 60; const S = 1; // default duration & surge
+  if (wave <= 1) return { threats: ['shrapnel'], maxConcurrent: 3, spawnInterval: 2.5, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 1, phaseInDelay: 0, duration: D, surgeMultiplier: S };
+  if (wave === 2) return { threats: ['shrapnel', 'missile'], maxConcurrent: 4, spawnInterval: 2.2, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 1, phaseInDelay: 12, duration: D, surgeMultiplier: S };
+  if (wave === 3) return { threats: ['shrapnel', 'missile'], maxConcurrent: 5, spawnInterval: 2.0, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 2, phaseInDelay: 0, duration: D, surgeMultiplier: S };
+  if (wave === 4) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 4, spawnInterval: 2.1, droneInterval: 0, droneTiers: [], clusterSplits: 2, bulletLevel: 2, phaseInDelay: 15, duration: D, surgeMultiplier: S };
+  if (wave === 5) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.8, droneInterval: 22, droneTiers: ['scout'], clusterSplits: 2, bulletLevel: 2, phaseInDelay: 12, duration: D, surgeMultiplier: S };
+  if (wave === 6) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.7, droneInterval: 20, droneTiers: ['scout'], clusterSplits: 3, bulletLevel: 2, phaseInDelay: 0, duration: D, surgeMultiplier: S };
+  if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.6, droneInterval: 18, droneTiers: ['scout', 'tracker'], clusterSplits: 3, bulletLevel: 2, phaseInDelay: 12, duration: D, surgeMultiplier: S };
+  if (wave === 8) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.5, droneInterval: 16, droneTiers: ['scout', 'tracker'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15, duration: D, surgeMultiplier: S };
+  if (wave === 9) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 8, spawnInterval: 1.4, droneInterval: 14, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 12, duration: D, surgeMultiplier: S };
+  if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 8, spawnInterval: 1.3, droneInterval: 14, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15, hasChemical: true, duration: D, surgeMultiplier: S };
+  if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 9, spawnInterval: 1.2, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15, hasIncendiary: true, duration: D, surgeMultiplier: S };
+  if (wave === 12) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 5, bulletLevel: 3, phaseInDelay: 12, hasBoss: true, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
   const extra = wave - 12;
   return {
     threats: ['shrapnel', 'missile', 'cluster'],
@@ -643,6 +644,8 @@ function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
     hasBoss: extra % 3 === 0,
     hasChemical: true,
     hasIncendiary: true,
+    duration: D,
+    surgeMultiplier: S,
   };
 }
 
