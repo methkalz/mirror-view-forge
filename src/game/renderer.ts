@@ -5706,7 +5706,7 @@ function renderTutorialSlide2(ctx: CanvasRenderingContext2D, w: number, h: numbe
 
   // Hint
   ctx.fillStyle = 'rgba(251, 191, 36, 0.5)';
-  ctx.font = '11px Tajawal, sans-serif';
+  ctx.font = '14px Tajawal, sans-serif';
   ctx.fillText('اختر بحكمة.. كل بطاقة تغيّر مجرى اللعبة', w / 2, cardY + cardH + 35);
 
   ctx.restore();
