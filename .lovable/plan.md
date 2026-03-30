@@ -1,44 +1,33 @@
 
 
-# تحسين احترافية إعدادات الخلفية في لوحة التحكم
+# إضافة معاينة حية لانتقال الخلفيات في لوحة التحكم
 
-## الوضع الحالي
-البانل الحالي يعمل لكنه بسيط: بطاقات متراصة مع sliders أساسية بدون تنظيم واضح أو معاينة حية.
+## الفكرة
+زر "▶ Preview" في تبويب Backgrounds يشغّل محاكاة مضغوطة (5 ثوان لكل مرحلة) تعرض كيف تنتقل الخلفيات بإعدادات الـ easing والألوان الحالية — بدون انتظار 90 ثانية.
 
-## التحسينات المقترحة
+## التنفيذ في `src/pages/Admin.tsx`
 
-### 1. إعادة هيكلة كل بطاقة مرحلة (Phase Card)
-- تقسيم داخلي إلى **3 أقسام واضحة** بعناوين:
-  - **📷 Image** — معاينة + رفع/حذف
-  - **⏱ Timing** — Start / End / Fade Duration مع عرض رقمي واضح
-  - **🎨 Overlay** — Opacity + ألوان RGB (top, mid, bottom) مع **color pickers**
-  - **⚡ Easing** — قائمة منسدلة + **منحنى بصري** يوضح شكل الـ easing المختار (رسم SVG صغير)
+### 1. مكون `BackgroundPreviewPlayer`
+- **Canvas** بعرض كامل ونسبة 16:9، يرسم الخلفيات بنفس منطق `renderer.ts` (mirror tiling + cross-fade + overlay gradient)
+- **توقيت مضغوط**: يحسب `simulatedElapsed` بناءً على مراحل الـ config لكن بمدة 5 ثوان لكل مرحلة بدل القيم الحقيقية
+- يستخدم `requestAnimationFrame` لتحريك الانتقال
+- يطبّق نفس دوال `smoothstep`, `easeIn`, `easeOut` المستخدمة في المحرك
 
-### 2. معاينة حية للـ Overlay
-- مربع صغير يعرض **gradient preview** بألوان الـ overlay الحالية فوق الصورة، ليرى الأدمن كيف ستبدو النتيجة النهائية
+### 2. عناصر التحكم
+- زر **▶ Preview / ⏹ Stop** فوق الـ Timeline
+- شريط تقدم (progress bar) يعرض الوقت المحاكى
+- مؤشر يبيّن أي مرحلة نشطة حالياً أثناء المعاينة
 
-### 3. تحسين الـ Timeline Bar
-- إضافة **thumbnails** مصغرة لكل مرحلة في شريط الجدول الزمني
-- مؤشر "▶ NOW" يظهر أين سيكون اللاعب عند وقت معين (hover/drag)
+### 3. المنطق
+```text
+3 مراحل × 5 ثوان = 15 ثانية إجمالي المعاينة
+المرحلة 1 (Day):    0s → 5s
+المرحلة 2 (Sunset): 5s → 10s  (مع fade بناءً على easingType)
+المرحلة 3 (Night):  10s → 15s (مع fade بناءً على easingType)
+```
+- يتم تحويل الـ `elapsed` المحاكى إلى الـ `elapsed` الحقيقي عبر mapping خطي
+- هذا يضمن تطبيق نفس الإعدادات (easing, overlay colors, opacity) بالضبط
 
-### 4. التحكم في ألوان الـ Overlay بـ Color Pickers
-- إضافة 3 حقول ألوان (Top, Mid, Bottom) لكل مرحلة باستخدام `<input type="color">`
-- تحويل من/إلى صيغة `"R,G,B"` المخزنة في قاعدة البيانات
-
-### 5. منحنى Easing بصري (SVG)
-- رسم SVG صغير (80×40px) بجانب قائمة الـ easing يعرض شكل المنحنى المختار
-
-## التعديلات التقنية
-
-### `src/pages/Admin.tsx` — BackgroundsPanel
-- إضافة دوال `handleUpdateOverlayColor` للألوان الثلاث
-- مكون `EasingCurvePreview` — SVG يرسم المنحنى
-- مكون `OverlayPreview` — div بـ gradient فوق الصورة المصغرة
-- إعادة تنظيم البطاقة بأقسام منفصلة
-
-### `src/game/backgroundConfig.ts`
-- التأكد أن `updateBackgroundPhase` يدعم تحديث `overlayTop`, `overlayMid`, `overlayBottom` (موجود بالفعل)
-
-### ملفات متأثرة
-- `src/pages/Admin.tsx` فقط (تحسينات UI)
+### ملف واحد فقط
+- `src/pages/Admin.tsx` — إضافة مكون المعاينة + زر التشغيل داخل `BackgroundsPanel`
 
