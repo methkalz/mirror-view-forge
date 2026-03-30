@@ -129,8 +129,8 @@ function getPhaseBlend(elapsed: number): {
       };
     }
 
-    if (elapsed < fadeEnd) {
-      const linearFade = (elapsed - fadeStart) / (fadeEnd - fadeStart);
+    if (effectiveElapsed < fadeEnd) {
+      const linearFade = (effectiveElapsed - fadeStart) / (fadeEnd - fadeStart);
       const fade = applyEasing(linearFade, easingType);
       const imgB = nextLayer?.loaded ? nextLayer.image : null;
       const topA = parseRGB(current.overlayTop);
