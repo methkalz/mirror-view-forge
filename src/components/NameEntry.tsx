@@ -126,10 +126,18 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
       {phase === 'sound-hint' && (
         <div style={{
           position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', gap: 24,
-          animation: hintFading ? 'hintFadeOut 0.4s ease-in forwards' : 'hintFadeIn 0.3s ease-out',
+          alignItems: 'center', justifyContent: 'center', gap: 20,
+          animation: hintFading ? 'hintContainerOut 0.6s ease-in forwards' : undefined,
         }}>
-          {/* Text */}
+          {/* Speaker icon with pulse */}
+          <span style={{
+            fontSize: 36,
+            animation: 'iconPulse 2s ease-in-out infinite',
+            opacity: hintFading ? 0 : 1,
+            transition: 'opacity 0.3s',
+          }}>🔊</span>
+
+          {/* Staggered words */}
           <p style={{
             fontFamily: "'Tajawal', system-ui, sans-serif",
             fontSize: 22,
@@ -138,8 +146,23 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
             direction: 'rtl',
             textAlign: 'center',
             letterSpacing: 0.5,
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            justifyContent: 'center',
           }}>
-            🔊 فعّل الصوت لتجربة أفضل
+            {hintWords.map((word, i) => (
+              <span key={i} style={{
+                display: 'inline-block',
+                opacity: 0,
+                animation: hintFading
+                  ? `wordFadeOut 0.2s ease-in ${(hintWords.length - 1 - i) * 0.08}s forwards`
+                  : `wordReveal 0.45s ease-out ${i * 0.15}s forwards`,
+                textShadow: '0 0 20px rgba(251,191,36,0.15)',
+              }}>
+                {word}
+              </span>
+            ))}
           </p>
         </div>
       )}
