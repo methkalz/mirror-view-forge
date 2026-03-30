@@ -96,6 +96,8 @@ export type Database = {
       }
       background_config: {
         Row: {
+          bg_margin: number
+          display_mode: string
           easing_type: string | null
           fade_duration: number | null
           id: string
@@ -111,6 +113,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          bg_margin?: number
+          display_mode?: string
           easing_type?: string | null
           fade_duration?: number | null
           id?: string
@@ -126,6 +130,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          bg_margin?: number
+          display_mode?: string
           easing_type?: string | null
           fade_duration?: number | null
           id?: string
