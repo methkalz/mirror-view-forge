@@ -5578,7 +5578,7 @@ function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: numbe
   // Power-ups list — clean minimal style
   const puStartY = h * 0.42;
   ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
-  ctx.font = '14px Tajawal, sans-serif';
+  ctx.font = '16px Tajawal, sans-serif';
   ctx.fillText('التقط الصناديق للحصول على', w / 2, puStartY);
 
   const items: { name: string; color: string }[] = [
