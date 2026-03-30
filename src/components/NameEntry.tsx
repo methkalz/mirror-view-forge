@@ -129,13 +129,28 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           alignItems: 'center', justifyContent: 'center', gap: 20,
           animation: hintFading ? 'hintContainerOut 0.6s ease-in forwards' : undefined,
         }}>
-          {/* Speaker icon with pulse */}
-          <span style={{
-            fontSize: 36,
-            animation: 'iconPulse 2s ease-in-out infinite',
+          {/* Phone + sound waves SVG */}
+          <div style={{
             opacity: hintFading ? 0 : 1,
             transition: 'opacity 0.3s',
-          }}>🔊</span>
+            animation: 'phoneSwing 2s ease-in-out infinite',
+          }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              {/* Phone body */}
+              <rect x="6" y="2" width="12" height="20" rx="2.5" stroke="rgba(203,213,225,0.7)" strokeWidth="1.5" fill="none" />
+              <circle cx="12" cy="19" r="1" fill="rgba(203,213,225,0.4)" />
+              <rect x="9" y="4" width="6" height="10" rx="0.5" fill="rgba(203,213,225,0.08)" />
+              {/* Sound waves */}
+              {[
+                { d: 'M19 8.5c1 1 1 3.5 0 4.5', opacity: 0.6, delay: '0s' },
+                { d: 'M21 6.5c1.8 2 1.8 6.5 0 8.5', opacity: 0.4, delay: '0.2s' },
+                { d: 'M23 4.5c2.5 3 2.5 9.5 0 12.5', opacity: 0.25, delay: '0.4s' },
+              ].map((wave, i) => (
+                <path key={i} d={wave.d} stroke="rgba(203,213,225,0.7)" strokeWidth="1.2" strokeLinecap="round" fill="none"
+                  style={{ opacity: wave.opacity, animation: `soundWave 1.5s ease-in-out ${wave.delay} infinite` }} />
+              ))}
+            </svg>
+          </div>
 
           {/* Staggered words */}
           <p style={{
