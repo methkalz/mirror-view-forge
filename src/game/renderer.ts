@@ -89,6 +89,16 @@ function getPhaseBlend(elapsed: number): {
 
   if (!bgConfigLoaded || bgPhases.length === 0) return defaultResult;
 
+  // ─── Loop support: wrap elapsed time ───
+  let effectiveElapsed = elapsed;
+  if (bgLoopEnabled && bgPhases.length >= 2) {
+    const lastPhase = bgPhases[bgPhases.length - 1];
+    const cycleLength = lastPhase.transitionStart + Math.max(0.001, lastPhase.fadeDuration || 60);
+    if (cycleLength > 0 && elapsed >= cycleLength) {
+      effectiveElapsed = elapsed % cycleLength;
+    }
+  }
+
   let resolvedIdx = 0;
 
   for (let i = 0; i < bgPhases.length - 1; i++) {
