@@ -5799,20 +5799,20 @@ function renderTutorialSlide3(ctx: CanvasRenderingContext2D, w: number, h: numbe
     ctx.restore();
   };
 
-  drawDivider(h * 0.82, 0.2);
+  drawDivider(h * 0.74, 0.2);
 
   // "تطوير"
   ctx.direction = 'rtl';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
   ctx.font = '13px Tajawal, sans-serif';
-  ctx.fillText('تطوير', w / 2, h * 0.86);
+  ctx.fillText('تطوير', w / 2, h * 0.78);
 
   // Arabic name — bold, gold glow
   ctx.shadowColor = 'rgba(251, 191, 36, 0.15)';
   ctx.shadowBlur = 8;
   ctx.fillStyle = 'rgba(212, 175, 55, 0.65)';
   ctx.font = 'bold 20px Tajawal, sans-serif';
-  ctx.fillText('مثقال زيدان', w / 2, h * 0.90);
+  ctx.fillText('مثقال زيدان', w / 2, h * 0.82);
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
   ctx.direction = 'ltr';
@@ -5821,11 +5821,11 @@ function renderTutorialSlide3(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
   ctx.font = '11px monospace';
   ctx.letterSpacing = '3px';
-  ctx.fillText('METHKAL ZIDANE', w / 2, h * 0.935);
+  ctx.fillText('METHKAL ZIDANE', w / 2, h * 0.855);
   ctx.letterSpacing = '0px';
 
   // Bottom divider
-  drawDivider(h * 0.96, 0.15);
+  drawDivider(h * 0.88, 0.15);
 
   ctx.restore();
 }
