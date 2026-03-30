@@ -64,6 +64,8 @@ const SkyfallGame: React.FC = () => {
         remoteConfigRef.current = cfg;
         setCameraMargin(cfg.cameraMargin);
         setLeaderboard(lb);
+        difficultyProfileRef.current = dp;
+        waveOverridesRef.current = wc;
         
         // Inject background config into renderer
         if (bgPhases.length > 0) {
