@@ -339,6 +339,7 @@ export interface GameData {
   introTransitionTimer: number; // smooth fade between intro character and player
   // Tutorial slides
   tutorialPage: number;
+  tutorialFade: number;
 }
 
 export interface InputState {

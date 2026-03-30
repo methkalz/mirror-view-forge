@@ -158,7 +158,10 @@ const SkyfallGame: React.FC = () => {
         ctx.clearRect(0, 0, w, h);
 
         if (g.state === 'start') {
-          renderStartScreen(ctx, w, h, g.highScore, g.tutorialPage);
+          if (g.tutorialFade < 1) {
+            g.tutorialFade = Math.min(1, g.tutorialFade + dt * 4);
+          }
+          renderStartScreen(ctx, w, h, g.highScore, g.tutorialPage, g.tutorialFade);
         } else if (g.state === 'intro') {
           updateIntro(g, dt);
           render(ctx, g);
@@ -230,7 +233,24 @@ const SkyfallGame: React.FC = () => {
       if (g.state === 'start') {
         // Tutorial slide navigation
         if (g.tutorialPage < 3) {
+          // Check if skip button was clicked
+          const clickX = (inputRef.current as any)._lastClickX;
+          const clickY = (inputRef.current as any)._lastClickY;
+          if (clickX !== undefined && clickY !== undefined) {
+            const skipBtnX = window.innerWidth * 0.15;
+            const skipBtnY = window.innerHeight * 0.87;
+            if (Math.abs(clickX - skipBtnX) < 50 && Math.abs(clickY - skipBtnY) < 20) {
+              g.tutorialPage = 3;
+              g.tutorialFade = 0;
+              delete (inputRef.current as any)._lastClickX;
+              delete (inputRef.current as any)._lastClickY;
+              return;
+            }
+            delete (inputRef.current as any)._lastClickX;
+            delete (inputRef.current as any)._lastClickY;
+          }
           g.tutorialPage++;
+          g.tutorialFade = 0;
           return;
         }
         // Last slide — start game
@@ -282,6 +302,9 @@ const SkyfallGame: React.FC = () => {
         inputRef.current.cardClick = { x: e.clientX - rect.left, y: e.clientY - rect.top };
         return;
       }
+      // Store click position for skip button detection
+      (inputRef.current as any)._lastClickX = e.clientX;
+      (inputRef.current as any)._lastClickY = e.clientY;
       startOrRestart();
     };
 

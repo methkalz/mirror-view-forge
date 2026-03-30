@@ -133,6 +133,7 @@ export function createGame(w: number, h: number): GameData {
     introPlayerJumpY: 0,
     introTransitionTimer: 0,
     tutorialPage: 0,
+    tutorialFade: 1,
   };
 }
 
