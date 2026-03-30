@@ -87,7 +87,17 @@ const SkyfallGame: React.FC = () => {
         await channel.track({ online_at: new Date().toISOString() });
       }
     });
-    return () => { mounted = false; supabase.removeChannel(channel); };
+    // Realtime subscription for background config changes
+    const bgChannel = supabase
+      .channel('bg-config-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'background_config' }, () => {
+        fetchBackgroundConfig().then(phases => {
+          if (phases.length > 0) setBackgroundConfig(phases);
+        });
+      })
+      .subscribe();
+
+    return () => { mounted = false; supabase.removeChannel(channel); supabase.removeChannel(bgChannel); };
   }, []);
 
   const handleNameSubmit = useCallback((name: string) => {

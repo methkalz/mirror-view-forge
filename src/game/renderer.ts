@@ -178,16 +178,17 @@ function drawSingleImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h
 }
 
 /** Draw mirrored tiled image — seamless, no sub-pixel gaps */
-function drawTiledImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, viewportW: number, camX: number, parallax: number) {
+function drawTiledImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, viewportW: number, camX: number, parallax: number, margin: number) {
   const imgAspect = img.width / img.height;
   const drawH = h;
   const rawW = drawH * imgAspect;
   const drawW = Math.ceil(rawW);
   const offsetX = camX * parallax;
 
-  // Calculate which tiles are visible
-  const startTile = Math.floor((offsetX - viewportW) / drawW) - 1;
-  const endTile = Math.ceil((offsetX + viewportW * 2) / drawW) + 1;
+  // Calculate which tiles are visible (include margin area)
+  const totalW = viewportW + margin * 2;
+  const startTile = Math.floor((offsetX - totalW) / drawW) - 1;
+  const endTile = Math.ceil((offsetX + totalW * 2) / drawW) + 1;
 
   for (let i = startTile; i <= endTile; i++) {
     const tileX = Math.round(i * drawW - offsetX);
@@ -208,23 +209,32 @@ function drawTiledImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h:
   }
 }
 
-/** Draw image centered with natural stretch to cover edges — no blur effect */
+/** Draw image centered at natural aspect with blurred stretched copy behind for edges */
 function drawBlurEdgeImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, viewportW: number, camX: number, parallax: number, margin: number) {
-  // Same as single but ensures full coverage including margins
   const imgAspect = img.width / img.height;
   const drawH = h;
-  let drawW = drawH * imgAspect;
+  const naturalW = drawH * imgAspect;
   const minWidth = viewportW + margin * 2;
-  if (drawW < minWidth) drawW = minWidth;
-  const drawX = (viewportW - drawW) / 2 - camX * parallax;
-  ctx.drawImage(img, drawX, 0, drawW, drawH);
+
+  // Layer 1: Blurred stretched background covering entire area
+  const bgW = Math.max(naturalW, minWidth);
+  const bgX = (viewportW - bgW) / 2 - camX * parallax;
+  ctx.save();
+  ctx.filter = 'blur(30px)';
+  ctx.drawImage(img, bgX - 20, -20, bgW + 40, drawH + 40); // slight overflow to avoid blur edge artifacts
+  ctx.restore();
+
+  // Layer 2: Clear centered image at natural aspect
+  const clearW = naturalW;
+  const clearX = (viewportW - clearW) / 2 - camX * parallax;
+  ctx.drawImage(img, clearX, 0, clearW, drawH);
 }
 
 /** Dispatch to the correct drawing function based on display mode */
 function drawBgImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, viewportW: number, camX: number, parallax: number, mode: DisplayMode, margin: number) {
   switch (mode) {
     case 'tiled':
-      drawTiledImage(ctx, img, h, viewportW, camX, parallax);
+      drawTiledImage(ctx, img, h, viewportW, camX, parallax, margin);
       break;
     case 'blur-edge':
       drawBlurEdgeImage(ctx, img, h, viewportW, camX, parallax, margin);

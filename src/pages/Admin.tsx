@@ -1448,8 +1448,19 @@ const PhoneMockupPreview: React.FC<{
         }
         ctx.restore();
       }
+    } else if (displayMode === 'blur-edge') {
+      // Blur Edge: blurred stretched bg + clear centered image
+      const naturalW = drawH * imgAspect;
+      const bgW = Math.max(naturalW, totalAreaW);
+      const bgX = totalAreaX + (totalAreaW - bgW) / 2 - currentCamX * parallax * scale;
+      ctx.save();
+      ctx.filter = 'blur(15px)';
+      ctx.drawImage(img, bgX - 10, frameY - 10, bgW + 20, drawH + 20);
+      ctx.restore();
+      const clearX = totalAreaX + (totalAreaW - naturalW) / 2 - currentCamX * parallax * scale;
+      ctx.drawImage(img, clearX, frameY, naturalW, drawH);
     } else {
-      // single or blur-edge — same logic
+      // Single — stretched to cover full area
       let drawW = drawH * imgAspect;
       const minW = totalAreaW;
       if (drawW < minW) drawW = minW;
