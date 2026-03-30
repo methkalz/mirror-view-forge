@@ -157,8 +157,7 @@ function drawSingleImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h
   let drawW = drawH * imgAspect;
 
   // Ensure image is wide enough to cover viewport + extra margin for parallax camera movement
-  const cameraMargin = 400;
-  const minWidth = viewportW + cameraMargin;
+  const minWidth = viewportW + bgCameraMargin;
   if (drawW < minWidth) {
     drawW = minWidth;
   }
