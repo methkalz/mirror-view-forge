@@ -305,7 +305,7 @@ const SkyfallGame: React.FC = () => {
   // Loading screen
   if (isLoading) {
     return (
-      <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' }}>
+      <div style={{ position: 'relative', width: '100vw', height: 'var(--app-height, 100vh)', overflow: 'hidden', background: '#000' }}>
         <GameLoader progress={loadProgress} onLoaded={() => setIsLoading(false)} />
       </div>
     );
@@ -314,7 +314,7 @@ const SkyfallGame: React.FC = () => {
   // Name entry screen
   if (showNameEntry) {
     return (
-      <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' }}>
+      <div style={{ position: 'relative', width: '100vw', height: 'var(--app-height, 100vh)', overflow: 'hidden', background: '#000' }}>
         <NameEntry
           onSubmit={handleNameSubmit}
           defaultName={playerName}
@@ -342,13 +342,13 @@ const SkyfallGame: React.FC = () => {
     <div
       onContextMenu={(e) => e.preventDefault()}
       style={{
-        position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#000',
+        position: 'relative', width: '100vw', height: 'var(--app-height, 100vh)', overflow: 'hidden', background: '#000',
         userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'manipulation',
       } as React.CSSProperties}
     >
       <canvas
         ref={canvasRef}
-        style={{ display: 'block', width: '100vw', height: '100vh', touchAction: 'none', userSelect: 'none' }}
+        style={{ display: 'block', width: '100vw', height: 'var(--app-height, 100vh)', touchAction: 'none', userSelect: 'none' }}
       />
 
       {/* Game Over overlay with leaderboard */}

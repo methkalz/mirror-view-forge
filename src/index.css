@@ -9,6 +9,8 @@ All colors MUST be HSL.
 @layer base {
   :root {
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --app-height: 100vh;
+    --app-height: 100dvh;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
