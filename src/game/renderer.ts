@@ -5722,20 +5722,24 @@ function renderTutorialSlide3(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.save();
   ctx.textAlign = 'center';
 
-  // ─ SKYFALL metallic title ─
+  // ─ SKYFALL metallic title — enhanced ─
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  ctx.font = 'bold 44px monospace';
+  ctx.font = 'bold 48px monospace';
   ctx.fillText('SKYFALL', w / 2 + 2, h * 0.24 + 2);
 
-  const titleGrad = ctx.createLinearGradient(w / 2 - 100, h * 0.18, w / 2 + 100, h * 0.28);
-  titleGrad.addColorStop(0, '#c0c0c0');
-  titleGrad.addColorStop(0.3, '#f0e6d0');
-  titleGrad.addColorStop(0.5, '#ffd700');
-  titleGrad.addColorStop(0.7, '#f0e6d0');
-  titleGrad.addColorStop(1, '#c0c0c0');
+  const titleGrad = ctx.createLinearGradient(w / 2 - 120, h * 0.18, w / 2 + 120, h * 0.28);
+  titleGrad.addColorStop(0, '#a0a0a0');
+  titleGrad.addColorStop(0.2, '#e0d8c0');
+  titleGrad.addColorStop(0.4, '#ffd700');
+  titleGrad.addColorStop(0.6, '#ffe066');
+  titleGrad.addColorStop(0.8, '#e0d8c0');
+  titleGrad.addColorStop(1, '#a0a0a0');
   ctx.fillStyle = titleGrad;
-  ctx.shadowColor = 'rgba(255,200,50,0.3)';
-  ctx.shadowBlur = 25;
+  ctx.shadowColor = 'rgba(255,200,50,0.2)';
+  ctx.shadowBlur = 35;
+  ctx.fillText('SKYFALL', w / 2, h * 0.24);
+  ctx.shadowColor = 'rgba(255,200,50,0.5)';
+  ctx.shadowBlur = 15;
   ctx.fillText('SKYFALL', w / 2, h * 0.24);
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
