@@ -331,6 +331,9 @@ export interface GameData {
   waveFinale: boolean;
   waveAnnounceTimer: number;
   activeHazardCount: number;
+  // Remote wave data
+  difficultyProfile: import('@/game/config').DifficultyProfile | null;
+  remoteWaveOverrides: import('@/game/config').RemoteWaveConfig[];
   // Intro system
   introPhase: IntroPhase;
   introTimer: number;

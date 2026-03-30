@@ -3,6 +3,7 @@ import {
   HazardType, PowerUpType, Explosion, SmokeTrail, Cloud, AmbientParticle, WaveWarning, Boss, DroneTier,
   FirePool, GasCloud, UpgradeCard, DeliveryBike, IntroPhase
 } from './types';
+import type { DifficultyProfile, RemoteWaveConfig } from './config';
 import { getFromPool } from './pool';
 import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameStart, sfxUpgradeSelect, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber } from './audio';
 
@@ -135,6 +136,8 @@ export function createGame(w: number, h: number): GameData {
     introTransitionTimer: 0,
     tutorialPage: 0,
     tutorialFade: 1,
+    difficultyProfile: null,
+    remoteWaveOverrides: [],
   };
 }
 
@@ -495,13 +498,118 @@ interface WaveRecipe {
   hasBoss?: boolean;
 }
 
-function getWaveRecipe(wave: number): WaveRecipe {
+function generateWaveFromProfile(wave: number, profile: DifficultyProfile): WaveRecipe {
+  // Determine available threats
+  const threats: HazardType[] = [];
+  for (const [type, unlockWave] of Object.entries(profile.threatsUnlock)) {
+    if (wave >= unlockWave) threats.push(type as HazardType);
+  }
+  if (threats.length === 0) threats.push('shrapnel');
+
+  // Determine available drones
+  const droneTiers: DroneTier[] = [];
+  for (const [type, unlockWave] of Object.entries(profile.dronesUnlock)) {
+    if (wave >= unlockWave) droneTiers.push(type as DroneTier);
+  }
+
+  // Calculate scaling
+  const maxConcurrent = Math.min(
+    profile.maxConcurrentCap,
+    Math.round(profile.baseMaxConcurrent + profile.concurrentGrowth * (wave - 1))
+  );
+
+  const spawnInterval = Math.max(
+    profile.minSpawnInterval,
+    profile.baseSpawnInterval - profile.spawnIntervalDecay * (wave - 1)
+  );
+
+  // Cluster splits (only after cluster is unlocked)
+  const clusterUnlock = profile.threatsUnlock['cluster'] || 999;
+  let clusterSplits = 0;
+  if (wave >= clusterUnlock) {
+    clusterSplits = Math.min(
+      profile.clusterSplitsCap,
+      Math.round(profile.clusterSplitsBase + profile.clusterSplitsGrowth * (wave - clusterUnlock))
+    );
+  }
+
+  // Drone interval
+  let droneInterval = 0;
+  if (droneTiers.length > 0) {
+    const firstDroneWave = Math.min(...Object.values(profile.dronesUnlock));
+    const wavesSinceDrones = wave - firstDroneWave;
+    droneInterval = Math.max(
+      profile.droneIntervalMin,
+      profile.droneIntervalBase * Math.pow(profile.droneIntervalDecay, wavesSinceDrones)
+    );
+  }
+
+  // Bullet level
+  let bulletLevel = 1;
+  for (const [level, unlockWave] of Object.entries(profile.bulletLevelWaves)) {
+    if (wave >= unlockWave) bulletLevel = Math.max(bulletLevel, parseInt(level));
+  }
+
+  // Boss
+  const hasBoss = wave >= profile.bossStartWave && ((wave - profile.bossStartWave) % profile.bossEveryNWaves === 0);
+
+  // Chemical/Incendiary (based on drones_unlock)
+  const hasChemical = wave >= (profile.dronesUnlock['chemical'] || 999);
+  const hasIncendiary = wave >= (profile.dronesUnlock['incendiary'] || 999);
+
+  // Phase-in delay for waves introducing new threats
+  const isNewThreatWave = Object.values(profile.threatsUnlock).includes(wave) ||
+    Object.values(profile.dronesUnlock).includes(wave);
+  const phaseInDelay = isNewThreatWave ? profile.phaseInDelay : 0;
+
+  return {
+    threats,
+    maxConcurrent,
+    spawnInterval,
+    droneInterval,
+    droneTiers,
+    clusterSplits,
+    bulletLevel,
+    phaseInDelay,
+    hasChemical,
+    hasIncendiary,
+    hasBoss,
+  };
+}
+
+function remoteToRecipe(r: RemoteWaveConfig): WaveRecipe {
+  return {
+    threats: r.threats as HazardType[],
+    maxConcurrent: r.maxConcurrent,
+    spawnInterval: r.spawnRate,
+    droneInterval: r.droneInterval,
+    droneTiers: r.droneTypes as DroneTier[],
+    clusterSplits: r.clusterSplits,
+    bulletLevel: r.bulletLevel,
+    phaseInDelay: r.phaseInDelay,
+    hasChemical: r.hasChemical,
+    hasIncendiary: r.hasIncendiary,
+    hasBoss: r.hasBoss,
+  };
+}
+
+function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
+  // 1. Check remote overrides
+  if (g?.remoteWaveOverrides) {
+    const override = g.remoteWaveOverrides.find(r => r.waveNumber === wave);
+    if (override) return remoteToRecipe(override);
+  }
+
+  // 2. Check difficulty profile for auto-generation
+  if (g?.difficultyProfile) {
+    return generateWaveFromProfile(wave, g.difficultyProfile);
+  }
+
+  // 3. Fallback to hardcoded recipes
   if (wave <= 1) return { threats: ['shrapnel'], maxConcurrent: 3, spawnInterval: 2.5, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 1, phaseInDelay: 0 };
   if (wave === 2) return { threats: ['shrapnel', 'missile'], maxConcurrent: 4, spawnInterval: 2.2, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 1, phaseInDelay: 12 };
   if (wave === 3) return { threats: ['shrapnel', 'missile'], maxConcurrent: 5, spawnInterval: 2.0, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 2, phaseInDelay: 0 };
-  // Wave 4 — "psychological" wave, easier than 3!
   if (wave === 4) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 4, spawnInterval: 2.1, droneInterval: 0, droneTiers: [], clusterSplits: 2, bulletLevel: 2, phaseInDelay: 15 };
-  // Wave 5 — "shock" with scout drones
   if (wave === 5) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.8, droneInterval: 22, droneTiers: ['scout'], clusterSplits: 2, bulletLevel: 2, phaseInDelay: 12 };
   if (wave === 6) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.7, droneInterval: 20, droneTiers: ['scout'], clusterSplits: 3, bulletLevel: 2, phaseInDelay: 0 };
   if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.6, droneInterval: 18, droneTiers: ['scout', 'tracker'], clusterSplits: 3, bulletLevel: 2, phaseInDelay: 12 };
@@ -510,7 +618,6 @@ function getWaveRecipe(wave: number): WaveRecipe {
   if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 8, spawnInterval: 1.3, droneInterval: 14, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15, hasChemical: true };
   if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 9, spawnInterval: 1.2, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15, hasIncendiary: true };
   if (wave === 12) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 5, bulletLevel: 3, phaseInDelay: 12, hasBoss: true, hasChemical: true, hasIncendiary: true };
-  // Wave 13+: everything, gradual scaling
   const extra = wave - 12;
   return {
     threats: ['shrapnel', 'missile', 'cluster'],
@@ -556,7 +663,7 @@ const WAVE_WARNINGS: Record<number, { id: string; text: string; sub: string; col
 };
 
 function spawnHazard(g: GameData, type: HazardType) {
-  const recipe = getWaveRecipe(g.waveNumber);
+  const recipe = getWaveRecipe(g.waveNumber, g);
 
   const h = getFromPool<Hazard>(g.hazards, () => ({
     active: false, type: 'shrapnel', pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
@@ -1132,7 +1239,7 @@ function startNextWave(g: GameData) {
   g.wavePhase = 'active';
 
   // Apply recipe settings for this wave
-  const recipe = getWaveRecipe(g.waveNumber);
+  const recipe = getWaveRecipe(g.waveNumber, g);
   g.bulletLevel = Math.max(g.bulletLevel, recipe.bulletLevel);
 
   // Queue wave warnings for new threats
@@ -1373,7 +1480,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   if (g.magnetFlashTimer > 0) g.magnetFlashTimer -= dt;
 
   // === Wave-based warning system ===
-  const recipe = getWaveRecipe(g.waveNumber);
+  const recipe = getWaveRecipe(g.waveNumber, g);
   const warnings = WAVE_WARNINGS[g.waveNumber];
   if (warnings && g.wavePhase === 'active') {
     for (const w of warnings) {
@@ -1534,13 +1641,13 @@ export function update(g: GameData, input: InputState, dt: number) {
   if (g.elapsed >= 3 && !g.cinematicWarning && g.wavePhase === 'active') {
     g.spawnTimer -= dt;
     if (g.spawnTimer <= 0) {
-      const recipe = getWaveRecipe(g.waveNumber);
+      const recipe = getWaveRecipe(g.waveNumber, g);
 
       // Build available threat types based on recipe + phaseInDelay
       const types: HazardType[] = [];
       for (const t of recipe.threats) {
         // New threats (not in previous wave) respect phaseInDelay
-        const prevRecipe = g.waveNumber > 1 ? getWaveRecipe(g.waveNumber - 1) : { threats: [] as string[] };
+        const prevRecipe = g.waveNumber > 1 ? getWaveRecipe(g.waveNumber - 1, g) : { threats: [] as string[] };
         const isNew = !prevRecipe.threats.includes(t);
         if (isNew && g.waveElapsed < recipe.phaseInDelay) continue;
         types.push(t as HazardType);
@@ -1641,7 +1748,7 @@ export function update(g: GameData, input: InputState, dt: number) {
         h.pos.x += (h.clusterVelX! * 0.5) * g.slowMoFactor * dt;
 
         // Release glowing bombs downward — use recipe cluster splits
-        const recipe = getWaveRecipe(g.waveNumber);
+        const recipe = getWaveRecipe(g.waveNumber, g);
         let splitCount = Math.max(2, recipe.clusterSplits);
 
         for (let i = 0; i < splitCount; i++) {
@@ -1925,7 +2032,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Incendiary Drones — Recipe-based ===
-  const recipeForDrones = getWaveRecipe(g.waveNumber);
+  const recipeForDrones = getWaveRecipe(g.waveNumber, g);
   if (recipeForDrones.hasIncendiary && g.wavePhase === 'active') {
     g.incendiaryTimer -= dt;
     if (g.incendiaryTimer <= 0) {

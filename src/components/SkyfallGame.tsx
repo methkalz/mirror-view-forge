@@ -4,7 +4,7 @@ import { loadAudioSettings } from '@/game/audio';
 import { createGame, resetGame, update, updateIntro } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
 import { resumeAudio, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition } from '@/game/audio';
-import { fetchGameConfig, fetchLeaderboard, submitScore, type RemoteGameConfig, type LeaderboardEntry } from '@/game/config';
+import { fetchGameConfig, fetchLeaderboard, fetchDifficultyProfile, fetchWaveConfigs, submitScore, type RemoteGameConfig, type LeaderboardEntry, type DifficultyProfile, type RemoteWaveConfig } from '@/game/config';
 import { fetchBackgroundConfig } from '@/game/backgroundConfig';
 import { setBackgroundConfig, setCameraMargin } from '@/game/renderer';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,6 +38,8 @@ const SkyfallGame: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
   const remoteConfigRef = useRef<RemoteGameConfig | null>(null);
+  const difficultyProfileRef = useRef<DifficultyProfile | null>(null);
+  const waveOverridesRef = useRef<RemoteWaveConfig[]>([]);
   const scoreSubmittedRef = useRef(false);
 
   // Load leaderboard on mount + presence tracking
@@ -50,9 +52,11 @@ const SkyfallGame: React.FC = () => {
         const cfgPromise = fetchGameConfig();
         const lbPromise = fetchLeaderboard();
         const bgPromise = fetchBackgroundConfig();
+        const dpPromise = fetchDifficultyProfile();
+        const wcPromise = fetchWaveConfigs();
         setLoadProgress(15);
 
-        const [cfg, lb, bgPhases] = await Promise.all([cfgPromise, lbPromise, bgPromise]);
+        const [cfg, lb, bgPhases, dp, wc] = await Promise.all([cfgPromise, lbPromise, bgPromise, dpPromise, wcPromise]);
         if (!mounted) return;
         setLoadProgress(40);
 
@@ -60,6 +64,8 @@ const SkyfallGame: React.FC = () => {
         remoteConfigRef.current = cfg;
         setCameraMargin(cfg.cameraMargin);
         setLeaderboard(lb);
+        difficultyProfileRef.current = dp;
+        waveOverridesRef.current = wc;
         
         // Inject background config into renderer
         if (bgPhases.length > 0) {
@@ -120,6 +126,9 @@ const SkyfallGame: React.FC = () => {
       g.spawnTimer = cfg.spawnInterval;
       g.difficulty = cfg.difficultyMultiplier;
     }
+    // Apply difficulty profile and wave overrides
+    g.difficultyProfile = difficultyProfileRef.current;
+    g.remoteWaveOverrides = waveOverridesRef.current;
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -259,7 +268,7 @@ const SkyfallGame: React.FC = () => {
         resumeAudio();
         scoreSubmittedRef.current = false;
         setGameOverData(null);
-        fetchGameConfig().then(cfg => {
+        Promise.all([fetchGameConfig(), fetchDifficultyProfile(), fetchWaveConfigs()]).then(([cfg, dp, wc]) => {
           remoteConfigRef.current = cfg;
           setCameraMargin(cfg.cameraMargin);
           if (cfg) {
@@ -267,13 +276,17 @@ const SkyfallGame: React.FC = () => {
             g.spawnTimer = cfg.spawnInterval;
             g.difficulty = cfg.difficultyMultiplier;
           }
+          g.difficultyProfile = dp;
+          g.remoteWaveOverrides = wc;
+          difficultyProfileRef.current = dp;
+          waveOverridesRef.current = wc;
         });
         resetGame(g);
       } else if (g.state === 'gameover') {
         resumeAudio();
         scoreSubmittedRef.current = false;
         setGameOverData(null);
-        fetchGameConfig().then(cfg => {
+        Promise.all([fetchGameConfig(), fetchDifficultyProfile(), fetchWaveConfigs()]).then(([cfg, dp, wc]) => {
           remoteConfigRef.current = cfg;
           setCameraMargin(cfg.cameraMargin);
           if (cfg) {
@@ -281,8 +294,12 @@ const SkyfallGame: React.FC = () => {
             g.spawnTimer = cfg.spawnInterval;
             g.difficulty = cfg.difficultyMultiplier;
           }
+          g.difficultyProfile = dp;
+          g.remoteWaveOverrides = wc;
+          difficultyProfileRef.current = dp;
+          waveOverridesRef.current = wc;
         });
-        g.tutorialPage = 3; // skip tutorial on restart
+        g.tutorialPage = 3;
         resetGame(g);
       }
     };

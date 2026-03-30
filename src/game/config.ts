@@ -26,6 +26,40 @@ export interface RemoteWaveConfig {
   spawnRate: number;
   surgeMultiplier: number;
   droneTypes: string[];
+  clusterSplits: number;
+  bulletLevel: number;
+  phaseInDelay: number;
+  droneInterval: number;
+  hasBoss: boolean;
+  hasChemical: boolean;
+  hasIncendiary: boolean;
+  warningText: string | null;
+  warningColor: string;
+  warningType: string;
+}
+
+export interface DifficultyProfile {
+  id: string;
+  baseMaxConcurrent: number;
+  maxConcurrentCap: number;
+  concurrentGrowth: number;
+  baseSpawnInterval: number;
+  minSpawnInterval: number;
+  spawnIntervalDecay: number;
+  threatsUnlock: Record<string, number>;
+  dronesUnlock: Record<string, number>;
+  clusterSplitsBase: number;
+  clusterSplitsGrowth: number;
+  clusterSplitsCap: number;
+  droneIntervalBase: number;
+  droneIntervalMin: number;
+  droneIntervalDecay: number;
+  bossEveryNWaves: number;
+  bossStartWave: number;
+  bulletLevelWaves: Record<string, number>;
+  waveDuration: number;
+  phaseInDelay: number;
+  scalingFormula: string;
 }
 
 export interface LeaderboardEntry {
@@ -89,7 +123,7 @@ export async function fetchWaveConfigs(): Promise<RemoteWaveConfig[]> {
       .select('*')
       .order('wave_number', { ascending: true });
     if (error || !data) return [];
-    return data.map(w => ({
+    return data.map((w: any) => ({
       waveNumber: w.wave_number,
       duration: w.duration,
       threats: (w.threats as string[]) || ['shrapnel'],
@@ -97,10 +131,109 @@ export async function fetchWaveConfigs(): Promise<RemoteWaveConfig[]> {
       spawnRate: w.spawn_rate,
       surgeMultiplier: w.surge_multiplier,
       droneTypes: (w.drone_types as string[]) || [],
+      clusterSplits: w.cluster_splits ?? 0,
+      bulletLevel: w.bullet_level ?? 1,
+      phaseInDelay: w.phase_in_delay ?? 0,
+      droneInterval: w.drone_interval ?? 0,
+      hasBoss: w.has_boss ?? false,
+      hasChemical: w.has_chemical ?? false,
+      hasIncendiary: w.has_incendiary ?? false,
+      warningText: w.warning_text ?? null,
+      warningColor: w.warning_color ?? '#ef4444',
+      warningType: w.warning_type ?? 'warning',
     }));
   } catch {
     return [];
   }
+}
+
+const DEFAULT_DIFFICULTY: DifficultyProfile = {
+  id: '',
+  baseMaxConcurrent: 3,
+  maxConcurrentCap: 15,
+  concurrentGrowth: 0.5,
+  baseSpawnInterval: 2.5,
+  minSpawnInterval: 0.5,
+  spawnIntervalDecay: 0.1,
+  threatsUnlock: { shrapnel: 1, missile: 2, cluster: 4 },
+  dronesUnlock: { scout: 5, tracker: 7, bomber: 9, chemical: 10, incendiary: 11 },
+  clusterSplitsBase: 2,
+  clusterSplitsGrowth: 0.3,
+  clusterSplitsCap: 8,
+  droneIntervalBase: 25,
+  droneIntervalMin: 6,
+  droneIntervalDecay: 0.8,
+  bossEveryNWaves: 6,
+  bossStartWave: 12,
+  bulletLevelWaves: { '2': 3, '3': 8 },
+  waveDuration: 60,
+  phaseInDelay: 12,
+  scalingFormula: 'linear',
+};
+
+export async function fetchDifficultyProfile(): Promise<DifficultyProfile> {
+  try {
+    const { data, error } = await supabase
+      .from('difficulty_profile')
+      .select('*')
+      .limit(1)
+      .single();
+    if (error || !data) return DEFAULT_DIFFICULTY;
+    return {
+      id: (data as any).id,
+      baseMaxConcurrent: (data as any).base_max_concurrent ?? 3,
+      maxConcurrentCap: (data as any).max_concurrent_cap ?? 15,
+      concurrentGrowth: (data as any).concurrent_growth ?? 0.5,
+      baseSpawnInterval: (data as any).base_spawn_interval ?? 2.5,
+      minSpawnInterval: (data as any).min_spawn_interval ?? 0.5,
+      spawnIntervalDecay: (data as any).spawn_interval_decay ?? 0.1,
+      threatsUnlock: (data as any).threats_unlock ?? { shrapnel: 1, missile: 2, cluster: 4 },
+      dronesUnlock: (data as any).drones_unlock ?? { scout: 5, tracker: 7, bomber: 9, chemical: 10, incendiary: 11 },
+      clusterSplitsBase: (data as any).cluster_splits_base ?? 2,
+      clusterSplitsGrowth: (data as any).cluster_splits_growth ?? 0.3,
+      clusterSplitsCap: (data as any).cluster_splits_cap ?? 8,
+      droneIntervalBase: (data as any).drone_interval_base ?? 25,
+      droneIntervalMin: (data as any).drone_interval_min ?? 6,
+      droneIntervalDecay: (data as any).drone_interval_decay ?? 0.8,
+      bossEveryNWaves: (data as any).boss_every_n_waves ?? 6,
+      bossStartWave: (data as any).boss_start_wave ?? 12,
+      bulletLevelWaves: (data as any).bullet_level_waves ?? { '2': 3, '3': 8 },
+      waveDuration: (data as any).wave_duration ?? 60,
+      phaseInDelay: (data as any).phase_in_delay ?? 12,
+      scalingFormula: (data as any).scaling_formula ?? 'linear',
+    };
+  } catch {
+    return DEFAULT_DIFFICULTY;
+  }
+}
+
+export async function updateDifficultyProfile(profile: Partial<DifficultyProfile>): Promise<boolean> {
+  const mapped: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (profile.baseMaxConcurrent !== undefined) mapped.base_max_concurrent = profile.baseMaxConcurrent;
+  if (profile.maxConcurrentCap !== undefined) mapped.max_concurrent_cap = profile.maxConcurrentCap;
+  if (profile.concurrentGrowth !== undefined) mapped.concurrent_growth = profile.concurrentGrowth;
+  if (profile.baseSpawnInterval !== undefined) mapped.base_spawn_interval = profile.baseSpawnInterval;
+  if (profile.minSpawnInterval !== undefined) mapped.min_spawn_interval = profile.minSpawnInterval;
+  if (profile.spawnIntervalDecay !== undefined) mapped.spawn_interval_decay = profile.spawnIntervalDecay;
+  if (profile.threatsUnlock !== undefined) mapped.threats_unlock = profile.threatsUnlock;
+  if (profile.dronesUnlock !== undefined) mapped.drones_unlock = profile.dronesUnlock;
+  if (profile.clusterSplitsBase !== undefined) mapped.cluster_splits_base = profile.clusterSplitsBase;
+  if (profile.clusterSplitsGrowth !== undefined) mapped.cluster_splits_growth = profile.clusterSplitsGrowth;
+  if (profile.clusterSplitsCap !== undefined) mapped.cluster_splits_cap = profile.clusterSplitsCap;
+  if (profile.droneIntervalBase !== undefined) mapped.drone_interval_base = profile.droneIntervalBase;
+  if (profile.droneIntervalMin !== undefined) mapped.drone_interval_min = profile.droneIntervalMin;
+  if (profile.droneIntervalDecay !== undefined) mapped.drone_interval_decay = profile.droneIntervalDecay;
+  if (profile.bossEveryNWaves !== undefined) mapped.boss_every_n_waves = profile.bossEveryNWaves;
+  if (profile.bossStartWave !== undefined) mapped.boss_start_wave = profile.bossStartWave;
+  if (profile.bulletLevelWaves !== undefined) mapped.bullet_level_waves = profile.bulletLevelWaves;
+  if (profile.waveDuration !== undefined) mapped.wave_duration = profile.waveDuration;
+  if (profile.phaseInDelay !== undefined) mapped.phase_in_delay = profile.phaseInDelay;
+  if (profile.scalingFormula !== undefined) mapped.scaling_formula = profile.scalingFormula;
+
+  const { data: rows } = await supabase.from('difficulty_profile' as any).select('id').limit(1);
+  if (!rows || rows.length === 0) return false;
+  const { error } = await supabase.from('difficulty_profile' as any).update(mapped).eq('id', (rows as any)[0].id);
+  return !error;
 }
 
 export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
@@ -310,7 +443,7 @@ export async function upsertWaveConfig(wave: RemoteWaveConfig): Promise<boolean>
     .eq('wave_number', wave.waveNumber)
     .maybeSingle();
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     wave_number: wave.waveNumber,
     duration: wave.duration,
     threats: wave.threats as unknown as Json,
@@ -318,13 +451,23 @@ export async function upsertWaveConfig(wave: RemoteWaveConfig): Promise<boolean>
     spawn_rate: wave.spawnRate,
     surge_multiplier: wave.surgeMultiplier,
     drone_types: wave.droneTypes as unknown as Json,
+    cluster_splits: wave.clusterSplits,
+    bullet_level: wave.bulletLevel,
+    phase_in_delay: wave.phaseInDelay,
+    drone_interval: wave.droneInterval,
+    has_boss: wave.hasBoss,
+    has_chemical: wave.hasChemical,
+    has_incendiary: wave.hasIncendiary,
+    warning_text: wave.warningText,
+    warning_color: wave.warningColor,
+    warning_type: wave.warningType,
   };
 
   if (existing) {
-    const { error } = await supabase.from('wave_configs').update(payload).eq('id', existing.id);
+    const { error } = await supabase.from('wave_configs').update(payload as any).eq('id', existing.id);
     return !error;
   } else {
-    const { error } = await supabase.from('wave_configs').insert(payload);
+    const { error } = await supabase.from('wave_configs').insert(payload as any);
     return !error;
   }
 }
