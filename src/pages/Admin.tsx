@@ -1002,11 +1002,13 @@ const PREVIEW_PHASE_DURATION = 5; // seconds per phase in preview
 
 const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phases }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [playing, setPlaying] = useState(false);
+  const [playingUI, setPlayingUI] = useState(false);
   const [progress, setProgress] = useState(0);
   const rafRef = useRef<number>(0);
   const startTimeRef = useRef(0);
   const imagesRef = useRef<(HTMLImageElement | null)[]>([]);
+  const playingRef = useRef(false);
+  const lastProgressUpdateRef = useRef(0);
 
   const totalDuration = phases.length * PREVIEW_PHASE_DURATION;
 
@@ -1070,7 +1072,11 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
 
     const elapsed = (timestamp - startTimeRef.current) / 1000;
     const t = elapsed % totalDuration;
-    setProgress(t / totalDuration);
+    // Throttle progress updates to ~100ms
+    if (timestamp - lastProgressUpdateRef.current > 100) {
+      lastProgressUpdateRef.current = timestamp;
+      setProgress(t / totalDuration);
+    }
 
     const w = canvas.width;
     const h = canvas.height;
@@ -1105,28 +1111,32 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
       ctx.fillRect(0, 0, w, h);
     }
 
-    if (playing) {
+    if (playingRef.current) {
       rafRef.current = requestAnimationFrame(drawFrame);
     }
-  }, [playing, totalDuration, getBlendAtTime]);
+  }, [totalDuration, getBlendAtTime]);
 
   const handlePlay = () => {
-    if (playing) {
+    if (playingRef.current) {
+      playingRef.current = false;
       cancelAnimationFrame(rafRef.current);
-      setPlaying(false);
+      setPlayingUI(false);
     } else {
-      setPlaying(true);
+      playingRef.current = true;
+      setPlayingUI(true);
       startTimeRef.current = performance.now();
+      lastProgressUpdateRef.current = 0;
       setProgress(0);
+      rafRef.current = requestAnimationFrame(drawFrame);
     }
   };
 
   useEffect(() => {
-    if (playing) {
-      rafRef.current = requestAnimationFrame(drawFrame);
-    }
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [playing, drawFrame]);
+    return () => {
+      playingRef.current = false;
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
 
   // Resize canvas
   useEffect(() => {
@@ -1154,7 +1164,7 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Active phase indicator */}
-          {playing && phases[activePhaseIdx] && (() => {
+          {playingUI && phases[activePhaseIdx] && (() => {
             const meta = PHASE_META[phases[activePhaseIdx].phase] || { icon: '🖼️', label: phases[activePhaseIdx].phase, color: '#94a3b8' };
             return (
               <span style={{ fontSize: 10, color: meta.color, fontWeight: 700 }}>
@@ -1164,11 +1174,11 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
           })()}
           <button onClick={handlePlay} style={{
             ...btnPrimary, padding: '6px 16px', fontSize: 11,
-            background: playing ? 'rgba(220,38,38,0.12)' : 'rgba(59,130,246,0.15)',
-            color: playing ? '#f87171' : '#60a5fa',
-            borderColor: playing ? 'rgba(220,38,38,0.2)' : 'rgba(59,130,246,0.2)',
+            background: playingUI ? 'rgba(220,38,38,0.12)' : 'rgba(59,130,246,0.15)',
+            color: playingUI ? '#f87171' : '#60a5fa',
+            borderColor: playingUI ? 'rgba(220,38,38,0.2)' : 'rgba(59,130,246,0.2)',
           }}>
-            {playing ? '⏹ Stop' : '▶ Preview'}
+            {playingUI ? '⏹ Stop' : '▶ Preview'}
           </button>
         </div>
       </div>
@@ -1187,7 +1197,7 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
           <div style={{
             height: '100%', width: `${progress * 100}%`,
             background: 'linear-gradient(90deg, #f59e0b, #f97316, #6366f1)',
-            borderRadius: 3, transition: playing ? 'none' : 'width 0.3s',
+            borderRadius: 3, transition: playingUI ? 'none' : 'width 0.3s',
           }} />
         </div>
         {/* Phase markers */}
@@ -1196,8 +1206,8 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
             const meta = PHASE_META[p.phase] || { icon: '🖼️', label: p.phase, color: '#94a3b8' };
             return (
               <div key={p.id} style={{
-                flex: 1, textAlign: 'center', fontSize: 9, color: activePhaseIdx === i && playing ? meta.color : 'rgba(148,163,184,0.3)',
-                fontWeight: activePhaseIdx === i && playing ? 700 : 400, transition: 'all 0.3s',
+                flex: 1, textAlign: 'center', fontSize: 9, color: activePhaseIdx === i && playingUI ? meta.color : 'rgba(148,163,184,0.3)',
+                fontWeight: activePhaseIdx === i && playingUI ? 700 : 400, transition: 'all 0.3s',
               }}>
                 {meta.icon} {PREVIEW_PHASE_DURATION}s
               </div>
