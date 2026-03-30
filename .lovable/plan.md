@@ -1,32 +1,25 @@
 
 
-# استبدال التبليط بصورة خلفية واحدة مركزية
+# إضافة التحكم بهامش الكاميرا من لوحة التحكم
 
 ## الفكرة
-بدلاً من تكرار الصورة (tiling)، نعرض صورة واحدة مركزية بحجم يغطي الشاشة كاملة مع هامش إضافي يسمح بحركة الكاميرا (parallax) دون ظهور حواف أو فراغات.
+القيمة `cameraMargin = 400` مثبتة حالياً في الكود. نجعلها قابلة للتعديل من لوحة التحكم عبر `game_config`.
 
-## كيف يعمل الحل
+## التغييرات
 
-```text
-الصورة الأصلية (أعرض من الشاشة):
-|----margin----|======viewport======|----margin----|
-               ←── camera moves ──→
+### 1. Migration — إضافة عمود `camera_margin` لجدول `game_config`
+```sql
+ALTER TABLE public.game_config ADD COLUMN camera_margin double precision NOT NULL DEFAULT 400;
 ```
 
-- الصورة تُرسم بارتفاع الشاشة الكامل، والعرض يُحسب من نسبة أبعاد الصورة
-- إذا كانت الصورة أضيق من الشاشة + الهامش → تُمدد لتغطي العرض المطلوب
-- الإزاحة الأفقية (parallax) تُطبق على مركز الصورة
-- لا تكرار، لا انعكاس، لا فواصل
+### 2. `src/game/config.ts`
+- إضافة `cameraMargin: number` للـ `RemoteGameConfig` interface
+- قراءته من البيانات في `fetchGameConfig` مع default = 400
+- دعم تحديثه في `updateGameConfig`
 
-## التغيير — ملف واحد فقط
+### 3. `src/game/renderer.ts`
+- تمرير `cameraMargin` من الـ config بدلاً من القيمة الثابتة 400 في `drawSingleImage`
 
-### `src/game/renderer.ts` — استبدال `drawTiledImage`
-
-**الدالة الجديدة `drawSingleImage`:**
-1. حساب حجم الرسم: الارتفاع = ارتفاع Canvas، العرض = حسب نسبة الصورة الأصلية
-2. ضمان أن العرض ≥ عرض الشاشة + هامش حركة الكاميرا (مثلاً 400px إضافية)
-3. حساب موقع X المركزي: `drawX = (viewportWidth - drawWidth) / 2 - camX * parallax`
-4. رسم الصورة مرة واحدة فقط بـ `ctx.drawImage`
-
-**النتيجة:** لا خطوط، لا فواصل، صورة واحدة نظيفة تتحرك مع الكاميرا. إذا كانت الصورة المرفوعة ضيقة يمكنك توسيعها يدوياً.
+### 4. `src/pages/Admin.tsx`
+- إضافة slider + input رقمي لـ "Camera Margin" في قسم إعدادات اللعبة (مدى: 0–1000px، خطوة: 50)
 
