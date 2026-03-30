@@ -5558,10 +5558,10 @@ function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: numbe
   roundRect(ctx, w * 0.08, ctrlY - 16, w * 0.38, 34, 6);
   ctx.fill();
   ctx.fillStyle = 'rgba(100, 200, 255, 0.8)';
-  ctx.font = '13px Tajawal, sans-serif';
+  ctx.font = '15px Tajawal, sans-serif';
   ctx.fillText('الجهة اليسرى', w * 0.27, ctrlY);
   ctx.fillStyle = 'rgba(180, 180, 180, 0.6)';
-  ctx.font = '11px Tajawal, sans-serif';
+  ctx.font = '13px Tajawal, sans-serif';
   ctx.fillText('تحريك', w * 0.27, ctrlY + 14);
 
   // Right side
@@ -5569,10 +5569,10 @@ function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: numbe
   roundRect(ctx, w * 0.54, ctrlY - 16, w * 0.38, 34, 6);
   ctx.fill();
   ctx.fillStyle = 'rgba(239, 130, 130, 0.8)';
-  ctx.font = '13px Tajawal, sans-serif';
+  ctx.font = '15px Tajawal, sans-serif';
   ctx.fillText('الجهة اليمنى', w * 0.73, ctrlY);
   ctx.fillStyle = 'rgba(180, 180, 180, 0.6)';
-  ctx.font = '11px Tajawal, sans-serif';
+  ctx.font = '13px Tajawal, sans-serif';
   ctx.fillText('دحرجة', w * 0.73, ctrlY + 14);
 
   // Power-ups list — clean minimal style
