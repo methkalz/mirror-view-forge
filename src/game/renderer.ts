@@ -178,7 +178,7 @@ function drawSingleImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h
 }
 
 /** Draw mirrored tiled image — seamless, no sub-pixel gaps */
-function drawTiledImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, viewportW: number, camX: number, parallax: number) {
+function drawTiledImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, viewportW: number, camX: number, parallax: number, margin: number) {
   const imgAspect = img.width / img.height;
   const drawH = h;
   const rawW = drawH * imgAspect;
