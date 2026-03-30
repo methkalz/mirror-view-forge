@@ -5474,22 +5474,48 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.restore();
     }
 
-    // Arabic-only wave start text
+    // Full-screen dimmed overlay + centered wave banner
     const nextWave = g.waveNumber + 1;
-    const textAlpha = progress < 0.2 ? progress / 0.2 : progress > 0.8 ? (1 - progress) / 0.2 : 1;
+    const textAlpha = progress < 0.15 ? progress / 0.15 : progress > 0.8 ? (1 - progress) / 0.2 : 1;
     ctx.save();
+
+    // Dim the entire screen
+    ctx.globalAlpha = textAlpha * 0.7;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, g.width, g.height);
+
+    // Banner bar
+    ctx.globalAlpha = textAlpha * 0.85;
+    const bannerH = 64;
+    const bannerY = g.height * 0.48 - bannerH / 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, bannerY, g.width, bannerH);
+
+    // Gold accent lines
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = textAlpha * 0.7;
+    ctx.beginPath();
+    ctx.moveTo(g.width * 0.15, bannerY);
+    ctx.lineTo(g.width * 0.85, bannerY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(g.width * 0.15, bannerY + bannerH);
+    ctx.lineTo(g.width * 0.85, bannerY + bannerH);
+    ctx.stroke();
+
+    // Wave text
     ctx.globalAlpha = textAlpha;
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.direction = 'rtl';
     ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 30px Tajawal, Arial, sans-serif';
-    ctx.shadowColor = 'rgba(251,191,36,0.5)';
-    ctx.shadowBlur = 20;
-    ctx.fillText(`بداية الموجة ${nextWave}`, g.width / 2, g.height * 0.52);
+    ctx.font = 'bold 28px Tajawal, Arial, sans-serif';
+    ctx.shadowColor = 'rgba(251,191,36,0.6)';
+    ctx.shadowBlur = 16;
+    ctx.fillText(`بداية الموجة ${nextWave}`, g.width / 2, g.height * 0.48);
     ctx.direction = 'ltr';
-    ctx.shadowBlur = 0;
-    ctx.shadowColor = 'transparent';
-    ctx.globalAlpha = 1;
+
     ctx.restore();
   }
 
