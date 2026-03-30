@@ -126,6 +126,9 @@ const SkyfallGame: React.FC = () => {
       g.spawnTimer = cfg.spawnInterval;
       g.difficulty = cfg.difficultyMultiplier;
     }
+    // Apply difficulty profile and wave overrides
+    g.difficultyProfile = difficultyProfileRef.current;
+    g.remoteWaveOverrides = waveOverridesRef.current;
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
