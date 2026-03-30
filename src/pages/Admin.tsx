@@ -1164,7 +1164,7 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Active phase indicator */}
-          {playing && phases[activePhaseIdx] && (() => {
+          {playingUI && phases[activePhaseIdx] && (() => {
             const meta = PHASE_META[phases[activePhaseIdx].phase] || { icon: '🖼️', label: phases[activePhaseIdx].phase, color: '#94a3b8' };
             return (
               <span style={{ fontSize: 10, color: meta.color, fontWeight: 700 }}>
@@ -1174,11 +1174,11 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
           })()}
           <button onClick={handlePlay} style={{
             ...btnPrimary, padding: '6px 16px', fontSize: 11,
-            background: playing ? 'rgba(220,38,38,0.12)' : 'rgba(59,130,246,0.15)',
-            color: playing ? '#f87171' : '#60a5fa',
-            borderColor: playing ? 'rgba(220,38,38,0.2)' : 'rgba(59,130,246,0.2)',
+            background: playingUI ? 'rgba(220,38,38,0.12)' : 'rgba(59,130,246,0.15)',
+            color: playingUI ? '#f87171' : '#60a5fa',
+            borderColor: playingUI ? 'rgba(220,38,38,0.2)' : 'rgba(59,130,246,0.2)',
           }}>
-            {playing ? '⏹ Stop' : '▶ Preview'}
+            {playingUI ? '⏹ Stop' : '▶ Preview'}
           </button>
         </div>
       </div>
@@ -1197,7 +1197,7 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
           <div style={{
             height: '100%', width: `${progress * 100}%`,
             background: 'linear-gradient(90deg, #f59e0b, #f97316, #6366f1)',
-            borderRadius: 3, transition: playing ? 'none' : 'width 0.3s',
+            borderRadius: 3, transition: playingUI ? 'none' : 'width 0.3s',
           }} />
         </div>
         {/* Phase markers */}
@@ -1206,8 +1206,8 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
             const meta = PHASE_META[p.phase] || { icon: '🖼️', label: p.phase, color: '#94a3b8' };
             return (
               <div key={p.id} style={{
-                flex: 1, textAlign: 'center', fontSize: 9, color: activePhaseIdx === i && playing ? meta.color : 'rgba(148,163,184,0.3)',
-                fontWeight: activePhaseIdx === i && playing ? 700 : 400, transition: 'all 0.3s',
+                flex: 1, textAlign: 'center', fontSize: 9, color: activePhaseIdx === i && playingUI ? meta.color : 'rgba(148,163,184,0.3)',
+                fontWeight: activePhaseIdx === i && playingUI ? 700 : 400, transition: 'all 0.3s',
               }}>
                 {meta.icon} {PREVIEW_PHASE_DURATION}s
               </div>
