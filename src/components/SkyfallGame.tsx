@@ -6,7 +6,7 @@ import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
 import { resumeAudio, stopMenuMusic, cancelMenuMusicStart } from '@/game/audio';
 import { fetchGameConfig, fetchLeaderboard, submitScore, type RemoteGameConfig, type LeaderboardEntry } from '@/game/config';
 import { fetchBackgroundConfig } from '@/game/backgroundConfig';
-import { setBackgroundConfig } from '@/game/renderer';
+import { setBackgroundConfig, setCameraMargin } from '@/game/renderer';
 import { supabase } from '@/integrations/supabase/client';
 import NameEntry from './NameEntry';
 import Leaderboard from './Leaderboard';
