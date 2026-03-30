@@ -1,0 +1,1 @@
+ALTER TABLE public.game_config ADD COLUMN camera_margin double precision NOT NULL DEFAULT 400;

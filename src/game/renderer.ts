@@ -19,6 +19,12 @@ fallbackImg.src = bgFallbackUrl;
 let bgLayers: BgLayer[] = [];
 let bgPhases: BackgroundPhase[] = [];
 let bgConfigLoaded = false;
+let bgCameraMargin = 400;
+
+/** Set camera margin from game config */
+export function setCameraMargin(margin: number) {
+  bgCameraMargin = margin;
+}
 
 /** Called once from GameLoader to inject background config */
 export function setBackgroundConfig(phases: BackgroundPhase[]) {
@@ -151,8 +157,7 @@ function drawSingleImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h
   let drawW = drawH * imgAspect;
 
   // Ensure image is wide enough to cover viewport + extra margin for parallax camera movement
-  const cameraMargin = 400;
-  const minWidth = viewportW + cameraMargin;
+  const minWidth = viewportW + bgCameraMargin;
   if (drawW < minWidth) {
     drawW = minWidth;
   }

@@ -15,6 +15,7 @@ export interface RemoteGameConfig {
   developerName: string;
   developerUrl: string | null;
   showTitle: boolean;
+  cameraMargin: number;
 }
 
 export interface RemoteWaveConfig {
@@ -50,6 +51,7 @@ const DEFAULT_CONFIG: RemoteGameConfig = {
   developerName: 'CAILOR GG',
   developerUrl: null,
   showTitle: true,
+  cameraMargin: 400,
 };
 
 export async function fetchGameConfig(): Promise<RemoteGameConfig> {
@@ -73,6 +75,7 @@ export async function fetchGameConfig(): Promise<RemoteGameConfig> {
       developerName: (data as any).developer_name ?? 'CAILOR GG',
       developerUrl: (data as any).developer_url ?? null,
       showTitle: (data as any).show_title ?? true,
+      cameraMargin: (data as any).camera_margin ?? 400,
     };
   } catch {
     return DEFAULT_CONFIG;
@@ -290,6 +293,7 @@ export async function updateGameConfig(config: Partial<RemoteGameConfig>): Promi
   if (config.developerName !== undefined) mapped.developer_name = config.developerName;
   if (config.developerUrl !== undefined) mapped.developer_url = config.developerUrl;
   if (config.showTitle !== undefined) mapped.show_title = config.showTitle;
+  if (config.cameraMargin !== undefined) mapped.camera_margin = config.cameraMargin;
 
   const { data: rows } = await supabase.from('game_config').select('id').limit(1);
   if (!rows || rows.length === 0) return false;

@@ -6,7 +6,7 @@ import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
 import { resumeAudio, stopMenuMusic, cancelMenuMusicStart } from '@/game/audio';
 import { fetchGameConfig, fetchLeaderboard, submitScore, type RemoteGameConfig, type LeaderboardEntry } from '@/game/config';
 import { fetchBackgroundConfig } from '@/game/backgroundConfig';
-import { setBackgroundConfig } from '@/game/renderer';
+import { setBackgroundConfig, setCameraMargin } from '@/game/renderer';
 import { supabase } from '@/integrations/supabase/client';
 import NameEntry from './NameEntry';
 import Leaderboard from './Leaderboard';
@@ -58,6 +58,7 @@ const SkyfallGame: React.FC = () => {
 
         setRemoteConfig(cfg);
         remoteConfigRef.current = cfg;
+        setCameraMargin(cfg.cameraMargin);
         setLeaderboard(lb);
         
         // Inject background config into renderer
@@ -223,6 +224,7 @@ const SkyfallGame: React.FC = () => {
         // Re-fetch config for next game (apply directly, no re-render)
         fetchGameConfig().then(cfg => {
           remoteConfigRef.current = cfg;
+          setCameraMargin(cfg.cameraMargin);
           if (cfg) {
             g.player.speed = cfg.baseSpeed;
             g.spawnTimer = cfg.spawnInterval;

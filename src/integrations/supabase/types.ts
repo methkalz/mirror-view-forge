@@ -145,6 +145,7 @@ export type Database = {
       game_config: {
         Row: {
           base_speed: number
+          camera_margin: number
           dda_enabled: boolean
           developer_name: string
           developer_url: string | null
@@ -161,6 +162,7 @@ export type Database = {
         }
         Insert: {
           base_speed?: number
+          camera_margin?: number
           dda_enabled?: boolean
           developer_name?: string
           developer_url?: string | null
@@ -177,6 +179,7 @@ export type Database = {
         }
         Update: {
           base_speed?: number
+          camera_margin?: number
           dda_enabled?: boolean
           developer_name?: string
           developer_url?: string | null
