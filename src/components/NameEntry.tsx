@@ -320,20 +320,64 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           </div>
         </div>
 
+        {/* Silent mode hint */}
+        <div style={{
+          marginTop: 24, display: 'flex', alignItems: 'center', gap: 8,
+          animation: 'silentHintFade 5s ease-in-out forwards',
+          opacity: 0.7,
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            animation: 'phoneSwing 2s ease-in-out infinite',
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(200,200,200,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="5" y="2" width="14" height="20" rx="3" />
+              <line x1="12" y1="18" x2="12" y2="18.01" />
+            </svg>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {[0, 1, 2].map(i => (
+                <div key={i} style={{
+                  width: 4 + i * 3, height: 1.5,
+                  background: 'rgba(200,200,200,0.4)',
+                  borderRadius: 1,
+                  animation: `soundWave 1.5s ease-in-out ${i * 0.2}s infinite`,
+                }} />
+              ))}
+            </div>
+          </div>
+          <p style={{
+            fontFamily: "'Tajawal', system-ui, sans-serif",
+            fontSize: 12,
+            color: 'rgba(180,180,190,0.5)',
+            direction: 'rtl',
+          }}>
+            أطفئ الوضع الصامت لتجربة أفضل
+          </p>
+        </div>
+
         {/* Developer credit */}
-        <div style={{ marginTop: 36, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
           <div style={{
             width: 40, height: 1,
             background: 'linear-gradient(90deg, transparent, rgba(100,116,139,0.3), transparent)',
           }} />
           <p style={{
             fontFamily: "'Tajawal', system-ui, sans-serif",
-            fontSize: 11,
-            color: 'rgba(100,116,139,0.5)',
-            letterSpacing: 2,
+            fontSize: 13,
+            color: 'rgba(100,116,139,0.65)',
+            fontWeight: 600,
+            direction: 'rtl',
+          }}>
+            تطوير: {developer}
+          </p>
+          <p style={{
+            fontFamily: "monospace",
+            fontSize: 10,
+            color: 'rgba(100,116,139,0.35)',
+            letterSpacing: 3,
             textTransform: 'uppercase',
           }}>
-            Developed by {developer}
+            METHKAL ZIDANE
           </p>
         </div>
       </div>
