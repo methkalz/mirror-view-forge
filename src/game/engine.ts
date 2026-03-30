@@ -230,7 +230,7 @@ export function resetGame(g: GameData) {
   // Wave system reset
   g.waveNumber = 1;
   g.wavePhase = 'active';
-  g.waveTimer = 60 + Math.random() * 10;
+  g.waveTimer = 60;
   g.levelNumber = 1;
   g.deliveryBike = null;
   g.upgradeCards = [];
