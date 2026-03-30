@@ -5476,24 +5476,35 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.textAlign = 'center';
 }
 
+// ── Helper: Draw professional slide title with double glow ──
+function drawSlideTitle(ctx: CanvasRenderingContext2D, w: number, h: number, text: string, yRatio: number) {
+  const titleGrad = ctx.createLinearGradient(w / 2 - 100, 0, w / 2 + 100, 0);
+  titleGrad.addColorStop(0, '#a08030');
+  titleGrad.addColorStop(0.3, '#e0c060');
+  titleGrad.addColorStop(0.5, '#ffd700');
+  titleGrad.addColorStop(0.7, '#e0c060');
+  titleGrad.addColorStop(1, '#a08030');
+  ctx.fillStyle = titleGrad;
+  ctx.font = 'bold 30px Tajawal, sans-serif';
+  // Outer glow
+  ctx.shadowColor = 'rgba(255,200,50,0.15)';
+  ctx.shadowBlur = 30;
+  ctx.fillText(text, w / 2, h * yRatio);
+  // Inner glow (second pass)
+  ctx.shadowColor = 'rgba(255,200,50,0.4)';
+  ctx.shadowBlur = 12;
+  ctx.fillText(text, w / 2, h * yRatio);
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
+}
+
 // ── Slide 0: هدفك ──
 function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
   ctx.save();
   ctx.textAlign = 'center';
   ctx.direction = 'rtl';
 
-  // Section title — gold
-  const titleGrad = ctx.createLinearGradient(w / 2 - 60, 0, w / 2 + 60, 0);
-  titleGrad.addColorStop(0, '#c0a040');
-  titleGrad.addColorStop(0.5, '#ffd700');
-  titleGrad.addColorStop(1, '#c0a040');
-  ctx.fillStyle = titleGrad;
-  ctx.font = 'bold 26px Tajawal, sans-serif';
-  ctx.shadowColor = 'rgba(255,200,50,0.25)';
-  ctx.shadowBlur = 15;
-  ctx.fillText('هدفك', w / 2, h * 0.18);
-  ctx.shadowBlur = 0;
-  ctx.shadowColor = 'transparent';
+  drawSlideTitle(ctx, w, h, 'هدفك', 0.18);
 
   // Gold divider
   drawGoldDivider(ctx, w, h * 0.22, t);
@@ -5552,18 +5563,7 @@ function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.textAlign = 'center';
   ctx.direction = 'rtl';
 
-  // Title
-  const titleGrad = ctx.createLinearGradient(w / 2 - 80, 0, w / 2 + 80, 0);
-  titleGrad.addColorStop(0, '#c0a040');
-  titleGrad.addColorStop(0.5, '#ffd700');
-  titleGrad.addColorStop(1, '#c0a040');
-  ctx.fillStyle = titleGrad;
-  ctx.font = 'bold 26px Tajawal, sans-serif';
-  ctx.shadowColor = 'rgba(255,200,50,0.25)';
-  ctx.shadowBlur = 15;
-  ctx.fillText('التحكم والمعدات', w / 2, h * 0.14);
-  ctx.shadowBlur = 0;
-  ctx.shadowColor = 'transparent';
+  drawSlideTitle(ctx, w, h, 'التحكم والمعدات', 0.14);
 
   drawGoldDivider(ctx, w, h * 0.18, t);
 
@@ -5640,18 +5640,7 @@ function renderTutorialSlide2(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.textAlign = 'center';
   ctx.direction = 'rtl';
 
-  // Title
-  const titleGrad = ctx.createLinearGradient(w / 2 - 80, 0, w / 2 + 80, 0);
-  titleGrad.addColorStop(0, '#c0a040');
-  titleGrad.addColorStop(0.5, '#ffd700');
-  titleGrad.addColorStop(1, '#c0a040');
-  ctx.fillStyle = titleGrad;
-  ctx.font = 'bold 26px Tajawal, sans-serif';
-  ctx.shadowColor = 'rgba(255,200,50,0.25)';
-  ctx.shadowBlur = 15;
-  ctx.fillText('بطاقات الترقية', w / 2, h * 0.15);
-  ctx.shadowBlur = 0;
-  ctx.shadowColor = 'transparent';
+  drawSlideTitle(ctx, w, h, 'بطاقات الترقية', 0.15);
 
   drawGoldDivider(ctx, w, h * 0.19, t);
 
@@ -5733,20 +5722,24 @@ function renderTutorialSlide3(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.save();
   ctx.textAlign = 'center';
 
-  // ─ SKYFALL metallic title ─
+  // ─ SKYFALL metallic title — enhanced ─
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  ctx.font = 'bold 44px monospace';
+  ctx.font = 'bold 48px monospace';
   ctx.fillText('SKYFALL', w / 2 + 2, h * 0.24 + 2);
 
-  const titleGrad = ctx.createLinearGradient(w / 2 - 100, h * 0.18, w / 2 + 100, h * 0.28);
-  titleGrad.addColorStop(0, '#c0c0c0');
-  titleGrad.addColorStop(0.3, '#f0e6d0');
-  titleGrad.addColorStop(0.5, '#ffd700');
-  titleGrad.addColorStop(0.7, '#f0e6d0');
-  titleGrad.addColorStop(1, '#c0c0c0');
+  const titleGrad = ctx.createLinearGradient(w / 2 - 120, h * 0.18, w / 2 + 120, h * 0.28);
+  titleGrad.addColorStop(0, '#a0a0a0');
+  titleGrad.addColorStop(0.2, '#e0d8c0');
+  titleGrad.addColorStop(0.4, '#ffd700');
+  titleGrad.addColorStop(0.6, '#ffe066');
+  titleGrad.addColorStop(0.8, '#e0d8c0');
+  titleGrad.addColorStop(1, '#a0a0a0');
   ctx.fillStyle = titleGrad;
-  ctx.shadowColor = 'rgba(255,200,50,0.3)';
-  ctx.shadowBlur = 25;
+  ctx.shadowColor = 'rgba(255,200,50,0.2)';
+  ctx.shadowBlur = 35;
+  ctx.fillText('SKYFALL', w / 2, h * 0.24);
+  ctx.shadowColor = 'rgba(255,200,50,0.5)';
+  ctx.shadowBlur = 15;
   ctx.fillText('SKYFALL', w / 2, h * 0.24);
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
@@ -5804,16 +5797,25 @@ function renderTutorialSlide3(ctx: CanvasRenderingContext2D, w: number, h: numbe
 // ── Helper: Gold divider line ──
 function drawGoldDivider(ctx: CanvasRenderingContext2D, w: number, y: number, t: number) {
   const pulse = 0.3 + Math.sin(t * 3) * 0.15;
-  const grad = ctx.createLinearGradient(w * 0.2, 0, w * 0.8, 0);
+  const grad = ctx.createLinearGradient(w * 0.1, 0, w * 0.9, 0);
   grad.addColorStop(0, 'rgba(251, 191, 36, 0)');
+  grad.addColorStop(0.4, `rgba(251, 191, 36, ${pulse * 0.7})`);
   grad.addColorStop(0.5, `rgba(251, 191, 36, ${pulse})`);
+  grad.addColorStop(0.6, `rgba(251, 191, 36, ${pulse * 0.7})`);
   grad.addColorStop(1, 'rgba(251, 191, 36, 0)');
   ctx.strokeStyle = grad;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(w * 0.15, y);
-  ctx.lineTo(w * 0.85, y);
+  ctx.moveTo(w * 0.1, y);
+  ctx.lineTo(w * 0.9, y);
   ctx.stroke();
+  // Diamond center point
+  ctx.fillStyle = `rgba(251, 191, 36, ${pulse + 0.15})`;
+  ctx.save();
+  ctx.translate(w / 2, y);
+  ctx.rotate(Math.PI / 4);
+  ctx.fillRect(-2.5, -2.5, 5, 5);
+  ctx.restore();
 }
 
 // ─── Game Over — Cinematic ────────────────────────────
