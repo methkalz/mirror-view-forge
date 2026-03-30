@@ -124,6 +124,7 @@ export function createGame(w: number, h: number): GameData {
     bikeZoomTimer: 0,
     waveEndSlowMo: 0,
     waveFinale: false,
+    waveAnnounceTimer: 0,
     activeHazardCount: 0,
     // Intro system
     introPhase: 'done' as IntroPhase,
