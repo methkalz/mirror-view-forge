@@ -227,11 +227,16 @@ const SkyfallGame: React.FC = () => {
     rafRef.current = requestAnimationFrame(loop);
 
     const startOrRestart = () => {
-      if (g.state === 'start' || g.state === 'gameover') {
+      if (g.state === 'start') {
+        // Tutorial slide navigation
+        if (g.tutorialPage < 3) {
+          g.tutorialPage++;
+          return;
+        }
+        // Last slide — start game
         resumeAudio();
         scoreSubmittedRef.current = false;
         setGameOverData(null);
-        // Re-fetch config for next game (apply directly, no re-render)
         fetchGameConfig().then(cfg => {
           remoteConfigRef.current = cfg;
           setCameraMargin(cfg.cameraMargin);
@@ -241,6 +246,21 @@ const SkyfallGame: React.FC = () => {
             g.difficulty = cfg.difficultyMultiplier;
           }
         });
+        resetGame(g);
+      } else if (g.state === 'gameover') {
+        resumeAudio();
+        scoreSubmittedRef.current = false;
+        setGameOverData(null);
+        fetchGameConfig().then(cfg => {
+          remoteConfigRef.current = cfg;
+          setCameraMargin(cfg.cameraMargin);
+          if (cfg) {
+            g.player.speed = cfg.baseSpeed;
+            g.spawnTimer = cfg.spawnInterval;
+            g.difficulty = cfg.difficultyMultiplier;
+          }
+        });
+        g.tutorialPage = 3; // skip tutorial on restart
         resetGame(g);
       }
     };
