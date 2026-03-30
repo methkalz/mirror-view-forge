@@ -114,7 +114,7 @@ const Admin: React.FC = () => {
 
   // ─── Render ───
   return (
-    <div style={{
+    <div className="admin-panel" style={{
       minHeight: '100vh',
       background: '#0a0f1a',
       color: '#e2e8f0',
@@ -1541,7 +1541,7 @@ const BackgroundsPanel: React.FC<{
                     <label style={{ ...labelStyle, marginBottom: 0 }}>Start</label>
                     <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{p.transitionStart}s</span>
                   </div>
-                  <input type="range" min={0} max={600} step={10} value={p.transitionStart}
+                  <input type="range" min={0} max={600} step={1} value={p.transitionStart}
                     onChange={e => handleUpdate(p.id, { transitionStart: parseFloat(e.target.value) })}
                     style={{ width: '100%', accentColor: meta.color }} />
                 </div>
@@ -1551,7 +1551,7 @@ const BackgroundsPanel: React.FC<{
                     <label style={{ ...labelStyle, marginBottom: 0 }}>End</label>
                     <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{p.transitionEnd}s</span>
                   </div>
-                  <input type="range" min={0} max={900} step={10} value={p.transitionEnd}
+                  <input type="range" min={0} max={900} step={1} value={p.transitionEnd}
                     onChange={e => handleUpdate(p.id, { transitionEnd: parseFloat(e.target.value) })}
                     style={{ width: '100%', accentColor: meta.color }} />
                 </div>
@@ -1561,7 +1561,7 @@ const BackgroundsPanel: React.FC<{
                     <label style={{ ...labelStyle, marginBottom: 0 }}>Fade Duration</label>
                     <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{p.fadeDuration || 60}s</span>
                   </div>
-                  <input type="range" min={10} max={180} step={5} value={p.fadeDuration || 60}
+                  <input type="range" min={1} max={300} step={1} value={p.fadeDuration || 60}
                     onChange={e => handleUpdate(p.id, { fadeDuration: parseFloat(e.target.value) })}
                     style={{ width: '100%', accentColor: meta.color }} />
                 </div>
