@@ -144,58 +144,47 @@ function getPhaseBlend(elapsed: number): {
   };
 }
 
-/** Draw a single image with mirror tiling */
-function drawTiledImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, camX: number, left: number, right: number, parallax: number) {
+/** Draw a single centered image that covers the viewport with margin for camera movement */
+function drawSingleImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, viewportW: number, camX: number, parallax: number) {
   const imgAspect = img.width / img.height;
   const drawH = h;
-  const baseDrawW = drawH * imgAspect;
-  const drawW = Math.ceil(baseDrawW);
-  const renderW = drawW + 1; // +1px overlap to eliminate sub-pixel gaps
-  const imgOffset = camX * parallax;
-  const startTile = Math.floor((left + imgOffset) / baseDrawW) - 1;
-  const endTile = Math.ceil((right + imgOffset) / baseDrawW) + 1;
+  let drawW = drawH * imgAspect;
 
-  for (let tile = startTile; tile <= endTile; tile++) {
-    const drawX = Math.round(tile * baseDrawW - imgOffset);
-    const isMirrored = ((tile % 2) + 2) % 2 === 1;
-    if (isMirrored) {
-      ctx.save();
-      ctx.translate(drawX + renderW, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(img, 0, 0, renderW, drawH);
-      ctx.restore();
-    } else {
-      ctx.drawImage(img, drawX, 0, renderW, drawH);
-    }
+  // Ensure image is wide enough to cover viewport + extra margin for parallax camera movement
+  const cameraMargin = 400;
+  const minWidth = viewportW + cameraMargin;
+  if (drawW < minWidth) {
+    drawW = minWidth;
   }
+
+  // Center the image horizontally, then shift by parallax
+  const drawX = (viewportW - drawW) / 2 - camX * parallax;
+
+  ctx.drawImage(img, drawX, 0, drawW, drawH);
 }
 
 // ─── Background with Cross-fade ───────────────────────
 function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
   const { width: w, height: h } = g;
   const camX = g.camera.x;
-  const margin = 200;
-  const left = camX - margin;
-  const right = camX + w + margin;
-  const totalW = right - left;
   const parallax = 0.3;
 
   const blend = getPhaseBlend(g.elapsed);
 
   if (blend.imgA) {
     // Draw primary image
-    drawTiledImage(ctx, blend.imgA, h, camX, left, right, parallax);
+    drawSingleImage(ctx, blend.imgA, h, w, camX, parallax);
 
     // Cross-fade second image on top
     if (blend.imgB && blend.fade > 0) {
       ctx.save();
       ctx.globalAlpha = blend.fade;
-      drawTiledImage(ctx, blend.imgB, h, camX, left, right, parallax);
+      drawSingleImage(ctx, blend.imgB, h, w, camX, parallax);
       ctx.restore();
     }
   } else {
     ctx.fillStyle = '#0c1445';
-    ctx.fillRect(left, 0, totalW, h);
+    ctx.fillRect(0, 0, w, h);
   }
 
   // Dynamic color overlay from config
@@ -205,7 +194,7 @@ function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
   overlayGrad.addColorStop(0.5, `rgba(${blend.overlayMid[0]},${blend.overlayMid[1]},${blend.overlayMid[2]},${op * 0.85})`);
   overlayGrad.addColorStop(1, `rgba(${blend.overlayBottom[0]},${blend.overlayBottom[1]},${blend.overlayBottom[2]},${op * 0.95})`);
   ctx.fillStyle = overlayGrad;
-  ctx.fillRect(left, 0, totalW, h);
+  ctx.fillRect(0, 0, w, h);
 
   // Stars — more visible at night (later elapsed)
   const groundY = h * 0.78;
