@@ -171,7 +171,7 @@ function drawSingleImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h
   const imgAspect = img.width / img.height;
   const drawH = h;
   let drawW = drawH * imgAspect;
-  const minWidth = viewportW + margin;
+  const minWidth = viewportW + margin * 2;
   if (drawW < minWidth) drawW = minWidth;
   const drawX = (viewportW - drawW) / 2 - camX * parallax;
   ctx.drawImage(img, drawX, 0, drawW, drawH);
@@ -208,26 +208,15 @@ function drawTiledImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h:
   }
 }
 
-/** Draw image centered with blurred stretched copies filling edges */
+/** Draw image centered with natural stretch to cover edges — no blur effect */
 function drawBlurEdgeImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, viewportW: number, camX: number, parallax: number, margin: number) {
+  // Same as single but ensures full coverage including margins
   const imgAspect = img.width / img.height;
   const drawH = h;
   let drawW = drawH * imgAspect;
-  const minWidth = viewportW + margin;
+  const minWidth = viewportW + margin * 2;
   if (drawW < minWidth) drawW = minWidth;
   const drawX = (viewportW - drawW) / 2 - camX * parallax;
-
-  // First draw a stretched blurred version that covers everything
-  ctx.save();
-  ctx.filter = 'blur(25px)';
-  // Draw stretched to fill full viewport + margin
-  const stretchW = viewportW + margin * 2;
-  const stretchX = -margin - camX * parallax;
-  ctx.drawImage(img, stretchX, 0, stretchW, drawH);
-  ctx.filter = 'none';
-  ctx.restore();
-
-  // Then draw the sharp centered image on top
   ctx.drawImage(img, drawX, 0, drawW, drawH);
 }
 
