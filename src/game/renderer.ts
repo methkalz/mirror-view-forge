@@ -1039,7 +1039,7 @@ function drawAmmoIcon(ctx: CanvasRenderingContext2D, s: number) {
 }
 
 function drawSlowMoIcon(ctx: CanvasRenderingContext2D, s: number, elapsed: number) {
-  // Clock face
+  // Flat white clock
   ctx.strokeStyle = '#fff';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -1067,7 +1067,7 @@ function drawSlowMoIcon(ctx: CanvasRenderingContext2D, s: number, elapsed: numbe
   ctx.lineTo(Math.cos(handAngle * 3) * s * 0.55, Math.sin(handAngle * 3) * s * 0.55);
   ctx.stroke();
   // Center dot
-  ctx.fillStyle = '#06b6d4';
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.arc(0, 0, 2, 0, Math.PI * 2);
   ctx.fill();
