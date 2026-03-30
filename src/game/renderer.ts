@@ -5641,10 +5641,10 @@ function renderTutorialSlide2(ctx: CanvasRenderingContext2D, w: number, h: numbe
 
   // Description
   ctx.fillStyle = 'rgba(220, 220, 220, 0.85)';
-  ctx.font = '14px Tajawal, sans-serif';
-  ctx.fillText('كل ٣ موجات تحصل على بطاقة ترقية', w / 2, h * 0.28);
+  ctx.font = '16px Tajawal, sans-serif';
+  ctx.fillText('كل 3 موجات تحصل على بطاقة ترقية', w / 2, h * 0.28);
   ctx.fillStyle = 'rgba(180, 180, 180, 0.7)';
-  ctx.font = '13px Tajawal, sans-serif';
+  ctx.font = '15px Tajawal, sans-serif';
   ctx.fillText('اختر واحدة لتعزيز قدراتك', w / 2, h * 0.34);
 
   // Draw 3 sample upgrade cards
