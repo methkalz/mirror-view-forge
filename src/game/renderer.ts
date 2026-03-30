@@ -5362,7 +5362,7 @@ function renderWaveWarnings(ctx: CanvasRenderingContext2D, g: GameData) {
 }
 
 // ─── Start Screen — Arabic Tutorial Slides ─────────────────────────
-export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: number, highScore: number, tutorialPage: number = 0) {
+export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: number, highScore: number, tutorialPage: number = 0, tutorialFade: number = 1) {
   const t = Date.now() / 1000;
 
   // ── Shared background ──
