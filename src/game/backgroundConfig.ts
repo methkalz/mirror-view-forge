@@ -60,6 +60,8 @@ export async function updateBackgroundPhase(id: string, updates: Partial<Backgro
   if (updates.fadeDuration !== undefined) mapped.fade_duration = updates.fadeDuration;
   if (updates.easingType !== undefined) mapped.easing_type = updates.easingType;
   if (updates.sortOrder !== undefined) mapped.sort_order = updates.sortOrder;
+  if (updates.displayMode !== undefined) mapped.display_mode = updates.displayMode;
+  if (updates.bgMargin !== undefined) mapped.bg_margin = updates.bgMargin;
   const { error } = await supabase.from('background_config').update(mapped).eq('id', id);
   return !error;
 }
