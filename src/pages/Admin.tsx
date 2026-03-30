@@ -1002,11 +1002,13 @@ const PREVIEW_PHASE_DURATION = 5; // seconds per phase in preview
 
 const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phases }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [playing, setPlaying] = useState(false);
+  const [playingUI, setPlayingUI] = useState(false);
   const [progress, setProgress] = useState(0);
   const rafRef = useRef<number>(0);
   const startTimeRef = useRef(0);
   const imagesRef = useRef<(HTMLImageElement | null)[]>([]);
+  const playingRef = useRef(false);
+  const lastProgressUpdateRef = useRef(0);
 
   const totalDuration = phases.length * PREVIEW_PHASE_DURATION;
 
@@ -1070,7 +1072,11 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
 
     const elapsed = (timestamp - startTimeRef.current) / 1000;
     const t = elapsed % totalDuration;
-    setProgress(t / totalDuration);
+    // Throttle progress updates to ~100ms
+    if (timestamp - lastProgressUpdateRef.current > 100) {
+      lastProgressUpdateRef.current = timestamp;
+      setProgress(t / totalDuration);
+    }
 
     const w = canvas.width;
     const h = canvas.height;
@@ -1105,28 +1111,32 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
       ctx.fillRect(0, 0, w, h);
     }
 
-    if (playing) {
+    if (playingRef.current) {
       rafRef.current = requestAnimationFrame(drawFrame);
     }
-  }, [playing, totalDuration, getBlendAtTime]);
+  }, [totalDuration, getBlendAtTime]);
 
   const handlePlay = () => {
-    if (playing) {
+    if (playingRef.current) {
+      playingRef.current = false;
       cancelAnimationFrame(rafRef.current);
-      setPlaying(false);
+      setPlayingUI(false);
     } else {
-      setPlaying(true);
+      playingRef.current = true;
+      setPlayingUI(true);
       startTimeRef.current = performance.now();
+      lastProgressUpdateRef.current = 0;
       setProgress(0);
+      rafRef.current = requestAnimationFrame(drawFrame);
     }
   };
 
   useEffect(() => {
-    if (playing) {
-      rafRef.current = requestAnimationFrame(drawFrame);
-    }
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [playing, drawFrame]);
+    return () => {
+      playingRef.current = false;
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
 
   // Resize canvas
   useEffect(() => {
