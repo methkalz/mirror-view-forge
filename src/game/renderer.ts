@@ -5747,12 +5747,7 @@ function renderCinematicWarning(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.shadowBlur = 20;
   ctx.fillText(cw.text, w / 2, centerY + 6);
 
-  // Sub text (English — LTR)
   ctx.direction = 'ltr';
-  ctx.shadowBlur = 8;
-  ctx.fillStyle = cw.color;
-  ctx.font = 'bold 11px monospace';
-  ctx.fillText(cw.subText, w / 2, centerY + 28);
 
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
