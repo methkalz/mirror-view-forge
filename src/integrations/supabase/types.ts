@@ -148,6 +148,81 @@ export type Database = {
         }
         Relationships: []
       }
+      difficulty_profile: {
+        Row: {
+          base_max_concurrent: number
+          base_spawn_interval: number
+          boss_every_n_waves: number
+          boss_start_wave: number
+          bullet_level_waves: Json
+          cluster_splits_base: number
+          cluster_splits_cap: number
+          cluster_splits_growth: number
+          concurrent_growth: number
+          drone_interval_base: number
+          drone_interval_decay: number
+          drone_interval_min: number
+          drones_unlock: Json
+          id: string
+          max_concurrent_cap: number
+          min_spawn_interval: number
+          phase_in_delay: number
+          scaling_formula: string
+          spawn_interval_decay: number
+          threats_unlock: Json
+          updated_at: string | null
+          wave_duration: number
+        }
+        Insert: {
+          base_max_concurrent?: number
+          base_spawn_interval?: number
+          boss_every_n_waves?: number
+          boss_start_wave?: number
+          bullet_level_waves?: Json
+          cluster_splits_base?: number
+          cluster_splits_cap?: number
+          cluster_splits_growth?: number
+          concurrent_growth?: number
+          drone_interval_base?: number
+          drone_interval_decay?: number
+          drone_interval_min?: number
+          drones_unlock?: Json
+          id?: string
+          max_concurrent_cap?: number
+          min_spawn_interval?: number
+          phase_in_delay?: number
+          scaling_formula?: string
+          spawn_interval_decay?: number
+          threats_unlock?: Json
+          updated_at?: string | null
+          wave_duration?: number
+        }
+        Update: {
+          base_max_concurrent?: number
+          base_spawn_interval?: number
+          boss_every_n_waves?: number
+          boss_start_wave?: number
+          bullet_level_waves?: Json
+          cluster_splits_base?: number
+          cluster_splits_cap?: number
+          cluster_splits_growth?: number
+          concurrent_growth?: number
+          drone_interval_base?: number
+          drone_interval_decay?: number
+          drone_interval_min?: number
+          drones_unlock?: Json
+          id?: string
+          max_concurrent_cap?: number
+          min_spawn_interval?: number
+          phase_in_delay?: number
+          scaling_formula?: string
+          spawn_interval_decay?: number
+          threats_unlock?: Json
+          updated_at?: string | null
+          wave_duration?: number
+        }
+        Relationships: []
+      }
       game_config: {
         Row: {
           base_speed: number
@@ -291,33 +366,63 @@ export type Database = {
       }
       wave_configs: {
         Row: {
+          bullet_level: number
+          cluster_splits: number
+          drone_interval: number
           drone_types: Json
           duration: number
+          has_boss: boolean
+          has_chemical: boolean
+          has_incendiary: boolean
           id: string
           max_concurrent: number
+          phase_in_delay: number
           spawn_rate: number
           surge_multiplier: number
           threats: Json
+          warning_color: string | null
+          warning_text: string | null
+          warning_type: string | null
           wave_number: number
         }
         Insert: {
+          bullet_level?: number
+          cluster_splits?: number
+          drone_interval?: number
           drone_types?: Json
           duration?: number
+          has_boss?: boolean
+          has_chemical?: boolean
+          has_incendiary?: boolean
           id?: string
           max_concurrent?: number
+          phase_in_delay?: number
           spawn_rate?: number
           surge_multiplier?: number
           threats?: Json
+          warning_color?: string | null
+          warning_text?: string | null
+          warning_type?: string | null
           wave_number: number
         }
         Update: {
+          bullet_level?: number
+          cluster_splits?: number
+          drone_interval?: number
           drone_types?: Json
           duration?: number
+          has_boss?: boolean
+          has_chemical?: boolean
+          has_incendiary?: boolean
           id?: string
           max_concurrent?: number
+          phase_in_delay?: number
           spawn_rate?: number
           surge_multiplier?: number
           threats?: Json
+          warning_color?: string | null
+          warning_text?: string | null
+          warning_type?: string | null
           wave_number?: number
         }
         Relationships: []
