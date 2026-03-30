@@ -5818,11 +5818,7 @@ function renderWaveWarnings(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.font = 'bold 13px Tajawal, Arial';
     ctx.fillText(ww.text, w / 2, y - 2);
 
-    // Sub text (English — LTR)
     ctx.direction = 'ltr';
-    ctx.fillStyle = 'rgba(200,200,200,0.8)';
-    ctx.font = '9px monospace';
-    ctx.fillText(ww.subText, w / 2, y + 12);
 
     ctx.restore();
   }
