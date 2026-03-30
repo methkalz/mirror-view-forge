@@ -579,6 +579,8 @@ function generateWaveFromProfile(wave: number, profile: DifficultyProfile): Wave
     hasChemical,
     hasIncendiary,
     hasBoss,
+    duration: profile.waveDuration,
+    surgeMultiplier: 1,
   };
 }
 
