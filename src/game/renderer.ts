@@ -19,6 +19,7 @@ fallbackImg.src = bgFallbackUrl;
 let bgLayers: BgLayer[] = [];
 let bgPhases: BackgroundPhase[] = [];
 let bgConfigLoaded = false;
+let bgCameraMargin = 400;
 
 /** Called once from GameLoader to inject background config */
 export function setBackgroundConfig(phases: BackgroundPhase[]) {
