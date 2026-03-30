@@ -159,10 +159,12 @@ function getPhaseBlend(elapsed: number): {
     overlayMid: parseRGB(resolved.overlayMid),
     overlayBottom: parseRGB(resolved.overlayBottom),
     overlayOpacity: resolved.overlayOpacity,
+    displayModeA: resolved.displayMode || 'single',
+    displayModeB: 'single' as DisplayMode,
+    bgMarginA: resolved.bgMargin ?? bgCameraMargin,
+    bgMarginB: bgCameraMargin,
   };
 }
-
-/** Draw a single centered image that covers the viewport with margin for camera movement */
 function drawSingleImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, viewportW: number, camX: number, parallax: number) {
   const imgAspect = img.width / img.height;
   const drawH = h;
