@@ -330,6 +330,110 @@ export function sfxWarning() {
   setTimeout(() => playTone(1000, 0.06, 'sine', 0.02 * v), 80);
 }
 
+// ─── Threat-specific Warning Sounds ───
+
+export function sfxWarningShrapnel() {
+  if (!isSoundEnabled('warningShrapnel')) return;
+  if (playCustomAudio('warningShrapnel')) return;
+  const v = getSoundVolume('warningShrapnel', 1);
+  // Sharp metallic ping descending
+  playTone(1200, 0.06, 'square', 0.04 * v);
+  setTimeout(() => playTone(900, 0.06, 'square', 0.03 * v), 70);
+  setTimeout(() => playNoise(0.08, 0.03 * v, { type: 'highpass', freq: 4000 }), 120);
+}
+
+export function sfxWarningMissile() {
+  if (!isSoundEnabled('warningMissile')) return;
+  if (playCustomAudio('warningMissile')) return;
+  const v = getSoundVolume('warningMissile', 1);
+  // Low growling siren
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(200, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(500, ctx.currentTime + 0.3);
+  osc.frequency.linearRampToValueAtTime(200, ctx.currentTime + 0.6);
+  gain.gain.setValueAtTime(0.05 * v, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.7);
+}
+
+export function sfxWarningCluster() {
+  if (!isSoundEnabled('warningCluster')) return;
+  if (playCustomAudio('warningCluster')) return;
+  const v = getSoundVolume('warningCluster', 1);
+  // Rapid staccato beeps
+  for (let i = 0; i < 4; i++) {
+    setTimeout(() => playTone(700 + i * 100, 0.04, 'square', 0.04 * v), i * 60);
+  }
+}
+
+export function sfxWarningDrone() {
+  if (!isSoundEnabled('warningDrone')) return;
+  if (playCustomAudio('warningDrone')) return;
+  const v = getSoundVolume('warningDrone', 1);
+  // Electronic scanning sweep
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(400, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(1600, ctx.currentTime + 0.3);
+  osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.6);
+  gain.gain.setValueAtTime(0.04 * v, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.7);
+}
+
+export function sfxWarningBoss() {
+  if (!isSoundEnabled('warningBoss')) return;
+  if (playCustomAudio('warningBoss')) return;
+  const v = getSoundVolume('warningBoss', 1);
+  // Deep horn blast
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(100, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(150, ctx.currentTime + 0.4);
+  gain.gain.setValueAtTime(0.08 * v, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.06 * v, ctx.currentTime + 0.4);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
+  const bq = ctx.createBiquadFilter();
+  bq.type = 'lowpass';
+  bq.frequency.value = 400;
+  osc.connect(bq).connect(gain).connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 1.0);
+  playNoise(0.6, 0.04 * v, { type: 'lowpass', freq: 200 });
+}
+
+export function sfxWarningHazard() {
+  if (!isSoundEnabled('warningHazard')) return;
+  if (playCustomAudio('warningHazard')) return;
+  const v = getSoundVolume('warningHazard', 1);
+  // Bubbling chemical alert
+  playTone(300, 0.1, 'triangle', 0.04 * v);
+  setTimeout(() => playTone(350, 0.08, 'triangle', 0.03 * v), 100);
+  setTimeout(() => playNoise(0.15, 0.03 * v, { type: 'bandpass', freq: 800 }), 150);
+}
+
+export function sfxWarningBomber() {
+  if (!isSoundEnabled('warningBomber')) return;
+  if (playCustomAudio('warningBomber')) return;
+  const v = getSoundVolume('warningBomber', 1);
+  // Heavy engine drone + alarm
+  playTone(80, 0.3, 'sawtooth', 0.05 * v);
+  playNoise(0.2, 0.04 * v, { type: 'lowpass', freq: 300 });
+  setTimeout(() => playTone(600, 0.08, 'square', 0.04 * v), 200);
+  setTimeout(() => playTone(500, 0.08, 'square', 0.03 * v), 300);
+}
+
 export function sfxSlowmo() {
   if (!isSoundEnabled('slowmo')) return;
   if (playCustomAudio('slowmo')) return;
@@ -729,6 +833,63 @@ export function sfxScoreSubmit() {
   playTone(600, 0.08, 'sine', 0.06 * v);
   setTimeout(() => playTone(800, 0.06, 'sine', 0.05 * v), 60);
   setTimeout(() => playTone(1000, 0.08, 'sine', 0.06 * v), 120);
+}
+
+// ─── Synthesized Sound Preview Map (for Admin panel) ───
+// Maps sound_key → function that plays the synthesized fallback regardless of settings
+export function playSynthesizedPreview(key: string) {
+  // Ensure AudioContext is ready
+  const ctx = getCtx();
+  if (ctx.state === 'suspended') ctx.resume();
+
+  const map: Record<string, () => void> = {
+    explosion: () => { playTone(40, 0.15, 'sine', 0.03); playNoise(0.12, 0.025, { type: 'lowpass', freq: 250 }); },
+    impactLight: () => { playNoise(0.05, 0.12, { type: 'lowpass', freq: 400 }); playTone(150, 0.04, 'sine', 0.08); },
+    impactHeavy: () => { playTone(45, 0.18, 'sine', 0.18); playNoise(0.14, 0.13, { type: 'lowpass', freq: 200 }); },
+    pickup: () => { playTone(500, 0.06, 'sine', 0.08); setTimeout(() => playTone(700, 0.06, 'sine', 0.08), 50); setTimeout(() => playTone(900, 0.05, 'sine', 0.06), 100); },
+    damage: () => { playTone(120, 0.2, 'sawtooth', 0.12); playNoise(0.15, 0.08, { type: 'lowpass', freq: 1500 }); },
+    dash: () => { playTone(300, 0.08, 'triangle', 0.06); playNoise(0.1, 0.04, { type: 'highpass', freq: 3000 }); },
+    interceptor: () => { playTone(1200, 0.05, 'square', 0.06); setTimeout(() => playTone(800, 0.1, 'square', 0.05), 40); },
+    footstep: () => { playNoise(0.04, 0.02, { type: 'lowpass', freq: 600 }); },
+    warning: () => { playTone(800, 0.08, 'sine', 0.03); setTimeout(() => playTone(1000, 0.06, 'sine', 0.02), 80); },
+    warningShrapnel: () => { playTone(1200, 0.06, 'square', 0.04); setTimeout(() => playTone(900, 0.06, 'square', 0.03), 70); },
+    warningMissile: () => { const c = getCtx(); const o = c.createOscillator(); const g = c.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(200, c.currentTime); o.frequency.linearRampToValueAtTime(500, c.currentTime + 0.3); o.frequency.linearRampToValueAtTime(200, c.currentTime + 0.6); g.gain.setValueAtTime(0.05, c.currentTime); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.7); o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + 0.7); },
+    warningCluster: () => { for (let i = 0; i < 4; i++) setTimeout(() => playTone(700 + i * 100, 0.04, 'square', 0.04), i * 60); },
+    warningDrone: () => { const c = getCtx(); const o = c.createOscillator(); const g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(400, c.currentTime); o.frequency.exponentialRampToValueAtTime(1600, c.currentTime + 0.3); o.frequency.exponentialRampToValueAtTime(400, c.currentTime + 0.6); g.gain.setValueAtTime(0.04, c.currentTime); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.7); o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + 0.7); },
+    warningBoss: () => { playTone(100, 1.0, 'sawtooth', 0.08); playNoise(0.6, 0.04, { type: 'lowpass', freq: 200 }); },
+    warningHazard: () => { playTone(300, 0.1, 'triangle', 0.04); setTimeout(() => playTone(350, 0.08, 'triangle', 0.03), 100); },
+    warningBomber: () => { playTone(80, 0.3, 'sawtooth', 0.05); playNoise(0.2, 0.04, { type: 'lowpass', freq: 300 }); setTimeout(() => playTone(600, 0.08, 'square', 0.04), 200); },
+    slowmo: () => { playTone(150, 0.6, 'sine', 0.1); playTone(100, 0.8, 'sine', 0.06); },
+    magnet: () => { playTone(400, 0.15, 'sawtooth', 0.06); setTimeout(() => playTone(500, 0.12, 'sawtooth', 0.05), 60); },
+    airstrike: () => { playTone(1200, 0.1, 'sine', 0.08); setTimeout(() => playTone(800, 0.15, 'sine', 0.06), 100); },
+    thunder: () => { playNoise(0.8, 0.15, { type: 'lowpass', freq: 200 }); playTone(30, 0.6, 'sine', 0.1); },
+    bossSiren: () => { const c = getCtx(); const o = c.createOscillator(); const g = c.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(400, c.currentTime); o.frequency.linearRampToValueAtTime(800, c.currentTime + 0.5); o.frequency.linearRampToValueAtTime(400, c.currentTime + 1.0); g.gain.setValueAtTime(0.08, c.currentTime); g.gain.linearRampToValueAtTime(0.001, c.currentTime + 2); o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + 2); },
+    bossExplosion: () => { playTone(30, 0.8, 'sawtooth', 0.15); playTone(50, 0.6, 'sine', 0.12); playNoise(0.8, 0.15, { type: 'lowpass', freq: 500 }); },
+    shoot1: () => { playNoise(0.08, 0.15, { type: 'highpass', freq: 3000 }); playTone(150, 0.1, 'sine', 0.12); },
+    shoot2: () => { playNoise(0.09, 0.18, { type: 'highpass', freq: 2800 }); playTone(120, 0.12, 'sine', 0.14); },
+    shoot3: () => { playNoise(0.1, 0.2, { type: 'highpass', freq: 2500 }); playTone(100, 0.15, 'sine', 0.16); },
+    combo: () => { playTone(600, 0.06, 'sine', 0.06); setTimeout(() => playTone(800, 0.05, 'sine', 0.05), 40); },
+    closeCall: () => { playTone(1000, 0.04, 'sine', 0.04); setTimeout(() => playTone(1200, 0.03, 'sine', 0.03), 30); },
+    bikeEngine: () => { playTone(80, 1.0, 'sawtooth', 0.06); playNoise(0.8, 0.04, { type: 'lowpass', freq: 150 }); },
+    bikeBrake: () => { playNoise(0.3, 0.06, { type: 'highpass', freq: 2000 }); },
+    bikeIdle: () => { playTone(55, 1.0, 'triangle', 0.04); },
+    bikeDepart: () => { playTone(60, 1.5, 'sawtooth', 0.07); playNoise(1.5, 0.05, { type: 'lowpass', freq: 200 }); },
+    warningAlert: () => { playTone(600, 0.12, 'square', 0.06); setTimeout(() => playTone(500, 0.12, 'square', 0.05), 150); setTimeout(() => playTone(600, 0.1, 'square', 0.06), 300); },
+    upgradeAlert: () => { playTone(500, 0.08, 'sine', 0.06); setTimeout(() => playTone(700, 0.08, 'sine', 0.06), 80); setTimeout(() => playTone(900, 0.08, 'sine', 0.06), 160); },
+    waveComplete: () => { playTone(400, 0.15, 'sine', 0.08); setTimeout(() => playTone(500, 0.12, 'sine', 0.07), 100); setTimeout(() => playTone(800, 0.2, 'sine', 0.09), 300); },
+    levelUp: () => { playTone(400, 0.1, 'sine', 0.08); setTimeout(() => playTone(600, 0.1, 'sine', 0.08), 100); setTimeout(() => playTone(1000, 0.15, 'sine', 0.1), 300); },
+    gameOver: () => { playTone(400, 0.3, 'sawtooth', 0.1); setTimeout(() => playTone(300, 0.3, 'sawtooth', 0.08), 200); setTimeout(() => playTone(200, 0.4, 'sawtooth', 0.06), 400); },
+    gameStart: () => { playTone(300, 0.1, 'sine', 0.06); setTimeout(() => playTone(500, 0.1, 'sine', 0.07), 80); setTimeout(() => playTone(700, 0.15, 'sine', 0.08), 160); },
+    upgradeSelect: () => { playTone(800, 0.06, 'sine', 0.06); setTimeout(() => playTone(1000, 0.08, 'sine', 0.07), 50); },
+    distantExplosion: () => { playNoise(0.4, 0.03, { type: 'lowpass', freq: 150 }); playTone(25, 0.5, 'sine', 0.02); },
+    windGust: () => { playNoise(0.5, 0.04, { type: 'bandpass', freq: 600 }); },
+    distantSiren: () => { const c = getCtx(); const o = c.createOscillator(); const g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(300, c.currentTime); o.frequency.linearRampToValueAtTime(500, c.currentTime + 1); o.frequency.linearRampToValueAtTime(300, c.currentTime + 2); g.gain.setValueAtTime(0.001, c.currentTime); g.gain.linearRampToValueAtTime(0.015, c.currentTime + 0.5); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 2); o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + 2); },
+    buttonClick: () => { playTone(800, 0.03, 'sine', 0.04); },
+    scoreSubmit: () => { playTone(600, 0.08, 'sine', 0.06); setTimeout(() => playTone(800, 0.06, 'sine', 0.05), 60); },
+  };
+
+  const fn = map[key];
+  if (fn) fn();
 }
 
 // ─── Menu Music ───

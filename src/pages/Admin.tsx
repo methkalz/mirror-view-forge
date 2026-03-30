@@ -14,6 +14,7 @@ import {
   fetchBackgroundConfig, updateBackgroundPhase, uploadBackgroundImage, deleteBackgroundImage,
   type BackgroundPhase,
 } from '@/game/backgroundConfig';
+import { playSynthesizedPreview } from '@/game/audio';
 
 type TabKey = 'analytics' | 'config' | 'branding' | 'backgrounds' | 'waves' | 'leaderboard' | 'audio';
 
@@ -767,14 +768,14 @@ const AudioPanel: React.FC<{
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     {/* Quick play button */}
                     <button
-                      onClick={e => { e.stopPropagation(); item.files.length > 0 ? handlePreview(item.files[0].fileUrl) : null; }}
+                      onClick={e => { e.stopPropagation(); if (item.files.length > 0) { handlePreview(item.files[0].fileUrl); } else { playSynthesizedPreview(item.soundKey); } }}
                       style={{
-                        ...smallBtn(item.files.length > 0 ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.04)',
-                          item.files.length > 0 ? '#93c5fd' : 'rgba(148,163,184,0.25)'),
+                        ...smallBtn(item.files.length > 0 ? 'rgba(59,130,246,0.15)' : 'rgba(168,85,247,0.15)',
+                          item.files.length > 0 ? '#93c5fd' : '#c084fc'),
                         fontSize: 12, padding: '4px 6px', flexShrink: 0,
-                        cursor: item.files.length > 0 ? 'pointer' : 'default',
+                        cursor: 'pointer',
                       }}
-                      title={item.files.length > 0 ? 'Preview sound' : 'Synthesized (built-in)'}
+                      title={item.files.length > 0 ? 'Preview uploaded sound' : 'Preview synthesized sound'}
                     >▶</button>
                     <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => setExpandedItem(isOpen ? null : item.id)}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>

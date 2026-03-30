@@ -4,7 +4,7 @@ import {
   FirePool, GasCloud, UpgradeCard, DeliveryBike, IntroPhase
 } from './types';
 import { getFromPool } from './pool';
-import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameStart, sfxUpgradeSelect, startPeriodicAmbient, stopPeriodicAmbient } from './audio';
+import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameStart, sfxUpgradeSelect, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber } from './audio';
 
 const DASH_SPEED = 500;
 const DASH_DURATION = 0.25;
@@ -817,8 +817,18 @@ function queueWaveEvent(
   };
   g.slowMoFactor = 0.1;
   // Play different sound based on event type
-  if (event.type === 'warning') sfxWarningAlert();
-  else if (event.type === 'upgrade') sfxUpgradeAlert();
+  if (event.type === 'warning') {
+    // Play threat-specific warning sound based on event id
+    const id = event.id;
+    if (id.includes('shrapnel')) sfxWarningShrapnel();
+    else if (id.includes('missile')) sfxWarningMissile();
+    else if (id.includes('cluster')) sfxWarningCluster();
+    else if (id.includes('drone') || id.includes('tracker') || id.includes('chemical') || id.includes('incendiary')) sfxWarningDrone();
+    else if (id.includes('boss')) sfxWarningBoss();
+    else if (id.includes('bomber')) sfxWarningBomber();
+    else if (id.includes('gas') || id.includes('fire') || id.includes('extinguisher')) sfxWarningHazard();
+    else sfxWarningAlert();
+  } else if (event.type === 'upgrade') sfxUpgradeAlert();
 }
 
 function applyWaveEvent(g: GameData, id: string) {
