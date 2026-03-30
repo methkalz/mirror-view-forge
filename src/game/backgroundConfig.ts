@@ -1,5 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 
+export type DisplayMode = 'single' | 'tiled' | 'blur-edge';
+
 export interface BackgroundPhase {
   id: string;
   phase: string;
@@ -13,6 +15,8 @@ export interface BackgroundPhase {
   sortOrder: number;
   fadeDuration: number;
   easingType: string;
+  displayMode: DisplayMode;
+  bgMargin: number;
 }
 
 export async function fetchBackgroundConfig(): Promise<BackgroundPhase[]> {
@@ -35,6 +39,8 @@ export async function fetchBackgroundConfig(): Promise<BackgroundPhase[]> {
       sortOrder: r.sort_order ?? 0,
       fadeDuration: r.fade_duration ?? 60,
       easingType: r.easing_type ?? 'smoothstep',
+      displayMode: ((r as any).display_mode || 'single') as DisplayMode,
+      bgMargin: (r as any).bg_margin ?? 400,
     }));
   } catch {
     return [];
@@ -54,6 +60,8 @@ export async function updateBackgroundPhase(id: string, updates: Partial<Backgro
   if (updates.fadeDuration !== undefined) mapped.fade_duration = updates.fadeDuration;
   if (updates.easingType !== undefined) mapped.easing_type = updates.easingType;
   if (updates.sortOrder !== undefined) mapped.sort_order = updates.sortOrder;
+  if (updates.displayMode !== undefined) mapped.display_mode = updates.displayMode;
+  if (updates.bgMargin !== undefined) mapped.bg_margin = updates.bgMargin;
   const { error } = await supabase.from('background_config').update(mapped).eq('id', id);
   return !error;
 }
@@ -82,6 +90,8 @@ export async function createBackgroundPhase(phase: string): Promise<BackgroundPh
     sortOrder: data.sort_order ?? 0,
     fadeDuration: data.fade_duration ?? 60,
     easingType: data.easing_type ?? 'smoothstep',
+    displayMode: ((data as any).display_mode || 'single') as DisplayMode,
+    bgMargin: (data as any).bg_margin ?? 400,
   };
 }
 
