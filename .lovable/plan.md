@@ -1,31 +1,37 @@
 
 
-# إضافة خاصية اللووب (Loop) للخلفيات
+# إضافة انتقال تدريجي (Fade) عند عودة اللووب من المرحلة الأخيرة إلى الأولى
 
-## الفكرة
-عند تفعيل اللووب، بعد انتهاء آخر مرحلة خلفية، تعود الخلفية تدريجياً إلى المرحلة الأولى وتتكرر الدورة بشكل لا نهائي.
+## المشكلة
+حالياً عند تفعيل اللووب، الزمن يعود فجأة للصفر عبر `elapsed % cycleLength` مما يسبب قطع مفاجئ من المرحلة الأخيرة إلى الأولى.
 
-## التغييرات
+## الحل
+إضافة مرحلة fade افتراضية بين المرحلة الأخيرة والأولى، بنفس آلية الانتقالات الموجودة بين المراحل.
 
-### 1. إضافة عمود `bg_loop` لجدول `game_config`
-- عمود `boolean` افتراضي `false`
+### التغييرات — ملف واحد: `src/game/renderer.ts`
 
-### 2. `src/game/config.ts`
-- إضافة `bgLoop` لواجهة `RemoteGameConfig`
-- تحديث `fetchGameConfig` و `updateGameConfig`
+**المنطق الجديد في `getPhaseBlend` (سطر 92-100):**
 
-### 3. `src/game/renderer.ts` — تعديل `getPhaseBlend`
-- عند تفعيل اللووب: حساب الدورة الكاملة = `transitionStart` لآخر مرحلة + `fadeDuration` لها
-- عمل `elapsed % cycleLength` لتكرار الزمن
-- المرحلة الأخيرة تنتقل تدريجياً (fade) إلى المرحلة الأولى بنفس نظام الانتقال الحالي
+1. حساب `cycleLength` = نهاية آخر مرحلة + مدة fade العودة (نستخدم `fadeDuration` المرحلة الأولى)
+2. بدل القطع المفاجئ (`%`)، نضيف منطقة انتقال:
+   - إذا `elapsed` بين نهاية آخر مرحلة و `cycleLength` → نحسب fade من المرحلة الأخيرة إلى الأولى (blend ألوان + صور)
+   - إذا `elapsed >= cycleLength` → نطبق `(elapsed - cycleLength) % cycleLength` لبدء الدورة التالية
 
-### 4. `src/pages/Admin.tsx` — تبويب Backgrounds
-- إضافة Switch "تكرار الخلفيات (Loop)" في أعلى قسم الخلفيات
-- عند التفعيل يُحفظ في `game_config`
+```text
+المراحل: [A] → fade → [B] → fade → [C] → fade(عودة) → [A] → ...
+                                            ↑ جديد
+```
+
+3. الـ fade يستخدم نفس `applyEasing` و `lerpColor` الموجودين
+
+### إضافة إعداد مدة انتقال العودة — `game_config`
+- عمود جديد: `bg_loop_fade_duration` (real, default 60 ثانية)
+- يُعرض في لوحة التحكم بجانب مفتاح اللووب كـ slider
 
 ### الملفات
-1. Migration: عمود `bg_loop` في `game_config`
-2. `src/game/config.ts`: واجهة + دوال
-3. `src/game/renderer.ts`: منطق اللووب في `getPhaseBlend`
-4. `src/pages/Admin.tsx`: مفتاح تشغيل
+1. **Migration**: عمود `bg_loop_fade_duration` في `game_config`
+2. **`src/game/config.ts`**: إضافة `bgLoopFadeDuration` للواجهة والدوال
+3. **`src/game/renderer.ts`**: تعديل منطق اللووب (سطر 92-100) لإضافة fade العودة
+4. **`src/components/SkyfallGame.tsx`**: تمرير القيمة الجديدة
+5. **`src/pages/Admin.tsx`**: slider لمدة انتقال العودة
 
