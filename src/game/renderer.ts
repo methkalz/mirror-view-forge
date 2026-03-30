@@ -138,6 +138,10 @@ function getPhaseBlend(elapsed: number): {
         overlayMid: lerpColor(midA, midB, fade),
         overlayBottom: lerpColor(botA, botB, fade),
         overlayOpacity: opA + (opB - opA) * fade,
+        displayModeA: current.displayMode || 'single',
+        displayModeB: next.displayMode || 'single',
+        bgMarginA: current.bgMargin ?? bgCameraMargin,
+        bgMarginB: next.bgMargin ?? bgCameraMargin,
       };
     }
 
