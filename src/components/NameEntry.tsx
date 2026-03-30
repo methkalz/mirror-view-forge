@@ -432,6 +432,22 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           from { opacity: 1; transform: scale(1); }
           to { opacity: 0; transform: scale(1.05); }
         }
+        @keyframes hintContainerOut {
+          from { opacity: 1; }
+          to { opacity: 0; transform: translateY(-8px); }
+        }
+        @keyframes wordReveal {
+          from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+          to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+        @keyframes wordFadeOut {
+          from { opacity: 1; transform: translateY(0); filter: blur(0); }
+          to { opacity: 0; transform: translateY(-6px); filter: blur(3px); }
+        }
+        @keyframes iconPulse {
+          0%, 100% { transform: scale(1); opacity: 0.8; }
+          50% { transform: scale(1.12); opacity: 1; }
+        }
         @keyframes nameEntryFadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
