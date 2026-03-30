@@ -496,6 +496,11 @@ interface WaveRecipe {
   hasChemical?: boolean;
   hasIncendiary?: boolean;
   hasBoss?: boolean;
+  duration: number;
+  surgeMultiplier: number;
+  warningText?: string | null;
+  warningColor?: string;
+  warningType?: string;
 }
 
 function generateWaveFromProfile(wave: number, profile: DifficultyProfile): WaveRecipe {
