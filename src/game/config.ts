@@ -115,6 +115,7 @@ export async function fetchGameConfig(): Promise<RemoteGameConfig> {
       showTitle: (data as any).show_title ?? true,
       cameraMargin: (data as any).camera_margin ?? 400,
       bgLoop: (data as any).bg_loop ?? false,
+      bgLoopFadeDuration: (data as any).bg_loop_fade_duration ?? 60,
     };
   } catch {
     return DEFAULT_CONFIG;
