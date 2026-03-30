@@ -302,6 +302,9 @@ const SkyfallGame: React.FC = () => {
         inputRef.current.cardClick = { x: e.clientX - rect.left, y: e.clientY - rect.top };
         return;
       }
+      // Store click position for skip button detection
+      (inputRef.current as any)._lastClickX = e.clientX;
+      (inputRef.current as any)._lastClickY = e.clientY;
       startOrRestart();
     };
 
