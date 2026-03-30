@@ -1569,7 +1569,7 @@ const PhoneMockupPreview: React.FC<{
   );
 };
 
-
+const BackgroundsPanel: React.FC<{
   phases: BackgroundPhase[];
   setPhases: React.Dispatch<React.SetStateAction<BackgroundPhase[]>>;
   isDesktop: boolean;
