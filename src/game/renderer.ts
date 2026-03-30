@@ -1128,26 +1128,19 @@ function drawAirstrikeIcon(ctx: CanvasRenderingContext2D, s: number) {
 }
 
 function drawInterceptorIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // Mini rocket with flame
+  // Flat white rocket
   const bw = s * 0.25, bh = s * 0.8;
-  // Body
-  const bg = ctx.createLinearGradient(-bw, 0, bw, 0);
-  bg.addColorStop(0, '#78716c');
-  bg.addColorStop(0.5, '#d6d3d1');
-  bg.addColorStop(1, '#78716c');
-  ctx.fillStyle = bg;
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.roundRect(-bw, -bh * 0.3, bw * 2, bh * 0.7, 2);
   ctx.fill();
   // Nose
-  ctx.fillStyle = '#f97316';
   ctx.beginPath();
   ctx.moveTo(-bw, -bh * 0.3);
   ctx.quadraticCurveTo(0, -bh, bw, -bh * 0.3);
   ctx.closePath();
   ctx.fill();
   // Fins
-  ctx.fillStyle = '#57534e';
   ctx.beginPath();
   ctx.moveTo(-bw, bh * 0.35);
   ctx.lineTo(-bw * 2.2, bh * 0.55);
@@ -1158,19 +1151,6 @@ function drawInterceptorIcon(ctx: CanvasRenderingContext2D, s: number) {
   ctx.moveTo(bw, bh * 0.35);
   ctx.lineTo(bw * 2.2, bh * 0.55);
   ctx.lineTo(bw, bh * 0.15);
-  ctx.closePath();
-  ctx.fill();
-  // Flame
-  ctx.fillStyle = '#fbbf24';
-  ctx.beginPath();
-  ctx.moveTo(-bw * 0.6, bh * 0.4);
-  ctx.quadraticCurveTo(0, bh * 0.85, bw * 0.6, bh * 0.4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = '#fff8';
-  ctx.beginPath();
-  ctx.moveTo(-bw * 0.3, bh * 0.4);
-  ctx.quadraticCurveTo(0, bh * 0.65, bw * 0.3, bh * 0.4);
   ctx.closePath();
   ctx.fill();
 }
