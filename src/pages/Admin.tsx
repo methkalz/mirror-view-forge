@@ -646,6 +646,7 @@ const AudioPanel: React.FC<{
   const [libraryOpen, setLibraryOpen] = useState<string | null>(null);
   const [library, setLibrary] = useState<{ name: string; url: string }[]>([]);
   const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [addingSound, setAddingSound] = useState(false);
   const [newSoundKey, setNewSoundKey] = useState('');
@@ -699,9 +700,16 @@ const AudioPanel: React.FC<{
 
   const handlePreview = (url: string) => {
     if (previewAudio) { previewAudio.pause(); previewAudio.currentTime = 0; }
-    const a = new Audio(url); a.volume = 0.5; a.play(); setPreviewAudio(a);
+    const a = new Audio(url);
+    a.volume = 0.5;
+    a.onended = () => { setPreviewAudio(null); setIsPlaying(null); };
+    a.play();
+    setPreviewAudio(a);
   };
-  const stopPreview = () => { if (previewAudio) { previewAudio.pause(); previewAudio.currentTime = 0; setPreviewAudio(null); } };
+  const stopAllPreview = () => {
+    if (previewAudio) { previewAudio.pause(); previewAudio.currentTime = 0; setPreviewAudio(null); }
+    setIsPlaying(null);
+  };
 
   const smallBtn = (bg: string, color = '#fff'): React.CSSProperties => ({
     padding: '5px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', background: bg, color, fontSize: 10, fontWeight: 600,
@@ -768,15 +776,31 @@ const AudioPanel: React.FC<{
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     {/* Quick play button */}
                     <button
-                      onClick={e => { e.stopPropagation(); if (item.files.length > 0) { handlePreview(item.files[0].fileUrl); } else { playSynthesizedPreview(item.soundKey); } }}
+                      onClick={e => {
+                        e.stopPropagation();
+                        if (isPlaying === item.id) {
+                          stopAllPreview();
+                          return;
+                        }
+                        stopAllPreview();
+                        setIsPlaying(item.id);
+                        if (item.files.length > 0) {
+                          handlePreview(item.files[0].fileUrl);
+                        } else {
+                          playSynthesizedPreview(item.soundKey);
+                          setTimeout(() => setIsPlaying(null), 3000);
+                        }
+                      }}
                       style={{
-                        ...smallBtn(item.files.length > 0 ? 'rgba(59,130,246,0.15)' : 'rgba(168,85,247,0.15)',
-                          item.files.length > 0 ? '#93c5fd' : '#c084fc'),
+                        ...smallBtn(
+                          isPlaying === item.id ? 'rgba(220,38,38,0.15)' : (item.files.length > 0 ? 'rgba(59,130,246,0.15)' : 'rgba(168,85,247,0.15)'),
+                          isPlaying === item.id ? '#f87171' : (item.files.length > 0 ? '#93c5fd' : '#c084fc')
+                        ),
                         fontSize: 12, padding: '4px 6px', flexShrink: 0,
                         cursor: 'pointer',
                       }}
-                      title={item.files.length > 0 ? 'Preview uploaded sound' : 'Preview synthesized sound'}
-                    >▶</button>
+                      title={isPlaying === item.id ? 'Stop preview' : (item.files.length > 0 ? 'Preview uploaded sound' : 'Preview synthesized sound')}
+                    >{isPlaying === item.id ? '⏹' : '▶'}</button>
                     <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => setExpandedItem(isOpen ? null : item.id)}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>
                         {item.label}
@@ -827,7 +851,7 @@ const AudioPanel: React.FC<{
                             <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.3)', width: 18 }}>#{idx + 1}</span>
                             <span style={{ fontSize: 10, color: '#e2e8f0', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.fileName}</span>
                             <button onClick={() => handlePreview(f.fileUrl)} style={smallBtn('rgba(59,130,246,0.15)', '#93c5fd')}>▶</button>
-                            <button onClick={stopPreview} style={smallBtn('rgba(255,255,255,0.06)', 'rgba(148,163,184,0.4)')}>⏹</button>
+                            <button onClick={stopAllPreview} style={smallBtn('rgba(255,255,255,0.06)', 'rgba(148,163,184,0.4)')}>⏹</button>
                             <button onClick={() => handleRemoveFile(item.id, f.id, f.fileUrl)} style={smallBtn('rgba(220,38,38,0.12)', '#fca5a5')}>✕</button>
                           </div>
                         ))}
