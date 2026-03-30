@@ -148,22 +148,24 @@ function getPhaseBlend(elapsed: number): {
 function drawTiledImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, camX: number, left: number, right: number, parallax: number) {
   const imgAspect = img.width / img.height;
   const drawH = h;
-  const drawW = drawH * imgAspect;
+  const baseDrawW = drawH * imgAspect;
+  const drawW = Math.ceil(baseDrawW);
+  const renderW = drawW + 1; // +1px overlap to eliminate sub-pixel gaps
   const imgOffset = camX * parallax;
-  const startTile = Math.floor((left + imgOffset) / drawW) - 1;
-  const endTile = Math.ceil((right + imgOffset) / drawW) + 1;
+  const startTile = Math.floor((left + imgOffset) / baseDrawW) - 1;
+  const endTile = Math.ceil((right + imgOffset) / baseDrawW) + 1;
 
   for (let tile = startTile; tile <= endTile; tile++) {
-    const drawX = tile * drawW - imgOffset;
+    const drawX = Math.round(tile * baseDrawW - imgOffset);
     const isMirrored = ((tile % 2) + 2) % 2 === 1;
     if (isMirrored) {
       ctx.save();
-      ctx.translate(drawX + drawW, 0);
+      ctx.translate(drawX + renderW, 0);
       ctx.scale(-1, 1);
-      ctx.drawImage(img, 0, 0, drawW, drawH);
+      ctx.drawImage(img, 0, 0, renderW, drawH);
       ctx.restore();
     } else {
-      ctx.drawImage(img, drawX, 0, drawW, drawH);
+      ctx.drawImage(img, drawX, 0, renderW, drawH);
     }
   }
 }
