@@ -229,31 +229,59 @@ const GameLoader: React.FC<GameLoaderProps> = ({ onLoaded, progress }) => {
           </div>
         </div>
 
-        {/* Loading text — Arabic */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 4,
-          direction: 'rtl',
-        }}>
-          <span style={{
-            fontFamily: "'Tajawal', sans-serif",
-            fontSize: 14,
-            fontWeight: 500,
-            color: 'rgba(148,163,184,0.45)',
-            letterSpacing: 1,
+        {/* Loading text or Start button */}
+        {!ready ? (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            direction: 'rtl',
           }}>
-            جارٍ التحميل
-          </span>
-          <span style={{
-            fontFamily: "monospace",
-            fontSize: 14,
-            color: 'rgba(148,163,184,0.35)',
-            width: 20,
-            display: 'inline-block',
-            textAlign: 'left',
-          }}>
-            {dots}
-          </span>
-        </div>
+            <span style={{
+              fontFamily: "'Tajawal', sans-serif",
+              fontSize: 14,
+              fontWeight: 500,
+              color: 'rgba(148,163,184,0.45)',
+              letterSpacing: 1,
+            }}>
+              جارٍ التحميل
+            </span>
+            <span style={{
+              fontFamily: "monospace",
+              fontSize: 14,
+              color: 'rgba(148,163,184,0.35)',
+              width: 20,
+              display: 'inline-block',
+              textAlign: 'left',
+            }}>
+              {dots}
+            </span>
+          </div>
+        ) : (
+          <button
+            onClick={handleStart}
+            style={{
+              fontFamily: "'Tajawal', sans-serif",
+              fontSize: 18,
+              fontWeight: 700,
+              color: '#fef2f2',
+              background: 'linear-gradient(135deg, rgba(127,29,29,0.85) 0%, rgba(220,38,38,0.75) 100%)',
+              border: '1px solid rgba(252,165,165,0.2)',
+              borderRadius: 6,
+              padding: '14px 40px',
+              cursor: 'pointer',
+              letterSpacing: 0,
+              direction: 'rtl',
+              boxShadow: '0 0 20px rgba(220,38,38,0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
+              animation: 'buttonAppear 0.6s ease-out',
+              transition: 'transform 0.15s, box-shadow 0.15s',
+            }}
+            onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.96)')}
+            onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+            onTouchStart={e => (e.currentTarget.style.transform = 'scale(0.96)')}
+            onTouchEnd={e => (e.currentTarget.style.transform = 'scale(1)')}
+          >
+            ابدأ المغامرة ⚔️
+          </button>
+        )}
       </div>
 
       <style>{`
