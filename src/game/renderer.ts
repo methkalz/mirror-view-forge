@@ -2873,7 +2873,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = '#16a34a';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`MASK ${p.gasMaskTimer.toFixed(1)}s`, 30, effectY + 2);
+    ctx.fillText(`كمامة ${p.gasMaskTimer.toFixed(1)}`, 30, effectY + 2);
     ctx.globalAlpha = 1;
   }
 }
