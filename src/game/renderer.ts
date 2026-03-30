@@ -171,7 +171,7 @@ function drawSingleImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h
   const imgAspect = img.width / img.height;
   const drawH = h;
   let drawW = drawH * imgAspect;
-  const minWidth = viewportW + margin;
+  const minWidth = viewportW + margin * 2;
   if (drawW < minWidth) drawW = minWidth;
   const drawX = (viewportW - drawW) / 2 - camX * parallax;
   ctx.drawImage(img, drawX, 0, drawW, drawH);
