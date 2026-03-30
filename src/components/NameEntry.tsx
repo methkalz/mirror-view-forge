@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { startMenuMusic, stopMenuMusic } from '@/game/audio';
 
 interface BrandingConfig {
   logoUrl: string | null;
@@ -26,10 +25,11 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   const [shake, setShake] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [phase, setPhase] = useState<'sound-hint' | 'name-entry'>('sound-hint');
+  const [hintFading, setHintFading] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sparksRef = useRef<Spark[]>([]);
   const rafRef = useRef<number>(0);
-  const musicStarted = useRef(false);
 
   const title = branding?.gameTitle || 'SKYFALL';
   const subtitle = branding?.gameSubtitle || 'SURVIVAL';
@@ -38,7 +38,12 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   const showTitle = branding?.showTitle ?? true;
   const hasName = name.trim().length > 0;
 
-  // Music is now started from GameLoader button — no listeners needed here
+  // Phase transition: sound-hint → name-entry after 2s
+  useEffect(() => {
+    const fadeTimer = setTimeout(() => setHintFading(true), 1600);
+    const phaseTimer = setTimeout(() => setPhase('name-entry'), 2000);
+    return () => { clearTimeout(fadeTimer); clearTimeout(phaseTimer); };
+  }, []);
 
   // Spark particles
   useEffect(() => {
@@ -116,271 +121,281 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
     }}>
       <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }} />
 
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-
-        {/* Logo or Title */}
-        {logoUrl ? (
-          <div style={{ textAlign: 'center', marginBottom: 12 }}>
-            <img src={logoUrl} alt={title} style={{
-              width: 'clamp(80px, 25vw, 140px)', height: 'auto',
-              filter: 'drop-shadow(0 0 30px rgba(220,38,38,0.4))',
-              margin: '0 auto',
-            }} />
-            {showTitle && (
-              <h1 style={{
-                fontFamily: "'Tajawal', system-ui, sans-serif",
-                fontSize: 'clamp(20px, 5vw, 32px)',
-                fontWeight: 900,
-                color: 'transparent',
-                backgroundImage: 'linear-gradient(180deg, #f8fafc 0%, #94a3b8 100%)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                marginTop: 8,
-                letterSpacing: -0.5,
-              }}>
-                {title}
-              </h1>
-            )}
-          </div>
-        ) : (
-          <h1 style={{
-            fontFamily: "'Tajawal', system-ui, sans-serif",
-            fontSize: 'clamp(32px, 8vw, 56px)',
-            fontWeight: 900,
-            color: 'transparent',
-            backgroundImage: 'linear-gradient(180deg, #f8fafc 0%, #94a3b8 100%)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            marginBottom: 4,
-            letterSpacing: -1,
-            filter: 'drop-shadow(0 0 30px rgba(220,38,38,0.25))',
-          }}>
-            ☄️ {title}
-          </h1>
-        )}
-
-        {/* Subtitle with flicker */}
-        <p style={{
-          fontFamily: "'Tajawal', system-ui, sans-serif",
-          fontSize: 'clamp(10px, 2.5vw, 14px)',
-          color: 'rgba(148,163,184,0.6)',
-          marginBottom: 36,
-          letterSpacing: 6,
-          textTransform: 'uppercase',
-          animation: 'subtitleFlicker 4s ease-in-out infinite',
-        }}>
-          {subtitle}
-        </p>
-
-        {/* Glass Card with HUD corners */}
+      {/* Phase 1: Sound Hint */}
+      {phase === 'sound-hint' && (
         <div style={{
-          background: 'rgba(255,255,255,0.03)',
-          backdropFilter: 'blur(32px)',
-          WebkitBackdropFilter: 'blur(32px)',
-          borderRadius: 20,
-          border: '1px solid rgba(255,255,255,0.1)',
-          padding: '40px 28px 36px',
-          width: 'min(340px, 88vw)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22,
-          boxShadow: '0 8px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 100px rgba(220,38,38,0.06)',
-          position: 'relative', overflow: 'hidden',
+          position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 24,
+          animation: hintFading ? 'hintFadeOut 0.4s ease-in forwards' : 'hintFadeIn 0.3s ease-out',
         }}>
-          {/* Inner glow */}
+          {/* Phone icon with sound waves */}
           <div style={{
-            position: 'absolute', top: -80, left: '50%', transform: 'translateX(-50%)',
-            width: 260, height: 160, borderRadius: '50%',
-            background: 'radial-gradient(ellipse, rgba(220,38,38,0.1) 0%, transparent 70%)',
-            pointerEvents: 'none',
-          }} />
-
-          {/* HUD Corner brackets */}
-          {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map(pos => {
-            const isTop = pos.includes('top');
-            const isLeft = pos.includes('left');
-            const cornerRadius = 16;
-            return (
-              <div key={pos} style={{
-                position: 'absolute',
-                [isTop ? 'top' : 'bottom']: 6,
-                [isLeft ? 'left' : 'right']: 6,
-                width: 22, height: 22,
-                borderColor: 'rgba(220,38,38,0.4)',
-                borderStyle: 'solid',
-                borderWidth: 0,
-                ...(isTop && isLeft ? { borderTopWidth: 1.5, borderLeftWidth: 1.5, borderTopLeftRadius: cornerRadius } : {}),
-                ...(isTop && !isLeft ? { borderTopWidth: 1.5, borderRightWidth: 1.5, borderTopRightRadius: cornerRadius } : {}),
-                ...(!isTop && isLeft ? { borderBottomWidth: 1.5, borderLeftWidth: 1.5, borderBottomLeftRadius: cornerRadius } : {}),
-                ...(!isTop && !isLeft ? { borderBottomWidth: 1.5, borderRightWidth: 1.5, borderBottomRightRadius: cornerRadius } : {}),
-                pointerEvents: 'none',
-              }} />
-            );
-          })}
-
-          <label style={{
-            fontFamily: "'Tajawal', system-ui, sans-serif",
-            fontSize: 14,
-            color: 'rgba(203,213,225,0.85)',
-            letterSpacing: 1,
-            zIndex: 1,
-          }}>
-            أدخل اسم البطل
-          </label>
-
-          {/* Input with beveled style */}
-          <div style={{ width: '100%', position: 'relative', zIndex: 1 }}>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              maxLength={20}
-              placeholder="HERO NAME"
-              autoFocus
-              style={{
-                width: '100%',
-                padding: '14px 16px',
-                borderRadius: bevelRadius,
-                border: `1.5px solid ${shake ? 'rgba(220,38,38,0.7)' : focused ? 'rgba(220,38,38,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                background: 'rgba(0,0,0,0.4)',
-                color: '#f1f5f9',
-                fontSize: 18,
-                fontFamily: "'Tajawal', system-ui, sans-serif",
-                fontWeight: 600,
-                textAlign: 'center',
-                outline: 'none',
-                transition: 'border-color 0.3s, box-shadow 0.3s',
-                boxShadow: shake
-                  ? '0 0 16px rgba(220,38,38,0.3)'
-                  : focused
-                    ? '0 0 20px rgba(220,38,38,0.15), inset 0 0 20px rgba(220,38,38,0.05)'
-                    : '0 2px 12px rgba(0,0,0,0.3)',
-                animation: shake ? 'shake 0.5s ease' : 'none',
-              }}
-            />
-          </div>
-
-          {/* Battle Button — Beveled Military */}
-          <div style={{ width: '100%', position: 'relative', zIndex: 1 }}>
-            <button
-              onClick={handleSubmit}
-              style={{
-                width: '100%',
-                padding: '16px 24px',
-                borderRadius: bevelRadius,
-                border: hasName ? '1.5px solid rgba(220,38,38,0.6)' : '1.5px solid rgba(255,255,255,0.08)',
-                background: hasName
-                  ? 'linear-gradient(135deg, rgba(153,27,27,0.5) 0%, rgba(127,29,29,0.7) 50%, rgba(153,27,27,0.5) 100%)'
-                  : 'rgba(255,255,255,0.03)',
-                color: hasName ? '#fff' : 'rgba(255,255,255,0.25)',
-                fontSize: 18,
-                fontFamily: "'Tajawal', system-ui, sans-serif",
-                fontWeight: 800,
-                cursor: hasName ? 'pointer' : 'default',
-                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                direction: 'rtl',
-                position: 'relative',
-                overflow: 'hidden',
-                textShadow: hasName ? '0 0 16px rgba(220,38,38,0.7)' : 'none',
-                boxShadow: hasName
-                  ? '0 0 30px rgba(220,38,38,0.2), inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 20px rgba(0,0,0,0.4)'
-                  : 'none',
-                outline: 'none',
-              }}
-              onPointerDown={e => { if (hasName) (e.currentTarget as HTMLElement).style.transform = 'scale(0.96)'; }}
-              onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
-              onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
-            >
-              {/* Energy pulse overlay */}
-              {hasName && (
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  background: 'radial-gradient(ellipse at center, rgba(220,38,38,0.15) 0%, transparent 70%)',
-                  animation: 'energyPulse 2.5s ease-in-out infinite',
-                  pointerEvents: 'none',
-                }} />
-              )}
-
-              {/* Scan line */}
-              {hasName && (
-                <div style={{
-                  position: 'absolute', left: 0, right: 0, height: 1,
-                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%)',
-                  animation: 'scanLine 3s linear infinite',
-                  pointerEvents: 'none',
-                }} />
-              )}
-
-              <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <span>ابدأ المعركة</span>
-                {hasName && <span style={{ fontSize: 16, opacity: 0.8 }}>⚔</span>}
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* Silent mode hint */}
-        <div style={{
-          marginTop: 24, display: 'flex', alignItems: 'center', gap: 8,
-          animation: 'silentHintFade 5s ease-in-out forwards',
-          opacity: 0.7,
-        }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 4,
+            display: 'flex', alignItems: 'center', gap: 10,
             animation: 'phoneSwing 2s ease-in-out infinite',
           }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(200,200,200,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <rect x="5" y="2" width="14" height="20" rx="3" />
               <line x1="12" y1="18" x2="12" y2="18.01" />
             </svg>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               {[0, 1, 2].map(i => (
                 <div key={i} style={{
-                  width: 4 + i * 3, height: 1.5,
-                  background: 'rgba(200,200,200,0.4)',
-                  borderRadius: 1,
+                  width: 6 + i * 5, height: 2.5,
+                  background: 'rgba(255,255,255,0.45)',
+                  borderRadius: 2,
                   animation: `soundWave 1.5s ease-in-out ${i * 0.2}s infinite`,
                 }} />
               ))}
             </div>
           </div>
-          <p style={{
-            fontFamily: "'Tajawal', system-ui, sans-serif",
-            fontSize: 12,
-            color: 'rgba(180,180,190,0.5)',
-            direction: 'rtl',
-          }}>
-            أطفئ الوضع الصامت لتجربة أفضل
-          </p>
-        </div>
 
-        {/* Developer credit */}
-        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-          <div style={{
-            width: 40, height: 1,
-            background: 'linear-gradient(90deg, transparent, rgba(100,116,139,0.3), transparent)',
-          }} />
+          {/* Text */}
           <p style={{
             fontFamily: "'Tajawal', system-ui, sans-serif",
-            fontSize: 13,
-            color: 'rgba(100,116,139,0.65)',
-            fontWeight: 600,
+            fontSize: 22,
+            fontWeight: 700,
+            color: 'rgba(255,255,255,0.7)',
             direction: 'rtl',
+            textAlign: 'center',
+            letterSpacing: 0.5,
           }}>
-            تطوير: {developer}
-          </p>
-          <p style={{
-            fontFamily: "monospace",
-            fontSize: 10,
-            color: 'rgba(100,116,139,0.35)',
-            letterSpacing: 3,
-            textTransform: 'uppercase',
-          }}>
-            METHKAL ZIDANE
+            🔊 فعّل الصوت لتجربة أفضل
           </p>
         </div>
-      </div>
+      )}
+
+      {/* Phase 2: Name Entry */}
+      {phase === 'name-entry' && (
+        <div style={{
+          position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column',
+          alignItems: 'center', width: '100%',
+          animation: 'nameEntryFadeIn 0.5s ease-out',
+        }}>
+          {/* Logo or Title */}
+          {logoUrl ? (
+            <div style={{ textAlign: 'center', marginBottom: 12 }}>
+              <img src={logoUrl} alt={title} style={{
+                width: 'clamp(80px, 25vw, 140px)', height: 'auto',
+                filter: 'drop-shadow(0 0 30px rgba(220,38,38,0.4))',
+                margin: '0 auto',
+              }} />
+              {showTitle && (
+                <h1 style={{
+                  fontFamily: "'Tajawal', system-ui, sans-serif",
+                  fontSize: 'clamp(20px, 5vw, 32px)',
+                  fontWeight: 900,
+                  color: 'transparent',
+                  backgroundImage: 'linear-gradient(180deg, #f8fafc 0%, #94a3b8 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  marginTop: 8,
+                  letterSpacing: -0.5,
+                }}>
+                  {title}
+                </h1>
+              )}
+            </div>
+          ) : (
+            <h1 style={{
+              fontFamily: "'Tajawal', system-ui, sans-serif",
+              fontSize: 'clamp(32px, 8vw, 56px)',
+              fontWeight: 900,
+              color: 'transparent',
+              backgroundImage: 'linear-gradient(180deg, #f8fafc 0%, #94a3b8 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              marginBottom: 4,
+              letterSpacing: -1,
+              filter: 'drop-shadow(0 0 30px rgba(220,38,38,0.25))',
+            }}>
+              ☄️ {title}
+            </h1>
+          )}
+
+          {/* Subtitle */}
+          <p style={{
+            fontFamily: "'Tajawal', system-ui, sans-serif",
+            fontSize: 'clamp(10px, 2.5vw, 14px)',
+            color: 'rgba(148,163,184,0.6)',
+            marginBottom: 36,
+            letterSpacing: 6,
+            textTransform: 'uppercase',
+            animation: 'subtitleFlicker 4s ease-in-out infinite',
+          }}>
+            {subtitle}
+          </p>
+
+          {/* Glass Card */}
+          <div style={{
+            background: 'rgba(255,255,255,0.03)',
+            backdropFilter: 'blur(32px)',
+            WebkitBackdropFilter: 'blur(32px)',
+            borderRadius: 20,
+            border: '1px solid rgba(255,255,255,0.1)',
+            padding: '40px 28px 36px',
+            width: 'min(340px, 88vw)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22,
+            boxShadow: '0 8px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 100px rgba(220,38,38,0.06)',
+            position: 'relative', overflow: 'hidden',
+          }}>
+            {/* Inner glow */}
+            <div style={{
+              position: 'absolute', top: -80, left: '50%', transform: 'translateX(-50%)',
+              width: 260, height: 160, borderRadius: '50%',
+              background: 'radial-gradient(ellipse, rgba(220,38,38,0.1) 0%, transparent 70%)',
+              pointerEvents: 'none',
+            }} />
+
+            {/* HUD Corner brackets */}
+            {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map(pos => {
+              const isTop = pos.includes('top');
+              const isLeft = pos.includes('left');
+              const cornerRadius = 16;
+              return (
+                <div key={pos} style={{
+                  position: 'absolute',
+                  [isTop ? 'top' : 'bottom']: 6,
+                  [isLeft ? 'left' : 'right']: 6,
+                  width: 22, height: 22,
+                  borderColor: 'rgba(220,38,38,0.4)',
+                  borderStyle: 'solid',
+                  borderWidth: 0,
+                  ...(isTop && isLeft ? { borderTopWidth: 1.5, borderLeftWidth: 1.5, borderTopLeftRadius: cornerRadius } : {}),
+                  ...(isTop && !isLeft ? { borderTopWidth: 1.5, borderRightWidth: 1.5, borderTopRightRadius: cornerRadius } : {}),
+                  ...(!isTop && isLeft ? { borderBottomWidth: 1.5, borderLeftWidth: 1.5, borderBottomLeftRadius: cornerRadius } : {}),
+                  ...(!isTop && !isLeft ? { borderBottomWidth: 1.5, borderRightWidth: 1.5, borderBottomRightRadius: cornerRadius } : {}),
+                  pointerEvents: 'none',
+                }} />
+              );
+            })}
+
+            <label style={{
+              fontFamily: "'Tajawal', system-ui, sans-serif",
+              fontSize: 14,
+              color: 'rgba(203,213,225,0.85)',
+              letterSpacing: 1,
+              zIndex: 1,
+            }}>
+              أدخل اسم البطل
+            </label>
+
+            {/* Input */}
+            <div style={{ width: '100%', position: 'relative', zIndex: 1 }}>
+              <input
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                onFocus={() => setFocused(true)}
+                onBlur={() => setFocused(false)}
+                maxLength={20}
+                placeholder="HERO NAME"
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '14px 16px',
+                  borderRadius: bevelRadius,
+                  border: `1.5px solid ${shake ? 'rgba(220,38,38,0.7)' : focused ? 'rgba(220,38,38,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                  background: 'rgba(0,0,0,0.4)',
+                  color: '#f1f5f9',
+                  fontSize: 18,
+                  fontFamily: "'Tajawal', system-ui, sans-serif",
+                  fontWeight: 600,
+                  textAlign: 'center',
+                  outline: 'none',
+                  transition: 'border-color 0.3s, box-shadow 0.3s',
+                  boxShadow: shake
+                    ? '0 0 16px rgba(220,38,38,0.3)'
+                    : focused
+                      ? '0 0 20px rgba(220,38,38,0.15), inset 0 0 20px rgba(220,38,38,0.05)'
+                      : '0 2px 12px rgba(0,0,0,0.3)',
+                  animation: shake ? 'shake 0.5s ease' : 'none',
+                }}
+              />
+            </div>
+
+            {/* Battle Button */}
+            <div style={{ width: '100%', position: 'relative', zIndex: 1 }}>
+              <button
+                onClick={handleSubmit}
+                style={{
+                  width: '100%',
+                  padding: '16px 24px',
+                  borderRadius: bevelRadius,
+                  border: hasName ? '1.5px solid rgba(220,38,38,0.6)' : '1.5px solid rgba(255,255,255,0.08)',
+                  background: hasName
+                    ? 'linear-gradient(135deg, rgba(153,27,27,0.5) 0%, rgba(127,29,29,0.7) 50%, rgba(153,27,27,0.5) 100%)'
+                    : 'rgba(255,255,255,0.03)',
+                  color: hasName ? '#fff' : 'rgba(255,255,255,0.25)',
+                  fontSize: 18,
+                  fontFamily: "'Tajawal', system-ui, sans-serif",
+                  fontWeight: 800,
+                  cursor: hasName ? 'pointer' : 'default',
+                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                  direction: 'rtl',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  textShadow: hasName ? '0 0 16px rgba(220,38,38,0.7)' : 'none',
+                  boxShadow: hasName
+                    ? '0 0 30px rgba(220,38,38,0.2), inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 20px rgba(0,0,0,0.4)'
+                    : 'none',
+                  outline: 'none',
+                }}
+                onPointerDown={e => { if (hasName) (e.currentTarget as HTMLElement).style.transform = 'scale(0.96)'; }}
+                onPointerUp={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+                onPointerLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+              >
+                {hasName && (
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: 'radial-gradient(ellipse at center, rgba(220,38,38,0.15) 0%, transparent 70%)',
+                    animation: 'energyPulse 2.5s ease-in-out infinite',
+                    pointerEvents: 'none',
+                  }} />
+                )}
+                {hasName && (
+                  <div style={{
+                    position: 'absolute', left: 0, right: 0, height: 1,
+                    background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%)',
+                    animation: 'scanLine 3s linear infinite',
+                    pointerEvents: 'none',
+                  }} />
+                )}
+                <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <span>ابدأ المعركة</span>
+                  {hasName && <span style={{ fontSize: 16, opacity: 0.8 }}>⚔</span>}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Developer credit — single instance */}
+          <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <div style={{
+              width: 40, height: 1,
+              background: 'linear-gradient(90deg, transparent, rgba(100,116,139,0.3), transparent)',
+            }} />
+            <p style={{
+              fontFamily: "'Tajawal', system-ui, sans-serif",
+              fontSize: 13,
+              color: 'rgba(100,116,139,0.65)',
+              fontWeight: 600,
+              direction: 'rtl',
+            }}>
+              تطوير: {developer}
+            </p>
+            <p style={{
+              fontFamily: "monospace",
+              fontSize: 10,
+              color: 'rgba(100,116,139,0.35)',
+              letterSpacing: 3,
+              textTransform: 'uppercase',
+            }}>
+              METHKAL ZIDANE
+            </p>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes shake {
@@ -406,11 +421,17 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           70% { opacity: 0.5; }
           85% { opacity: 0.75; }
         }
-        @keyframes silentHintFade {
-          0% { opacity: 0; }
-          10% { opacity: 0.7; }
-          70% { opacity: 0.7; }
-          100% { opacity: 0; }
+        @keyframes hintFadeIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes hintFadeOut {
+          from { opacity: 1; transform: scale(1); }
+          to { opacity: 0; transform: scale(1.05); }
+        }
+        @keyframes nameEntryFadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         @keyframes phoneSwing {
           0%, 100% { transform: rotate(-12deg); }
