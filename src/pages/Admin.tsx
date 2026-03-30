@@ -1329,7 +1329,7 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
         {/* Phase markers */}
         <div style={{ display: 'flex', marginTop: 4 }}>
           {phases.map((p, i) => {
-            const meta = PHASE_META[p.phase] || { icon: '🖼️', label: p.phase, color: '#94a3b8' };
+            const meta = getDynamicMeta(p.phase, i);
             return (
               <div key={p.id} style={{
                 flex: 1, textAlign: 'center', fontSize: 9, color: activePhaseIdx === i && playingUI ? meta.color : 'rgba(148,163,184,0.3)',
