@@ -98,7 +98,7 @@ const SkyfallGame: React.FC = () => {
       .channel('bg-config-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'background_config' }, () => {
         fetchBackgroundConfig().then(phases => {
-          if (phases.length > 0) setBackgroundConfig(phases);
+          if (phases.length > 0) setBackgroundConfig(phases, remoteConfigRef.current?.bgLoop);
         });
       })
       .subscribe();
