@@ -1174,49 +1174,24 @@ function drawExtinguisherIcon(ctx: CanvasRenderingContext2D, s: number) {
 }
 
 function drawGasMaskIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // Mask outline
+  // Flat white gas mask
   const mw = s * 0.65, mh = s * 0.7;
-  ctx.fillStyle = '#1a3a2a';
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.ellipse(0, 0, mw, mh, 0, 0, Math.PI * 2);
   ctx.fill();
-  // Inner mask — darker
-  ctx.fillStyle = '#0f2a1a';
-  ctx.beginPath();
-  ctx.ellipse(0, mh * 0.05, mw * 0.8, mh * 0.8, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Eye lenses — circular, reflective green
+  // Eye holes (cut out effect via darker color)
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
   for (const ex of [-mw * 0.35, mw * 0.35]) {
-    ctx.fillStyle = '#065f46';
     ctx.beginPath();
     ctx.arc(ex, -mh * 0.15, s * 0.2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#10b981';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    // Lens reflection
-    ctx.fillStyle = 'rgba(16,185,129,0.4)';
-    ctx.beginPath();
-    ctx.arc(ex - s * 0.05, -mh * 0.2, s * 0.08, 0, Math.PI * 2);
-    ctx.fill();
   }
-  // Filter canister at bottom
-  ctx.fillStyle = '#374151';
+  // Filter canister
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.roundRect(-mw * 0.25, mh * 0.3, mw * 0.5, mh * 0.35, 2);
   ctx.fill();
-  ctx.strokeStyle = '#6b7280';
-  ctx.lineWidth = 0.8;
-  ctx.stroke();
-  // Grill lines on filter
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-  for (let i = 0; i < 3; i++) {
-    const gy = mh * 0.38 + i * mh * 0.1;
-    ctx.beginPath();
-    ctx.moveTo(-mw * 0.18, gy);
-    ctx.lineTo(mw * 0.18, gy);
-    ctx.stroke();
-  }
 }
 
 // ─── Fire Pools ────────────────────────────────────────
