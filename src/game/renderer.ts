@@ -1934,112 +1934,313 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
     const damageTilt = damaged ? Math.sin(d.wobble * 8) * 0.08 : 0;
     ctx.rotate(tilt + damageTilt);
 
-    // === CARGO DRONE ===
+    // ═══ CARGO DRONE — C-130 MILITARY TRANSPORT ═══
     if (d.tier === 'cargo') {
       const dir = facingRight ? 1 : -1;
       const sz = d.size;
+      const tt = g.elapsed;
 
-      // Rope hanging down to crate
-      ctx.strokeStyle = '#8b7355';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(-sz * 0.2, sz * 0.4);
-      ctx.lineTo(-sz * 0.15, sz * 1.8);
-      ctx.moveTo(sz * 0.2, sz * 0.4);
-      ctx.lineTo(sz * 0.15, sz * 1.8);
-      ctx.stroke();
+      // ── 4 Ropes hanging to crate ──
+      ctx.strokeStyle = '#7a6545';
+      ctx.lineWidth = 1.2;
+      const crateY = sz * 2.0;
+      const crateW = sz * 0.8;
+      const crateH = sz * 0.55;
+      for (const rx of [-0.25, -0.08, 0.08, 0.25]) {
+        const sway = Math.sin(tt * 2 + rx * 10) * 1.5;
+        ctx.beginPath();
+        ctx.moveTo(rx * sz * 1.5, sz * 0.35);
+        ctx.quadraticCurveTo(rx * sz * 1.2 + sway, crateY * 0.55, rx * sz * 2.2, crateY - crateH / 2);
+        ctx.stroke();
+      }
 
-      // Golden crate below
-      const crateY = sz * 1.8;
-      const crateW = sz * 0.7;
-      const crateH = sz * 0.5;
-      const crateGrad = ctx.createLinearGradient(0, crateY - crateH / 2, 0, crateY + crateH / 2);
-      crateGrad.addColorStop(0, '#daa520');
-      crateGrad.addColorStop(0.5, '#b8860b');
-      crateGrad.addColorStop(1, '#8b6914');
-      ctx.fillStyle = crateGrad;
-      ctx.fillRect(-crateW / 2, crateY - crateH / 2, crateW, crateH);
-      // Crate edge
-      ctx.strokeStyle = '#6b4c0a';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(-crateW / 2, crateY - crateH / 2, crateW, crateH);
-      // Cross straps
-      ctx.strokeStyle = 'rgba(100,70,20,0.5)';
-      ctx.lineWidth = 1;
+      // ── 3D Crate — two visible faces ──
+      const cxOff = sz * 0.08;
+      const cyOff = -sz * 0.06;
+      // Side face
+      const sideGrad = ctx.createLinearGradient(-crateW / 2 + cxOff, crateY, crateW / 2 + cxOff, crateY);
+      sideGrad.addColorStop(0, '#b8860b');
+      sideGrad.addColorStop(1, '#8b6914');
+      ctx.fillStyle = sideGrad;
       ctx.beginPath();
       ctx.moveTo(-crateW / 2, crateY - crateH / 2);
+      ctx.lineTo(-crateW / 2 + cxOff, crateY - crateH / 2 + cyOff);
+      ctx.lineTo(crateW / 2 + cxOff, crateY - crateH / 2 + cyOff);
+      ctx.lineTo(crateW / 2 + cxOff, crateY + crateH / 2 + cyOff);
       ctx.lineTo(crateW / 2, crateY + crateH / 2);
-      ctx.moveTo(crateW / 2, crateY - crateH / 2);
-      ctx.lineTo(-crateW / 2, crateY + crateH / 2);
-      ctx.stroke();
-
-      // Orange fuselage
-      const bodyGrad = ctx.createLinearGradient(0, -sz * 0.35, 0, sz * 0.35);
-      bodyGrad.addColorStop(0, '#e8760a');
-      bodyGrad.addColorStop(0.4, '#d4680a');
-      bodyGrad.addColorStop(1, '#b05508');
-      ctx.fillStyle = bodyGrad;
-      ctx.beginPath();
-      ctx.moveTo(dir * sz * 1.2, 0);
-      ctx.lineTo(dir * sz * 0.5, -sz * 0.35);
-      ctx.lineTo(-dir * sz * 0.8, -sz * 0.3);
-      ctx.lineTo(-dir * sz * 1.0, 0);
-      ctx.lineTo(-dir * sz * 0.8, sz * 0.35);
-      ctx.lineTo(dir * sz * 0.5, sz * 0.4);
+      ctx.lineTo(crateW / 2, crateY - crateH / 2);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#8b4500';
-      ctx.lineWidth = 1;
+      // Front face
+      const frontGrad = ctx.createLinearGradient(0, crateY - crateH / 2, 0, crateY + crateH / 2);
+      frontGrad.addColorStop(0, '#daa520');
+      frontGrad.addColorStop(0.5, '#c49315');
+      frontGrad.addColorStop(1, '#a07b10');
+      ctx.fillStyle = frontGrad;
+      ctx.fillRect(-crateW / 2, crateY - crateH / 2, crateW, crateH);
+      ctx.strokeStyle = '#6b4c0a';
+      ctx.lineWidth = 0.8;
+      ctx.strokeRect(-crateW / 2, crateY - crateH / 2, crateW, crateH);
+      // Horizontal straps
+      ctx.strokeStyle = '#5a4008';
+      ctx.lineWidth = 1.8;
+      for (const sy of [-0.15, 0.15]) {
+        ctx.beginPath();
+        ctx.moveTo(-crateW / 2, crateY + crateH * sy);
+        ctx.lineTo(crateW / 2, crateY + crateH * sy);
+        ctx.stroke();
+      }
+      // Strap buckle
+      ctx.fillStyle = '#888';
+      ctx.fillRect(-2, crateY - 2, 4, 4);
+
+      // ── Fuselage — C-130 rounded cylinder ──
+      ctx.save();
+      ctx.scale(dir, 1);
+
+      const fuseLen = sz * 2.4;
+      const fuseH = sz * 0.42;
+
+      // Body shadow underneath
+      ctx.fillStyle = 'rgba(0,0,0,0.1)';
+      ctx.beginPath();
+      ctx.ellipse(0, fuseH * 0.9, fuseLen * 0.7, fuseH * 0.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Main fuselage — cylindrical gradient
+      const fuseGrad = ctx.createLinearGradient(0, -fuseH * 1.2, 0, fuseH * 1.2);
+      fuseGrad.addColorStop(0, '#7a8a6a');
+      fuseGrad.addColorStop(0.15, '#8fa07a');
+      fuseGrad.addColorStop(0.3, '#6b7a5d');
+      fuseGrad.addColorStop(0.6, '#556a48');
+      fuseGrad.addColorStop(0.85, '#3d4a35');
+      fuseGrad.addColorStop(1, '#2d3628');
+      ctx.fillStyle = fuseGrad;
+      ctx.beginPath();
+      // Nose — rounded
+      ctx.moveTo(fuseLen * 0.5, 0);
+      ctx.bezierCurveTo(fuseLen * 0.5, -fuseH * 0.7, fuseLen * 0.42, -fuseH, fuseLen * 0.3, -fuseH);
+      // Top
+      ctx.lineTo(-fuseLen * 0.35, -fuseH);
+      // Tail — upswept
+      ctx.bezierCurveTo(-fuseLen * 0.5, -fuseH, -fuseLen * 0.55, -fuseH * 1.3, -fuseLen * 0.55, -fuseH * 1.5);
+      // Back
+      ctx.lineTo(-fuseLen * 0.55, fuseH * 0.5);
+      // Bottom
+      ctx.lineTo(-fuseLen * 0.35, fuseH);
+      ctx.lineTo(fuseLen * 0.3, fuseH);
+      // Nose bottom
+      ctx.bezierCurveTo(fuseLen * 0.42, fuseH, fuseLen * 0.5, fuseH * 0.7, fuseLen * 0.5, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(30,40,27,0.5)';
+      ctx.lineWidth = 0.8;
       ctx.stroke();
 
-      // Wings
-      ctx.fillStyle = '#c25a08';
-      ctx.beginPath();
-      ctx.moveTo(dir * sz * 0.1, -sz * 0.3);
-      ctx.lineTo(-dir * sz * 0.3, -sz * 1.1);
-      ctx.lineTo(-dir * sz * 0.7, -sz * 0.9);
-      ctx.lineTo(-dir * sz * 0.5, -sz * 0.3);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(dir * sz * 0.1, sz * 0.35);
-      ctx.lineTo(-dir * sz * 0.3, sz * 1.1);
-      ctx.lineTo(-dir * sz * 0.7, sz * 0.9);
-      ctx.lineTo(-dir * sz * 0.5, sz * 0.35);
-      ctx.fill();
+      // Panel lines on fuselage
+      ctx.strokeStyle = 'rgba(20,30,15,0.2)';
+      ctx.lineWidth = 0.4;
+      for (const plx of [-0.2, 0, 0.15]) {
+        ctx.beginPath();
+        ctx.moveTo(fuseLen * plx, -fuseH * 0.95);
+        ctx.lineTo(fuseLen * plx, fuseH * 0.95);
+        ctx.stroke();
+      }
 
-      // Dual engines
-      for (const ey of [-sz * 0.15, sz * 0.15]) {
-        ctx.fillStyle = '#555';
+      // Top specular
+      const fuseSpec = ctx.createLinearGradient(0, -fuseH * 1.1, 0, -fuseH * 0.3);
+      fuseSpec.addColorStop(0, 'rgba(255,255,255,0)');
+      fuseSpec.addColorStop(0.5, 'rgba(255,255,255,0.1)');
+      fuseSpec.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = fuseSpec;
+      ctx.fillRect(-fuseLen * 0.4, -fuseH, fuseLen * 0.85, fuseH * 0.4);
+
+      // ── Cockpit windows ──
+      ctx.fillStyle = 'rgba(100,180,255,0.7)';
+      ctx.shadowColor = 'rgba(100,180,255,0.4)';
+      ctx.shadowBlur = 4;
+      for (let wi = 0; wi < 3; wi++) {
+        const wx = fuseLen * 0.35 - wi * sz * 0.12;
+        const wy = -fuseH * 0.65;
+        ctx.fillRect(wx, wy, sz * 0.08, sz * 0.06);
+      }
+      ctx.shadowBlur = 0;
+
+      // ── Wings — wide straight (transport style) ──
+      const wingSpan = sz * 1.5;
+      const wingW = sz * 0.4;
+      const wingGrad = ctx.createLinearGradient(0, -wingSpan, 0, wingSpan);
+      wingGrad.addColorStop(0, '#4a5a3e');
+      wingGrad.addColorStop(0.5, '#5a6a4e');
+      wingGrad.addColorStop(1, '#3d4a35');
+      ctx.fillStyle = wingGrad;
+      // Top wing
+      ctx.beginPath();
+      ctx.moveTo(fuseLen * 0.05, -fuseH);
+      ctx.lineTo(-fuseLen * 0.15, -fuseH);
+      ctx.lineTo(-fuseLen * 0.25, -wingSpan);
+      ctx.lineTo(fuseLen * 0.05 - wingW * 0.3, -wingSpan);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(30,40,27,0.3)';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+      // Bottom wing
+      ctx.fillStyle = wingGrad;
+      ctx.beginPath();
+      ctx.moveTo(fuseLen * 0.05, fuseH);
+      ctx.lineTo(-fuseLen * 0.15, fuseH);
+      ctx.lineTo(-fuseLen * 0.25, wingSpan);
+      ctx.lineTo(fuseLen * 0.05 - wingW * 0.3, wingSpan);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // ── 4 Engines on pylons ──
+      const enginePositions = [
+        { ey: -wingSpan * 0.35, px: -fuseLen * 0.08 },
+        { ey: -wingSpan * 0.7, px: -fuseLen * 0.15 },
+        { ey: wingSpan * 0.35, px: -fuseLen * 0.08 },
+        { ey: wingSpan * 0.7, px: -fuseLen * 0.15 },
+      ];
+      for (const eng of enginePositions) {
+        // Pylon
+        ctx.strokeStyle = '#4a5a3e';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.ellipse(-dir * sz * 0.95, ey, 4, 3, 0, 0, Math.PI * 2);
+        ctx.moveTo(eng.px + fuseLen * 0.05, eng.ey > 0 ? fuseH : -fuseH);
+        ctx.lineTo(eng.px, eng.ey);
+        ctx.stroke();
+
+        // Nacelle
+        const nGrad = ctx.createLinearGradient(eng.px - 5, eng.ey - 4, eng.px + 5, eng.ey + 4);
+        nGrad.addColorStop(0, '#6a6a6a');
+        nGrad.addColorStop(0.5, '#555');
+        nGrad.addColorStop(1, '#3a3a3a');
+        ctx.fillStyle = nGrad;
+        ctx.beginPath();
+        ctx.ellipse(eng.px, eng.ey, sz * 0.12, sz * 0.07, 0, 0, Math.PI * 2);
         ctx.fill();
-        // Exhaust
-        ctx.fillStyle = `rgba(100,180,255,${0.3 + Math.random() * 0.2})`;
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+
+        // Propeller disc (spinning)
+        ctx.strokeStyle = 'rgba(200,200,200,0.25)';
+        ctx.lineWidth = 0.5;
         ctx.beginPath();
-        ctx.moveTo(-dir * sz * 0.95, ey - 1.5);
-        ctx.lineTo(-dir * (sz * 0.95 + 6 + Math.random() * 4), ey);
-        ctx.lineTo(-dir * sz * 0.95, ey + 1.5);
+        ctx.arc(eng.px + sz * 0.1, eng.ey, sz * 0.06, 0, Math.PI * 2);
+        ctx.stroke();
+        // Prop blur
+        ctx.fillStyle = 'rgba(200,200,200,0.08)';
+        ctx.beginPath();
+        ctx.arc(eng.px + sz * 0.1, eng.ey, sz * 0.06, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Exhaust
+        const exLen = 4 + Math.random() * 3;
+        ctx.fillStyle = `rgba(100,180,255,${0.15 + Math.random() * 0.1})`;
+        ctx.beginPath();
+        ctx.moveTo(eng.px - sz * 0.12, eng.ey - 1.5);
+        ctx.lineTo(eng.px - sz * 0.12 - exLen, eng.ey);
+        ctx.lineTo(eng.px - sz * 0.12, eng.ey + 1.5);
         ctx.fill();
       }
 
-      // "OTLOP" label on body — always readable (never mirrored)
+      // ── T-tail — vertical fin + horizontal stabilizers ──
+      // Vertical fin
+      const tailGrad = ctx.createLinearGradient(-fuseLen * 0.55, -fuseH * 1.5, -fuseLen * 0.55, -fuseH * 3);
+      tailGrad.addColorStop(0, '#5a6a4e');
+      tailGrad.addColorStop(1, '#3d4a35');
+      ctx.fillStyle = tailGrad;
+      ctx.beginPath();
+      ctx.moveTo(-fuseLen * 0.5, -fuseH * 1.2);
+      ctx.lineTo(-fuseLen * 0.55, -fuseH * 2.8);
+      ctx.lineTo(-fuseLen * 0.62, -fuseH * 2.8);
+      ctx.lineTo(-fuseLen * 0.58, -fuseH * 1.2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(30,40,27,0.3)';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+
+      // Horizontal stabilizers (at top of vertical fin)
+      ctx.fillStyle = '#4a5a3e';
+      ctx.beginPath();
+      ctx.moveTo(-fuseLen * 0.53, -fuseH * 2.7);
+      ctx.lineTo(-fuseLen * 0.65, -fuseH * 2.7);
+      ctx.lineTo(-fuseLen * 0.63, -fuseH * 3.3);
+      ctx.lineTo(-fuseLen * 0.55, -fuseH * 3.3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-fuseLen * 0.53, -fuseH * 2.7);
+      ctx.lineTo(-fuseLen * 0.65, -fuseH * 2.7);
+      ctx.lineTo(-fuseLen * 0.63, -fuseH * 2.1);
+      ctx.lineTo(-fuseLen * 0.55, -fuseH * 2.1);
+      ctx.closePath();
+      ctx.fill();
+
+      // ── Cargo door (back) — slightly open ──
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-fuseLen * 0.55, fuseH * 0.3);
+      ctx.lineTo(-fuseLen * 0.55, fuseH * 0.9);
+      ctx.stroke();
+
+      // ── Navigation lights ──
+      // Red left (top wingtip)
+      ctx.fillStyle = '#ef4444';
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 5;
+      ctx.beginPath();
+      ctx.arc(-fuseLen * 0.22, -wingSpan + 2, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      // Green right (bottom wingtip)
+      ctx.fillStyle = '#22c55e';
+      ctx.shadowColor = '#22c55e';
+      ctx.beginPath();
+      ctx.arc(-fuseLen * 0.22, wingSpan - 2, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // ── Strobe light (belly) — flashing ──
+      if (Math.sin(tt * 5) > 0.6) {
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = '#fff';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(fuseLen * 0.1, fuseH * 0.5, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      // ── Small emblem on vertical tail ──
+      ctx.fillStyle = 'rgba(200,180,120,0.4)';
+      ctx.beginPath();
+      ctx.arc(-fuseLen * 0.565, -fuseH * 2.2, sz * 0.06, 0, Math.PI * 2);
+      ctx.fill();
+
+      // "OTLOP" label — always readable
       ctx.save();
-      ctx.fillStyle = '#fff';
-      ctx.font = `bold ${Math.max(7, sz * 0.22)}px monospace`;
+      ctx.scale(dir, 1); // un-mirror for text
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.font = `bold ${Math.max(6, sz * 0.18)}px monospace`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.globalAlpha = 0.85;
       ctx.fillText(d.label || 'OTLOP', 0, -sz * 0.05);
-      ctx.globalAlpha = 1;
       ctx.restore();
 
-      // Blinking light on nose
-      if (Math.sin(g.elapsed * 3) > 0) {
+      ctx.restore(); // un-scale dir
+
+      // ── Nose blinking light ──
+      if (Math.sin(tt * 3) > 0) {
         ctx.fillStyle = '#22c55e';
         ctx.shadowColor = '#22c55e';
         ctx.shadowBlur = 8;
         ctx.beginPath();
-        ctx.arc(dir * sz * 1.1, 0, 2.5, 0, Math.PI * 2);
+        ctx.arc(dir * sz * 1.2, 0, 2.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
       }
@@ -2048,7 +2249,7 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
       if (damaged) {
         const barW = sz * 2;
         const barH = 3;
-        const barY = -sz * 0.6;
+        const barY = -sz * 0.8;
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(-barW / 2 - 1, barY - 1, barW + 2, barH + 2);
         const hpRatio = d.health / d.maxHealth;
