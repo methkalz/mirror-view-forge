@@ -5472,7 +5472,7 @@ function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: numbe
   titleGrad.addColorStop(0.5, '#ffd700');
   titleGrad.addColorStop(1, '#c0a040');
   ctx.fillStyle = titleGrad;
-  ctx.font = 'bold 22px Tajawal, sans-serif';
+  ctx.font = 'bold 26px Tajawal, sans-serif';
   ctx.shadowColor = 'rgba(255,200,50,0.25)';
   ctx.shadowBlur = 15;
   ctx.fillText('هدفك', w / 2, h * 0.18);
@@ -5484,16 +5484,16 @@ function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: numbe
 
   // Main text
   ctx.fillStyle = 'rgba(230, 230, 230, 0.9)';
-  ctx.font = '15px Tajawal, sans-serif';
+  ctx.font = '18px Tajawal, sans-serif';
   ctx.fillText('انجُ من السماء', w / 2, h * 0.32);
 
   ctx.fillStyle = 'rgba(190, 190, 190, 0.75)';
-  ctx.font = '13px Tajawal, sans-serif';
+  ctx.font = '15px Tajawal, sans-serif';
   ctx.fillText('تسقط تهديدات من الأعلى.. اهرب أو أسقطها', w / 2, h * 0.39);
 
   // Scoring mechanic — highlighted
   ctx.fillStyle = 'rgba(251, 191, 36, 0.85)';
-  ctx.font = '14px Tajawal, sans-serif';
+  ctx.font = '16px Tajawal, sans-serif';
   ctx.fillText('كلما سقط التهديد أقرب إليك', w / 2, h * 0.50);
   ctx.fillText('حصلت على نقاط أكثر', w / 2, h * 0.56);
 
