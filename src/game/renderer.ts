@@ -28,9 +28,10 @@ export function setCameraMargin(margin: number) {
 }
 
 /** Called once from GameLoader to inject background config */
-export function setBackgroundConfig(phases: BackgroundPhase[]) {
+export function setBackgroundConfig(phases: BackgroundPhase[], loop?: boolean) {
   bgPhases = phases;
   bgConfigLoaded = true;
+  bgLoopEnabled = loop ?? false;
   // Load images from URLs
   bgLayers = phases.map(p => {
     const img = new Image();
