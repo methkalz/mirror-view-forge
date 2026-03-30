@@ -430,6 +430,7 @@ export async function updateGameConfig(config: Partial<RemoteGameConfig>): Promi
   if (config.developerUrl !== undefined) mapped.developer_url = config.developerUrl;
   if (config.showTitle !== undefined) mapped.show_title = config.showTitle;
   if (config.cameraMargin !== undefined) mapped.camera_margin = config.cameraMargin;
+  if (config.bgLoop !== undefined) mapped.bg_loop = config.bgLoop;
 
   const { data: rows } = await supabase.from('game_config').select('id').limit(1);
   if (!rows || rows.length === 0) return false;
