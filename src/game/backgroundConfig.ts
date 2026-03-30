@@ -90,6 +90,8 @@ export async function createBackgroundPhase(phase: string): Promise<BackgroundPh
     sortOrder: data.sort_order ?? 0,
     fadeDuration: data.fade_duration ?? 60,
     easingType: data.easing_type ?? 'smoothstep',
+    displayMode: ((data as any).display_mode || 'single') as DisplayMode,
+    bgMargin: (data as any).bg_margin ?? 400,
   };
 }
 
