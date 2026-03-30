@@ -1005,28 +1005,20 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
   const [playingUI, setPlayingUI] = useState(false);
   const [progress, setProgress] = useState(0);
   const rafRef = useRef<number>(0);
+  const runIdRef = useRef(0);
   const startTimeRef = useRef(0);
+  const currentTimeRef = useRef(0);
   const imagesRef = useRef<(HTMLImageElement | null)[]>([]);
   const playingRef = useRef(false);
   const lastProgressUpdateRef = useRef(0);
 
-  const totalDuration = phases.length * PREVIEW_PHASE_DURATION;
-
-  // Load images
-  useEffect(() => {
-    imagesRef.current = phases.map(p => {
-      if (!p.imageUrl) return null;
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = p.imageUrl;
-      return img;
-    });
-  }, [phases]);
+  const totalDuration = phases.length > 0 ? phases.length * PREVIEW_PHASE_DURATION : 0;
 
   const getBlendAtTime = useCallback((t: number) => {
     if (phases.length === 0) return null;
-    const phaseIdx = Math.min(Math.floor(t / PREVIEW_PHASE_DURATION), phases.length - 1);
-    const localT = (t / PREVIEW_PHASE_DURATION) - phaseIdx;
+    const safeTime = Math.max(0, Math.min(t, Math.max(totalDuration - 0.001, 0)));
+    const phaseIdx = Math.min(Math.floor(safeTime / PREVIEW_PHASE_DURATION), phases.length - 1);
+    const localT = (safeTime / PREVIEW_PHASE_DURATION) - phaseIdx;
 
     const current = phases[phaseIdx];
     const nextIdx = phaseIdx + 1;
@@ -1035,8 +1027,8 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
     if (nextIdx < phases.length) {
       const next = phases[nextIdx];
       const easingType = next.easingType || 'smoothstep';
-      // Fade occupies the last 60% of each phase segment
       const fadeStart = 0.4;
+
       if (localT >= fadeStart) {
         const linearFade = (localT - fadeStart) / (1 - fadeStart);
         const fade = previewApplyEasing(linearFade, easingType);
@@ -1044,8 +1036,11 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
         const topA = previewParseRGB(current.overlayTop), topB = previewParseRGB(next.overlayTop);
         const midA = previewParseRGB(current.overlayMid), midB = previewParseRGB(next.overlayMid);
         const botA = previewParseRGB(current.overlayBottom), botB = previewParseRGB(next.overlayBottom);
+
         return {
-          imgA, imgB, fade,
+          imgA,
+          imgB,
+          fade,
           overlayTop: previewLerpColor(topA, topB, fade),
           overlayMid: previewLerpColor(midA, midB, fade),
           overlayBottom: previewLerpColor(botA, botB, fade),
@@ -1054,104 +1049,204 @@ const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phas
         };
       }
     }
+
     return {
-      imgA, imgB: null, fade: 0,
+      imgA,
+      imgB: null,
+      fade: 0,
       overlayTop: previewParseRGB(current.overlayTop),
       overlayMid: previewParseRGB(current.overlayMid),
       overlayBottom: previewParseRGB(current.overlayBottom),
       overlayOpacity: current.overlayOpacity,
       phaseIdx,
     };
-  }, [phases]);
+  }, [phases, totalDuration]);
 
-  const drawFrame = useCallback((timestamp: number) => {
-    if (!canvasRef.current) return;
+  const renderPreviewAt = useCallback((timeSeconds: number) => {
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!canvas) return;
 
-    const elapsed = (timestamp - startTimeRef.current) / 1000;
-    const t = elapsed % totalDuration;
-    // Throttle progress updates to ~100ms
-    if (timestamp - lastProgressUpdateRef.current > 100) {
-      lastProgressUpdateRef.current = timestamp;
-      setProgress(t / totalDuration);
-    }
+    const ctx = canvas.getContext('2d');
+    if (!ctx || canvas.width === 0 || canvas.height === 0) return;
 
     const w = canvas.width;
     const h = canvas.height;
+    const clampedTime = totalDuration > 0 ? Math.max(0, Math.min(timeSeconds, Math.max(totalDuration - 0.001, 0))) : 0;
+    currentTimeRef.current = clampedTime;
+
     ctx.clearRect(0, 0, w, h);
 
-    const blend = getBlendAtTime(t);
+    const blend = getBlendAtTime(clampedTime);
     if (!blend) {
       ctx.fillStyle = '#0c1445';
       ctx.fillRect(0, 0, w, h);
+      return;
+    }
+
+    if (blend.imgA && blend.imgA.complete && blend.imgA.naturalWidth > 0) {
+      drawCoverImage(ctx, blend.imgA, w, h);
     } else {
-      // Draw primary image (cover)
-      if (blend.imgA && blend.imgA.complete && blend.imgA.naturalWidth > 0) {
-        drawCoverImage(ctx, blend.imgA, w, h);
-      } else {
-        ctx.fillStyle = '#0c1445';
-        ctx.fillRect(0, 0, w, h);
-      }
-      // Cross-fade
-      if (blend.imgB && blend.imgB.complete && blend.imgB.naturalWidth > 0 && blend.fade > 0) {
-        ctx.save();
-        ctx.globalAlpha = blend.fade;
-        drawCoverImage(ctx, blend.imgB, w, h);
-        ctx.restore();
-      }
-      // Overlay gradient
-      const overlayGrad = ctx.createLinearGradient(0, 0, 0, h);
-      const op = blend.overlayOpacity;
-      overlayGrad.addColorStop(0, `rgba(${blend.overlayTop[0]},${blend.overlayTop[1]},${blend.overlayTop[2]},${op})`);
-      overlayGrad.addColorStop(0.5, `rgba(${blend.overlayMid[0]},${blend.overlayMid[1]},${blend.overlayMid[2]},${op * 0.85})`);
-      overlayGrad.addColorStop(1, `rgba(${blend.overlayBottom[0]},${blend.overlayBottom[1]},${blend.overlayBottom[2]},${op * 0.95})`);
-      ctx.fillStyle = overlayGrad;
+      ctx.fillStyle = '#0c1445';
       ctx.fillRect(0, 0, w, h);
     }
 
-    if (playingRef.current) {
-      rafRef.current = requestAnimationFrame(drawFrame);
+    if (blend.imgB && blend.imgB.complete && blend.imgB.naturalWidth > 0 && blend.fade > 0) {
+      ctx.save();
+      ctx.globalAlpha = blend.fade;
+      drawCoverImage(ctx, blend.imgB, w, h);
+      ctx.restore();
     }
-  }, [totalDuration, getBlendAtTime]);
 
-  const handlePlay = () => {
-    if (playingRef.current) {
+    const overlayGrad = ctx.createLinearGradient(0, 0, 0, h);
+    const op = blend.overlayOpacity;
+    overlayGrad.addColorStop(0, `rgba(${blend.overlayTop[0]},${blend.overlayTop[1]},${blend.overlayTop[2]},${op})`);
+    overlayGrad.addColorStop(0.5, `rgba(${blend.overlayMid[0]},${blend.overlayMid[1]},${blend.overlayMid[2]},${op * 0.85})`);
+    overlayGrad.addColorStop(1, `rgba(${blend.overlayBottom[0]},${blend.overlayBottom[1]},${blend.overlayBottom[2]},${op * 0.95})`);
+    ctx.fillStyle = overlayGrad;
+    ctx.fillRect(0, 0, w, h);
+  }, [getBlendAtTime, totalDuration]);
+
+  const stopPreview = useCallback((resetToStart: boolean) => {
+    playingRef.current = false;
+    runIdRef.current += 1;
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = 0;
+    startTimeRef.current = 0;
+    lastProgressUpdateRef.current = 0;
+    setPlayingUI(false);
+
+    if (resetToStart) {
+      currentTimeRef.current = 0;
+      setProgress(0);
+      renderPreviewAt(0);
+    }
+  }, [renderPreviewAt]);
+
+  const syncCanvasSize = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const nextWidth = Math.max(1, Math.round(rect.width * dpr));
+    const nextHeight = Math.max(1, Math.round(rect.height * dpr));
+
+    if (canvas.width !== nextWidth || canvas.height !== nextHeight) {
+      canvas.width = nextWidth;
+      canvas.height = nextHeight;
+    }
+
+    renderPreviewAt(currentTimeRef.current);
+  }, [renderPreviewAt]);
+
+  const drawFrame = useCallback((timestamp: number, runId: number) => {
+    if (!playingRef.current || runId !== runIdRef.current || totalDuration <= 0) return;
+
+    if (startTimeRef.current === 0) {
+      startTimeRef.current = timestamp;
+    }
+
+    const elapsed = (timestamp - startTimeRef.current) / 1000;
+
+    if (elapsed >= totalDuration) {
+      renderPreviewAt(totalDuration);
+      setProgress(1);
       playingRef.current = false;
       cancelAnimationFrame(rafRef.current);
-      setPlayingUI(false);
-    } else {
-      playingRef.current = true;
-      setPlayingUI(true);
-      startTimeRef.current = performance.now();
+      rafRef.current = 0;
+      startTimeRef.current = 0;
       lastProgressUpdateRef.current = 0;
-      setProgress(0);
-      rafRef.current = requestAnimationFrame(drawFrame);
+      setPlayingUI(false);
+      return;
     }
-  };
+
+    renderPreviewAt(elapsed);
+
+    if (timestamp - lastProgressUpdateRef.current > 100) {
+      lastProgressUpdateRef.current = timestamp;
+      setProgress(elapsed / totalDuration);
+    }
+
+    rafRef.current = requestAnimationFrame((nextTimestamp) => drawFrame(nextTimestamp, runId));
+  }, [renderPreviewAt, totalDuration]);
 
   useEffect(() => {
-    return () => {
-      playingRef.current = false;
-      cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
+    let active = true;
 
-  // Resize canvas
+    stopPreview(true);
+
+    imagesRef.current = phases.map((p) => {
+      if (!p.imageUrl) return null;
+
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        if (active) renderPreviewAt(currentTimeRef.current);
+      };
+      img.onerror = () => {
+        if (active) renderPreviewAt(currentTimeRef.current);
+      };
+      img.src = p.imageUrl;
+      return img;
+    });
+
+    syncCanvasSize();
+
+    return () => {
+      active = false;
+      imagesRef.current.forEach((img) => {
+        if (img) {
+          img.onload = null;
+          img.onerror = null;
+        }
+      });
+    };
+  }, [phases, renderPreviewAt, stopPreview, syncCanvasSize]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const observer = new ResizeObserver(() => {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * 2;
-      canvas.height = rect.height * 2;
-    });
-    observer.observe(canvas);
-    return () => observer.disconnect();
-  }, []);
 
-  const activePhaseIdx = Math.min(Math.floor(progress * phases.length), phases.length - 1);
+    syncCanvasSize();
+
+    const observer = new ResizeObserver(() => syncCanvasSize());
+    observer.observe(canvas);
+    window.addEventListener('resize', syncCanvasSize);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', syncCanvasSize);
+      playingRef.current = false;
+      runIdRef.current += 1;
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, [syncCanvasSize]);
+
+  const handlePlay = () => {
+    if (playingRef.current) {
+      stopPreview(true);
+      return;
+    }
+
+    if (totalDuration <= 0) return;
+
+    cancelAnimationFrame(rafRef.current);
+    runIdRef.current += 1;
+    const nextRunId = runIdRef.current;
+
+    playingRef.current = true;
+    setPlayingUI(true);
+    startTimeRef.current = 0;
+    currentTimeRef.current = 0;
+    lastProgressUpdateRef.current = 0;
+    setProgress(0);
+    syncCanvasSize();
+    renderPreviewAt(0);
+
+    rafRef.current = requestAnimationFrame((timestamp) => drawFrame(timestamp, nextRunId));
+  };
+
+  const activePhaseIdx = phases.length > 0 ? Math.min(Math.floor(progress * phases.length), phases.length - 1) : -1;
 
   return (
     <div style={{
