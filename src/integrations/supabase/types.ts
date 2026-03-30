@@ -94,6 +94,48 @@ export type Database = {
           },
         ]
       }
+      background_config: {
+        Row: {
+          id: string
+          image_url: string | null
+          overlay_bottom: string | null
+          overlay_mid: string | null
+          overlay_opacity: number | null
+          overlay_top: string | null
+          phase: string
+          sort_order: number | null
+          transition_end: number
+          transition_start: number
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          image_url?: string | null
+          overlay_bottom?: string | null
+          overlay_mid?: string | null
+          overlay_opacity?: number | null
+          overlay_top?: string | null
+          phase: string
+          sort_order?: number | null
+          transition_end?: number
+          transition_start?: number
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          image_url?: string | null
+          overlay_bottom?: string | null
+          overlay_mid?: string | null
+          overlay_opacity?: number | null
+          overlay_top?: string | null
+          phase?: string
+          sort_order?: number | null
+          transition_end?: number
+          transition_start?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       game_config: {
         Row: {
           base_speed: number
