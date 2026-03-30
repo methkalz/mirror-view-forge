@@ -87,8 +87,8 @@ function getPhaseBlend(elapsed: number): {
     const imgA = currentLayer?.loaded ? currentLayer.image : (fallbackLoaded ? fallbackImg : null);
 
     const fadeStart = next.transitionStart;
-    const fadeDuration = Math.max(0.001, next.fadeDuration || 0.001);
-    const fadeEnd = Math.max(fadeStart + 0.001, Math.min(next.transitionEnd, fadeStart + fadeDuration));
+    const fadeDuration = Math.max(0.001, next.fadeDuration || 60);
+    const fadeEnd = fadeStart + fadeDuration;
     const easingType = next.easingType || 'smoothstep';
 
     if (elapsed < fadeStart) {
