@@ -75,6 +75,8 @@ function getPhaseBlend(elapsed: number): {
   fade: number;
   overlayTop: number[]; overlayMid: number[]; overlayBottom: number[];
   overlayOpacity: number;
+  displayModeA: DisplayMode; displayModeB: DisplayMode;
+  bgMarginA: number; bgMarginB: number;
 } {
   const defaultResult = {
     imgA: fallbackLoaded ? fallbackImg : null, imgB: null, fade: 0,
