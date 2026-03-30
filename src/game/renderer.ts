@@ -1156,36 +1156,21 @@ function drawInterceptorIcon(ctx: CanvasRenderingContext2D, s: number) {
 }
 
 function drawExtinguisherIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // Red cylinder body
+  // Flat white extinguisher
   const bw = s * 0.3, bh = s * 0.75;
-  const bg = ctx.createLinearGradient(-bw, 0, bw, 0);
-  bg.addColorStop(0, '#991b1b');
-  bg.addColorStop(0.3, '#dc2626');
-  bg.addColorStop(0.6, '#ef4444');
-  bg.addColorStop(1, '#991b1b');
-  ctx.fillStyle = bg;
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.roundRect(-bw, -bh * 0.4, bw * 2, bh, 3);
   ctx.fill();
-  // Nozzle on top
-  ctx.fillStyle = '#333';
+  // Nozzle
   ctx.fillRect(-bw * 0.3, -bh * 0.55, bw * 0.6, bh * 0.2);
   // Handle
-  ctx.strokeStyle = '#555';
+  ctx.strokeStyle = '#fff';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(bw * 0.3, -bh * 0.4);
   ctx.quadraticCurveTo(bw * 1.2, -bh * 0.6, bw * 0.8, -bh * 0.2);
   ctx.stroke();
-  // Label band
-  ctx.fillStyle = '#fef3c7';
-  ctx.fillRect(-bw * 0.8, -bh * 0.05, bw * 1.6, bh * 0.2);
-  // Fire icon on label
-  ctx.fillStyle = '#f97316';
-  ctx.font = `${s * 0.3}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('🔥', 0, bh * 0.05);
 }
 
 function drawGasMaskIcon(ctx: CanvasRenderingContext2D, s: number) {
