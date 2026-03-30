@@ -268,7 +268,7 @@ const SkyfallGame: React.FC = () => {
         resumeAudio();
         scoreSubmittedRef.current = false;
         setGameOverData(null);
-        fetchGameConfig().then(cfg => {
+        Promise.all([fetchGameConfig(), fetchDifficultyProfile(), fetchWaveConfigs()]).then(([cfg, dp, wc]) => {
           remoteConfigRef.current = cfg;
           setCameraMargin(cfg.cameraMargin);
           if (cfg) {
@@ -276,6 +276,10 @@ const SkyfallGame: React.FC = () => {
             g.spawnTimer = cfg.spawnInterval;
             g.difficulty = cfg.difficultyMultiplier;
           }
+          g.difficultyProfile = dp;
+          g.remoteWaveOverrides = wc;
+          difficultyProfileRef.current = dp;
+          waveOverridesRef.current = wc;
         });
         resetGame(g);
       } else if (g.state === 'gameover') {
