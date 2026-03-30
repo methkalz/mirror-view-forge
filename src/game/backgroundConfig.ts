@@ -39,6 +39,8 @@ export async function fetchBackgroundConfig(): Promise<BackgroundPhase[]> {
       sortOrder: r.sort_order ?? 0,
       fadeDuration: r.fade_duration ?? 60,
       easingType: r.easing_type ?? 'smoothstep',
+      displayMode: ((r as any).display_mode || 'single') as DisplayMode,
+      bgMargin: (r as any).bg_margin ?? 400,
     }));
   } catch {
     return [];
