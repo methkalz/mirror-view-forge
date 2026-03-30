@@ -224,6 +224,7 @@ const SkyfallGame: React.FC = () => {
         // Re-fetch config for next game (apply directly, no re-render)
         fetchGameConfig().then(cfg => {
           remoteConfigRef.current = cfg;
+          setCameraMargin(cfg.cameraMargin);
           if (cfg) {
             g.player.speed = cfg.baseSpeed;
             g.spawnTimer = cfg.spawnInterval;
