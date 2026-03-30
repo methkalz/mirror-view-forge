@@ -1074,52 +1074,18 @@ function drawSlowMoIcon(ctx: CanvasRenderingContext2D, s: number, elapsed: numbe
 }
 
 function drawMagnetIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // Large horseshoe magnet — red left pole, blue right pole, silver arc
+  // Flat white horseshoe magnet
   const w = s * 0.8, h = s * 0.9, t = s * 0.32;
-  
-  // Silver curved bottom (horseshoe base)
-  const arcGrad = ctx.createLinearGradient(-w, h * 0.3, w, h * 0.3);
-  arcGrad.addColorStop(0, '#c0c0c0');
-  arcGrad.addColorStop(0.5, '#f0f0f0');
-  arcGrad.addColorStop(1, '#c0c0c0');
-  ctx.strokeStyle = arcGrad;
+  ctx.strokeStyle = '#fff';
   ctx.lineWidth = t;
   ctx.lineCap = 'round';
   ctx.beginPath();
   ctx.arc(0, h * 0.35, w - t / 2, 0, Math.PI);
   ctx.stroke();
-  // White outline on curve
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(0, h * 0.35, w + 2, 0, Math.PI);
-  ctx.stroke();
-  
-  // Left pole (red)
-  ctx.fillStyle = '#dc2626';
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 1.5;
+  // Poles
+  ctx.fillStyle = '#fff';
   ctx.fillRect(-w, -h * 0.45, t, h * 0.8);
-  ctx.strokeRect(-w, -h * 0.45, t, h * 0.8);
-  // Right pole (blue)
-  ctx.fillStyle = '#2563eb';
   ctx.fillRect(w - t, -h * 0.45, t, h * 0.8);
-  ctx.strokeRect(w - t, -h * 0.45, t, h * 0.8);
-  
-  // White tip markers (N/S)
-  ctx.fillStyle = '#f8fafc';
-  ctx.fillRect(-w + 1, -h * 0.45, t - 2, t * 0.5);
-  ctx.fillRect(w - t + 1, -h * 0.45, t - 2, t * 0.5);
-  
-  // Field lines between poles
-  ctx.strokeStyle = 'rgba(100,180,255,0.4)';
-  ctx.lineWidth = 0.8;
-  for (let i = 0; i < 3; i++) {
-    const arcR = s * 0.2 + i * s * 0.15;
-    ctx.beginPath();
-    ctx.arc(0, -h * 0.2, arcR, Math.PI * 1.15, Math.PI * 1.85);
-    ctx.stroke();
-  }
 }
 
 function drawAirstrikeIcon(ctx: CanvasRenderingContext2D, s: number) {
