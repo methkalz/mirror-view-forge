@@ -443,7 +443,7 @@ export async function upsertWaveConfig(wave: RemoteWaveConfig): Promise<boolean>
     .eq('wave_number', wave.waveNumber)
     .maybeSingle();
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     wave_number: wave.waveNumber,
     duration: wave.duration,
     threats: wave.threats as unknown as Json,
@@ -451,13 +451,23 @@ export async function upsertWaveConfig(wave: RemoteWaveConfig): Promise<boolean>
     spawn_rate: wave.spawnRate,
     surge_multiplier: wave.surgeMultiplier,
     drone_types: wave.droneTypes as unknown as Json,
+    cluster_splits: wave.clusterSplits,
+    bullet_level: wave.bulletLevel,
+    phase_in_delay: wave.phaseInDelay,
+    drone_interval: wave.droneInterval,
+    has_boss: wave.hasBoss,
+    has_chemical: wave.hasChemical,
+    has_incendiary: wave.hasIncendiary,
+    warning_text: wave.warningText,
+    warning_color: wave.warningColor,
+    warning_type: wave.warningType,
   };
 
   if (existing) {
-    const { error } = await supabase.from('wave_configs').update(payload).eq('id', existing.id);
+    const { error } = await supabase.from('wave_configs').update(payload as any).eq('id', existing.id);
     return !error;
   } else {
-    const { error } = await supabase.from('wave_configs').insert(payload);
+    const { error } = await supabase.from('wave_configs').insert(payload as any);
     return !error;
   }
 }
