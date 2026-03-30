@@ -5611,7 +5611,7 @@ function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: numbe
 
     // Name
     ctx.fillStyle = 'rgba(210, 210, 210, 0.75)';
-    ctx.font = '12px Tajawal, sans-serif';
+    ctx.font = '14px Tajawal, sans-serif';
     ctx.fillText(item.name, ix, iy);
   });
 
