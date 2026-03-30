@@ -385,6 +385,7 @@ const ConfigPanel: React.FC<{ config: RemoteGameConfig; saving: boolean; onSave:
         { key: 'baseSpeed', label: 'Base Speed', min: 100, max: 600, step: 10 },
         { key: 'spawnInterval', label: 'Spawn Interval (s)', min: 0.5, max: 10, step: 0.5 },
         { key: 'difficultyMultiplier', label: 'Difficulty Multiplier', min: 0.5, max: 5, step: 0.1 },
+        { key: 'cameraMargin', label: 'Camera Margin (px)', min: 0, max: 1000, step: 50 },
       ] as const).map(({ key, label, min, max, step }) => (
         <div key={key} style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
