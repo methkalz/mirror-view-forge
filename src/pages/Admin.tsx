@@ -1332,6 +1332,9 @@ const BackgroundsPanel: React.FC<{
         </div>
       </div>
 
+      {/* ─── Live Preview ─── */}
+      <BackgroundPreviewPlayer phases={phases} />
+
       {/* ─── Phase Cards ─── */}
       <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr 1fr' : '1fr', gap: 16 }}>
         {phases.map(p => {
