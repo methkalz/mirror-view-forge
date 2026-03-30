@@ -1489,120 +1489,261 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
 
     const cols = puColors[pu.type] || puColors.medkit;
 
-    // ── Professional 3D Parachute ──
+    // ── Ultra-Realistic 3D Parachute ──
     if (pu.parachuting) {
-      const cW = 32, cH = 20;
-      const cY = -32;
-      const panels = 8;
-      const sway = Math.sin(pu.bobTimer * 1.8) * 0.05;
-      const billow = Math.sin(pu.bobTimer * 3.5) * 1.5;
+      const cW = 34, cH = 22;
+      const cY = -34;
+      const panels = 10;
+      const sway = Math.sin(pu.bobTimer * 1.8) * 0.05 + Math.cos(pu.bobTimer * 1.1) * 0.02; // Lissajous sway
+      const breathe = Math.sin(pu.bobTimer * 2.2) * 1.2; // breathing expansion
+      const baseBillow = Math.sin(pu.bobTimer * 3.5) * 1.5 + breathe;
       ctx.save();
       ctx.rotate(sway);
 
-      // Canopy panels with 3D shading — military camo for ammo
-      const camoColors = ['#4a5c2a', '#6b7d3a', '#8b7d5a', '#5c4a2a', '#3d4a2a', '#7a6b3a', '#5a6b3a', '#6b5a2a'];
+      // Canopy colors
+      const camoColors = ['#4a5c2a', '#6b7d3a', '#8b7d5a', '#5c4a2a', '#3d4a2a', '#7a6b3a', '#5a6b3a', '#6b5a2a', '#4d5a30', '#5e6b38'];
+
+      // ── Draw billowed panels with individual inflation ──
       for (let i = 0; i < panels; i++) {
         const startA = Math.PI + (i / panels) * Math.PI;
         const endA = Math.PI + ((i + 1) / panels) * Math.PI;
         const midA = (startA + endA) / 2;
         const lightFactor = 0.5 + Math.cos(midA - Math.PI * 1.5) * 0.5;
+        // Individual billow per panel with phase offset
+        const panelBillow = baseBillow + Math.sin(pu.bobTimer * 4.2 + i * 0.7) * 0.8;
+        const effH = cH + panelBillow;
+
+        // Panel edge points
+        const x1 = Math.cos(startA) * cW;
+        const y1 = Math.sin(startA) * effH + cY + panelBillow * 0.3;
+        const x2 = Math.cos(endA) * cW;
+        const y2 = Math.sin(endA) * effH + cY + panelBillow * 0.3;
+        // Billow outward control point
+        const bulgeX = Math.cos(midA) * (cW + 3 + panelBillow * 0.5);
+        const bulgeY = Math.sin(midA) * (effH + 4 + panelBillow * 0.4) + cY + panelBillow * 0.3;
+
+        // Determine panel color
+        let baseR: number, baseG: number, baseB: number;
         if (pu.type === 'ammo') {
-          // Military camo pattern
           const cc = camoColors[i % camoColors.length];
-          const cr = parseInt(cc.slice(1, 3), 16);
-          const cg = parseInt(cc.slice(3, 5), 16);
-          const cb = parseInt(cc.slice(5, 7), 16);
-          ctx.fillStyle = `rgb(${Math.min(255, cr + lightFactor * 30)},${Math.min(255, cg + lightFactor * 30)},${Math.min(255, cb + lightFactor * 30)})`;
+          baseR = parseInt(cc.slice(1, 3), 16);
+          baseG = parseInt(cc.slice(3, 5), 16);
+          baseB = parseInt(cc.slice(5, 7), 16);
         } else {
-          const r = parseInt(cols.base.slice(1, 3), 16);
-          const gr = parseInt(cols.base.slice(3, 5), 16);
-          const b = parseInt(cols.base.slice(5, 7), 16);
-          const lr = Math.min(255, r + lightFactor * 60);
-          const lg = Math.min(255, gr + lightFactor * 60);
-          const lb = Math.min(255, b + lightFactor * 60);
-          ctx.fillStyle = `rgb(${lr},${lg},${lb})`;
+          baseR = parseInt(cols.base.slice(1, 3), 16);
+          baseG = parseInt(cols.base.slice(3, 5), 16);
+          baseB = parseInt(cols.base.slice(5, 7), 16);
         }
-        ctx.globalAlpha = fadeAlpha * 0.8;
+
+        // 3-layer shading: highlight top, base mid, shadow bottom
+        const highlightR = Math.min(255, baseR + lightFactor * 70);
+        const highlightG = Math.min(255, baseG + lightFactor * 70);
+        const highlightB = Math.min(255, baseB + lightFactor * 70);
+        const shadowR = Math.max(0, baseR - 40);
+        const shadowG = Math.max(0, baseG - 40);
+        const shadowB = Math.max(0, baseB - 40);
+
+        // Panel gradient (top-to-bottom within panel)
+        const panelGrad = ctx.createLinearGradient(bulgeX, bulgeY - 6, bulgeX, y1 > y2 ? y1 : y2);
+        panelGrad.addColorStop(0, `rgb(${highlightR},${highlightG},${highlightB})`);
+        panelGrad.addColorStop(0.4, `rgb(${Math.min(255, baseR + lightFactor * 35)},${Math.min(255, baseG + lightFactor * 35)},${Math.min(255, baseB + lightFactor * 35)})`);
+        panelGrad.addColorStop(1, `rgb(${shadowR},${shadowG},${shadowB})`);
+
+        // Fresnel: edges slightly more transparent
+        const edgeDist = Math.abs(i - panels / 2) / (panels / 2);
+        const fresnelAlpha = 0.85 - edgeDist * 0.15; // 0.7 at edges, 0.85 at center
+
+        ctx.globalAlpha = fadeAlpha * fresnelAlpha;
+        ctx.fillStyle = panelGrad;
         ctx.beginPath();
-        ctx.ellipse(0, cY + billow * 0.3, cW, cH + billow, 0, startA, endA);
-        ctx.lineTo(0, cY);
+        ctx.moveTo(0, cY); // apex
+        ctx.lineTo(x1, y1);
+        ctx.quadraticCurveTo(bulgeX, bulgeY, x2, y2);
         ctx.closePath();
         ctx.fill();
-      }
-      // Military star on ammo parachute
-      if (pu.type === 'ammo') {
-        ctx.globalAlpha = fadeAlpha * 0.6;
-        ctx.fillStyle = '#e5e5d0';
-        ctx.beginPath();
-        const starX = 0, starY = cY - cH * 0.15, starR = 5;
-        for (let i = 0; i < 5; i++) {
-          const a = -Math.PI / 2 + (i * Math.PI * 2) / 5;
-          const a2 = a + Math.PI / 5;
-          ctx.lineTo(starX + Math.cos(a) * starR, starY + Math.sin(a) * starR);
-          ctx.lineTo(starX + Math.cos(a2) * starR * 0.4, starY + Math.sin(a2) * starR * 0.4);
+
+        // Fabric wrinkle lines on each panel
+        ctx.globalAlpha = fadeAlpha * 0.08;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 0.4;
+        for (let w = 0; w < 2; w++) {
+          const wt = 0.3 + w * 0.35;
+          const wx1 = x1 * (1 - wt) + 0 * wt; // lerp toward apex
+          const wy1 = y1 * (1 - wt) + cY * wt;
+          const wx2 = x2 * (1 - wt) + 0 * wt;
+          const wy2 = y2 * (1 - wt) + cY * wt;
+          const wcx = bulgeX * (1 - wt * 0.6);
+          const wcy = bulgeY * (1 - wt * 0.5) + cY * wt * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(wx1, wy1);
+          ctx.quadraticCurveTo(wcx, wcy, wx2, wy2);
+          ctx.stroke();
         }
-        ctx.closePath();
-        ctx.fill();
-        ctx.globalAlpha = fadeAlpha;
       }
+
       ctx.globalAlpha = fadeAlpha;
 
-      // Wrinkle lines between panels
-      ctx.strokeStyle = 'rgba(0,0,0,0.1)';
-      ctx.lineWidth = 0.6;
+      // ── Vent hole at apex ──
+      const ventR = 3;
+      ctx.fillStyle = 'rgba(10,10,20,0.5)';
+      ctx.beginPath();
+      ctx.arc(0, cY - 1, ventR, 0, Math.PI * 2);
+      ctx.fill();
+      // Vent rim
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.arc(0, cY - 1, ventR, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // ── Panel seam lines (between panels) ──
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+      ctx.lineWidth = 0.5;
       for (let i = 1; i < panels; i++) {
         const a = Math.PI + (i / panels) * Math.PI;
+        const pBillow = baseBillow + Math.sin(pu.bobTimer * 4.2 + i * 0.7) * 0.8;
+        const effH = cH + pBillow;
         const rx = Math.cos(a) * cW;
-        const ry = Math.sin(a) * (cH + billow) + cY + billow * 0.3;
+        const ry = Math.sin(a) * effH + cY + pBillow * 0.3;
         ctx.beginPath();
         ctx.moveTo(rx, ry);
         ctx.lineTo(0, cY);
         ctx.stroke();
       }
 
-      // Canopy outline
-      ctx.strokeStyle = 'rgba(255,255,255,0.45)';
-      ctx.lineWidth = 1.2;
+      // ── Wavy bottom edge ──
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 1.0;
       ctx.beginPath();
-      ctx.ellipse(0, cY + billow * 0.3, cW, cH + billow, 0, Math.PI, 0);
+      for (let i = 0; i <= panels * 4; i++) {
+        const t = i / (panels * 4);
+        const a = Math.PI + t * Math.PI;
+        const pIdx = Math.floor(t * panels);
+        const pBillow = baseBillow + Math.sin(pu.bobTimer * 4.2 + pIdx * 0.7) * 0.8;
+        const effH = cH + pBillow;
+        const ex = Math.cos(a) * cW;
+        const ey = Math.sin(a) * effH + cY + pBillow * 0.3;
+        // Add small wave to bottom edge
+        const wave = Math.sin(i * 1.8 + pu.bobTimer * 5) * 0.6;
+        if (i === 0) ctx.moveTo(ex, ey + wave);
+        else ctx.lineTo(ex, ey + wave);
+      }
       ctx.stroke();
 
-      // Specular highlight on top
-      const specGrad = ctx.createRadialGradient(-cW * 0.2, cY - cH * 0.3, 0, -cW * 0.2, cY - cH * 0.3, cW * 0.5);
-      specGrad.addColorStop(0, 'rgba(255,255,255,0.35)');
+      // ── Specular highlight (moves with sway) ──
+      const specOffX = -cW * 0.2 + sway * cW * 2;
+      const specGrad = ctx.createRadialGradient(specOffX, cY - cH * 0.3, 0, specOffX, cY - cH * 0.3, cW * 0.5);
+      specGrad.addColorStop(0, 'rgba(255,255,255,0.4)');
+      specGrad.addColorStop(0.5, 'rgba(255,255,255,0.12)');
       specGrad.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = specGrad;
       ctx.beginPath();
-      ctx.ellipse(-cW * 0.2, cY - cH * 0.1, cW * 0.45, cH * 0.4, -0.2, 0, Math.PI * 2);
+      ctx.ellipse(specOffX, cY - cH * 0.1, cW * 0.4, cH * 0.35, -0.15 + sway, 0, Math.PI * 2);
       ctx.fill();
 
-      // Inner shadow under canopy
-      const shadowGrad = ctx.createLinearGradient(0, cY, 0, cY + cH * 0.7);
-      shadowGrad.addColorStop(0, 'rgba(0,0,0,0.25)');
+      // Secondary smaller specular
+      const spec2X = cW * 0.25 + sway * cW;
+      const spec2Grad = ctx.createRadialGradient(spec2X, cY - cH * 0.15, 0, spec2X, cY - cH * 0.15, cW * 0.2);
+      spec2Grad.addColorStop(0, 'rgba(255,255,255,0.2)');
+      spec2Grad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = spec2Grad;
+      ctx.beginPath();
+      ctx.ellipse(spec2X, cY - cH * 0.05, cW * 0.18, cH * 0.15, 0.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      // ── Inner shadow under canopy ──
+      const shadowGrad = ctx.createLinearGradient(0, cY, 0, cY + cH * 0.8);
+      shadowGrad.addColorStop(0, 'rgba(0,0,0,0.3)');
+      shadowGrad.addColorStop(0.6, 'rgba(0,0,0,0.1)');
       shadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = shadowGrad;
       ctx.beginPath();
-      ctx.ellipse(0, cY + 3, cW * 0.85, cH * 0.35, 0, 0, Math.PI);
+      ctx.ellipse(0, cY + 4, cW * 0.8, cH * 0.35, 0, 0, Math.PI);
       ctx.fill();
 
-      // 6 strings with natural drape
-      ctx.strokeStyle = 'rgba(200,195,185,0.6)';
-      ctx.lineWidth = 0.7;
-      const stringPoints = [-0.92, -0.58, -0.22, 0.22, 0.58, 0.92];
-      for (const frac of stringPoints) {
+      // ── Military star on ammo ──
+      if (pu.type === 'ammo') {
+        ctx.globalAlpha = fadeAlpha * 0.55;
+        ctx.fillStyle = '#e5e5d0';
+        ctx.beginPath();
+        const starX = 0, starY = cY - cH * 0.12, starR = 5.5;
+        for (let si = 0; si < 5; si++) {
+          const a = -Math.PI / 2 + (si * Math.PI * 2) / 5;
+          const a2 = a + Math.PI / 5;
+          ctx.lineTo(starX + Math.cos(a) * starR, starY + Math.sin(a) * starR);
+          ctx.lineTo(starX + Math.cos(a2) * starR * 0.4, starY + Math.sin(a2) * starR * 0.4);
+        }
+        ctx.closePath();
+        ctx.fill();
+        // Serial number
+        ctx.font = '3px monospace';
+        ctx.fillStyle = 'rgba(229,229,208,0.35)';
+        ctx.fillText('MIL-STD', -cW * 0.55, cY - cH * 0.55);
+        ctx.globalAlpha = fadeAlpha;
+      }
+
+      // ── Medical cross on medkit (spans multiple panels) ──
+      if (pu.type === 'medkit') {
+        ctx.globalAlpha = fadeAlpha * 0.6;
+        ctx.fillStyle = '#cc2222';
+        const crossW = 4, crossH = 8;
+        ctx.fillRect(-crossW / 2, cY - cH * 0.4, crossW, crossH);
+        ctx.fillRect(-crossH / 2, cY - cH * 0.4 + (crossH - crossW) / 2, crossH, crossW);
+        ctx.globalAlpha = fadeAlpha;
+      }
+
+      // ── Racing stripe on other types ──
+      if (pu.type !== 'ammo' && pu.type !== 'medkit') {
+        ctx.globalAlpha = fadeAlpha * 0.2;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(0, cY + baseBillow * 0.3 - 2, cW * 0.92, cH * 0.25 + baseBillow * 0.15, 0, Math.PI, 0);
+        ctx.stroke();
+        ctx.globalAlpha = fadeAlpha;
+      }
+
+      // ── 8 Suspension lines with variable thickness & wind sway ──
+      const linePoints = [-0.95, -0.7, -0.42, -0.15, 0.15, 0.42, 0.7, 0.95];
+      for (let li = 0; li < linePoints.length; li++) {
+        const frac = linePoints[li];
         const a = Math.PI + (frac + 1) * 0.5 * Math.PI;
+        const pIdx = Math.floor((frac + 1) * 0.5 * panels);
+        const pBillow = baseBillow + Math.sin(pu.bobTimer * 4.2 + pIdx * 0.7) * 0.8;
+        const effH = cH + pBillow;
         const sx = Math.cos(a) * cW;
-        const sy = Math.sin(a) * (cH + billow) + cY + billow * 0.3;
+        const sy = Math.sin(a) * effH + cY + pBillow * 0.3;
         const drape = 4 + Math.abs(frac) * 3;
+        // Independent wind sway per line
+        const lineWind = Math.sin(pu.bobTimer * 3.5 + li * 1.2) * 0.8;
+
+        // Thicker at canopy, thinner at box
+        ctx.strokeStyle = 'rgba(200,195,185,0.55)';
+        ctx.lineWidth = 0.9 - Math.abs(frac) * 0.15; // 0.75-0.9
         ctx.beginPath();
         ctx.moveTo(sx, sy);
         ctx.bezierCurveTo(
-          sx * 0.5, sy + drape,
-          frac > 0 ? 2 : -2, -10,
+          sx * 0.55 + lineWind, sy + drape,
+          (frac > 0 ? 2 : -2) + lineWind * 0.5, -12,
           0, -4
         );
         ctx.stroke();
+
+        // Attachment point dot at canopy
+        ctx.fillStyle = 'rgba(180,175,165,0.5)';
+        ctx.beginPath();
+        ctx.arc(sx, sy, 0.8, 0, Math.PI * 2);
+        ctx.fill();
       }
+
+      // ── Shadow on the crate from canopy ──
+      const crateShadowGrad = ctx.createRadialGradient(sway * 8, -6, 1, sway * 8, -6, 14);
+      crateShadowGrad.addColorStop(0, 'rgba(0,0,0,0.12)');
+      crateShadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = crateShadowGrad;
+      ctx.beginPath();
+      ctx.ellipse(sway * 8, -5, 13, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
 
       ctx.restore();
     }
