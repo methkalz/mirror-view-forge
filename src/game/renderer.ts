@@ -5724,247 +5724,129 @@ function renderTutorialSlide2(ctx: CanvasRenderingContext2D, w: number, h: numbe
 }
 
 // ── Slide 3: Title + Start — Cinematic ──
-let slide3EntryTime = 0;
-
 function renderTutorialSlide3(ctx: CanvasRenderingContext2D, w: number, h: number, t: number, highScore: number) {
-  const now = Date.now() / 1000;
-  if (slide3EntryTime === 0 || now - slide3EntryTime > 120) slide3EntryTime = now;
-  const elapsed = now - slide3EntryTime;
-
   ctx.save();
   ctx.textAlign = 'center';
 
-  // ── 1. Rotating Light Rays ──
-  ctx.save();
-  ctx.translate(w / 2, h * 0.22);
-  const rayCount = 6;
-  for (let i = 0; i < rayCount; i++) {
-    const angle = (i / rayCount) * Math.PI * 2 + t * 0.3;
-    const rayLen = Math.max(w, h) * 0.8;
-    const rayAlpha = 0.03 + Math.sin(t * 0.8 + i * 1.5) * 0.015;
-    const rayGrad = ctx.createLinearGradient(0, 0, Math.cos(angle) * rayLen, Math.sin(angle) * rayLen);
-    rayGrad.addColorStop(0, `rgba(251, 191, 36, ${rayAlpha * 2})`);
-    rayGrad.addColorStop(0.3, `rgba(251, 191, 36, ${rayAlpha})`);
-    rayGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
-    ctx.strokeStyle = rayGrad;
-    ctx.lineWidth = 2 + Math.sin(t + i * 2) * 0.5;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(angle) * rayLen, Math.sin(angle) * rayLen);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // ── 2. Glass card behind title ──
-  const cardW = w * 0.8, cardH = h * 0.24;
-  const cardX = w / 2 - cardW / 2, cardY = h * 0.1;
-  const floatY = Math.sin(t * 1.2) * 2;
-  drawGlassCard(ctx, cardX, cardY + floatY, cardW, cardH, 'rgba(251, 191, 36, 0.5)');
-
-  // ── 3. SKYFALL — letter-spaced with breathing ──
-  const breathScale = 1 + Math.sin(t * 1.5) * 0.015;
-  ctx.save();
-  ctx.translate(w / 2, h * 0.2 + floatY);
-  ctx.scale(breathScale, breathScale);
-
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  // ── 1. SKYFALL — letter-spaced, single gold glow ──
   ctx.font = 'bold 48px monospace';
   const titleText = 'S K Y F A L L';
-  ctx.fillText(titleText, 2, 2);
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillText(titleText, w / 2 + 1, h * 0.22 + 1);
 
   // Metallic gradient
-  const titleGrad = ctx.createLinearGradient(-130, -20, 130, 20);
-  titleGrad.addColorStop(0, '#8a8a8a');
-  titleGrad.addColorStop(0.15, '#d4c8a0');
+  const titleGrad = ctx.createLinearGradient(w / 2 - 130, h * 0.22 - 20, w / 2 + 130, h * 0.22 + 20);
+  titleGrad.addColorStop(0, '#b8a060');
   titleGrad.addColorStop(0.3, '#ffd700');
-  titleGrad.addColorStop(0.5, '#fff5cc');
+  titleGrad.addColorStop(0.5, '#fff8e0');
   titleGrad.addColorStop(0.7, '#ffd700');
-  titleGrad.addColorStop(0.85, '#d4c8a0');
-  titleGrad.addColorStop(1, '#8a8a8a');
+  titleGrad.addColorStop(1, '#b8a060');
   ctx.fillStyle = titleGrad;
-
-  // Double glow
-  ctx.shadowColor = 'rgba(255,255,255,0.2)';
-  ctx.shadowBlur = 50;
-  ctx.fillText(titleText, 0, 0);
-  ctx.shadowColor = 'rgba(255,200,50,0.6)';
-  ctx.shadowBlur = 20;
-  ctx.fillText(titleText, 0, 0);
+  ctx.shadowColor = 'rgba(255, 200, 50, 0.25)';
+  ctx.shadowBlur = 15;
+  ctx.fillText(titleText, w / 2, h * 0.22);
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
+
+  // ── 2. Gold divider — static, thin ──
+  const divY = h * 0.27;
+  const divGrad = ctx.createLinearGradient(w * 0.3, 0, w * 0.7, 0);
+  divGrad.addColorStop(0, 'rgba(251, 191, 36, 0)');
+  divGrad.addColorStop(0.3, 'rgba(251, 191, 36, 0.25)');
+  divGrad.addColorStop(0.5, 'rgba(251, 191, 36, 0.35)');
+  divGrad.addColorStop(0.7, 'rgba(251, 191, 36, 0.25)');
+  divGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+  ctx.strokeStyle = divGrad;
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(w * 0.3, divY);
+  ctx.lineTo(w * 0.7, divY);
+  ctx.stroke();
+  // Diamond center
+  ctx.fillStyle = 'rgba(251, 191, 36, 0.35)';
+  ctx.save();
+  ctx.translate(w / 2, divY);
+  ctx.rotate(Math.PI / 4);
+  ctx.fillRect(-2.5, -2.5, 5, 5);
   ctx.restore();
 
-  // SURVIVAL
-  const survPulse = 0.7 + Math.sin(t * 2.5) * 0.3;
-  const survGrad = ctx.createLinearGradient(w / 2 - 60, 0, w / 2 + 60, 0);
-  survGrad.addColorStop(0, `rgba(200, 40, 40, ${survPulse})`);
-  survGrad.addColorStop(0.5, `rgba(239, 68, 68, ${survPulse})`);
-  survGrad.addColorStop(1, `rgba(200, 40, 40, ${survPulse})`);
-  ctx.fillStyle = survGrad;
-  ctx.font = 'bold 16px monospace';
-  ctx.letterSpacing = '4px';
-  ctx.fillText('SURVIVAL', w / 2, h * 0.27 + floatY);
+  // ── 3. SURVIVAL — muted red, static ──
+  ctx.fillStyle = 'rgba(200, 50, 50, 0.5)';
+  ctx.font = 'bold 14px monospace';
+  ctx.letterSpacing = '3px';
+  ctx.fillText('SURVIVAL', w / 2, h * 0.32);
   ctx.letterSpacing = '0px';
 
-  // ── 4. Typewriter "هل أنت مستعد؟" ──
-  const readyText = 'هل أنت مستعد؟';
-  const charsToShow = Math.min(readyText.length, Math.floor(elapsed * 6));
-  const visibleText = readyText.slice(0, charsToShow);
+  // ── 4. "هل أنت مستعد؟" — static gold, subtle ──
+  ctx.direction = 'rtl';
+  ctx.fillStyle = 'rgba(251, 191, 36, 0.35)';
+  ctx.font = '15px Tajawal, sans-serif';
+  ctx.fillText('هل أنت مستعد؟', w / 2, h * 0.42);
+  ctx.direction = 'ltr';
 
-  if (visibleText.length > 0) {
-    ctx.direction = 'rtl';
-    const readyAlpha = charsToShow >= readyText.length
-      ? (0.5 + Math.sin(t * 2) * 0.3) // pulse after done
-      : 0.7;
-    ctx.fillStyle = `rgba(251, 191, 36, ${readyAlpha})`;
-    ctx.font = '16px Tajawal, sans-serif';
-    ctx.fillText(visibleText, w / 2, h * 0.37);
-    ctx.direction = 'ltr';
-  }
+  // ── 5. Button "يلا يلا" — thin gold border, minimal ──
+  const btnW = 180, btnH = 44;
+  const btnX = w / 2 - btnW / 2, btnY = h * 0.52;
+  const borderAlpha = 0.2 + Math.sin(t * 1.5) * 0.1;
 
-  // Blinking cursor during typing
-  if (charsToShow < readyText.length || (charsToShow >= readyText.length && elapsed < (readyText.length / 6) + 1.5)) {
-    const cursorOn = Math.floor(t * 3) % 2 === 0;
-    if (cursorOn) {
-      ctx.fillStyle = 'rgba(251, 191, 36, 0.6)';
-      ctx.fillRect(w / 2 - 50, h * 0.37 - 10, 2, 14);
-    }
-  }
-
-  // Divider
-  drawGoldDivider(ctx, w, h * 0.42, t);
-
-  // ── 5. High score glass card ──
-  if (highScore > 0) {
-    const hsW = w * 0.4, hsH = 32;
-    const hsX = w / 2 - hsW / 2, hsY = h * 0.44;
-    // Glass bg
-    ctx.fillStyle = 'rgba(255,255,255,0.04)';
-    roundRect(ctx, hsX, hsY, hsW, hsH, 8);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 0.5;
-    roundRect(ctx, hsX, hsY, hsW, hsH, 8);
-    ctx.stroke();
-    // Trophy + score
-    ctx.font = '12px sans-serif';
-    ctx.fillStyle = 'rgba(251,191,36,0.8)';
-    ctx.fillText(`🏆  ${highScore}`, w / 2, hsY + 20);
-  }
-
-  // ── 6. HUD Military Button — "يلا يلا" ──
-  const btnW = 210, btnH = 48;
-  const btnX = w / 2 - btnW / 2, btnY = h * 0.56;
-  const btnPulse = 0.5 + Math.sin(t * 3) * 0.3;
-  const bevel = 8;
-
-  // Beveled path
-  ctx.beginPath();
-  ctx.moveTo(btnX + bevel, btnY);
-  ctx.lineTo(btnX + btnW - bevel, btnY);
-  ctx.lineTo(btnX + btnW, btnY + bevel);
-  ctx.lineTo(btnX + btnW, btnY + btnH - bevel);
-  ctx.lineTo(btnX + btnW - bevel, btnY + btnH);
-  ctx.lineTo(btnX + bevel, btnY + btnH);
-  ctx.lineTo(btnX, btnY + btnH - bevel);
-  ctx.lineTo(btnX, btnY + bevel);
-  ctx.closePath();
-
-  // Button fill — deep red military gradient
-  const btnFillGrad = ctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH);
-  btnFillGrad.addColorStop(0, 'rgba(140, 20, 20, 0.3)');
-  btnFillGrad.addColorStop(0.5, 'rgba(180, 30, 25, 0.15)');
-  btnFillGrad.addColorStop(1, 'rgba(140, 20, 20, 0.25)');
-  ctx.fillStyle = btnFillGrad;
+  // Nearly transparent fill
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+  roundRect(ctx, btnX, btnY, btnW, btnH, 8);
   ctx.fill();
 
-  // Border glow
-  ctx.shadowColor = `rgba(220, 40, 40, ${btnPulse * 0.4})`;
-  ctx.shadowBlur = 20;
-  const btnBorderGrad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY + btnH);
-  btnBorderGrad.addColorStop(0, `rgba(220, 60, 60, ${0.3 + btnPulse * 0.3})`);
-  btnBorderGrad.addColorStop(0.5, `rgba(255, 80, 60, ${0.5 + btnPulse * 0.3})`);
-  btnBorderGrad.addColorStop(1, `rgba(220, 60, 60, ${0.3 + btnPulse * 0.3})`);
-  ctx.strokeStyle = btnBorderGrad;
-  ctx.lineWidth = 1.5;
+  // Thin gold border with subtle pulse
+  ctx.strokeStyle = `rgba(212, 175, 55, ${borderAlpha})`;
+  ctx.lineWidth = 0.8;
+  roundRect(ctx, btnX, btnY, btnW, btnH, 8);
   ctx.stroke();
-  ctx.shadowBlur = 0;
-  ctx.shadowColor = 'transparent';
 
-  // Scan line effect
-  const scanPos = ((Date.now() % 2000) / 2000);
-  const scanY = btnY + scanPos * btnH;
-  ctx.save();
-  ctx.clip(); // clip to beveled path
-  ctx.fillStyle = `rgba(255, 100, 80, ${0.08 + btnPulse * 0.04})`;
-  ctx.fillRect(btnX, scanY - 1, btnW, 2);
-  ctx.restore();
-
-  // Re-draw beveled path for text context
-  ctx.beginPath();
-  ctx.moveTo(btnX + bevel, btnY);
-  ctx.lineTo(btnX + btnW - bevel, btnY);
-  ctx.lineTo(btnX + btnW, btnY + bevel);
-  ctx.lineTo(btnX + btnW, btnY + btnH - bevel);
-  ctx.lineTo(btnX + btnW - bevel, btnY + btnH);
-  ctx.lineTo(btnX + bevel, btnY + btnH);
-  ctx.lineTo(btnX, btnY + btnH - bevel);
-  ctx.lineTo(btnX, btnY + bevel);
-  ctx.closePath();
-
-  // Energy pulse from center
-  const pulseRadius = ((Date.now() % 1500) / 1500) * btnW;
-  const pulseAlpha = Math.max(0, 0.12 - (pulseRadius / btnW) * 0.12);
-  ctx.save();
-  ctx.clip();
-  const pulseGrad = ctx.createRadialGradient(w / 2, btnY + btnH / 2, 0, w / 2, btnY + btnH / 2, pulseRadius);
-  pulseGrad.addColorStop(0, `rgba(255, 120, 80, ${pulseAlpha})`);
-  pulseGrad.addColorStop(1, 'rgba(255, 120, 80, 0)');
-  ctx.fillStyle = pulseGrad;
-  ctx.fillRect(btnX, btnY, btnW, btnH);
-  ctx.restore();
-
-  // Button text — ▶ يلا يلا
+  // Button text
   ctx.direction = 'rtl';
-  ctx.fillStyle = `rgba(255, 200, 180, ${0.8 + btnPulse * 0.2})`;
-  ctx.font = 'bold 20px Tajawal, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('يلا يلا  ▶', w / 2, btnY + btnH / 2 + 7);
+  ctx.fillStyle = 'rgba(235, 210, 150, 0.85)';
+  ctx.font = '18px Tajawal, sans-serif';
+  ctx.fillText('يلا يلا', w / 2, btnY + btnH / 2 + 6);
   ctx.direction = 'ltr';
+
+  // ── 6. High score — simple text ──
+  if (highScore > 0) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.font = '13px monospace';
+    ctx.fillText(`🏆  ${highScore}`, w / 2, h * 0.66);
+  }
 
   // ── 7. Developer signature ──
   const sigY = h * 0.92;
 
-  // Small "تطوير" label
+  // "تطوير"
   ctx.direction = 'rtl';
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
   ctx.font = '11px Tajawal, sans-serif';
   ctx.fillText('تطوير', w / 2, sigY - 16);
 
-  // Developer name
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+  // Name
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
   ctx.font = '16px Tajawal, sans-serif';
   ctx.fillText('مثقال زيدان', w / 2, sigY);
   ctx.direction = 'ltr';
 
-  // Gold divider under signature
+  // Static gold divider under signature
   const sigDivY = sigY + 10;
-  const sigPulse = 0.2 + Math.sin(t * 2) * 0.1;
-  const sigGrad = ctx.createLinearGradient(w * 0.25, 0, w * 0.75, 0);
-  sigGrad.addColorStop(0, 'rgba(251, 191, 36, 0)');
-  sigGrad.addColorStop(0.4, `rgba(251, 191, 36, ${sigPulse})`);
-  sigGrad.addColorStop(0.5, `rgba(251, 191, 36, ${sigPulse + 0.1})`);
-  sigGrad.addColorStop(0.6, `rgba(251, 191, 36, ${sigPulse})`);
-  sigGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
-  ctx.strokeStyle = sigGrad;
+  const sigDivGrad = ctx.createLinearGradient(w * 0.3, 0, w * 0.7, 0);
+  sigDivGrad.addColorStop(0, 'rgba(251, 191, 36, 0)');
+  sigDivGrad.addColorStop(0.4, 'rgba(251, 191, 36, 0.2)');
+  sigDivGrad.addColorStop(0.5, 'rgba(251, 191, 36, 0.3)');
+  sigDivGrad.addColorStop(0.6, 'rgba(251, 191, 36, 0.2)');
+  sigDivGrad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+  ctx.strokeStyle = sigDivGrad;
   ctx.lineWidth = 0.5;
   ctx.beginPath();
-  ctx.moveTo(w * 0.25, sigDivY);
-  ctx.lineTo(w * 0.75, sigDivY);
+  ctx.moveTo(w * 0.3, sigDivY);
+  ctx.lineTo(w * 0.7, sigDivY);
   ctx.stroke();
   // Diamond
-  ctx.fillStyle = `rgba(251, 191, 36, ${sigPulse + 0.1})`;
+  ctx.fillStyle = 'rgba(251, 191, 36, 0.25)';
   ctx.save();
   ctx.translate(w / 2, sigDivY);
   ctx.rotate(Math.PI / 4);
