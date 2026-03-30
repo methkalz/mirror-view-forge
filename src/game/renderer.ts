@@ -2770,11 +2770,11 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = comboGrad;
     ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(`×${g.comboMultiplier.toFixed(1)} COMBO`, 0, 0);
+    ctx.fillText(`×${g.comboMultiplier.toFixed(1)}`, 0, 0);
     // Combo count below
     ctx.fillStyle = 'rgba(251,191,36,0.6)';
-    ctx.font = '9px monospace';
-    ctx.fillText(`${g.comboCount} hits`, 0, 13);
+    ctx.font = '9px Tajawal, Arial, sans-serif';
+    ctx.fillText(`${g.comboCount} إصابة`, 0, 13);
 
     // Gold sparks around combo counter at ×2+
     if (g.comboMultiplier >= 2) {
