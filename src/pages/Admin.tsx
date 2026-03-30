@@ -1561,7 +1561,7 @@ const BackgroundsPanel: React.FC<{
                     <label style={{ ...labelStyle, marginBottom: 0 }}>Fade Duration</label>
                     <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{p.fadeDuration || 60}s</span>
                   </div>
-                  <input type="range" min={10} max={180} step={5} value={p.fadeDuration || 60}
+                  <input type="range" min={1} max={300} step={1} value={p.fadeDuration || 60}
                     onChange={e => handleUpdate(p.id, { fadeDuration: parseFloat(e.target.value) })}
                     style={{ width: '100%', accentColor: meta.color }} />
                 </div>
