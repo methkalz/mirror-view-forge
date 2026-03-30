@@ -69,7 +69,7 @@ const SkyfallGame: React.FC = () => {
         
         // Inject background config into renderer
         if (bgPhases.length > 0) {
-          setBackgroundConfig(bgPhases, cfg.bgLoop);
+          setBackgroundConfig(bgPhases, cfg.bgLoop, cfg.bgLoopFadeDuration);
         }
 
         // Load audio with progress tracking (40% → 95%)
