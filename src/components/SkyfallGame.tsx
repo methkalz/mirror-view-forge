@@ -5,6 +5,8 @@ import { createGame, resetGame, update, updateIntro } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
 import { resumeAudio, stopMenuMusic, cancelMenuMusicStart } from '@/game/audio';
 import { fetchGameConfig, fetchLeaderboard, submitScore, type RemoteGameConfig, type LeaderboardEntry } from '@/game/config';
+import { fetchBackgroundConfig } from '@/game/backgroundConfig';
+import { setBackgroundConfig } from '@/game/renderer';
 import { supabase } from '@/integrations/supabase/client';
 import NameEntry from './NameEntry';
 import Leaderboard from './Leaderboard';
@@ -47,15 +49,21 @@ const SkyfallGame: React.FC = () => {
       try {
         const cfgPromise = fetchGameConfig();
         const lbPromise = fetchLeaderboard();
+        const bgPromise = fetchBackgroundConfig();
         setLoadProgress(15);
 
-        const [cfg, lb] = await Promise.all([cfgPromise, lbPromise]);
+        const [cfg, lb, bgPhases] = await Promise.all([cfgPromise, lbPromise, bgPromise]);
         if (!mounted) return;
         setLoadProgress(40);
 
         setRemoteConfig(cfg);
         remoteConfigRef.current = cfg;
         setLeaderboard(lb);
+        
+        // Inject background config into renderer
+        if (bgPhases.length > 0) {
+          setBackgroundConfig(bgPhases);
+        }
 
         // Load audio with progress tracking (40% → 95%)
         await loadAudioSettings((pct) => {
