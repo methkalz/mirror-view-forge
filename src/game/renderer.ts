@@ -81,6 +81,8 @@ function getPhaseBlend(elapsed: number): {
   const defaultResult = {
     imgA: fallbackLoaded ? fallbackImg : null, imgB: null, fade: 0,
     overlayTop: [12,20,69], overlayMid: [26,16,46], overlayBottom: [26,10,46], overlayOpacity: 0.4,
+    displayModeA: 'single' as DisplayMode, displayModeB: 'single' as DisplayMode,
+    bgMarginA: bgCameraMargin, bgMarginB: bgCameraMargin,
   };
 
   if (!bgConfigLoaded || bgPhases.length === 0) return defaultResult;
