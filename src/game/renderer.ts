@@ -1,11 +1,41 @@
 import { GameData, Player, FirePool, GasCloud } from './types';
-import bgCityUrl from '../assets/bg-skyfall.jpeg';
+import bgFallbackUrl from '../assets/bg-skyfall.jpeg';
+import type { BackgroundPhase } from './backgroundConfig';
 
-// ─── Background Image ─────────────────────────────────
-const bgImage = new Image();
-let bgLoaded = false;
-bgImage.onload = () => { bgLoaded = true; };
-bgImage.src = bgCityUrl;
+// ─── Multi-Image Background System ───────────────────
+interface BgLayer {
+  image: HTMLImageElement;
+  loaded: boolean;
+  phase: string;
+}
+
+// Fallback image (always available)
+const fallbackImg = new Image();
+let fallbackLoaded = false;
+fallbackImg.onload = () => { fallbackLoaded = true; };
+fallbackImg.src = bgFallbackUrl;
+
+// Dynamic layers loaded from DB config
+let bgLayers: BgLayer[] = [];
+let bgPhases: BackgroundPhase[] = [];
+let bgConfigLoaded = false;
+
+/** Called once from GameLoader to inject background config */
+export function setBackgroundConfig(phases: BackgroundPhase[]) {
+  bgPhases = phases;
+  bgConfigLoaded = true;
+  // Load images from URLs
+  bgLayers = phases.map(p => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    const layer: BgLayer = { image: img, loaded: false, phase: p.phase };
+    if (p.imageUrl) {
+      img.onload = () => { layer.loaded = true; };
+      img.src = p.imageUrl;
+    }
+    return layer;
+  });
+}
 
 // ─── Color Interpolation Helpers ──────────────────────
 function lerpColor(a: number[], b: number[], t: number): number[] {
@@ -15,31 +45,111 @@ function rgbStr(c: number[]): string {
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
-// Sky color presets [R,G,B] — top, mid, bottom
-const SKY_PHASES = [
-  { time: 0,   top: [12,20,69],   mid: [26,16,46],  bottom: [26,10,46] },   // calm night
-  { time: 60,  top: [15,22,60],   mid: [35,20,55],  bottom: [60,30,50] },   // pre-dawn
-  { time: 120, top: [20,15,50],   mid: [50,20,40],  bottom: [90,35,30] },   // battle dusk
-  { time: 240, top: [30,5,10],    mid: [50,8,15],   bottom: [100,15,10] },  // boss hell
-  { time: 400, top: [40,2,5],     mid: [60,5,8],    bottom: [120,10,5] },   // deep hell
-];
+function parseRGB(str: string): number[] {
+  return str.split(',').map(s => parseInt(s.trim(), 10) || 0);
+}
 
-function getSkyColors(elapsed: number) {
-  let i = 0;
-  for (; i < SKY_PHASES.length - 1; i++) {
-    if (elapsed < SKY_PHASES[i + 1].time) break;
+/** Get current phase blend based on elapsed time */
+function getPhaseBlend(elapsed: number): {
+  imgA: HTMLImageElement | null; imgB: HTMLImageElement | null;
+  fade: number;
+  overlayTop: number[]; overlayMid: number[]; overlayBottom: number[];
+  overlayOpacity: number;
+} {
+  // Default fallback
+  const defaultResult = {
+    imgA: fallbackLoaded ? fallbackImg : null, imgB: null, fade: 0,
+    overlayTop: [12,20,69], overlayMid: [26,16,46], overlayBottom: [26,10,46], overlayOpacity: 0.4,
+  };
+
+  if (!bgConfigLoaded || bgPhases.length === 0) return defaultResult;
+
+  // Find which two phases we're between
+  let currentIdx = bgPhases.length - 1;
+  for (let i = 0; i < bgPhases.length - 1; i++) {
+    if (elapsed < bgPhases[i + 1].transitionStart) {
+      currentIdx = i;
+      break;
+    }
   }
-  if (i >= SKY_PHASES.length - 1) i = SKY_PHASES.length - 2;
-  const a = SKY_PHASES[i], b = SKY_PHASES[i + 1];
-  const t = Math.min(1, (elapsed - a.time) / (b.time - a.time));
+
+  const current = bgPhases[currentIdx];
+  const currentLayer = bgLayers[currentIdx];
+  const imgA = currentLayer?.loaded ? currentLayer.image : (fallbackLoaded ? fallbackImg : null);
+
+  // Check if we're in a transition zone to the next phase
+  const nextIdx = currentIdx + 1;
+  if (nextIdx < bgPhases.length) {
+    const next = bgPhases[nextIdx];
+    const nextLayer = bgLayers[nextIdx];
+
+    // Transition zone: from current.transitionEnd approaching next.transitionStart
+    // Actually: transition happens between transitionStart and transitionEnd of the NEXT phase
+    // Let's use: transition from current.transitionEnd to next.transitionStart as the fade window
+    // Simpler: the transition_start/end define when this phase is fully active
+    // Phase is fully showing from its transition_end to the next phase's transition_start
+    // Fade happens from next.transition_start to next.transition_end... no.
+    // Let's interpret: transition_start = when fade-in begins, transition_end = when fully visible
+    // So fade from phase[i] to phase[i+1] happens between phase[i+1].transitionStart and phase[i+1].transitionEnd... 
+    // Actually the plan says: transition_start/end are timestamps. Day: 0-90 means day shows from 0 to 90. Sunset: 90-240 means sunset shows from 90 to 240.
+    // So the transition between day and sunset happens around second 90.
+    // Let's make the cross-fade duration 60 seconds by default, centered around the boundary.
+    const fadeStart = next.transitionStart;
+    const fadeEnd = next.transitionStart + Math.min(60, (next.transitionEnd - next.transitionStart) * 0.5);
+
+    if (elapsed >= fadeStart && elapsed <= fadeEnd) {
+      const fade = (elapsed - fadeStart) / (fadeEnd - fadeStart);
+      const imgB = nextLayer?.loaded ? nextLayer.image : null;
+      // Interpolate overlay colors
+      const topA = parseRGB(current.overlayTop), topB = parseRGB(next.overlayTop);
+      const midA = parseRGB(current.overlayMid), midB = parseRGB(next.overlayMid);
+      const botA = parseRGB(current.overlayBottom), botB = parseRGB(next.overlayBottom);
+      const opA = current.overlayOpacity, opB = next.overlayOpacity;
+      return {
+        imgA, imgB, fade,
+        overlayTop: lerpColor(topA, topB, fade),
+        overlayMid: lerpColor(midA, midB, fade),
+        overlayBottom: lerpColor(botA, botB, fade),
+        overlayOpacity: opA + (opB - opA) * fade,
+      };
+    }
+  }
+
+  // No transition — solid phase
   return {
-    top: lerpColor(a.top, b.top, t),
-    mid: lerpColor(a.mid, b.mid, t),
-    bottom: lerpColor(a.bottom, b.bottom, t),
+    imgA, imgB: null, fade: 0,
+    overlayTop: parseRGB(current.overlayTop),
+    overlayMid: parseRGB(current.overlayMid),
+    overlayBottom: parseRGB(current.overlayBottom),
+    overlayOpacity: current.overlayOpacity,
   };
 }
 
-// ─── Background with Image ────────────────────────────
+/** Draw a single image with mirror tiling */
+function drawTiledImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, camX: number, left: number, right: number, parallax: number) {
+  const imgAspect = img.width / img.height;
+  const drawH = h;
+  const drawW = drawH * imgAspect;
+  const imgOffset = camX * parallax;
+  const startTile = Math.floor((left + imgOffset) / drawW) - 1;
+  const endTile = Math.ceil((right + imgOffset) / drawW) + 1;
+
+  for (let tile = startTile; tile <= endTile; tile++) {
+    const drawX = tile * drawW - imgOffset;
+    const isMirrored = ((tile % 2) + 2) % 2 === 1;
+    if (isMirrored) {
+      ctx.save();
+      ctx.translate(drawX + drawW, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img, 0, 0, drawW, drawH);
+      ctx.restore();
+    } else {
+      ctx.drawImage(img, drawX, 0, drawW, drawH);
+    }
+  }
+}
+
+// ─── Background with Cross-fade ───────────────────────
 function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
   const { width: w, height: h } = g;
   const camX = g.camera.x;
@@ -47,56 +157,41 @@ function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
   const left = camX - margin;
   const right = camX + w + margin;
   const totalW = right - left;
+  const parallax = 0.3;
 
-  if (bgLoaded) {
-    // Draw the background image covering the full visible area
-    // Use cover-style: fill height, tile horizontally with parallax
-    const imgAspect = bgImage.width / bgImage.height;
-    const drawH = h;
-    const drawW = drawH * imgAspect;
+  const blend = getPhaseBlend(g.elapsed);
 
-    // Parallax: image moves slower than camera
-    const parallax = 0.3;
-    const imgOffset = camX * parallax;
+  if (blend.imgA) {
+    // Draw primary image
+    drawTiledImage(ctx, blend.imgA, h, camX, left, right, parallax);
 
-    // Tile the image to cover the full visible width
-    const startTile = Math.floor((left + imgOffset) / drawW) - 1;
-    const endTile = Math.ceil((right + imgOffset) / drawW) + 1;
-
-    for (let tile = startTile; tile <= endTile; tile++) {
-      const drawX = tile * drawW - imgOffset;
-      // Mirror every odd tile so edges always match seamlessly
-      const isMirrored = ((tile % 2) + 2) % 2 === 1; // works for negative tiles too
-      if (isMirrored) {
-        ctx.save();
-        ctx.translate(drawX + drawW, 0);
-        ctx.scale(-1, 1);
-        ctx.drawImage(bgImage, 0, 0, drawW, drawH);
-        ctx.restore();
-      } else {
-        ctx.drawImage(bgImage, drawX, 0, drawW, drawH);
-      }
+    // Cross-fade second image on top
+    if (blend.imgB && blend.fade > 0) {
+      ctx.save();
+      ctx.globalAlpha = blend.fade;
+      drawTiledImage(ctx, blend.imgB, h, camX, left, right, parallax);
+      ctx.restore();
     }
   } else {
-    // Fallback: solid dark color while loading
     ctx.fillStyle = '#0c1445';
     ctx.fillRect(left, 0, totalW, h);
   }
 
-  // Dynamic color overlay that changes with time (preserves time-based atmosphere)
-  const colors = getSkyColors(g.elapsed);
+  // Dynamic color overlay from config
   const overlayGrad = ctx.createLinearGradient(0, 0, 0, h);
-  overlayGrad.addColorStop(0, `rgba(${colors.top[0]},${colors.top[1]},${colors.top[2]},0.45)`);
-  overlayGrad.addColorStop(0.5, `rgba(${colors.mid[0]},${colors.mid[1]},${colors.mid[2]},0.35)`);
-  overlayGrad.addColorStop(1, `rgba(${colors.bottom[0]},${colors.bottom[1]},${colors.bottom[2]},0.4)`);
+  const op = blend.overlayOpacity;
+  overlayGrad.addColorStop(0, `rgba(${blend.overlayTop[0]},${blend.overlayTop[1]},${blend.overlayTop[2]},${op})`);
+  overlayGrad.addColorStop(0.5, `rgba(${blend.overlayMid[0]},${blend.overlayMid[1]},${blend.overlayMid[2]},${op * 0.85})`);
+  overlayGrad.addColorStop(1, `rgba(${blend.overlayBottom[0]},${blend.overlayBottom[1]},${blend.overlayBottom[2]},${op * 0.95})`);
   ctx.fillStyle = overlayGrad;
   ctx.fillRect(left, 0, totalW, h);
 
-  // Stars — few twinkling 4-pointed stars
+  // Stars — more visible at night (later elapsed)
   const groundY = h * 0.78;
-  const starAlphaBase = Math.max(0, 0.5 - g.elapsed * 0.001);
+  const nightFactor = Math.min(1, Math.max(0, (g.elapsed - 200) / 100));
+  const starAlphaBase = nightFactor * 0.6;
   if (starAlphaBase > 0.02) {
-    const saved = ctx.save();
+    ctx.save();
     for (let i = 0; i < 15; i++) {
       const sx = ((i * 237.5 + 50) % 2000) - 200;
       const sy = ((i * 73.1 + 20) % (groundY * 0.45));
@@ -107,7 +202,6 @@ function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.fillStyle = '#fff';
       ctx.shadowColor = 'rgba(200,220,255,0.8)';
       ctx.shadowBlur = size * 3;
-      // Draw 4-pointed star
       ctx.beginPath();
       ctx.moveTo(sx, sy - size * 1.8);
       ctx.lineTo(sx + size * 0.35, sy - size * 0.35);
