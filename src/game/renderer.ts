@@ -2850,7 +2850,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = '#60a5fa';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`SHIELD ${p.shieldTimer.toFixed(1)}s`, 30, effectY + 2);
+    ctx.fillText(`درع ${p.shieldTimer.toFixed(1)}`, 30, effectY + 2);
     ctx.globalAlpha = 1;
   }
   // Extinguisher timer
