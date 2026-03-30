@@ -165,21 +165,86 @@ function getPhaseBlend(elapsed: number): {
     bgMarginB: bgCameraMargin,
   };
 }
-function drawSingleImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, viewportW: number, camX: number, parallax: number) {
+
+/** Draw a single centered image that covers the viewport with margin for camera movement */
+function drawSingleImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, viewportW: number, camX: number, parallax: number, margin: number) {
   const imgAspect = img.width / img.height;
   const drawH = h;
   let drawW = drawH * imgAspect;
+  const minWidth = viewportW + margin;
+  if (drawW < minWidth) drawW = minWidth;
+  const drawX = (viewportW - drawW) / 2 - camX * parallax;
+  ctx.drawImage(img, drawX, 0, drawW, drawH);
+}
 
-  // Ensure image is wide enough to cover viewport + extra margin for parallax camera movement
-  const minWidth = viewportW + bgCameraMargin;
-  if (drawW < minWidth) {
-    drawW = minWidth;
+/** Draw mirrored tiled image — seamless, no sub-pixel gaps */
+function drawTiledImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, viewportW: number, camX: number, parallax: number) {
+  const imgAspect = img.width / img.height;
+  const drawH = h;
+  const rawW = drawH * imgAspect;
+  const drawW = Math.ceil(rawW);
+  const offsetX = camX * parallax;
+
+  // Calculate which tiles are visible
+  const startTile = Math.floor((offsetX - viewportW) / drawW) - 1;
+  const endTile = Math.ceil((offsetX + viewportW * 2) / drawW) + 1;
+
+  for (let i = startTile; i <= endTile; i++) {
+    const tileX = Math.round(i * drawW - offsetX);
+    // Skip if off-screen
+    if (tileX + drawW + 1 < 0 || tileX > viewportW) continue;
+
+    const isMirrored = (((i % 2) + 2) % 2) === 1; // true for odd tiles
+
+    ctx.save();
+    if (isMirrored) {
+      ctx.translate(tileX + drawW, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img, 0, 0, drawW + 1, drawH);
+    } else {
+      ctx.drawImage(img, tileX, 0, drawW + 1, drawH);
+    }
+    ctx.restore();
   }
+}
 
-  // Center the image horizontally, then shift by parallax
+/** Draw image centered with blurred stretched copies filling edges */
+function drawBlurEdgeImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, viewportW: number, camX: number, parallax: number, margin: number) {
+  const imgAspect = img.width / img.height;
+  const drawH = h;
+  let drawW = drawH * imgAspect;
+  const minWidth = viewportW + margin;
+  if (drawW < minWidth) drawW = minWidth;
   const drawX = (viewportW - drawW) / 2 - camX * parallax;
 
+  // First draw a stretched blurred version that covers everything
+  ctx.save();
+  ctx.filter = 'blur(25px)';
+  // Draw stretched to fill full viewport + margin
+  const stretchW = viewportW + margin * 2;
+  const stretchX = -margin - camX * parallax;
+  ctx.drawImage(img, stretchX, 0, stretchW, drawH);
+  ctx.filter = 'none';
+  ctx.restore();
+
+  // Then draw the sharp centered image on top
   ctx.drawImage(img, drawX, 0, drawW, drawH);
+}
+
+/** Dispatch to the correct drawing function based on display mode */
+function drawBgImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, viewportW: number, camX: number, parallax: number, mode: DisplayMode, margin: number) {
+  switch (mode) {
+    case 'tiled':
+      drawTiledImage(ctx, img, h, viewportW, camX, parallax);
+      break;
+    case 'blur-edge':
+      drawBlurEdgeImage(ctx, img, h, viewportW, camX, parallax, margin);
+      break;
+    case 'single':
+    default:
+      drawSingleImage(ctx, img, h, viewportW, camX, parallax, margin);
+      break;
+  }
 }
 
 // ─── Background with Cross-fade ───────────────────────
@@ -191,14 +256,12 @@ function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
   const blend = getPhaseBlend(g.elapsed);
 
   if (blend.imgA) {
-    // Draw primary image
-    drawSingleImage(ctx, blend.imgA, h, w, camX, parallax);
+    drawBgImage(ctx, blend.imgA, h, w, camX, parallax, blend.displayModeA, blend.bgMarginA);
 
-    // Cross-fade second image on top
     if (blend.imgB && blend.fade > 0) {
       ctx.save();
       ctx.globalAlpha = blend.fade;
-      drawSingleImage(ctx, blend.imgB, h, w, camX, parallax);
+      drawBgImage(ctx, blend.imgB, h, w, camX, parallax, blend.displayModeB, blend.bgMarginB);
       ctx.restore();
     }
   } else {
