@@ -636,13 +636,12 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.closePath();
       ctx.fill();
     } else if (hz.type === 'cluster') {
-      // Horizontal flying missile with phases
+      // ═══ CRUISE MISSILE — HIGH FIDELITY ═══
       const phase = hz.clusterPhase || 'flying';
       const flyingRight = (hz.clusterVelX || 0) > 0;
       const dir = flyingRight ? 1 : -1;
 
       if (phase === 'done') {
-        // Fading smoke puff
         const alpha = Math.min(1, (hz.clusterTimer || 0) / 0.4);
         ctx.fillStyle = `rgba(100,90,80,${alpha * 0.4})`;
         ctx.beginPath();
@@ -651,167 +650,292 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
       } else {
         ctx.save();
         ctx.scale(dir, 1);
-        // Rotate missile based on vertical velocity for arc effect
         const velY = hz.clusterVelY || 0;
         const arcAngle = Math.atan2(velY, Math.abs(hz.clusterVelX || 300));
         ctx.rotate(arcAngle);
 
-        // === Ballistic missile design ===
-        const bodyLen = hz.size * 3.5;
-        const bodyH = hz.size * 0.6;
+        const bodyLen = hz.size * 3.8;
+        const bodyH = hz.size * 0.55;
+        const t = performance.now() * 0.001;
 
-        // Main body — olive/grey military gradient
-        const bodyGrad = ctx.createLinearGradient(0, -bodyH, 0, bodyH);
-        bodyGrad.addColorStop(0, '#6b7a5d');
-        bodyGrad.addColorStop(0.3, '#4a5640');
-        bodyGrad.addColorStop(0.7, '#3d4a35');
+        // ── Smoke trail behind missile ──
+        if (phase === 'flying') {
+          for (let si = 0; si < 6; si++) {
+            const sx = -bodyLen * 0.7 - si * 8;
+            const sy = Math.sin(t * 3 + si * 1.5) * 2;
+            const sa = 0.15 - si * 0.022;
+            const sr = 3 + si * 2.5;
+            ctx.fillStyle = `rgba(160,155,145,${Math.max(0.01, sa)})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // ── Main body — cylindrical shading (3D effect) ──
+        const bodyGrad = ctx.createLinearGradient(0, -bodyH * 1.1, 0, bodyH * 1.1);
+        bodyGrad.addColorStop(0, '#8a9a7a');
+        bodyGrad.addColorStop(0.15, '#a3b393');
+        bodyGrad.addColorStop(0.35, '#7a8a6a');
+        bodyGrad.addColorStop(0.5, '#6b7a5d');
+        bodyGrad.addColorStop(0.7, '#4a5640');
+        bodyGrad.addColorStop(0.85, '#3d4a35');
         bodyGrad.addColorStop(1, '#2d3628');
         ctx.fillStyle = bodyGrad;
         ctx.beginPath();
-        ctx.moveTo(bodyLen * 0.4, 0);
-        ctx.quadraticCurveTo(bodyLen * 0.4, -bodyH, bodyLen * 0.2, -bodyH);
-        ctx.lineTo(-bodyLen * 0.55, -bodyH * 0.85);
-        ctx.lineTo(-bodyLen * 0.65, 0);
-        ctx.lineTo(-bodyLen * 0.55, bodyH * 0.85);
-        ctx.lineTo(bodyLen * 0.2, bodyH);
-        ctx.quadraticCurveTo(bodyLen * 0.4, bodyH, bodyLen * 0.4, 0);
+        ctx.moveTo(bodyLen * 0.38, 0);
+        ctx.bezierCurveTo(bodyLen * 0.38, -bodyH, bodyLen * 0.3, -bodyH, bodyLen * 0.18, -bodyH);
+        ctx.lineTo(-bodyLen * 0.5, -bodyH * 0.88);
+        ctx.bezierCurveTo(-bodyLen * 0.6, -bodyH * 0.7, -bodyLen * 0.65, -bodyH * 0.3, -bodyLen * 0.65, 0);
+        ctx.bezierCurveTo(-bodyLen * 0.65, bodyH * 0.3, -bodyLen * 0.6, bodyH * 0.7, -bodyLen * 0.5, bodyH * 0.88);
+        ctx.lineTo(bodyLen * 0.18, bodyH);
+        ctx.bezierCurveTo(bodyLen * 0.3, bodyH, bodyLen * 0.38, bodyH, bodyLen * 0.38, 0);
         ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        // Nose cone — long red warhead
-        const noseLen = bodyLen * 0.45;
-        const noseGrad = ctx.createLinearGradient(bodyLen * 0.4, 0, bodyLen * 0.4 + noseLen, 0);
-        noseGrad.addColorStop(0, '#991b1b');
-        noseGrad.addColorStop(0.6, '#b91c1c');
-        noseGrad.addColorStop(1, '#7f1d1d');
-        ctx.fillStyle = noseGrad;
-        ctx.beginPath();
-        ctx.moveTo(bodyLen * 0.4 + noseLen, 0);
-        ctx.quadraticCurveTo(bodyLen * 0.4 + noseLen * 0.3, -bodyH * 0.15, bodyLen * 0.4, -bodyH * 0.7);
-        ctx.lineTo(bodyLen * 0.4, bodyH * 0.7);
-        ctx.quadraticCurveTo(bodyLen * 0.4 + noseLen * 0.3, bodyH * 0.15, bodyLen * 0.4 + noseLen, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = '#450a0a';
+        ctx.strokeStyle = 'rgba(30,40,27,0.6)';
         ctx.lineWidth = 0.8;
         ctx.stroke();
 
-        // Warning stripes — yellow/black bands
-        for (let i = 0; i < 3; i++) {
-          const sx = bodyLen * (-0.1 + i * 0.15);
-          ctx.fillStyle = i % 2 === 0 ? 'rgba(234,179,8,0.4)' : 'rgba(0,0,0,0.3)';
-          ctx.fillRect(sx, -bodyH * 0.85, 2.5, bodyH * 1.7);
+        // ── Panel lines ──
+        ctx.strokeStyle = 'rgba(20,30,15,0.25)';
+        ctx.lineWidth = 0.5;
+        for (let pl = 0; pl < 5; pl++) {
+          const px = bodyLen * (-0.4 + pl * 0.15);
+          const topY = -bodyH * (0.82 - Math.abs(pl - 2) * 0.04);
+          const botY = bodyH * (0.82 - Math.abs(pl - 2) * 0.04);
+          ctx.beginPath();
+          ctx.moveTo(px, topY);
+          ctx.lineTo(px, botY);
+          ctx.stroke();
         }
 
-        // 4 Fins — top, bottom, plus angled side fins
-        ctx.fillStyle = '#374131';
-        ctx.strokeStyle = '#1e293b';
+        // ── Rivets along panel lines ──
+        ctx.fillStyle = 'rgba(80,90,70,0.5)';
+        for (let pl = 0; pl < 5; pl++) {
+          const px = bodyLen * (-0.4 + pl * 0.15);
+          for (const ry of [-bodyH * 0.5, 0, bodyH * 0.5]) {
+            ctx.beginPath();
+            ctx.arc(px, ry, 0.8, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // ── Top specular highlight ──
+        const specGrad = ctx.createLinearGradient(0, -bodyH * 1.1, 0, -bodyH * 0.2);
+        specGrad.addColorStop(0, 'rgba(255,255,255,0)');
+        specGrad.addColorStop(0.4, 'rgba(255,255,255,0.12)');
+        specGrad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = specGrad;
+        ctx.fillRect(-bodyLen * 0.5, -bodyH, bodyLen * 0.85, bodyH * 0.5);
+
+        // ── Nose cone — sharp ogive warhead ──
+        const noseLen = bodyLen * 0.48;
+        const noseStartX = bodyLen * 0.38;
+        const noseGrad = ctx.createLinearGradient(0, -bodyH * 0.8, 0, bodyH * 0.8);
+        noseGrad.addColorStop(0, '#c42020');
+        noseGrad.addColorStop(0.2, '#dc2626');
+        noseGrad.addColorStop(0.4, '#b91c1c');
+        noseGrad.addColorStop(0.7, '#991b1b');
+        noseGrad.addColorStop(1, '#7f1d1d');
+        ctx.fillStyle = noseGrad;
+        ctx.beginPath();
+        ctx.moveTo(noseStartX + noseLen, 0);
+        ctx.bezierCurveTo(
+          noseStartX + noseLen * 0.7, -bodyH * 0.08,
+          noseStartX + noseLen * 0.3, -bodyH * 0.35,
+          noseStartX, -bodyH * 0.7
+        );
+        ctx.lineTo(noseStartX, bodyH * 0.7);
+        ctx.bezierCurveTo(
+          noseStartX + noseLen * 0.3, bodyH * 0.35,
+          noseStartX + noseLen * 0.7, bodyH * 0.08,
+          noseStartX + noseLen, 0
+        );
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#450a0a';
         ctx.lineWidth = 0.6;
+        ctx.stroke();
+
+        // Nose tip — dark point
+        ctx.fillStyle = '#1a0505';
+        ctx.beginPath();
+        ctx.arc(noseStartX + noseLen - 1, 0, 1.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // ── Metallic ring at nose-body junction ──
+        ctx.strokeStyle = '#c0c0c0';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(noseStartX, -bodyH * 0.75);
+        ctx.lineTo(noseStartX, bodyH * 0.75);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(noseStartX + 1, -bodyH * 0.7);
+        ctx.lineTo(noseStartX + 1, bodyH * 0.7);
+        ctx.stroke();
+
+        // ── Chevron warning stripes ──
+        const chevX = bodyLen * 0.15;
+        for (let ci = 0; ci < 4; ci++) {
+          const cx = chevX - ci * 4;
+          ctx.fillStyle = ci % 2 === 0 ? 'rgba(234,179,8,0.35)' : 'rgba(0,0,0,0.25)';
+          ctx.fillRect(cx, -bodyH * 0.85, 2.5, bodyH * 1.7);
+        }
+
+        // ── 4 Delta fins with thickness & edge highlight ──
+        const finGrad = ctx.createLinearGradient(0, -bodyH * 2.5, 0, bodyH * 2.5);
+        finGrad.addColorStop(0, '#5a6a4e');
+        finGrad.addColorStop(0.5, '#374131');
+        finGrad.addColorStop(1, '#2a3325');
+        ctx.fillStyle = finGrad;
+        ctx.strokeStyle = 'rgba(200,210,190,0.4)';
+        ctx.lineWidth = 0.6;
+
         // Top fin
         ctx.beginPath();
-        ctx.moveTo(-bodyLen * 0.45, -bodyH * 0.85);
-        ctx.lineTo(-bodyLen * 0.65, -bodyH * 2.5);
-        ctx.lineTo(-bodyLen * 0.3, -bodyH * 0.85);
+        ctx.moveTo(-bodyLen * 0.42, -bodyH * 0.88);
+        ctx.lineTo(-bodyLen * 0.58, -bodyH * 2.8);
+        ctx.lineTo(-bodyLen * 0.52, -bodyH * 2.6);
+        ctx.lineTo(-bodyLen * 0.28, -bodyH * 0.88);
         ctx.closePath();
         ctx.fill(); ctx.stroke();
         // Bottom fin
         ctx.beginPath();
-        ctx.moveTo(-bodyLen * 0.45, bodyH * 0.85);
-        ctx.lineTo(-bodyLen * 0.65, bodyH * 2.5);
-        ctx.lineTo(-bodyLen * 0.3, bodyH * 0.85);
+        ctx.moveTo(-bodyLen * 0.42, bodyH * 0.88);
+        ctx.lineTo(-bodyLen * 0.58, bodyH * 2.8);
+        ctx.lineTo(-bodyLen * 0.52, bodyH * 2.6);
+        ctx.lineTo(-bodyLen * 0.28, bodyH * 0.88);
         ctx.closePath();
         ctx.fill(); ctx.stroke();
-        // Upper-side fin (smaller)
+        // Upper-side fin
         ctx.beginPath();
-        ctx.moveTo(-bodyLen * 0.5, -bodyH * 0.5);
-        ctx.lineTo(-bodyLen * 0.62, -bodyH * 1.6);
-        ctx.lineTo(-bodyLen * 0.38, -bodyH * 0.5);
+        ctx.moveTo(-bodyLen * 0.48, -bodyH * 0.55);
+        ctx.lineTo(-bodyLen * 0.6, -bodyH * 1.8);
+        ctx.lineTo(-bodyLen * 0.55, -bodyH * 1.65);
+        ctx.lineTo(-bodyLen * 0.36, -bodyH * 0.55);
         ctx.closePath();
         ctx.fill();
-        // Lower-side fin (smaller)
+        // Lower-side fin
         ctx.beginPath();
-        ctx.moveTo(-bodyLen * 0.5, bodyH * 0.5);
-        ctx.lineTo(-bodyLen * 0.62, bodyH * 1.6);
-        ctx.lineTo(-bodyLen * 0.38, bodyH * 0.5);
+        ctx.moveTo(-bodyLen * 0.48, bodyH * 0.55);
+        ctx.lineTo(-bodyLen * 0.6, bodyH * 1.8);
+        ctx.lineTo(-bodyLen * 0.55, bodyH * 1.65);
+        ctx.lineTo(-bodyLen * 0.36, bodyH * 0.55);
         ctx.closePath();
         ctx.fill();
 
-        // Exhaust nozzle
-        ctx.fillStyle = '#1e1e1e';
+        // ── Exhaust nozzle — triple layer ──
+        // Outer ring
+        ctx.fillStyle = '#2a2a2a';
         ctx.beginPath();
-        ctx.arc(-bodyLen * 0.65, 0, bodyH * 0.5, 0, Math.PI * 2);
+        ctx.arc(-bodyLen * 0.65, 0, bodyH * 0.65, 0, Math.PI * 2);
         ctx.fill();
+        // Inner ring
+        ctx.fillStyle = '#444';
+        ctx.beginPath();
+        ctx.arc(-bodyLen * 0.65, 0, bodyH * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+        // Core hole
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.arc(-bodyLen * 0.65, 0, bodyH * 0.28, 0, Math.PI * 2);
+        ctx.fill();
+        // Nozzle rim highlight
+        ctx.strokeStyle = 'rgba(180,180,180,0.4)';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.arc(-bodyLen * 0.65, 0, bodyH * 0.64, -0.5, 0.5);
+        ctx.stroke();
 
-        // Exhaust flame (flying phase)
+        // ── Exhaust flame — 5 layers (flying phase) ──
         if (phase === 'flying') {
-          // Outer flame — orange
-          const flameLen = bodyLen * 0.6 + Math.random() * 12;
-          ctx.fillStyle = '#ea580c';
-          ctx.beginPath();
-          ctx.moveTo(-bodyLen * 0.65, -bodyH * 0.4);
-          ctx.lineTo(-bodyLen * 0.65 - flameLen, 0);
-          ctx.lineTo(-bodyLen * 0.65, bodyH * 0.4);
-          ctx.closePath();
-          ctx.fill();
-          // Middle flame — yellow
-          ctx.fillStyle = '#fbbf24';
-          ctx.beginPath();
-          ctx.moveTo(-bodyLen * 0.65, -bodyH * 0.25);
-          ctx.lineTo(-bodyLen * 0.65 - flameLen * 0.65, 0);
-          ctx.lineTo(-bodyLen * 0.65, bodyH * 0.25);
-          ctx.closePath();
-          ctx.fill();
-          // Inner flame — white hot
-          ctx.fillStyle = '#fef3c7';
-          ctx.beginPath();
-          ctx.moveTo(-bodyLen * 0.65, -bodyH * 0.12);
-          ctx.lineTo(-bodyLen * 0.65 - flameLen * 0.3, 0);
-          ctx.lineTo(-bodyLen * 0.65, bodyH * 0.12);
-          ctx.closePath();
-          ctx.fill();
+          const flameBase = -bodyLen * 0.65;
+          const maxLen = bodyLen * 0.7;
+          const flicker = Math.random();
+          const flameLayers = [
+            { color: 'rgba(180,60,20,0.6)', wFrac: 0.45, lFrac: 1.0 + flicker * 0.15 },
+            { color: 'rgba(220,100,20,0.7)', wFrac: 0.35, lFrac: 0.8 + flicker * 0.1 },
+            { color: 'rgba(251,191,36,0.8)', wFrac: 0.25, lFrac: 0.6 + flicker * 0.08 },
+            { color: 'rgba(253,224,71,0.85)', wFrac: 0.15, lFrac: 0.4 },
+            { color: 'rgba(255,250,230,0.9)', wFrac: 0.08, lFrac: 0.2 },
+          ];
+          for (const fl of flameLayers) {
+            const fw = bodyH * fl.wFrac;
+            const fLen = maxLen * fl.lFrac + Math.random() * 6;
+            ctx.fillStyle = fl.color;
+            ctx.beginPath();
+            ctx.moveTo(flameBase, -fw);
+            ctx.quadraticCurveTo(flameBase - fLen * 0.6, -fw * 0.3 + Math.random() * 2, flameBase - fLen, 0);
+            ctx.quadraticCurveTo(flameBase - fLen * 0.6, fw * 0.3 - Math.random() * 2, flameBase, fw);
+            ctx.closePath();
+            ctx.fill();
+          }
         }
 
-        // Opening phase: longitudinal split with red glow
+        // ── Opening phase — realistic split ──
         if (phase === 'opening') {
           const openT = 1 - Math.max(0, (hz.clusterTimer || 0) / 1.0);
-          const gap = openT * bodyH * 2.5;
+          const gap = openT * bodyH * 2.8;
 
-          // Internal red glow
-          ctx.fillStyle = `rgba(239,68,68,${0.3 + openT * 0.7})`;
+          // Internal glow — intense orange/red
+          const glowGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, bodyLen * 0.4);
+          glowGrad.addColorStop(0, `rgba(255,200,50,${0.5 + openT * 0.5})`);
+          glowGrad.addColorStop(0.5, `rgba(239,68,68,${0.3 + openT * 0.5})`);
+          glowGrad.addColorStop(1, 'rgba(239,68,68,0)');
+          ctx.fillStyle = glowGrad;
           ctx.beginPath();
-          ctx.ellipse(0, 0, bodyLen * 0.3, Math.max(0.1, bodyH * (1 + openT * 1.5)), 0, 0, Math.PI * 2);
+          ctx.ellipse(0, 0, bodyLen * 0.35, Math.max(0.1, bodyH * (1.2 + openT * 2)), 0, 0, Math.PI * 2);
           ctx.fill();
 
-          // Crack lines along the body
+          // Crack lines — jagged
           ctx.strokeStyle = `rgba(251,191,36,${0.5 + openT * 0.5})`;
-          ctx.lineWidth = 1.5 + openT * 2.5;
+          ctx.lineWidth = 1.5 + openT * 3;
           ctx.beginPath();
           ctx.moveTo(-bodyLen * 0.4, -gap);
-          ctx.lineTo(bodyLen * 0.35, -gap * 0.8);
+          ctx.lineTo(-bodyLen * 0.15, -gap * 0.9 - 2);
+          ctx.lineTo(bodyLen * 0.1, -gap * 0.85);
+          ctx.lineTo(bodyLen * 0.35, -gap * 0.75);
           ctx.moveTo(-bodyLen * 0.4, gap);
-          ctx.lineTo(bodyLen * 0.35, gap * 0.8);
+          ctx.lineTo(-bodyLen * 0.15, gap * 0.9 + 2);
+          ctx.lineTo(bodyLen * 0.1, gap * 0.85);
+          ctx.lineTo(bodyLen * 0.35, gap * 0.75);
           ctx.stroke();
 
-          // Sparks
-          for (let i = 0; i < 3; i++) {
-            ctx.fillStyle = '#fbbf24';
-            const sparkX = (Math.random() - 0.5) * bodyLen * 0.6;
-            const sparkY = (Math.random() - 0.5) * gap * 2;
-            ctx.fillRect(sparkX, sparkY, 2, 2);
+          // Metal shrapnel fragments flying out
+          for (let fi = 0; fi < 5; fi++) {
+            const fx = (Math.random() - 0.5) * bodyLen * 0.7;
+            const fy = (Math.random() > 0.5 ? 1 : -1) * (gap * 0.5 + Math.random() * gap * 0.8);
+            const fs = 1.5 + Math.random() * 2;
+            ctx.fillStyle = `rgba(120,110,100,${0.4 + openT * 0.4})`;
+            ctx.save();
+            ctx.translate(fx, fy);
+            ctx.rotate(Math.random() * Math.PI);
+            ctx.fillRect(-fs, -fs * 0.4, fs * 2, fs * 0.8);
+            ctx.restore();
+          }
+
+          // Sparks — brighter, more
+          for (let i = 0; i < 6; i++) {
+            const sparkX = (Math.random() - 0.5) * bodyLen * 0.8;
+            const sparkY = (Math.random() - 0.5) * gap * 2.5;
+            ctx.fillStyle = Math.random() > 0.5 ? '#fbbf24' : '#fef3c7';
+            ctx.beginPath();
+            ctx.arc(sparkX, sparkY, 0.8 + Math.random() * 1.2, 0, Math.PI * 2);
+            ctx.fill();
           }
         }
 
         ctx.restore();
       }
     } else if (hz.isClusterBomb) {
-      // Cluster bomb — small lit/heated metal sphere with light smoke
+      // ═══ CLUSTER BOMBLET — Small munition with tail fin ═══
       ctx.rotate(hz.rotation);
       const s = hz.size;
 
-      // Light smoke trail above the bomb
+      // Light smoke trail
       const smokeTime = performance.now() * 0.001 + hz.pos.x * 0.01;
       for (let si = 0; si < 3; si++) {
         const smokeY = -(s * 1.5 + si * s * 0.8);
@@ -824,7 +948,7 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
         ctx.fill();
       }
 
-      // Subtle thin halo
+      // Subtle halo
       const haloGrad = ctx.createRadialGradient(0, 0, s * 0.8, 0, 0, s * 1.3);
       haloGrad.addColorStop(0, 'rgba(253,224,71,0.12)');
       haloGrad.addColorStop(1, 'rgba(253,224,71,0)');
@@ -833,20 +957,47 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.arc(0, 0, s * 1.3, 0, Math.PI * 2);
       ctx.fill();
 
-      // Main sphere — soft lemon-yellow gradient
-      const bombGrad = ctx.createRadialGradient(-s * 0.15, -s * 0.15, s * 0.1, 0, 0, s);
-      bombGrad.addColorStop(0, '#fef9c3');
-      bombGrad.addColorStop(0.5, '#fde047');
-      bombGrad.addColorStop(1, '#eab308');
-      ctx.fillStyle = bombGrad;
+      // Main body — elongated munition shape
+      const bLen = s * 1.6;
+      const bW = s * 0.7;
+      const munGrad = ctx.createLinearGradient(0, -bW, 0, bW);
+      munGrad.addColorStop(0, '#b8a84e');
+      munGrad.addColorStop(0.3, '#d4c456');
+      munGrad.addColorStop(0.5, '#eab308');
+      munGrad.addColorStop(0.7, '#c49a08');
+      munGrad.addColorStop(1, '#8a6d06');
+      ctx.fillStyle = munGrad;
       ctx.beginPath();
-      ctx.arc(0, 0, s, 0, Math.PI * 2);
+      ctx.moveTo(0, -bLen * 0.5);
+      ctx.bezierCurveTo(bW * 0.6, -bLen * 0.45, bW, -bLen * 0.2, bW, 0);
+      ctx.bezierCurveTo(bW, bLen * 0.2, bW * 0.3, bLen * 0.45, 0, bLen * 0.55);
+      ctx.bezierCurveTo(-bW * 0.3, bLen * 0.45, -bW, bLen * 0.2, -bW, 0);
+      ctx.bezierCurveTo(-bW, -bLen * 0.2, -bW * 0.6, -bLen * 0.45, 0, -bLen * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#6b5506';
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+
+      // Tail fin — small stabilizer
+      ctx.fillStyle = '#8a7d3a';
+      ctx.beginPath();
+      ctx.moveTo(-bW * 0.3, bLen * 0.4);
+      ctx.lineTo(-bW * 1.1, bLen * 0.85);
+      ctx.lineTo(-bW * 0.2, bLen * 0.55);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(bW * 0.3, bLen * 0.4);
+      ctx.lineTo(bW * 1.1, bLen * 0.85);
+      ctx.lineTo(bW * 0.2, bLen * 0.55);
+      ctx.closePath();
       ctx.fill();
 
-      // Small white highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      // Top highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
       ctx.beginPath();
-      ctx.arc(-s * 0.2, -s * 0.2, s * 0.25, 0, Math.PI * 2);
+      ctx.ellipse(0, -bLen * 0.15, bW * 0.35, bLen * 0.15, 0, 0, Math.PI * 2);
       ctx.fill();
 
     } else {
