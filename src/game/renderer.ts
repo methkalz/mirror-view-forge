@@ -113,7 +113,7 @@ function getPhaseBlend(elapsed: number): {
     const fadeEnd = fadeStart + fadeDuration;
     const easingType = next.easingType || 'smoothstep';
 
-    if (elapsed < fadeStart) {
+    if (effectiveElapsed < fadeStart) {
       return {
         imgA,
         imgB: null,
