@@ -302,10 +302,46 @@ const SkyfallGame: React.FC = () => {
         inputRef.current.cardClick = { x: e.clientX - rect.left, y: e.clientY - rect.top };
         return;
       }
-      // Store click position for skip button detection
+      // Store swipe start + click position
+      (inputRef.current as any)._swipeStartX = e.clientX;
+      (inputRef.current as any)._swipeStartY = e.clientY;
       (inputRef.current as any)._lastClickX = e.clientX;
       (inputRef.current as any)._lastClickY = e.clientY;
-      startOrRestart();
+      // Don't call startOrRestart here — wait for pointerup to detect swipe vs tap
+      if (g.state !== 'start' || g.tutorialPage >= 3) {
+        startOrRestart();
+      }
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      if ((e.target as HTMLElement) !== canvas) return;
+      if (g.state !== 'start') return;
+      const startX = (inputRef.current as any)._swipeStartX;
+      if (startX === undefined) return;
+      const deltaX = e.clientX - startX;
+      const deltaY = Math.abs(e.clientY - ((inputRef.current as any)._swipeStartY || 0));
+      delete (inputRef.current as any)._swipeStartX;
+      delete (inputRef.current as any)._swipeStartY;
+
+      // Horizontal swipe detected
+      if (Math.abs(deltaX) > 50 && deltaY < 100) {
+        if (deltaX < 0) {
+          // Swipe left → next slide
+          g.tutorialPage = Math.min(3, g.tutorialPage + 1);
+        } else {
+          // Swipe right → previous slide
+          g.tutorialPage = Math.max(0, g.tutorialPage - 1);
+        }
+        g.tutorialFade = 0;
+        return;
+      }
+
+      // Small movement = tap
+      if (Math.abs(deltaX) < 15) {
+        (inputRef.current as any)._lastClickX = e.clientX;
+        (inputRef.current as any)._lastClickY = e.clientY;
+        startOrRestart();
+      }
     };
 
     const preventSelect = (e: Event) => e.preventDefault();

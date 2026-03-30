@@ -5797,16 +5797,25 @@ function renderTutorialSlide3(ctx: CanvasRenderingContext2D, w: number, h: numbe
 // ── Helper: Gold divider line ──
 function drawGoldDivider(ctx: CanvasRenderingContext2D, w: number, y: number, t: number) {
   const pulse = 0.3 + Math.sin(t * 3) * 0.15;
-  const grad = ctx.createLinearGradient(w * 0.2, 0, w * 0.8, 0);
+  const grad = ctx.createLinearGradient(w * 0.1, 0, w * 0.9, 0);
   grad.addColorStop(0, 'rgba(251, 191, 36, 0)');
+  grad.addColorStop(0.4, `rgba(251, 191, 36, ${pulse * 0.7})`);
   grad.addColorStop(0.5, `rgba(251, 191, 36, ${pulse})`);
+  grad.addColorStop(0.6, `rgba(251, 191, 36, ${pulse * 0.7})`);
   grad.addColorStop(1, 'rgba(251, 191, 36, 0)');
   ctx.strokeStyle = grad;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(w * 0.15, y);
-  ctx.lineTo(w * 0.85, y);
+  ctx.moveTo(w * 0.1, y);
+  ctx.lineTo(w * 0.9, y);
   ctx.stroke();
+  // Diamond center point
+  ctx.fillStyle = `rgba(251, 191, 36, ${pulse + 0.15})`;
+  ctx.save();
+  ctx.translate(w / 2, y);
+  ctx.rotate(Math.PI / 4);
+  ctx.fillRect(-2.5, -2.5, 5, 5);
+  ctx.restore();
 }
 
 // ─── Game Over — Cinematic ────────────────────────────
