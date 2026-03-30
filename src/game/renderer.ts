@@ -5474,22 +5474,18 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.restore();
     }
 
-    // "WAVE COMPLETE" text
+    // Arabic-only wave start text
+    const nextWave = g.waveNumber + 1;
     const textAlpha = progress < 0.2 ? progress / 0.2 : progress > 0.8 ? (1 - progress) / 0.2 : 1;
     ctx.save();
     ctx.globalAlpha = textAlpha;
     ctx.textAlign = 'center';
-    // English
+    ctx.direction = 'rtl';
     ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 28px Tajawal, Arial, sans-serif';
+    ctx.font = 'bold 30px Tajawal, Arial, sans-serif';
     ctx.shadowColor = 'rgba(251,191,36,0.5)';
     ctx.shadowBlur = 20;
-    ctx.fillText(`WAVE ${g.waveNumber} COMPLETE`, g.width / 2, g.height * 0.42);
-    // Arabic
-    ctx.fillStyle = 'rgba(251,191,36,0.7)';
-    ctx.font = 'bold 18px Tajawal, Arial, sans-serif';
-    ctx.direction = 'rtl';
-    ctx.fillText(`انتهت الموجة ${g.waveNumber}`, g.width / 2, g.height * 0.42 + 32);
+    ctx.fillText(`بداية الموجة ${nextWave}`, g.width / 2, g.height * 0.52);
     ctx.direction = 'ltr';
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
