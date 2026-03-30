@@ -96,6 +96,8 @@ export type Database = {
       }
       background_config: {
         Row: {
+          easing_type: string | null
+          fade_duration: number | null
           id: string
           image_url: string | null
           overlay_bottom: string | null
@@ -109,6 +111,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          easing_type?: string | null
+          fade_duration?: number | null
           id?: string
           image_url?: string | null
           overlay_bottom?: string | null
@@ -122,6 +126,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          easing_type?: string | null
+          fade_duration?: number | null
           id?: string
           image_url?: string | null
           overlay_bottom?: string | null
