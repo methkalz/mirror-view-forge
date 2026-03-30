@@ -5386,6 +5386,23 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
     ctx.fill();
   }
 
+  // Ember/Spark particles — rising golden sparks
+  const emberColors = ['255,160,30', '255,120,20', '251,191,36', '255,80,20'];
+  for (let i = 0; i < 15; i++) {
+    const speed = 0.3 + (i % 5) * 0.15;
+    const lifeT = ((t * speed + i * 3.7) % 6) / 6; // 0→1 lifecycle
+    const ex = w * (0.1 + ((i * 0.0731 + Math.sin(i * 2.3) * 0.1) % 0.8)) + Math.sin(t * 1.5 + i * 4.1) * 15;
+    const ey = h * (1.0 - lifeT * 0.9);
+    const eAlpha = Math.sin(lifeT * Math.PI) * 0.6;
+    const eSize = 1 + (i % 3);
+    if (eAlpha > 0.02) {
+      ctx.fillStyle = `rgba(${emberColors[i % emberColors.length]}, ${eAlpha})`;
+      ctx.beginPath();
+      ctx.arc(ex, ey, eSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   // Red glow at bottom
   const bottomGlow = ctx.createRadialGradient(w / 2, h, 0, w / 2, h, h * 0.5);
   bottomGlow.addColorStop(0, 'rgba(180, 30, 20, 0.12)');
@@ -5408,9 +5425,9 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
   const dotY = h * 0.92;
   const totalDots = 4;
   const dotSpacing = 14;
-  const dotsStartX = w / 2 - ((totalDots - 1) * dotSpacing) / 2;
+  const dotsStartX = w / 2 + ((totalDots - 1) * dotSpacing) / 2;
   for (let i = 0; i < totalDots; i++) {
-    const dx = dotsStartX + i * dotSpacing;
+    const dx = dotsStartX - i * dotSpacing;
     if (i === tutorialPage) {
       ctx.fillStyle = 'rgba(251, 191, 36, 0.9)';
       ctx.beginPath();
@@ -5428,7 +5445,7 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
   if (tutorialPage < 3) {
     const pulse = 0.4 + Math.sin(t * 3) * 0.2;
     ctx.fillStyle = `rgba(200, 200, 200, ${pulse})`;
-    ctx.font = '12px Tajawal, sans-serif';
+    ctx.font = '14px Tajawal, sans-serif';
     ctx.textAlign = 'center';
     ctx.direction = 'rtl';
     ctx.fillText('انقر للمتابعة', w / 2, h * 0.87);
@@ -5455,7 +5472,7 @@ function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: numbe
   titleGrad.addColorStop(0.5, '#ffd700');
   titleGrad.addColorStop(1, '#c0a040');
   ctx.fillStyle = titleGrad;
-  ctx.font = 'bold 22px Tajawal, sans-serif';
+  ctx.font = 'bold 26px Tajawal, sans-serif';
   ctx.shadowColor = 'rgba(255,200,50,0.25)';
   ctx.shadowBlur = 15;
   ctx.fillText('هدفك', w / 2, h * 0.18);
@@ -5467,16 +5484,16 @@ function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: numbe
 
   // Main text
   ctx.fillStyle = 'rgba(230, 230, 230, 0.9)';
-  ctx.font = '15px Tajawal, sans-serif';
+  ctx.font = '18px Tajawal, sans-serif';
   ctx.fillText('انجُ من السماء', w / 2, h * 0.32);
 
   ctx.fillStyle = 'rgba(190, 190, 190, 0.75)';
-  ctx.font = '13px Tajawal, sans-serif';
+  ctx.font = '15px Tajawal, sans-serif';
   ctx.fillText('تسقط تهديدات من الأعلى.. اهرب أو أسقطها', w / 2, h * 0.39);
 
   // Scoring mechanic — highlighted
   ctx.fillStyle = 'rgba(251, 191, 36, 0.85)';
-  ctx.font = '14px Tajawal, sans-serif';
+  ctx.font = '16px Tajawal, sans-serif';
   ctx.fillText('كلما سقط التهديد أقرب إليك', w / 2, h * 0.50);
   ctx.fillText('حصلت على نقاط أكثر', w / 2, h * 0.56);
 
@@ -5525,7 +5542,7 @@ function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: numbe
   titleGrad.addColorStop(0.5, '#ffd700');
   titleGrad.addColorStop(1, '#c0a040');
   ctx.fillStyle = titleGrad;
-  ctx.font = 'bold 22px Tajawal, sans-serif';
+  ctx.font = 'bold 26px Tajawal, sans-serif';
   ctx.shadowColor = 'rgba(255,200,50,0.25)';
   ctx.shadowBlur = 15;
   ctx.fillText('التحكم والمعدات', w / 2, h * 0.14);
@@ -5541,10 +5558,10 @@ function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: numbe
   roundRect(ctx, w * 0.08, ctrlY - 16, w * 0.38, 34, 6);
   ctx.fill();
   ctx.fillStyle = 'rgba(100, 200, 255, 0.8)';
-  ctx.font = '13px Tajawal, sans-serif';
+  ctx.font = '15px Tajawal, sans-serif';
   ctx.fillText('الجهة اليسرى', w * 0.27, ctrlY);
   ctx.fillStyle = 'rgba(180, 180, 180, 0.6)';
-  ctx.font = '11px Tajawal, sans-serif';
+  ctx.font = '13px Tajawal, sans-serif';
   ctx.fillText('تحريك', w * 0.27, ctrlY + 14);
 
   // Right side
@@ -5552,16 +5569,16 @@ function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: numbe
   roundRect(ctx, w * 0.54, ctrlY - 16, w * 0.38, 34, 6);
   ctx.fill();
   ctx.fillStyle = 'rgba(239, 130, 130, 0.8)';
-  ctx.font = '13px Tajawal, sans-serif';
+  ctx.font = '15px Tajawal, sans-serif';
   ctx.fillText('الجهة اليمنى', w * 0.73, ctrlY);
   ctx.fillStyle = 'rgba(180, 180, 180, 0.6)';
-  ctx.font = '11px Tajawal, sans-serif';
+  ctx.font = '13px Tajawal, sans-serif';
   ctx.fillText('دحرجة', w * 0.73, ctrlY + 14);
 
   // Power-ups list — clean minimal style
   const puStartY = h * 0.42;
   ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
-  ctx.font = '14px Tajawal, sans-serif';
+  ctx.font = '16px Tajawal, sans-serif';
   ctx.fillText('التقط الصناديق للحصول على', w / 2, puStartY);
 
   const items: { name: string; color: string }[] = [
@@ -5594,7 +5611,7 @@ function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: numbe
 
     // Name
     ctx.fillStyle = 'rgba(210, 210, 210, 0.75)';
-    ctx.font = '12px Tajawal, sans-serif';
+    ctx.font = '14px Tajawal, sans-serif';
     ctx.fillText(item.name, ix, iy);
   });
 
@@ -5613,7 +5630,7 @@ function renderTutorialSlide2(ctx: CanvasRenderingContext2D, w: number, h: numbe
   titleGrad.addColorStop(0.5, '#ffd700');
   titleGrad.addColorStop(1, '#c0a040');
   ctx.fillStyle = titleGrad;
-  ctx.font = 'bold 22px Tajawal, sans-serif';
+  ctx.font = 'bold 26px Tajawal, sans-serif';
   ctx.shadowColor = 'rgba(255,200,50,0.25)';
   ctx.shadowBlur = 15;
   ctx.fillText('بطاقات الترقية', w / 2, h * 0.15);
@@ -5624,10 +5641,10 @@ function renderTutorialSlide2(ctx: CanvasRenderingContext2D, w: number, h: numbe
 
   // Description
   ctx.fillStyle = 'rgba(220, 220, 220, 0.85)';
-  ctx.font = '14px Tajawal, sans-serif';
-  ctx.fillText('كل ٣ موجات تحصل على بطاقة ترقية', w / 2, h * 0.28);
+  ctx.font = '16px Tajawal, sans-serif';
+  ctx.fillText('كل 3 موجات تحصل على بطاقة ترقية', w / 2, h * 0.28);
   ctx.fillStyle = 'rgba(180, 180, 180, 0.7)';
-  ctx.font = '13px Tajawal, sans-serif';
+  ctx.font = '15px Tajawal, sans-serif';
   ctx.fillText('اختر واحدة لتعزيز قدراتك', w / 2, h * 0.34);
 
   // Draw 3 sample upgrade cards
@@ -5689,7 +5706,7 @@ function renderTutorialSlide2(ctx: CanvasRenderingContext2D, w: number, h: numbe
 
   // Hint
   ctx.fillStyle = 'rgba(251, 191, 36, 0.5)';
-  ctx.font = '11px Tajawal, sans-serif';
+  ctx.font = '14px Tajawal, sans-serif';
   ctx.fillText('اختر بحكمة.. كل بطاقة تغيّر مجرى اللعبة', w / 2, cardY + cardH + 35);
 
   ctx.restore();
