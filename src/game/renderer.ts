@@ -5416,12 +5416,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.globalCompositeOperation = 'source-over';
   }
 
-  // Slow-mo screen tint
-  if (g.slowMoTimer > 0) {
-    const pulse = 0.08 + Math.sin(g.elapsed * 4) * 0.03;
-    ctx.fillStyle = `rgba(6, 182, 212, ${pulse})`;
-    ctx.fillRect(0, 0, g.width, g.height);
-  }
+  // Slow-mo — no screen tint
 
   // Wave Finale — red vignette warning
   if (g.waveFinale && g.wavePhase === 'active') {
