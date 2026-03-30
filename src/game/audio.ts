@@ -434,6 +434,33 @@ export function sfxWarningBomber() {
   setTimeout(() => playTone(500, 0.08, 'square', 0.03 * v), 300);
 }
 
+export function sfxSlideTransition() {
+  if (!isSoundEnabled('slideTransition')) return;
+  if (playCustomAudio('slideTransition')) return;
+  const v = getSoundVolume('slideTransition', 1);
+  const ctx = getCtx();
+  // Soft whoosh: filtered noise sweep high→low
+  const duration = 0.15;
+  const bufferSize = Math.floor(ctx.sampleRate * duration);
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const bq = ctx.createBiquadFilter();
+  bq.type = 'bandpass';
+  bq.frequency.setValueAtTime(3000, ctx.currentTime);
+  bq.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + duration);
+  bq.Q.value = 1.5;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.08 * v, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+  src.connect(bq).connect(gain).connect(ctx.destination);
+  src.start();
+  // Subtle tonal accent
+  playTone(600, 0.06, 'sine', 0.03 * v);
+}
+
 export function sfxSlowmo() {
   if (!isSoundEnabled('slowmo')) return;
   if (playCustomAudio('slowmo')) return;

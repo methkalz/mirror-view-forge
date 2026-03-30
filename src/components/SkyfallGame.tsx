@@ -3,7 +3,7 @@ import { GameData, InputState } from '@/game/types';
 import { loadAudioSettings } from '@/game/audio';
 import { createGame, resetGame, update, updateIntro } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
-import { resumeAudio, stopMenuMusic, cancelMenuMusicStart } from '@/game/audio';
+import { resumeAudio, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition } from '@/game/audio';
 import { fetchGameConfig, fetchLeaderboard, submitScore, type RemoteGameConfig, type LeaderboardEntry } from '@/game/config';
 import { fetchBackgroundConfig } from '@/game/backgroundConfig';
 import { setBackgroundConfig, setCameraMargin } from '@/game/renderer';
@@ -242,6 +242,7 @@ const SkyfallGame: React.FC = () => {
             if (Math.abs(clickX - skipBtnX) < 50 && Math.abs(clickY - skipBtnY) < 20) {
               g.tutorialPage = 3;
               g.tutorialFade = 0;
+              sfxSlideTransition();
               delete (inputRef.current as any)._lastClickX;
               delete (inputRef.current as any)._lastClickY;
               return;
@@ -251,6 +252,7 @@ const SkyfallGame: React.FC = () => {
           }
           g.tutorialPage++;
           g.tutorialFade = 0;
+          sfxSlideTransition();
           return;
         }
         // Last slide — start game
@@ -333,6 +335,7 @@ const SkyfallGame: React.FC = () => {
           g.tutorialPage = Math.max(0, g.tutorialPage - 1);
         }
         g.tutorialFade = 0;
+        sfxSlideTransition();
         return;
       }
 
