@@ -5425,9 +5425,9 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
   const dotY = h * 0.92;
   const totalDots = 4;
   const dotSpacing = 14;
-  const dotsStartX = w / 2 - ((totalDots - 1) * dotSpacing) / 2;
+  const dotsStartX = w / 2 + ((totalDots - 1) * dotSpacing) / 2;
   for (let i = 0; i < totalDots; i++) {
-    const dx = dotsStartX + i * dotSpacing;
+    const dx = dotsStartX - i * dotSpacing;
     if (i === tutorialPage) {
       ctx.fillStyle = 'rgba(251, 191, 36, 0.9)';
       ctx.beginPath();
