@@ -4987,31 +4987,14 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
 
 // ─── Water Bottle Icon ────────────────────────────────
 function drawWaterIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // Blue bottle shape
+  // Flat white water bottle
   const bw = s * 0.3, bh = s * 0.8;
-  const bg = ctx.createLinearGradient(-bw, 0, bw, 0);
-  bg.addColorStop(0, '#0284c7');
-  bg.addColorStop(0.3, '#38bdf8');
-  bg.addColorStop(0.7, '#0ea5e9');
-  bg.addColorStop(1, '#0284c7');
-  ctx.fillStyle = bg;
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.roundRect(-bw, -bh * 0.3, bw * 2, bh * 0.8, 3);
   ctx.fill();
   // Cap
-  ctx.fillStyle = '#fff';
   ctx.fillRect(-bw * 0.5, -bh * 0.5, bw, bh * 0.22);
-  // Water drops
-  ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  ctx.beginPath();
-  ctx.arc(-bw * 0.2, -bh * 0.05, s * 0.1, 0, Math.PI * 2);
-  ctx.fill();
-  // Label
-  ctx.fillStyle = '#fff';
-  ctx.font = `${s * 0.18}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('💧', 0, bh * 0.1);
 }
 
 // ─── Rest Overlay ─────────────────────────────────────
