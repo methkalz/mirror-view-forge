@@ -437,6 +437,9 @@ const WavesPanel: React.FC<{
       <button onClick={() => setEditingWave({
         waveNumber: waves.length > 0 ? Math.max(...waves.map(w => w.waveNumber)) + 1 : 1,
         duration: 60, threats: ['shrapnel'], maxConcurrent: 5, spawnRate: 3.5, surgeMultiplier: 1.0, droneTypes: [],
+        clusterSplits: 0, bulletLevel: 1, phaseInDelay: 0, droneInterval: 0,
+        hasBoss: false, hasChemical: false, hasIncendiary: false,
+        warningText: null, warningColor: '#ef4444', warningType: 'warning',
       })} style={btnPrimary}>+ Add Wave</button>
     </div>
 

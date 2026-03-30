@@ -135,6 +135,8 @@ export function createGame(w: number, h: number): GameData {
     introTransitionTimer: 0,
     tutorialPage: 0,
     tutorialFade: 1,
+    difficultyProfile: null,
+    remoteWaveOverrides: [],
   };
 }
 
