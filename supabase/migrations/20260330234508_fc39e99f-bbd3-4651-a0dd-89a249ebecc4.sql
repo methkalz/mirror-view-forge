@@ -1,0 +1,1 @@
+ALTER TABLE public.game_config ADD COLUMN bg_loop boolean NOT NULL DEFAULT false;
