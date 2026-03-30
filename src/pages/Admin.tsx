@@ -1687,7 +1687,7 @@ const BackgroundsPanel: React.FC<{
                       key={mode}
                       onClick={() => handleUpdate(p.id, { displayMode: mode })}
                       style={{
-                        flex: 1, padding: '8px 6px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                        flex: 1, padding: '8px 6px', borderRadius: 10, cursor: 'pointer',
                         fontSize: 11, fontWeight: 700,
                         background: (p.displayMode || 'single') === mode ? `${meta.color}20` : 'rgba(255,255,255,0.03)',
                         color: (p.displayMode || 'single') === mode ? meta.color : 'rgba(148,163,184,0.4)',
