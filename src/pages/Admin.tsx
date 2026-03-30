@@ -958,6 +958,11 @@ const PHASE_META: Record<string, { icon: string; label: string; color: string }>
   sunset: { icon: '🌅', label: 'Sunset', color: '#f97316' },
   night:  { icon: '🌙', label: 'Night',  color: '#6366f1' },
 };
+const DYNAMIC_COLORS = ['#10b981', '#ec4899', '#8b5cf6', '#14b8a6', '#f43f5e', '#06b6d4', '#84cc16', '#a855f7'];
+const getDynamicMeta = (phase: string, index: number) => {
+  if (PHASE_META[phase]) return PHASE_META[phase];
+  return { icon: '🖼️', label: phase, color: DYNAMIC_COLORS[index % DYNAMIC_COLORS.length] };
+};
 
 // Helper: RGB string "R,G,B" → hex "#RRGGBB"
 const rgbToHex = (rgb: string): string => {
