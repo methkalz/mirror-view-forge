@@ -5361,11 +5361,11 @@ function renderWaveWarnings(ctx: CanvasRenderingContext2D, g: GameData) {
   }
 }
 
-// ─── Start Screen — Cinematic ─────────────────────────
-export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: number, highScore: number) {
+// ─── Start Screen — Arabic Tutorial Slides ─────────────────────────
+export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: number, highScore: number, tutorialPage: number = 0) {
   const t = Date.now() / 1000;
 
-  // Dark gradient background
+  // ── Shared background ──
   const bg = ctx.createLinearGradient(0, 0, 0, h);
   bg.addColorStop(0, '#050510');
   bg.addColorStop(0.4, '#0a0a1a');
@@ -5393,16 +5393,318 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.fillStyle = bottomGlow;
   ctx.fillRect(0, h * 0.5, w, h * 0.5);
 
-  // ─ SKYFALL metallic title ─
+  // ── Page-specific content ──
+  if (tutorialPage === 0) {
+    renderTutorialSlide0(ctx, w, h, t);
+  } else if (tutorialPage === 1) {
+    renderTutorialSlide1(ctx, w, h, t);
+  } else if (tutorialPage === 2) {
+    renderTutorialSlide2(ctx, w, h, t);
+  } else {
+    renderTutorialSlide3(ctx, w, h, t, highScore);
+  }
+
+  // ── Navigation dots ──
+  const dotY = h * 0.92;
+  const totalDots = 4;
+  const dotSpacing = 14;
+  const dotsStartX = w / 2 - ((totalDots - 1) * dotSpacing) / 2;
+  for (let i = 0; i < totalDots; i++) {
+    const dx = dotsStartX + i * dotSpacing;
+    if (i === tutorialPage) {
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.9)';
+      ctx.beginPath();
+      ctx.arc(dx, dotY, 4, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = 'rgba(150, 150, 150, 0.3)';
+      ctx.beginPath();
+      ctx.arc(dx, dotY, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ── "Tap to continue" or "Tap to start" ──
+  if (tutorialPage < 3) {
+    const pulse = 0.4 + Math.sin(t * 3) * 0.2;
+    ctx.fillStyle = `rgba(200, 200, 200, ${pulse})`;
+    ctx.font = '12px Tajawal, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.direction = 'rtl';
+    ctx.fillText('انقر للمتابعة', w / 2, h * 0.87);
+    ctx.direction = 'ltr';
+  }
+
+  // Version
+  ctx.fillStyle = 'rgba(100,100,100,0.4)';
+  ctx.font = '9px monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('v1.0', w - 12, h - 10);
+  ctx.textAlign = 'center';
+}
+
+// ── Slide 0: هدفك ──
+function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.direction = 'rtl';
+
+  // Section title — gold
+  const titleGrad = ctx.createLinearGradient(w / 2 - 60, 0, w / 2 + 60, 0);
+  titleGrad.addColorStop(0, '#c0a040');
+  titleGrad.addColorStop(0.5, '#ffd700');
+  titleGrad.addColorStop(1, '#c0a040');
+  ctx.fillStyle = titleGrad;
+  ctx.font = 'bold 22px Tajawal, sans-serif';
+  ctx.shadowColor = 'rgba(255,200,50,0.25)';
+  ctx.shadowBlur = 15;
+  ctx.fillText('هدفك', w / 2, h * 0.18);
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
+
+  // Gold divider
+  drawGoldDivider(ctx, w, h * 0.22, t);
+
+  // Main text
+  ctx.fillStyle = 'rgba(230, 230, 230, 0.9)';
+  ctx.font = '15px Tajawal, sans-serif';
+  ctx.fillText('انجُ من السماء', w / 2, h * 0.32);
+
+  ctx.fillStyle = 'rgba(190, 190, 190, 0.75)';
+  ctx.font = '13px Tajawal, sans-serif';
+  ctx.fillText('تسقط تهديدات من الأعلى.. اهرب أو أسقطها', w / 2, h * 0.39);
+
+  // Scoring mechanic — highlighted
+  ctx.fillStyle = 'rgba(251, 191, 36, 0.85)';
+  ctx.font = '14px Tajawal, sans-serif';
+  ctx.fillText('كلما سقط التهديد أقرب إليك', w / 2, h * 0.50);
+  ctx.fillText('حصلت على نقاط أكثر', w / 2, h * 0.56);
+
+  // Visual accent — danger zone illustration
+  const illustY = h * 0.67;
+  // Draw a simple player silhouette
+  ctx.fillStyle = 'rgba(100, 200, 255, 0.5)';
+  ctx.beginPath();
+  ctx.arc(w / 2, illustY, 8, 0, Math.PI * 2);
+  ctx.fill();
+  // Draw falling threat nearby
+  const threatX = w / 2 + 30 + Math.sin(t * 2) * 5;
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.6)';
+  ctx.beginPath();
+  ctx.moveTo(threatX, illustY - 15);
+  ctx.lineTo(threatX - 6, illustY + 5);
+  ctx.lineTo(threatX + 6, illustY + 5);
+  ctx.closePath();
+  ctx.fill();
+  // Proximity arrow
+  ctx.strokeStyle = 'rgba(251, 191, 36, 0.5)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(w / 2 + 8, illustY);
+  ctx.lineTo(threatX - 6, illustY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  // Label
+  ctx.fillStyle = 'rgba(251, 191, 36, 0.6)';
+  ctx.font = '10px Tajawal, sans-serif';
+  ctx.fillText('= نقاط أكثر', w / 2 + 15, illustY - 20);
+
+  ctx.restore();
+}
+
+// ── Slide 1: التحكم والمعدات ──
+function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.direction = 'rtl';
+
+  // Title
+  const titleGrad = ctx.createLinearGradient(w / 2 - 80, 0, w / 2 + 80, 0);
+  titleGrad.addColorStop(0, '#c0a040');
+  titleGrad.addColorStop(0.5, '#ffd700');
+  titleGrad.addColorStop(1, '#c0a040');
+  ctx.fillStyle = titleGrad;
+  ctx.font = 'bold 22px Tajawal, sans-serif';
+  ctx.shadowColor = 'rgba(255,200,50,0.25)';
+  ctx.shadowBlur = 15;
+  ctx.fillText('التحكم والمعدات', w / 2, h * 0.14);
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
+
+  drawGoldDivider(ctx, w, h * 0.18, t);
+
+  // Controls section
+  const ctrlY = h * 0.27;
+  // Left side
+  ctx.fillStyle = 'rgba(100, 200, 255, 0.15)';
+  roundRect(ctx, w * 0.08, ctrlY - 16, w * 0.38, 34, 6);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(100, 200, 255, 0.8)';
+  ctx.font = '13px Tajawal, sans-serif';
+  ctx.fillText('الجهة اليسرى', w * 0.27, ctrlY);
+  ctx.fillStyle = 'rgba(180, 180, 180, 0.6)';
+  ctx.font = '11px Tajawal, sans-serif';
+  ctx.fillText('تحريك', w * 0.27, ctrlY + 14);
+
+  // Right side
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.12)';
+  roundRect(ctx, w * 0.54, ctrlY - 16, w * 0.38, 34, 6);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(239, 130, 130, 0.8)';
+  ctx.font = '13px Tajawal, sans-serif';
+  ctx.fillText('الجهة اليمنى', w * 0.73, ctrlY);
+  ctx.fillStyle = 'rgba(180, 180, 180, 0.6)';
+  ctx.font = '11px Tajawal, sans-serif';
+  ctx.fillText('دحرجة', w * 0.73, ctrlY + 14);
+
+  // Power-ups list — clean minimal style
+  const puStartY = h * 0.42;
+  ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
+  ctx.font = '14px Tajawal, sans-serif';
+  ctx.fillText('التقط الصناديق للحصول على', w / 2, puStartY);
+
+  const items: { name: string; color: string }[] = [
+    { name: 'إسعاف', color: '#22c55e' },
+    { name: 'درع', color: '#60a5fa' },
+    { name: 'تباطؤ', color: '#06b6d4' },
+    { name: 'ذخيرة', color: '#8b9a3a' },
+    { name: 'مغناطيس', color: '#94a3b8' },
+    { name: 'اعتراض', color: '#f97316' },
+  ];
+
+  const cols = 2;
+  const itemW = w * 0.38;
+  const startX = w / 2 - itemW;
+  const rowH = 28;
+
+  items.forEach((item, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const ix = startX + col * itemW + itemW / 2;
+    const iy = puStartY + 28 + row * rowH;
+
+    // Colored dot
+    ctx.fillStyle = item.color;
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+    ctx.arc(ix + 28, iy - 4, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Name
+    ctx.fillStyle = 'rgba(210, 210, 210, 0.75)';
+    ctx.font = '12px Tajawal, sans-serif';
+    ctx.fillText(item.name, ix, iy);
+  });
+
+  ctx.restore();
+}
+
+// ── Slide 2: بطاقات الترقية ──
+function renderTutorialSlide2(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.direction = 'rtl';
+
+  // Title
+  const titleGrad = ctx.createLinearGradient(w / 2 - 80, 0, w / 2 + 80, 0);
+  titleGrad.addColorStop(0, '#c0a040');
+  titleGrad.addColorStop(0.5, '#ffd700');
+  titleGrad.addColorStop(1, '#c0a040');
+  ctx.fillStyle = titleGrad;
+  ctx.font = 'bold 22px Tajawal, sans-serif';
+  ctx.shadowColor = 'rgba(255,200,50,0.25)';
+  ctx.shadowBlur = 15;
+  ctx.fillText('بطاقات الترقية', w / 2, h * 0.15);
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
+
+  drawGoldDivider(ctx, w, h * 0.19, t);
+
+  // Description
+  ctx.fillStyle = 'rgba(220, 220, 220, 0.85)';
+  ctx.font = '14px Tajawal, sans-serif';
+  ctx.fillText('كل ٣ موجات تحصل على بطاقة ترقية', w / 2, h * 0.28);
+  ctx.fillStyle = 'rgba(180, 180, 180, 0.7)';
+  ctx.font = '13px Tajawal, sans-serif';
+  ctx.fillText('اختر واحدة لتعزيز قدراتك', w / 2, h * 0.34);
+
+  // Draw 3 sample upgrade cards
+  const cardW = Math.min(85, (w - 60) / 3);
+  const cardH = cardW * 1.4;
+  const cardGap = 12;
+  const totalW = cardW * 3 + cardGap * 2;
+  const cardsStartX = (w - totalW) / 2;
+  const cardY = h * 0.42;
+
+  const sampleCards = [
+    { name: 'سرعة', color: '#3b82f6', icon: '→' },
+    { name: 'ذخيرة', color: '#22c55e', icon: '+' },
+    { name: 'درع', color: '#a855f7', icon: '◇' },
+  ];
+
+  sampleCards.forEach((card, i) => {
+    const cx = cardsStartX + i * (cardW + cardGap);
+    const hover = Math.sin(t * 2 + i * 1.2) * 3;
+
+    // Card shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    roundRect(ctx, cx + 2, cardY + hover + 2, cardW, cardH, 8);
+    ctx.fill();
+
+    // Card background
+    const cardBg = ctx.createLinearGradient(cx, cardY + hover, cx, cardY + hover + cardH);
+    cardBg.addColorStop(0, 'rgba(30, 30, 50, 0.9)');
+    cardBg.addColorStop(1, 'rgba(20, 20, 35, 0.95)');
+    ctx.fillStyle = cardBg;
+    roundRect(ctx, cx, cardY + hover, cardW, cardH, 8);
+    ctx.fill();
+
+    // Card border
+    ctx.strokeStyle = `${card.color}44`;
+    ctx.lineWidth = 1;
+    roundRect(ctx, cx, cardY + hover, cardW, cardH, 8);
+    ctx.stroke();
+
+    // Top accent line
+    ctx.fillStyle = card.color;
+    ctx.globalAlpha = 0.6;
+    roundRect(ctx, cx + 4, cardY + hover + 4, cardW - 8, 3, 1);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Icon
+    ctx.fillStyle = card.color;
+    ctx.font = 'bold 22px monospace';
+    ctx.direction = 'ltr';
+    ctx.fillText(card.icon, cx + cardW / 2, cardY + hover + cardH * 0.45);
+    ctx.direction = 'rtl';
+
+    // Card name
+    ctx.fillStyle = 'rgba(220, 220, 220, 0.85)';
+    ctx.font = '11px Tajawal, sans-serif';
+    ctx.fillText(card.name, cx + cardW / 2, cardY + hover + cardH * 0.75);
+  });
+
+  // Hint
+  ctx.fillStyle = 'rgba(251, 191, 36, 0.5)';
+  ctx.font = '11px Tajawal, sans-serif';
+  ctx.fillText('اختر بحكمة.. كل بطاقة تغيّر مجرى اللعبة', w / 2, cardY + cardH + 35);
+
+  ctx.restore();
+}
+
+// ── Slide 3: Title + Start ──
+function renderTutorialSlide3(ctx: CanvasRenderingContext2D, w: number, h: number, t: number, highScore: number) {
   ctx.save();
   ctx.textAlign = 'center';
 
-  // Embossed shadow
+  // ─ SKYFALL metallic title ─
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.font = 'bold 44px monospace';
   ctx.fillText('SKYFALL', w / 2 + 2, h * 0.24 + 2);
 
-  // Metallic gradient text
   const titleGrad = ctx.createLinearGradient(w / 2 - 100, h * 0.18, w / 2 + 100, h * 0.28);
   titleGrad.addColorStop(0, '#c0c0c0');
   titleGrad.addColorStop(0.3, '#f0e6d0');
@@ -5416,7 +5718,7 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
 
-  // SURVIVAL with red pulse
+  // SURVIVAL
   const survPulse = 0.7 + Math.sin(t * 2.5) * 0.3;
   const survGrad = ctx.createLinearGradient(w / 2 - 60, 0, w / 2 + 60, 0);
   survGrad.addColorStop(0, `rgba(200, 40, 40, ${survPulse})`);
@@ -5425,84 +5727,23 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.fillStyle = survGrad;
   ctx.font = 'bold 18px monospace';
   ctx.fillText('SURVIVAL', w / 2, h * 0.30);
-  ctx.restore();
 
-  // Animated glowing divider
-  const divPulse = 0.3 + Math.sin(t * 3) * 0.2;
-  const divGrad = ctx.createLinearGradient(w * 0.2, 0, w * 0.8, 0);
-  divGrad.addColorStop(0, 'rgba(239, 68, 68, 0)');
-  divGrad.addColorStop(0.5, `rgba(239, 68, 68, ${divPulse})`);
-  divGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
-  ctx.strokeStyle = divGrad;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(w * 0.15, h * 0.35);
-  ctx.lineTo(w * 0.85, h * 0.35);
-  ctx.stroke();
-
-  // Instructions
-  ctx.fillStyle = 'rgba(180,180,180,0.6)';
-  ctx.font = '11px monospace';
-  ctx.textAlign = 'center';
-  const isMobile = 'ontouchstart' in window;
-  if (isMobile) {
-    ctx.fillText('Left side: Move  |  Right side: Dodge', w / 2, h * 0.42);
-  } else {
-    ctx.fillText('A/D: Move  |  Space: Dodge Roll', w / 2, h * 0.42);
-  }
-
-  // Power-up legend with colored dots
-  const puLegend = [
-    { icon: '♥', label: 'Medkit', color: '#22c55e' },
-    { icon: '◆', label: 'Shield', color: '#60a5fa' },
-    { icon: '⚡', label: 'Intercept', color: '#f97316' },
-    { icon: '⏳', label: 'Slow-Mo', color: '#06b6d4' },
-    { icon: '🧲', label: 'Magnet', color: '#94a3b8' },
-    { icon: '⊕', label: 'Ammo', color: '#4a5c2a' },
-  ];
-  const cols = 3;
-  const colW = w * 0.7 / cols;
-  const startX = w * 0.15 + colW / 2;
-  ctx.font = '10px monospace';
-  puLegend.forEach((pu, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const px = startX + col * colW;
-    const py = h * 0.49 + row * 18;
-    // Colored dot
-    ctx.fillStyle = pu.color;
-    ctx.beginPath();
-    ctx.arc(px - 30, py - 3, 3, 0, Math.PI * 2);
-    ctx.fill();
-    // Label
-    ctx.fillStyle = 'rgba(200,200,200,0.7)';
-    ctx.textAlign = 'left';
-    ctx.fillText(`${pu.icon} ${pu.label}`, px - 22, py);
-  });
-  ctx.textAlign = 'center';
+  // Divider
+  drawGoldDivider(ctx, w, h * 0.35, t);
 
   if (highScore > 0) {
     ctx.fillStyle = '#fbbf24';
     ctx.font = '12px monospace';
-    ctx.fillText(`Best: ${highScore}`, w / 2, h * 0.62);
+    ctx.fillText(`Best: ${highScore}`, w / 2, h * 0.42);
   }
-
-  // Version
-  ctx.fillStyle = 'rgba(100,100,100,0.4)';
-  ctx.font = '9px monospace';
-  ctx.textAlign = 'right';
-  ctx.fillText('v1.0', w - 12, h - 10);
-  ctx.textAlign = 'center';
 
   // ─ TAP TO START button ─
   const btnW = 180, btnH = 38;
-  const btnX = w / 2 - btnW / 2, btnY = h * 0.78 - btnH / 2;
+  const btnX = w / 2 - btnW / 2, btnY = h * 0.60 - btnH / 2;
   const btnPulse = 0.5 + Math.sin(t * 3) * 0.3;
 
-  // Button glow
   ctx.shadowColor = `rgba(251, 191, 36, ${btnPulse * 0.4})`;
   ctx.shadowBlur = 20;
-  // Button border
   const btnBorderGrad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY + btnH);
   btnBorderGrad.addColorStop(0, `rgba(251, 191, 36, ${0.3 + btnPulse * 0.2})`);
   btnBorderGrad.addColorStop(0.5, `rgba(251, 191, 36, ${0.5 + btnPulse * 0.3})`);
@@ -5511,17 +5752,35 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.lineWidth = 1.5;
   roundRect(ctx, btnX, btnY, btnW, btnH, 8);
   ctx.stroke();
-  // Button fill
   ctx.fillStyle = 'rgba(251, 191, 36, 0.06)';
   roundRect(ctx, btnX, btnY, btnW, btnH, 8);
   ctx.fill();
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
 
-  // Button text
+  // Button text — Arabic
+  ctx.direction = 'rtl';
   ctx.fillStyle = `rgba(251, 191, 36, ${0.7 + btnPulse * 0.3})`;
-  ctx.font = 'bold 15px monospace';
-  ctx.fillText(isMobile ? 'TAP TO START' : 'PRESS ENTER', w / 2, h * 0.78 + 5);
+  ctx.font = 'bold 16px Tajawal, sans-serif';
+  ctx.fillText('ابدأ المعركة', w / 2, h * 0.60 + 5);
+  ctx.direction = 'ltr';
+
+  ctx.restore();
+}
+
+// ── Helper: Gold divider line ──
+function drawGoldDivider(ctx: CanvasRenderingContext2D, w: number, y: number, t: number) {
+  const pulse = 0.3 + Math.sin(t * 3) * 0.15;
+  const grad = ctx.createLinearGradient(w * 0.2, 0, w * 0.8, 0);
+  grad.addColorStop(0, 'rgba(251, 191, 36, 0)');
+  grad.addColorStop(0.5, `rgba(251, 191, 36, ${pulse})`);
+  grad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(w * 0.15, y);
+  ctx.lineTo(w * 0.85, y);
+  ctx.stroke();
 }
 
 // ─── Game Over — Cinematic ────────────────────────────

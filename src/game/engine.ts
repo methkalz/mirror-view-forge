@@ -132,6 +132,7 @@ export function createGame(w: number, h: number): GameData {
     introPlayerOffset: 0,
     introPlayerJumpY: 0,
     introTransitionTimer: 0,
+    tutorialPage: 0,
   };
 }
 

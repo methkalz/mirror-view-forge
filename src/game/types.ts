@@ -337,6 +337,8 @@ export interface GameData {
   introPlayerOffset: number; // player's visual offset during dismount
   introPlayerJumpY: number; // vertical jump arc during dismount
   introTransitionTimer: number; // smooth fade between intro character and player
+  // Tutorial slides
+  tutorialPage: number;
 }
 
 export interface InputState {
