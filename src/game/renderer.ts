@@ -998,15 +998,11 @@ function renderExplosions(ctx: CanvasRenderingContext2D, g: GameData) {
 
 // ─── Power-up Icon Drawers ────────────────────────────
 function drawMedkitIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // White box with colored cross
-  const b = s * 0.7;
+  // Flat white cross
+  const b = s * 0.65;
   ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.roundRect(-b, -b, b * 2, b * 2, 2);
-  ctx.fill();
-  ctx.fillStyle = '#22c55e';
-  ctx.fillRect(-b * 0.2, -b * 0.65, b * 0.4, b * 1.3);
-  ctx.fillRect(-b * 0.65, -b * 0.2, b * 1.3, b * 0.4);
+  ctx.fillRect(-b * 0.2, -b * 0.7, b * 0.4, b * 1.4);
+  ctx.fillRect(-b * 0.7, -b * 0.2, b * 1.4, b * 0.4);
 }
 
 function drawShieldIcon(ctx: CanvasRenderingContext2D, s: number) {
