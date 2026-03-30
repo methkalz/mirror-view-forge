@@ -5476,24 +5476,35 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.textAlign = 'center';
 }
 
+// ── Helper: Draw professional slide title with double glow ──
+function drawSlideTitle(ctx: CanvasRenderingContext2D, w: number, h: number, text: string, yRatio: number) {
+  const titleGrad = ctx.createLinearGradient(w / 2 - 100, 0, w / 2 + 100, 0);
+  titleGrad.addColorStop(0, '#a08030');
+  titleGrad.addColorStop(0.3, '#e0c060');
+  titleGrad.addColorStop(0.5, '#ffd700');
+  titleGrad.addColorStop(0.7, '#e0c060');
+  titleGrad.addColorStop(1, '#a08030');
+  ctx.fillStyle = titleGrad;
+  ctx.font = 'bold 30px Tajawal, sans-serif';
+  // Outer glow
+  ctx.shadowColor = 'rgba(255,200,50,0.15)';
+  ctx.shadowBlur = 30;
+  ctx.fillText(text, w / 2, h * yRatio);
+  // Inner glow (second pass)
+  ctx.shadowColor = 'rgba(255,200,50,0.4)';
+  ctx.shadowBlur = 12;
+  ctx.fillText(text, w / 2, h * yRatio);
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
+}
+
 // ── Slide 0: هدفك ──
 function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
   ctx.save();
   ctx.textAlign = 'center';
   ctx.direction = 'rtl';
 
-  // Section title — gold
-  const titleGrad = ctx.createLinearGradient(w / 2 - 60, 0, w / 2 + 60, 0);
-  titleGrad.addColorStop(0, '#c0a040');
-  titleGrad.addColorStop(0.5, '#ffd700');
-  titleGrad.addColorStop(1, '#c0a040');
-  ctx.fillStyle = titleGrad;
-  ctx.font = 'bold 26px Tajawal, sans-serif';
-  ctx.shadowColor = 'rgba(255,200,50,0.25)';
-  ctx.shadowBlur = 15;
-  ctx.fillText('هدفك', w / 2, h * 0.18);
-  ctx.shadowBlur = 0;
-  ctx.shadowColor = 'transparent';
+  drawSlideTitle(ctx, w, h, 'هدفك', 0.18);
 
   // Gold divider
   drawGoldDivider(ctx, w, h * 0.22, t);
