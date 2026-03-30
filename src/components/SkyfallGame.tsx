@@ -237,8 +237,8 @@ const SkyfallGame: React.FC = () => {
           const clickX = (inputRef.current as any)._lastClickX;
           const clickY = (inputRef.current as any)._lastClickY;
           if (clickX !== undefined && clickY !== undefined) {
-            const skipBtnX = w * 0.15;
-            const skipBtnY = h * 0.87;
+            const skipBtnX = window.innerWidth * 0.15;
+            const skipBtnY = window.innerHeight * 0.87;
             if (Math.abs(clickX - skipBtnX) < 50 && Math.abs(clickY - skipBtnY) < 20) {
               g.tutorialPage = 3;
               g.tutorialFade = 0;
