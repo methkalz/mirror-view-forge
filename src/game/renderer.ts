@@ -5023,20 +5023,15 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // Main title
+  // Title (Arabic only)
   ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 22px Arial, sans-serif';
+  ctx.font = 'bold 22px Tajawal, Arial, sans-serif';
   ctx.shadowColor = 'rgba(251,191,36,0.3)';
   ctx.shadowBlur = 8;
-  ctx.fillText('CHOOSE UPGRADE', g.width / 2, g.height * 0.20);
-  ctx.shadowBlur = 0;
-
-  // Arabic subtitle (RTL)
-  ctx.fillStyle = 'rgba(251,191,36,0.6)';
-  ctx.font = '15px Tajawal, Arial, sans-serif';
   ctx.direction = 'rtl';
-  ctx.fillText('اختر ترقية', g.width / 2, g.height * 0.20 + 26);
+  ctx.fillText('اختر ترقية', g.width / 2, g.height * 0.20);
   ctx.direction = 'ltr';
+  ctx.shadowBlur = 0;
   ctx.restore();
 
   // ── Cards ──
