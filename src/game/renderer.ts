@@ -1019,46 +1019,21 @@ function drawShieldIcon(ctx: CanvasRenderingContext2D, s: number) {
 }
 
 function drawAmmoIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // Crossed bullets — military style
+  // Flat white crossed bullets
   const bh = s * 0.55, bw = s * 0.18;
+  ctx.fillStyle = '#fff';
   for (let side = -1; side <= 1; side += 2) {
     ctx.save();
     ctx.rotate(side * 0.4);
-    // Casing
-    const bg = ctx.createLinearGradient(-bw, 0, bw, 0);
-    bg.addColorStop(0, '#7a6008');
-    bg.addColorStop(0.3, '#d4a017');
-    bg.addColorStop(0.5, '#f0c040');
-    bg.addColorStop(0.7, '#d4a017');
-    bg.addColorStop(1, '#7a6008');
-    ctx.fillStyle = bg;
     ctx.beginPath();
     ctx.roundRect(-bw, -bh * 0.15, bw * 2, bh * 0.85, 1.5);
     ctx.fill();
-    // Belt groove
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    ctx.lineWidth = 0.7;
-    ctx.beginPath();
-    ctx.moveTo(-bw, bh * 0.5);
-    ctx.lineTo(bw, bh * 0.5);
-    ctx.stroke();
     // Tip
-    ctx.fillStyle = '#a04510';
     ctx.beginPath();
     ctx.moveTo(-bw * 0.7, -bh * 0.15);
     ctx.quadraticCurveTo(0, -bh, bw * 0.7, -bh * 0.15);
     ctx.closePath();
     ctx.fill();
-    // Tip highlight
-    ctx.fillStyle = 'rgba(255,220,150,0.35)';
-    ctx.beginPath();
-    ctx.moveTo(-bw * 0.15, -bh * 0.15);
-    ctx.quadraticCurveTo(0, -bh * 0.85, bw * 0.15, -bh * 0.15);
-    ctx.closePath();
-    ctx.fill();
-    // Casing highlight
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.fillRect(-bw * 0.1, -bh * 0.1, bw * 0.2, bh * 0.55);
     ctx.restore();
   }
 }
