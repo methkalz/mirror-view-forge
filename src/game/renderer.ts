@@ -2713,12 +2713,12 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
     ctx.font = '10px monospace';
     ctx.textAlign = 'right';
-    ctx.fillText(`ROLL ${p.dashCooldown.toFixed(1)}s`, w - 14, h - 14);
+    ctx.fillText(`تدحرج ${p.dashCooldown.toFixed(1)}`, w - 14, h - 14);
   } else {
     ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 10px monospace';
+    ctx.font = 'bold 10px Tajawal, Arial, sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('ROLL ●', w - 14, h - 14);
+    ctx.fillText('تدحرج ●', w - 14, h - 14);
   }
 
   // ─ Ammo indicator (visual bullet icons) ─
