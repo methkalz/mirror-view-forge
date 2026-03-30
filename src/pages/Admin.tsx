@@ -975,6 +975,255 @@ const sectionHeaderStyle: React.CSSProperties = {
   color: 'rgba(148,163,184,0.45)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6,
 };
 
+// ─── Easing helpers (shared with renderer) ───
+function previewSmoothstep(t: number): number { return t * t * (3 - 2 * t); }
+function previewEaseIn(t: number): number { return t * t; }
+function previewEaseOut(t: number): number { return 1 - (1 - t) * (1 - t); }
+function previewApplyEasing(t: number, type: string): number {
+  const c = Math.max(0, Math.min(1, t));
+  switch (type) {
+    case 'smoothstep': return previewSmoothstep(c);
+    case 'ease-in': return previewEaseIn(c);
+    case 'ease-out': return previewEaseOut(c);
+    default: return c;
+  }
+}
+
+function previewParseRGB(str: string): number[] {
+  return str.split(',').map(s => parseInt(s.trim(), 10) || 0);
+}
+
+function previewLerpColor(a: number[], b: number[], t: number): number[] {
+  return a.map((v, i) => Math.round(v + (b[i] - v) * t));
+}
+
+// ─── Background Preview Player ───
+const PREVIEW_PHASE_DURATION = 5; // seconds per phase in preview
+
+const BackgroundPreviewPlayer: React.FC<{ phases: BackgroundPhase[] }> = ({ phases }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const rafRef = useRef<number>(0);
+  const startTimeRef = useRef(0);
+  const imagesRef = useRef<(HTMLImageElement | null)[]>([]);
+
+  const totalDuration = phases.length * PREVIEW_PHASE_DURATION;
+
+  // Load images
+  useEffect(() => {
+    imagesRef.current = phases.map(p => {
+      if (!p.imageUrl) return null;
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = p.imageUrl;
+      return img;
+    });
+  }, [phases]);
+
+  const getBlendAtTime = useCallback((t: number) => {
+    if (phases.length === 0) return null;
+    const phaseIdx = Math.min(Math.floor(t / PREVIEW_PHASE_DURATION), phases.length - 1);
+    const localT = (t / PREVIEW_PHASE_DURATION) - phaseIdx;
+
+    const current = phases[phaseIdx];
+    const nextIdx = phaseIdx + 1;
+    const imgA = imagesRef.current[phaseIdx];
+
+    if (nextIdx < phases.length) {
+      const next = phases[nextIdx];
+      const easingType = next.easingType || 'smoothstep';
+      // Fade occupies the last 60% of each phase segment
+      const fadeStart = 0.4;
+      if (localT >= fadeStart) {
+        const linearFade = (localT - fadeStart) / (1 - fadeStart);
+        const fade = previewApplyEasing(linearFade, easingType);
+        const imgB = imagesRef.current[nextIdx];
+        const topA = previewParseRGB(current.overlayTop), topB = previewParseRGB(next.overlayTop);
+        const midA = previewParseRGB(current.overlayMid), midB = previewParseRGB(next.overlayMid);
+        const botA = previewParseRGB(current.overlayBottom), botB = previewParseRGB(next.overlayBottom);
+        return {
+          imgA, imgB, fade,
+          overlayTop: previewLerpColor(topA, topB, fade),
+          overlayMid: previewLerpColor(midA, midB, fade),
+          overlayBottom: previewLerpColor(botA, botB, fade),
+          overlayOpacity: current.overlayOpacity + (next.overlayOpacity - current.overlayOpacity) * fade,
+          phaseIdx,
+        };
+      }
+    }
+    return {
+      imgA, imgB: null, fade: 0,
+      overlayTop: previewParseRGB(current.overlayTop),
+      overlayMid: previewParseRGB(current.overlayMid),
+      overlayBottom: previewParseRGB(current.overlayBottom),
+      overlayOpacity: current.overlayOpacity,
+      phaseIdx,
+    };
+  }, [phases]);
+
+  const drawFrame = useCallback((timestamp: number) => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const elapsed = (timestamp - startTimeRef.current) / 1000;
+    const t = elapsed % totalDuration;
+    setProgress(t / totalDuration);
+
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const blend = getBlendAtTime(t);
+    if (!blend) {
+      ctx.fillStyle = '#0c1445';
+      ctx.fillRect(0, 0, w, h);
+    } else {
+      // Draw primary image (cover)
+      if (blend.imgA && blend.imgA.complete && blend.imgA.naturalWidth > 0) {
+        drawCoverImage(ctx, blend.imgA, w, h);
+      } else {
+        ctx.fillStyle = '#0c1445';
+        ctx.fillRect(0, 0, w, h);
+      }
+      // Cross-fade
+      if (blend.imgB && blend.imgB.complete && blend.imgB.naturalWidth > 0 && blend.fade > 0) {
+        ctx.save();
+        ctx.globalAlpha = blend.fade;
+        drawCoverImage(ctx, blend.imgB, w, h);
+        ctx.restore();
+      }
+      // Overlay gradient
+      const overlayGrad = ctx.createLinearGradient(0, 0, 0, h);
+      const op = blend.overlayOpacity;
+      overlayGrad.addColorStop(0, `rgba(${blend.overlayTop[0]},${blend.overlayTop[1]},${blend.overlayTop[2]},${op})`);
+      overlayGrad.addColorStop(0.5, `rgba(${blend.overlayMid[0]},${blend.overlayMid[1]},${blend.overlayMid[2]},${op * 0.85})`);
+      overlayGrad.addColorStop(1, `rgba(${blend.overlayBottom[0]},${blend.overlayBottom[1]},${blend.overlayBottom[2]},${op * 0.95})`);
+      ctx.fillStyle = overlayGrad;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    if (playing) {
+      rafRef.current = requestAnimationFrame(drawFrame);
+    }
+  }, [playing, totalDuration, getBlendAtTime]);
+
+  const handlePlay = () => {
+    if (playing) {
+      cancelAnimationFrame(rafRef.current);
+      setPlaying(false);
+    } else {
+      setPlaying(true);
+      startTimeRef.current = performance.now();
+      setProgress(0);
+    }
+  };
+
+  useEffect(() => {
+    if (playing) {
+      rafRef.current = requestAnimationFrame(drawFrame);
+    }
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [playing, drawFrame]);
+
+  // Resize canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const observer = new ResizeObserver(() => {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * 2;
+      canvas.height = rect.height * 2;
+    });
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
+
+  const activePhaseIdx = Math.min(Math.floor(progress * phases.length), phases.length - 1);
+
+  return (
+    <div style={{
+      marginBottom: 24, padding: '18px', borderRadius: 14,
+      background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(148,163,184,0.6)', letterSpacing: 1.5 }}>
+          🎬 LIVE PREVIEW
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Active phase indicator */}
+          {playing && phases[activePhaseIdx] && (() => {
+            const meta = PHASE_META[phases[activePhaseIdx].phase] || { icon: '🖼️', label: phases[activePhaseIdx].phase, color: '#94a3b8' };
+            return (
+              <span style={{ fontSize: 10, color: meta.color, fontWeight: 700 }}>
+                {meta.icon} {meta.label}
+              </span>
+            );
+          })()}
+          <button onClick={handlePlay} style={{
+            ...btnPrimary, padding: '6px 16px', fontSize: 11,
+            background: playing ? 'rgba(220,38,38,0.12)' : 'rgba(59,130,246,0.15)',
+            color: playing ? '#f87171' : '#60a5fa',
+            borderColor: playing ? 'rgba(220,38,38,0.2)' : 'rgba(59,130,246,0.2)',
+          }}>
+            {playing ? '⏹ Stop' : '▶ Preview'}
+          </button>
+        </div>
+      </div>
+
+      {/* Canvas */}
+      <canvas ref={canvasRef} style={{
+        width: '100%', aspectRatio: '16/9', borderRadius: 10, display: 'block',
+        background: '#0c1445', border: '1px solid rgba(255,255,255,0.06)',
+      }} />
+
+      {/* Progress bar */}
+      <div style={{ marginTop: 10, position: 'relative' }}>
+        <div style={{
+          height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden',
+        }}>
+          <div style={{
+            height: '100%', width: `${progress * 100}%`,
+            background: 'linear-gradient(90deg, #f59e0b, #f97316, #6366f1)',
+            borderRadius: 3, transition: playing ? 'none' : 'width 0.3s',
+          }} />
+        </div>
+        {/* Phase markers */}
+        <div style={{ display: 'flex', marginTop: 4 }}>
+          {phases.map((p, i) => {
+            const meta = PHASE_META[p.phase] || { icon: '🖼️', label: p.phase, color: '#94a3b8' };
+            return (
+              <div key={p.id} style={{
+                flex: 1, textAlign: 'center', fontSize: 9, color: activePhaseIdx === i && playing ? meta.color : 'rgba(148,163,184,0.3)',
+                fontWeight: activePhaseIdx === i && playing ? 700 : 400, transition: 'all 0.3s',
+              }}>
+                {meta.icon} {PREVIEW_PHASE_DURATION}s
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+function drawCoverImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cw: number, ch: number) {
+  const imgAspect = img.naturalWidth / img.naturalHeight;
+  const canvasAspect = cw / ch;
+  let sw = img.naturalWidth, sh = img.naturalHeight, sx = 0, sy = 0;
+  if (imgAspect > canvasAspect) {
+    sw = img.naturalHeight * canvasAspect;
+    sx = (img.naturalWidth - sw) / 2;
+  } else {
+    sh = img.naturalWidth / canvasAspect;
+    sy = (img.naturalHeight - sh) / 2;
+  }
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+}
+};
+
 const BackgroundsPanel: React.FC<{
   phases: BackgroundPhase[];
   setPhases: React.Dispatch<React.SetStateAction<BackgroundPhase[]>>;
