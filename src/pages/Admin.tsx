@@ -2293,43 +2293,74 @@ const WaveEditor: React.FC<{
     }}>
       <div style={{
         background: '#111827', borderRadius: 20, padding: '28px 24px',
-        width: 'min(440px, 90vw)', maxHeight: '80vh', overflowY: 'auto',
+        width: 'min(500px, 92vw)', maxHeight: '85vh', overflowY: 'auto',
         border: '1px solid rgba(255,255,255,0.08)',
       }}>
         <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 20, color: '#f1f5f9' }}>
-          Wave {w.waveNumber} Editor
+          محرر الموجة {w.waveNumber}
         </h3>
 
-        {[
-          { label: 'Wave Number', value: w.waveNumber, onChange: (v: string) => setW({ ...w, waveNumber: parseInt(v) || 1 }), type: 'number' },
-          { label: 'Duration (sec)', value: w.duration, onChange: (v: string) => setW({ ...w, duration: parseFloat(v) || 60 }), type: 'number' },
-          { label: 'Max Concurrent', value: w.maxConcurrent, onChange: (v: string) => setW({ ...w, maxConcurrent: parseInt(v) || 5 }), type: 'number' },
-          { label: 'Spawn Rate', value: w.spawnRate, onChange: (v: string) => setW({ ...w, spawnRate: parseFloat(v) || 3.5 }), type: 'number', step: '0.5' },
-          { label: 'Surge Multiplier', value: w.surgeMultiplier, onChange: (v: string) => setW({ ...w, surgeMultiplier: parseFloat(v) || 1 }), type: 'number', step: '0.1' },
-        ].map(f => (
-          <div key={f.label} style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>{f.label}</label>
-            <input type={f.type} step={f.step} value={f.value} onChange={e => f.onChange(e.target.value)} style={inputStyle} />
-          </div>
-        ))}
-
-        <label style={{ ...labelStyle, marginBottom: 8 }}>Threats</label>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
-          {THREAT_TYPES.map(t => (
-            <button key={t} onClick={() => setW({ ...w, threats: toggle(w.threats, t) })} style={chipStyle(w.threats.includes(t))}>{t}</button>
+        {/* Basic fields */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          {([
+            { label: 'رقم الموجة', value: w.waveNumber, onChange: (v: string) => setW({ ...w, waveNumber: parseInt(v) || 1 }) },
+            { label: 'المدة (ثوانٍ)', value: w.duration, onChange: (v: string) => setW({ ...w, duration: parseFloat(v) || 60 }) },
+            { label: 'أقصى تزامن', value: w.maxConcurrent, onChange: (v: string) => setW({ ...w, maxConcurrent: parseInt(v) || 5 }) },
+            { label: 'فترة الإسقاط', value: w.spawnRate, onChange: (v: string) => setW({ ...w, spawnRate: parseFloat(v) || 3.5 }) },
+            { label: 'مضاعف الاندفاع', value: w.surgeMultiplier, onChange: (v: string) => setW({ ...w, surgeMultiplier: parseFloat(v) || 1 }) },
+            { label: 'شظايا الكلاستر', value: w.clusterSplits, onChange: (v: string) => setW({ ...w, clusterSplits: parseInt(v) || 0 }) },
+            { label: 'مستوى السلاح', value: w.bulletLevel, onChange: (v: string) => setW({ ...w, bulletLevel: parseInt(v) || 1 }) },
+            { label: 'تأخير الظهور', value: w.phaseInDelay, onChange: (v: string) => setW({ ...w, phaseInDelay: parseFloat(v) || 0 }) },
+            { label: 'فترة الطائرات', value: w.droneInterval, onChange: (v: string) => setW({ ...w, droneInterval: parseFloat(v) || 0 }) },
+          ] as const).map(f => (
+            <div key={f.label}>
+              <label style={labelStyle}>{f.label}</label>
+              <input type="number" step="0.1" value={f.value} onChange={e => f.onChange(e.target.value)} style={inputStyle} />
+            </div>
           ))}
         </div>
 
-        <label style={{ ...labelStyle, marginBottom: 8 }}>Drone Types</label>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 24 }}>
-          {DRONE_TYPES.map(t => (
-            <button key={t} onClick={() => setW({ ...w, droneTypes: toggle(w.droneTypes, t) })} style={chipStyle(w.droneTypes.includes(t))}>{t}</button>
+        {/* Toggles */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          {([
+            { label: '👹 بوس', key: 'hasBoss' as const },
+            { label: '☣️ كيميائية', key: 'hasChemical' as const },
+            { label: '🔥 حارقة', key: 'hasIncendiary' as const },
+          ]).map(({ label, key }) => (
+            <button key={key} onClick={() => setW({ ...w, [key]: !w[key] })} style={chipStyle(w[key])}>
+              {label}
+            </button>
           ))}
+        </div>
+
+        <label style={{ ...labelStyle, marginBottom: 8 }}>التهديدات</label>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+          {THREAT_TYPES.map(t => (
+            <button key={t} onClick={() => setW({ ...w, threats: toggle(w.threats, t) })} style={chipStyle(w.threats.includes(t))}>
+              {THREAT_ICONS[t] || ''} {t}
+            </button>
+          ))}
+        </div>
+
+        <label style={{ ...labelStyle, marginBottom: 8 }}>الطائرات</label>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+          {DRONE_TYPES.map(t => (
+            <button key={t} onClick={() => setW({ ...w, droneTypes: toggle(w.droneTypes, t) })} style={chipStyle(w.droneTypes.includes(t))}>
+              {DRONE_ICONS[t] || ''} {t}
+            </button>
+          ))}
+        </div>
+
+        {/* Warning text */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={labelStyle}>نص تحذير مخصص (اختياري)</label>
+          <input type="text" value={w.warningText || ''} placeholder="مثال: تحذير: موجة صعبة!"
+            onChange={e => setW({ ...w, warningText: e.target.value || null })} style={inputStyle} />
         </div>
 
         <div style={{ display: 'flex', gap: 12 }}>
-          <button onClick={() => onSave(w)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'rgba(59,130,246,0.2)', color: '#60a5fa', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>Save</button>
-          <button onClick={onCancel} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.04)', color: 'rgba(148,163,184,0.5)', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>Cancel</button>
+          <button onClick={() => onSave(w)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'rgba(59,130,246,0.2)', color: '#60a5fa', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>حفظ</button>
+          <button onClick={onCancel} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.04)', color: 'rgba(148,163,184,0.5)', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>إلغاء</button>
         </div>
       </div>
     </div>
