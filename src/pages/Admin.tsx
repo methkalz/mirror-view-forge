@@ -1359,7 +1359,217 @@ function drawCoverImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cw
   ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
 }
 
-const BackgroundsPanel: React.FC<{
+// ─── Phone Mockup Preview ───
+const PhoneMockupPreview: React.FC<{
+  imageUrl: string; displayMode: DisplayMode; margin: number; color: string;
+}> = ({ imageUrl, displayMode, margin, color }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [camX, setCamX] = useState(0);
+  const dragStartRef = useRef({ x: 0, camX: 0 });
+
+  // Phone dimensions (simulated)
+  const PHONE_W = 375;
+  const PHONE_H = 700;
+  const CANVAS_H = 220;
+  const scale = CANVAS_H / (PHONE_H + 40); // +40 for phone frame padding
+  const canvasW = Math.round((PHONE_W + margin * 2 + 80) * scale);
+
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => { imgRef.current = img; drawPreview(0); };
+    img.src = imageUrl;
+    imgRef.current = null;
+  }, [imageUrl]);
+
+  useEffect(() => { drawPreview(camX); }, [displayMode, margin, camX]);
+
+  const drawPreview = (currentCamX: number) => {
+    const canvas = canvasRef.current;
+    const img = imgRef.current;
+    if (!canvas || !img || !img.complete || img.naturalWidth === 0) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const cw = Math.round(canvasW * dpr);
+    const ch = Math.round(CANVAS_H * dpr);
+    if (canvas.width !== cw || canvas.height !== ch) {
+      canvas.width = cw;
+      canvas.height = ch;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, canvasW, CANVAS_H);
+
+    // Phone frame area
+    const frameX = (canvasW - PHONE_W * scale) / 2;
+    const frameY = 10 * scale;
+    const frameW = PHONE_W * scale;
+    const frameH = PHONE_H * scale;
+
+    // Full image area (viewport + margins)
+    const totalW = PHONE_W + margin * 2;
+    const totalAreaX = (canvasW - totalW * scale) / 2;
+    const totalAreaW = totalW * scale;
+
+    // Draw margin zones (subtle overlay)
+    ctx.fillStyle = 'rgba(255,255,255,0.03)';
+    ctx.fillRect(totalAreaX, frameY, totalAreaW, frameH);
+
+    // Clip to total area and draw image
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(totalAreaX, frameY, totalAreaW, frameH);
+    ctx.clip();
+
+    const parallax = 0.3;
+    const imgAspect = img.naturalWidth / img.naturalHeight;
+    const drawH = frameH;
+
+    if (displayMode === 'tiled') {
+      const rawW = drawH * imgAspect;
+      const tileW = Math.ceil(rawW);
+      const offsetX = currentCamX * parallax * scale;
+      const startTile = Math.floor((offsetX - totalAreaW) / tileW) - 1;
+      const endTile = Math.ceil((offsetX + totalAreaW * 2) / tileW) + 1;
+      for (let i = startTile; i <= endTile; i++) {
+        const tileX = Math.round(totalAreaX + (totalAreaW - tileW) / 2 + i * tileW - offsetX);
+        const isMirrored = (((i % 2) + 2) % 2) === 1;
+        ctx.save();
+        if (isMirrored) {
+          ctx.translate(tileX + tileW, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(img, 0, frameY, tileW + 1, drawH);
+        } else {
+          ctx.drawImage(img, tileX, frameY, tileW + 1, drawH);
+        }
+        ctx.restore();
+      }
+    } else {
+      // single or blur-edge — same logic
+      let drawW = drawH * imgAspect;
+      const minW = totalAreaW;
+      if (drawW < minW) drawW = minW;
+      const drawX = totalAreaX + (totalAreaW - drawW) / 2 - currentCamX * parallax * scale;
+      ctx.drawImage(img, drawX, frameY, drawW, drawH);
+    }
+    ctx.restore();
+
+    // Draw margin zone overlays
+    const leftMarginW = (frameX - totalAreaX);
+    const rightMarginX = frameX + frameW;
+    const rightMarginW = totalAreaX + totalAreaW - rightMarginX;
+
+    if (leftMarginW > 0) {
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(totalAreaX, frameY, leftMarginW, frameH);
+    }
+    if (rightMarginW > 0) {
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(rightMarginX, frameY, rightMarginW, frameH);
+    }
+
+    // Dashed lines for viewport boundary
+    ctx.setLineDash([4, 3]);
+    ctx.strokeStyle = `${color}80`;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(frameX, frameY, frameW, frameH);
+    ctx.setLineDash([]);
+
+    // Phone frame (rounded rect)
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 2;
+    const r = 14;
+    ctx.beginPath();
+    ctx.moveTo(frameX + r, frameY - 2);
+    ctx.lineTo(frameX + frameW - r, frameY - 2);
+    ctx.arcTo(frameX + frameW + 2, frameY - 2, frameX + frameW + 2, frameY + r, r);
+    ctx.lineTo(frameX + frameW + 2, frameY + frameH - r + 2);
+    ctx.arcTo(frameX + frameW + 2, frameY + frameH + 2, frameX + frameW - r, frameY + frameH + 2, r);
+    ctx.lineTo(frameX + r, frameY + frameH + 2);
+    ctx.arcTo(frameX - 2, frameY + frameH + 2, frameX - 2, frameY + frameH - r, r);
+    ctx.lineTo(frameX - 2, frameY + r);
+    ctx.arcTo(frameX - 2, frameY - 2, frameX + r, frameY - 2, r);
+    ctx.closePath();
+    ctx.stroke();
+
+    // Notch
+    const notchW = 40;
+    const notchH = 6;
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.beginPath();
+    ctx.roundRect(frameX + (frameW - notchW) / 2, frameY + 3, notchW, notchH, 3);
+    ctx.fill();
+
+    // Labels
+    ctx.font = `${8}px Inter, system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    if (leftMarginW > 15) {
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillText('MARGIN', totalAreaX + leftMarginW / 2, frameY + frameH / 2);
+    }
+    if (rightMarginW > 15) {
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillText('MARGIN', rightMarginX + rightMarginW / 2, frameY + frameH / 2);
+    }
+
+    // Viewport label
+    ctx.fillStyle = `${color}90`;
+    ctx.font = `bold ${9}px Inter, system-ui, sans-serif`;
+    ctx.fillText('VIEWPORT', frameX + frameW / 2, frameY + frameH + 14);
+
+    // Mode label
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = `${8}px Inter, system-ui, sans-serif`;
+    ctx.fillText(displayMode.toUpperCase(), frameX + frameW / 2, frameY - 8);
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    setDragging(true);
+    dragStartRef.current = { x: e.clientX, camX };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragging) return;
+    const dx = e.clientX - dragStartRef.current.x;
+    const maxCam = margin * 0.8;
+    const newCam = Math.max(-maxCam, Math.min(maxCam, dragStartRef.current.camX - dx / scale));
+    setCamX(newCam);
+  };
+
+  const handlePointerUp = () => setDragging(false);
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <span style={{ fontSize: 9, color: 'rgba(148,163,184,0.4)', fontWeight: 600, letterSpacing: 1 }}>
+          📱 PHONE PREVIEW
+        </span>
+        <span style={{ fontSize: 9, color: dragging ? color : 'rgba(148,163,184,0.3)' }}>
+          {dragging ? `Camera: ${Math.round(camX)}px` : '← Drag to simulate →'}
+        </span>
+      </div>
+      <canvas
+        ref={canvasRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+        style={{
+          width: canvasW, height: CANVAS_H, borderRadius: 10, display: 'block',
+          background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.06)',
+          cursor: dragging ? 'grabbing' : 'grab', touchAction: 'none',
+        }}
+      />
+    </div>
+  );
+};
+
+
   phases: BackgroundPhase[];
   setPhases: React.Dispatch<React.SetStateAction<BackgroundPhase[]>>;
   isDesktop: boolean;
