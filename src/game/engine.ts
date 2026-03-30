@@ -663,7 +663,7 @@ const WAVE_WARNINGS: Record<number, { id: string; text: string; sub: string; col
 };
 
 function spawnHazard(g: GameData, type: HazardType) {
-  const recipe = getWaveRecipe(g.waveNumber);
+  const recipe = getWaveRecipe(g.waveNumber, g);
 
   const h = getFromPool<Hazard>(g.hazards, () => ({
     active: false, type: 'shrapnel', pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
@@ -1239,7 +1239,7 @@ function startNextWave(g: GameData) {
   g.wavePhase = 'active';
 
   // Apply recipe settings for this wave
-  const recipe = getWaveRecipe(g.waveNumber);
+  const recipe = getWaveRecipe(g.waveNumber, g);
   g.bulletLevel = Math.max(g.bulletLevel, recipe.bulletLevel);
 
   // Queue wave warnings for new threats
@@ -1480,7 +1480,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   if (g.magnetFlashTimer > 0) g.magnetFlashTimer -= dt;
 
   // === Wave-based warning system ===
-  const recipe = getWaveRecipe(g.waveNumber);
+  const recipe = getWaveRecipe(g.waveNumber, g);
   const warnings = WAVE_WARNINGS[g.waveNumber];
   if (warnings && g.wavePhase === 'active') {
     for (const w of warnings) {
@@ -1641,13 +1641,13 @@ export function update(g: GameData, input: InputState, dt: number) {
   if (g.elapsed >= 3 && !g.cinematicWarning && g.wavePhase === 'active') {
     g.spawnTimer -= dt;
     if (g.spawnTimer <= 0) {
-      const recipe = getWaveRecipe(g.waveNumber);
+      const recipe = getWaveRecipe(g.waveNumber, g);
 
       // Build available threat types based on recipe + phaseInDelay
       const types: HazardType[] = [];
       for (const t of recipe.threats) {
         // New threats (not in previous wave) respect phaseInDelay
-        const prevRecipe = g.waveNumber > 1 ? getWaveRecipe(g.waveNumber - 1) : { threats: [] as string[] };
+        const prevRecipe = g.waveNumber > 1 ? getWaveRecipe(g.waveNumber - 1, g) : { threats: [] as string[] };
         const isNew = !prevRecipe.threats.includes(t);
         if (isNew && g.waveElapsed < recipe.phaseInDelay) continue;
         types.push(t as HazardType);
@@ -1748,7 +1748,7 @@ export function update(g: GameData, input: InputState, dt: number) {
         h.pos.x += (h.clusterVelX! * 0.5) * g.slowMoFactor * dt;
 
         // Release glowing bombs downward — use recipe cluster splits
-        const recipe = getWaveRecipe(g.waveNumber);
+        const recipe = getWaveRecipe(g.waveNumber, g);
         let splitCount = Math.max(2, recipe.clusterSplits);
 
         for (let i = 0; i < splitCount; i++) {
@@ -2032,7 +2032,7 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Incendiary Drones — Recipe-based ===
-  const recipeForDrones = getWaveRecipe(g.waveNumber);
+  const recipeForDrones = getWaveRecipe(g.waveNumber, g);
   if (recipeForDrones.hasIncendiary && g.wavePhase === 'active') {
     g.incendiaryTimer -= dt;
     if (g.incendiaryTimer <= 0) {
