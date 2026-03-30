@@ -998,20 +998,16 @@ function renderExplosions(ctx: CanvasRenderingContext2D, g: GameData) {
 
 // ─── Power-up Icon Drawers ────────────────────────────
 function drawMedkitIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // White box with colored cross
-  const b = s * 0.7;
+  // Flat white cross
+  const b = s * 0.65;
   ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.roundRect(-b, -b, b * 2, b * 2, 2);
-  ctx.fill();
-  ctx.fillStyle = '#22c55e';
-  ctx.fillRect(-b * 0.2, -b * 0.65, b * 0.4, b * 1.3);
-  ctx.fillRect(-b * 0.65, -b * 0.2, b * 1.3, b * 0.4);
+  ctx.fillRect(-b * 0.2, -b * 0.7, b * 0.4, b * 1.4);
+  ctx.fillRect(-b * 0.7, -b * 0.2, b * 1.4, b * 0.4);
 }
 
 function drawShieldIcon(ctx: CanvasRenderingContext2D, s: number) {
   const h = s * 0.85, w = s * 0.7;
-  // Shield shape
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.moveTo(0, -h);
   ctx.quadraticCurveTo(w, -h * 0.6, w, -h * 0.1);
@@ -1019,75 +1015,31 @@ function drawShieldIcon(ctx: CanvasRenderingContext2D, s: number) {
   ctx.quadraticCurveTo(-w * 0.8, h * 0.6, -w, -h * 0.1);
   ctx.quadraticCurveTo(-w, -h * 0.6, 0, -h);
   ctx.closePath();
-  const sg = ctx.createLinearGradient(0, -h, 0, h);
-  sg.addColorStop(0, '#93c5fd');
-  sg.addColorStop(0.5, '#3b82f6');
-  sg.addColorStop(1, '#1d4ed8');
-  ctx.fillStyle = sg;
-  ctx.fill();
-  ctx.strokeStyle = '#bfdbfe';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-  // Star
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  for (let i = 0; i < 5; i++) {
-    const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-    const r = i % 2 === 0 ? s * 0.3 : s * 0.12;
-    const method = i === 0 ? 'moveTo' : 'lineTo';
-    ctx[method](Math.cos(a) * r, Math.sin(a) * r + h * 0.05);
-  }
-  ctx.closePath();
   ctx.fill();
 }
 
 function drawAmmoIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // Crossed bullets — military style
+  // Flat white crossed bullets
   const bh = s * 0.55, bw = s * 0.18;
+  ctx.fillStyle = '#fff';
   for (let side = -1; side <= 1; side += 2) {
     ctx.save();
     ctx.rotate(side * 0.4);
-    // Casing
-    const bg = ctx.createLinearGradient(-bw, 0, bw, 0);
-    bg.addColorStop(0, '#7a6008');
-    bg.addColorStop(0.3, '#d4a017');
-    bg.addColorStop(0.5, '#f0c040');
-    bg.addColorStop(0.7, '#d4a017');
-    bg.addColorStop(1, '#7a6008');
-    ctx.fillStyle = bg;
     ctx.beginPath();
     ctx.roundRect(-bw, -bh * 0.15, bw * 2, bh * 0.85, 1.5);
     ctx.fill();
-    // Belt groove
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    ctx.lineWidth = 0.7;
-    ctx.beginPath();
-    ctx.moveTo(-bw, bh * 0.5);
-    ctx.lineTo(bw, bh * 0.5);
-    ctx.stroke();
     // Tip
-    ctx.fillStyle = '#a04510';
     ctx.beginPath();
     ctx.moveTo(-bw * 0.7, -bh * 0.15);
     ctx.quadraticCurveTo(0, -bh, bw * 0.7, -bh * 0.15);
     ctx.closePath();
     ctx.fill();
-    // Tip highlight
-    ctx.fillStyle = 'rgba(255,220,150,0.35)';
-    ctx.beginPath();
-    ctx.moveTo(-bw * 0.15, -bh * 0.15);
-    ctx.quadraticCurveTo(0, -bh * 0.85, bw * 0.15, -bh * 0.15);
-    ctx.closePath();
-    ctx.fill();
-    // Casing highlight
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.fillRect(-bw * 0.1, -bh * 0.1, bw * 0.2, bh * 0.55);
     ctx.restore();
   }
 }
 
 function drawSlowMoIcon(ctx: CanvasRenderingContext2D, s: number, elapsed: number) {
-  // Clock face
+  // Flat white clock
   ctx.strokeStyle = '#fff';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -1115,66 +1067,31 @@ function drawSlowMoIcon(ctx: CanvasRenderingContext2D, s: number, elapsed: numbe
   ctx.lineTo(Math.cos(handAngle * 3) * s * 0.55, Math.sin(handAngle * 3) * s * 0.55);
   ctx.stroke();
   // Center dot
-  ctx.fillStyle = '#06b6d4';
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.arc(0, 0, 2, 0, Math.PI * 2);
   ctx.fill();
 }
 
 function drawMagnetIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // Large horseshoe magnet — red left pole, blue right pole, silver arc
+  // Flat white horseshoe magnet
   const w = s * 0.8, h = s * 0.9, t = s * 0.32;
-  
-  // Silver curved bottom (horseshoe base)
-  const arcGrad = ctx.createLinearGradient(-w, h * 0.3, w, h * 0.3);
-  arcGrad.addColorStop(0, '#c0c0c0');
-  arcGrad.addColorStop(0.5, '#f0f0f0');
-  arcGrad.addColorStop(1, '#c0c0c0');
-  ctx.strokeStyle = arcGrad;
+  ctx.strokeStyle = '#fff';
   ctx.lineWidth = t;
   ctx.lineCap = 'round';
   ctx.beginPath();
   ctx.arc(0, h * 0.35, w - t / 2, 0, Math.PI);
   ctx.stroke();
-  // White outline on curve
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(0, h * 0.35, w + 2, 0, Math.PI);
-  ctx.stroke();
-  
-  // Left pole (red)
-  ctx.fillStyle = '#dc2626';
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 1.5;
+  // Poles
+  ctx.fillStyle = '#fff';
   ctx.fillRect(-w, -h * 0.45, t, h * 0.8);
-  ctx.strokeRect(-w, -h * 0.45, t, h * 0.8);
-  // Right pole (blue)
-  ctx.fillStyle = '#2563eb';
   ctx.fillRect(w - t, -h * 0.45, t, h * 0.8);
-  ctx.strokeRect(w - t, -h * 0.45, t, h * 0.8);
-  
-  // White tip markers (N/S)
-  ctx.fillStyle = '#f8fafc';
-  ctx.fillRect(-w + 1, -h * 0.45, t - 2, t * 0.5);
-  ctx.fillRect(w - t + 1, -h * 0.45, t - 2, t * 0.5);
-  
-  // Field lines between poles
-  ctx.strokeStyle = 'rgba(100,180,255,0.4)';
-  ctx.lineWidth = 0.8;
-  for (let i = 0; i < 3; i++) {
-    const arcR = s * 0.2 + i * s * 0.15;
-    ctx.beginPath();
-    ctx.arc(0, -h * 0.2, arcR, Math.PI * 1.15, Math.PI * 1.85);
-    ctx.stroke();
-  }
 }
 
 function drawAirstrikeIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // Mini jet silhouette
-  ctx.fillStyle = '#fbbf24';
+  // Flat white jet silhouette
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
-  // Fuselage
   ctx.moveTo(s * 0.9, 0);
   ctx.lineTo(-s * 0.6, -s * 0.12);
   ctx.lineTo(-s * 0.9, -s * 0.1);
@@ -1182,7 +1099,6 @@ function drawAirstrikeIcon(ctx: CanvasRenderingContext2D, s: number) {
   ctx.lineTo(-s * 0.6, s * 0.12);
   ctx.closePath();
   ctx.fill();
-  // Wings
   ctx.beginPath();
   ctx.moveTo(s * 0.1, -s * 0.12);
   ctx.lineTo(-s * 0.2, -s * 0.65);
@@ -1197,7 +1113,6 @@ function drawAirstrikeIcon(ctx: CanvasRenderingContext2D, s: number) {
   ctx.lineTo(-s * 0.3, s * 0.12);
   ctx.closePath();
   ctx.fill();
-  // Tail fins
   ctx.beginPath();
   ctx.moveTo(-s * 0.7, -s * 0.1);
   ctx.lineTo(-s * 0.85, -s * 0.4);
@@ -1213,26 +1128,19 @@ function drawAirstrikeIcon(ctx: CanvasRenderingContext2D, s: number) {
 }
 
 function drawInterceptorIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // Mini rocket with flame
+  // Flat white rocket
   const bw = s * 0.25, bh = s * 0.8;
-  // Body
-  const bg = ctx.createLinearGradient(-bw, 0, bw, 0);
-  bg.addColorStop(0, '#78716c');
-  bg.addColorStop(0.5, '#d6d3d1');
-  bg.addColorStop(1, '#78716c');
-  ctx.fillStyle = bg;
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.roundRect(-bw, -bh * 0.3, bw * 2, bh * 0.7, 2);
   ctx.fill();
   // Nose
-  ctx.fillStyle = '#f97316';
   ctx.beginPath();
   ctx.moveTo(-bw, -bh * 0.3);
   ctx.quadraticCurveTo(0, -bh, bw, -bh * 0.3);
   ctx.closePath();
   ctx.fill();
   // Fins
-  ctx.fillStyle = '#57534e';
   ctx.beginPath();
   ctx.moveTo(-bw, bh * 0.35);
   ctx.lineTo(-bw * 2.2, bh * 0.55);
@@ -1245,98 +1153,45 @@ function drawInterceptorIcon(ctx: CanvasRenderingContext2D, s: number) {
   ctx.lineTo(bw, bh * 0.15);
   ctx.closePath();
   ctx.fill();
-  // Flame
-  ctx.fillStyle = '#fbbf24';
-  ctx.beginPath();
-  ctx.moveTo(-bw * 0.6, bh * 0.4);
-  ctx.quadraticCurveTo(0, bh * 0.85, bw * 0.6, bh * 0.4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = '#fff8';
-  ctx.beginPath();
-  ctx.moveTo(-bw * 0.3, bh * 0.4);
-  ctx.quadraticCurveTo(0, bh * 0.65, bw * 0.3, bh * 0.4);
-  ctx.closePath();
-  ctx.fill();
 }
 
 function drawExtinguisherIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // Red cylinder body
+  // Flat white extinguisher
   const bw = s * 0.3, bh = s * 0.75;
-  const bg = ctx.createLinearGradient(-bw, 0, bw, 0);
-  bg.addColorStop(0, '#991b1b');
-  bg.addColorStop(0.3, '#dc2626');
-  bg.addColorStop(0.6, '#ef4444');
-  bg.addColorStop(1, '#991b1b');
-  ctx.fillStyle = bg;
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.roundRect(-bw, -bh * 0.4, bw * 2, bh, 3);
   ctx.fill();
-  // Nozzle on top
-  ctx.fillStyle = '#333';
+  // Nozzle
   ctx.fillRect(-bw * 0.3, -bh * 0.55, bw * 0.6, bh * 0.2);
   // Handle
-  ctx.strokeStyle = '#555';
+  ctx.strokeStyle = '#fff';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(bw * 0.3, -bh * 0.4);
   ctx.quadraticCurveTo(bw * 1.2, -bh * 0.6, bw * 0.8, -bh * 0.2);
   ctx.stroke();
-  // Label band
-  ctx.fillStyle = '#fef3c7';
-  ctx.fillRect(-bw * 0.8, -bh * 0.05, bw * 1.6, bh * 0.2);
-  // Fire icon on label
-  ctx.fillStyle = '#f97316';
-  ctx.font = `${s * 0.3}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('🔥', 0, bh * 0.05);
 }
 
 function drawGasMaskIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // Mask outline
+  // Flat white gas mask
   const mw = s * 0.65, mh = s * 0.7;
-  ctx.fillStyle = '#1a3a2a';
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.ellipse(0, 0, mw, mh, 0, 0, Math.PI * 2);
   ctx.fill();
-  // Inner mask — darker
-  ctx.fillStyle = '#0f2a1a';
-  ctx.beginPath();
-  ctx.ellipse(0, mh * 0.05, mw * 0.8, mh * 0.8, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Eye lenses — circular, reflective green
+  // Eye holes (cut out effect via darker color)
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
   for (const ex of [-mw * 0.35, mw * 0.35]) {
-    ctx.fillStyle = '#065f46';
     ctx.beginPath();
     ctx.arc(ex, -mh * 0.15, s * 0.2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#10b981';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    // Lens reflection
-    ctx.fillStyle = 'rgba(16,185,129,0.4)';
-    ctx.beginPath();
-    ctx.arc(ex - s * 0.05, -mh * 0.2, s * 0.08, 0, Math.PI * 2);
-    ctx.fill();
   }
-  // Filter canister at bottom
-  ctx.fillStyle = '#374151';
+  // Filter canister
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.roundRect(-mw * 0.25, mh * 0.3, mw * 0.5, mh * 0.35, 2);
   ctx.fill();
-  ctx.strokeStyle = '#6b7280';
-  ctx.lineWidth = 0.8;
-  ctx.stroke();
-  // Grill lines on filter
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-  for (let i = 0; i < 3; i++) {
-    const gy = mh * 0.38 + i * mh * 0.1;
-    ctx.beginPath();
-    ctx.moveTo(-mw * 0.18, gy);
-    ctx.lineTo(mw * 0.18, gy);
-    ctx.stroke();
-  }
 }
 
 // ─── Fire Pools ────────────────────────────────────────
@@ -5132,31 +4987,14 @@ function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
 
 // ─── Water Bottle Icon ────────────────────────────────
 function drawWaterIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // Blue bottle shape
+  // Flat white water bottle
   const bw = s * 0.3, bh = s * 0.8;
-  const bg = ctx.createLinearGradient(-bw, 0, bw, 0);
-  bg.addColorStop(0, '#0284c7');
-  bg.addColorStop(0.3, '#38bdf8');
-  bg.addColorStop(0.7, '#0ea5e9');
-  bg.addColorStop(1, '#0284c7');
-  ctx.fillStyle = bg;
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.roundRect(-bw, -bh * 0.3, bw * 2, bh * 0.8, 3);
   ctx.fill();
   // Cap
-  ctx.fillStyle = '#fff';
   ctx.fillRect(-bw * 0.5, -bh * 0.5, bw, bh * 0.22);
-  // Water drops
-  ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  ctx.beginPath();
-  ctx.arc(-bw * 0.2, -bh * 0.05, s * 0.1, 0, Math.PI * 2);
-  ctx.fill();
-  // Label
-  ctx.fillStyle = '#fff';
-  ctx.font = `${s * 0.18}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('💧', 0, bh * 0.1);
 }
 
 // ─── Rest Overlay ─────────────────────────────────────
@@ -5578,12 +5416,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.globalCompositeOperation = 'source-over';
   }
 
-  // Slow-mo screen tint
-  if (g.slowMoTimer > 0) {
-    const pulse = 0.08 + Math.sin(g.elapsed * 4) * 0.03;
-    ctx.fillStyle = `rgba(6, 182, 212, ${pulse})`;
-    ctx.fillRect(0, 0, g.width, g.height);
-  }
+  // Slow-mo — no screen tint
 
   // Wave Finale — red vignette warning
   if (g.waveFinale && g.wavePhase === 'active') {
