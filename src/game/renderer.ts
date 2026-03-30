@@ -185,9 +185,10 @@ function drawTiledImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h:
   const drawW = Math.ceil(rawW);
   const offsetX = camX * parallax;
 
-  // Calculate which tiles are visible
-  const startTile = Math.floor((offsetX - viewportW) / drawW) - 1;
-  const endTile = Math.ceil((offsetX + viewportW * 2) / drawW) + 1;
+  // Calculate which tiles are visible (include margin area)
+  const totalW = viewportW + margin * 2;
+  const startTile = Math.floor((offsetX - totalW) / drawW) - 1;
+  const endTile = Math.ceil((offsetX + totalW * 2) / drawW) + 1;
 
   for (let i = startTile; i <= endTile; i++) {
     const tileX = Math.round(i * drawW - offsetX);
