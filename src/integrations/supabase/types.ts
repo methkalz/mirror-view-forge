@@ -227,6 +227,7 @@ export type Database = {
         Row: {
           base_speed: number
           bg_loop: boolean
+          bg_loop_fade_duration: number
           camera_margin: number
           dda_enabled: boolean
           developer_name: string
@@ -245,6 +246,7 @@ export type Database = {
         Insert: {
           base_speed?: number
           bg_loop?: boolean
+          bg_loop_fade_duration?: number
           camera_margin?: number
           dda_enabled?: boolean
           developer_name?: string
@@ -263,6 +265,7 @@ export type Database = {
         Update: {
           base_speed?: number
           bg_loop?: boolean
+          bg_loop_fade_duration?: number
           camera_margin?: number
           dda_enabled?: boolean
           developer_name?: string

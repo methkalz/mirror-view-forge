@@ -17,6 +17,7 @@ export interface RemoteGameConfig {
   showTitle: boolean;
   cameraMargin: number;
   bgLoop: boolean;
+  bgLoopFadeDuration: number;
 }
 
 export interface RemoteWaveConfig {
