@@ -65,7 +65,17 @@ function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
 
     for (let tile = startTile; tile <= endTile; tile++) {
       const drawX = tile * drawW - imgOffset;
-      ctx.drawImage(bgImage, drawX, 0, drawW, drawH);
+      // Mirror every odd tile so edges always match seamlessly
+      const isMirrored = ((tile % 2) + 2) % 2 === 1; // works for negative tiles too
+      if (isMirrored) {
+        ctx.save();
+        ctx.translate(drawX + drawW, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(bgImage, 0, 0, drawW, drawH);
+        ctx.restore();
+      } else {
+        ctx.drawImage(bgImage, drawX, 0, drawW, drawH);
+      }
     }
   } else {
     // Fallback: solid dark color while loading
