@@ -20,6 +20,7 @@ let bgLayers: BgLayer[] = [];
 let bgPhases: BackgroundPhase[] = [];
 let bgConfigLoaded = false;
 let bgCameraMargin = 400;
+let bgLoopEnabled = false;
 
 /** Set camera margin from game config (legacy — per-phase margin takes priority) */
 export function setCameraMargin(margin: number) {
