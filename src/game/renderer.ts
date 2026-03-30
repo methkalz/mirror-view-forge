@@ -5410,7 +5410,10 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.fillStyle = bottomGlow;
   ctx.fillRect(0, h * 0.5, w, h * 0.5);
 
-  // ── Page-specific content ──
+  // ── Page-specific content with fade ──
+  const prevAlpha = ctx.globalAlpha;
+  ctx.globalAlpha = tutorialFade;
+
   if (tutorialPage === 0) {
     renderTutorialSlide0(ctx, w, h, t);
   } else if (tutorialPage === 1) {
@@ -5420,6 +5423,8 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
   } else {
     renderTutorialSlide3(ctx, w, h, t, highScore);
   }
+
+  ctx.globalAlpha = prevAlpha;
 
   // ── Navigation dots ──
   const dotY = h * 0.92;
@@ -5441,8 +5446,19 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
     }
   }
 
-  // ── "Tap to continue" or "Tap to start" ──
+  // ── "Skip All" button (pages 0-2 only) ──
   if (tutorialPage < 3) {
+    // Skip button — bottom left area
+    const skipX = w * 0.15;
+    const skipY = h * 0.87;
+    ctx.save();
+    ctx.font = '600 13px Tajawal, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(160, 160, 160, 0.5)';
+    ctx.fillText('تخطي ❯❯', skipX, skipY);
+    ctx.restore();
+
+    // "Tap to continue"
     const pulse = 0.4 + Math.sin(t * 3) * 0.2;
     ctx.fillStyle = `rgba(200, 200, 200, ${pulse})`;
     ctx.font = '14px Tajawal, sans-serif';
