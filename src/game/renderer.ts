@@ -1089,10 +1089,9 @@ function drawMagnetIcon(ctx: CanvasRenderingContext2D, s: number) {
 }
 
 function drawAirstrikeIcon(ctx: CanvasRenderingContext2D, s: number) {
-  // Mini jet silhouette
-  ctx.fillStyle = '#fbbf24';
+  // Flat white jet silhouette
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
-  // Fuselage
   ctx.moveTo(s * 0.9, 0);
   ctx.lineTo(-s * 0.6, -s * 0.12);
   ctx.lineTo(-s * 0.9, -s * 0.1);
@@ -1100,7 +1099,6 @@ function drawAirstrikeIcon(ctx: CanvasRenderingContext2D, s: number) {
   ctx.lineTo(-s * 0.6, s * 0.12);
   ctx.closePath();
   ctx.fill();
-  // Wings
   ctx.beginPath();
   ctx.moveTo(s * 0.1, -s * 0.12);
   ctx.lineTo(-s * 0.2, -s * 0.65);
@@ -1115,7 +1113,6 @@ function drawAirstrikeIcon(ctx: CanvasRenderingContext2D, s: number) {
   ctx.lineTo(-s * 0.3, s * 0.12);
   ctx.closePath();
   ctx.fill();
-  // Tail fins
   ctx.beginPath();
   ctx.moveTo(-s * 0.7, -s * 0.1);
   ctx.lineTo(-s * 0.85, -s * 0.4);
