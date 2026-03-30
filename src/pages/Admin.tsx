@@ -265,6 +265,7 @@ const Admin: React.FC = () => {
                 {tab === 'analytics' ? 'Real-time game analytics & player insights' :
                  tab === 'config' ? 'Game physics & difficulty settings' :
                  tab === 'branding' ? 'Logo, title & developer branding' :
+                 tab === 'backgrounds' ? 'Day/night cycle & background images' :
                  tab === 'waves' ? 'Wave configuration & enemy patterns' :
                  tab === 'audio' ? 'Professional audio system management' :
                  'Leaderboard management'}
