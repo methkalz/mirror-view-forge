@@ -383,7 +383,7 @@ const SkyfallGame: React.FC = () => {
            <button
              onPointerDown={(e) => { e.preventDefault(); if (hasAmmo) { e.stopPropagation(); handleButtonDown('shoot'); } }}
              style={{
-               position: 'absolute', left: 220, bottom: 95, width: 72, height: 56,
+               position: 'absolute', left: 220, bottom: 'calc(95px + env(safe-area-inset-bottom, 0px))', width: 72, height: 56,
               borderRadius: 16,
               border: hasAmmo ? '1.5px solid rgba(220,38,38,0.5)' : '1.5px solid rgba(100,100,100,0.3)',
               background: hasAmmo ? 'rgba(220,38,38,0.12)' : 'rgba(80,80,80,0.06)',
@@ -458,7 +458,7 @@ const SkyfallGame: React.FC = () => {
             onPointerUp={() => handleButtonUp('left')}
             onPointerLeave={() => handleButtonUp('left')}
             style={{
-              position: 'absolute', left: 14, bottom: 95, width: 72, height: 56,
+              position: 'absolute', left: 14, bottom: 'calc(95px + env(safe-area-inset-bottom, 0px))', width: 72, height: 56,
               borderRadius: 16, border: '1px solid rgba(255,255,255,0.12)',
               background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)',
               fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -472,7 +472,7 @@ const SkyfallGame: React.FC = () => {
             onPointerUp={() => handleButtonUp('right')}
             onPointerLeave={() => handleButtonUp('right')}
             style={{
-              position: 'absolute', left: 136, bottom: 95, width: 72, height: 56,
+              position: 'absolute', left: 136, bottom: 'calc(95px + env(safe-area-inset-bottom, 0px))', width: 72, height: 56,
               borderRadius: 16, border: '1px solid rgba(255,255,255,0.12)',
               background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)',
               fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -484,7 +484,7 @@ const SkyfallGame: React.FC = () => {
           <button
             onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleButtonDown('roll'); }}
             style={{
-              position: 'absolute', right: 16, bottom: 95, width: 80, height: 56,
+              position: 'absolute', right: 16, bottom: 'calc(95px + env(safe-area-inset-bottom, 0px))', width: 80, height: 56,
               borderRadius: 16, border: '1px solid rgba(251,191,36,0.25)',
               background: 'rgba(251,191,36,0.06)', color: 'rgba(251,191,36,0.65)',
               fontSize: 11, fontFamily: "'SF Pro', system-ui, -apple-system, sans-serif",
