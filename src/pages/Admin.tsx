@@ -972,6 +972,20 @@ const BackgroundsPanel: React.FC<{
     setSaving(null);
   };
 
+  const handleUpdateFadeDuration = async (phaseId: string, value: number) => {
+    setSaving(phaseId);
+    setPhases(prev => prev.map(p => p.id === phaseId ? { ...p, fadeDuration: value } : p));
+    await updateBackgroundPhase(phaseId, { fadeDuration: value });
+    setSaving(null);
+  };
+
+  const handleUpdateEasingType = async (phaseId: string, value: string) => {
+    setSaving(phaseId);
+    setPhases(prev => prev.map(p => p.id === phaseId ? { ...p, easingType: value } : p));
+    await updateBackgroundPhase(phaseId, { easingType: value });
+    setSaving(null);
+  };
+
   // Timeline visualization
   const maxTime = Math.max(...phases.map(p => p.transitionEnd), 600);
 
@@ -1091,7 +1105,7 @@ const BackgroundsPanel: React.FC<{
               </div>
 
               {/* Overlay opacity */}
-              <div>
+              <div style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <label style={{ ...labelStyle, marginBottom: 0 }}>Overlay Opacity</label>
                   <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{(p.overlayOpacity * 100).toFixed(0)}%</span>
@@ -1099,6 +1113,37 @@ const BackgroundsPanel: React.FC<{
                 <input type="range" min={0} max={1} step={0.05} value={p.overlayOpacity}
                   onChange={e => handleUpdateOverlay(p.id, 'overlayOpacity', parseFloat(e.target.value))}
                   style={{ width: '100%', accentColor: meta.color }} />
+              </div>
+
+              {/* Transition Settings */}
+              <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)', fontWeight: 600, marginBottom: 10, letterSpacing: 1 }}>⚡ TRANSITION</div>
+
+                {/* Easing Type */}
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ ...labelStyle, marginBottom: 4 }}>Easing</label>
+                  <select
+                    value={p.easingType || 'smoothstep'}
+                    onChange={e => handleUpdateEasingType(p.id, e.target.value)}
+                    style={{ ...inputStyle, padding: '8px 10px', fontSize: 12 }}
+                  >
+                    <option value="linear">Linear</option>
+                    <option value="smoothstep">Smoothstep</option>
+                    <option value="ease-in">Ease In</option>
+                    <option value="ease-out">Ease Out</option>
+                  </select>
+                </div>
+
+                {/* Fade Duration */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <label style={{ ...labelStyle, marginBottom: 0 }}>Fade Duration</label>
+                    <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{p.fadeDuration || 60}s</span>
+                  </div>
+                  <input type="range" min={10} max={180} step={5} value={p.fadeDuration || 60}
+                    onChange={e => handleUpdateFadeDuration(p.id, parseFloat(e.target.value))}
+                    style={{ width: '100%', accentColor: meta.color }} />
+                </div>
               </div>
             </div>
           );

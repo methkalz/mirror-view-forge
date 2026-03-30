@@ -49,6 +49,20 @@ function parseRGB(str: string): number[] {
   return str.split(',').map(s => parseInt(s.trim(), 10) || 0);
 }
 
+// ─── Easing Functions ─────────────────────────────────
+function smoothstep(t: number): number { return t * t * (3 - 2 * t); }
+function easeIn(t: number): number { return t * t; }
+function easeOut(t: number): number { return 1 - (1 - t) * (1 - t); }
+function applyEasing(t: number, type: string): number {
+  const clamped = Math.max(0, Math.min(1, t));
+  switch (type) {
+    case 'smoothstep': return smoothstep(clamped);
+    case 'ease-in': return easeIn(clamped);
+    case 'ease-out': return easeOut(clamped);
+    default: return clamped; // linear
+  }
+}
+
 /** Get current phase blend based on elapsed time */
 function getPhaseBlend(elapsed: number): {
   imgA: HTMLImageElement | null; imgB: HTMLImageElement | null;
@@ -56,7 +70,6 @@ function getPhaseBlend(elapsed: number): {
   overlayTop: number[]; overlayMid: number[]; overlayBottom: number[];
   overlayOpacity: number;
 } {
-  // Default fallback
   const defaultResult = {
     imgA: fallbackLoaded ? fallbackImg : null, imgB: null, fade: 0,
     overlayTop: [12,20,69], overlayMid: [26,16,46], overlayBottom: [26,10,46], overlayOpacity: 0.4,
@@ -64,7 +77,6 @@ function getPhaseBlend(elapsed: number): {
 
   if (!bgConfigLoaded || bgPhases.length === 0) return defaultResult;
 
-  // Find which two phases we're between
   let currentIdx = bgPhases.length - 1;
   for (let i = 0; i < bgPhases.length - 1; i++) {
     if (elapsed < bgPhases[i + 1].transitionStart) {
@@ -77,30 +89,20 @@ function getPhaseBlend(elapsed: number): {
   const currentLayer = bgLayers[currentIdx];
   const imgA = currentLayer?.loaded ? currentLayer.image : (fallbackLoaded ? fallbackImg : null);
 
-  // Check if we're in a transition zone to the next phase
   const nextIdx = currentIdx + 1;
   if (nextIdx < bgPhases.length) {
     const next = bgPhases[nextIdx];
     const nextLayer = bgLayers[nextIdx];
 
-    // Transition zone: from current.transitionEnd approaching next.transitionStart
-    // Actually: transition happens between transitionStart and transitionEnd of the NEXT phase
-    // Let's use: transition from current.transitionEnd to next.transitionStart as the fade window
-    // Simpler: the transition_start/end define when this phase is fully active
-    // Phase is fully showing from its transition_end to the next phase's transition_start
-    // Fade happens from next.transition_start to next.transition_end... no.
-    // Let's interpret: transition_start = when fade-in begins, transition_end = when fully visible
-    // So fade from phase[i] to phase[i+1] happens between phase[i+1].transitionStart and phase[i+1].transitionEnd... 
-    // Actually the plan says: transition_start/end are timestamps. Day: 0-90 means day shows from 0 to 90. Sunset: 90-240 means sunset shows from 90 to 240.
-    // So the transition between day and sunset happens around second 90.
-    // Let's make the cross-fade duration 60 seconds by default, centered around the boundary.
+    const fadeDuration = next.fadeDuration || 60;
+    const easingType = next.easingType || 'smoothstep';
     const fadeStart = next.transitionStart;
-    const fadeEnd = next.transitionStart + Math.min(60, (next.transitionEnd - next.transitionStart) * 0.5);
+    const fadeEnd = next.transitionStart + Math.min(fadeDuration, (next.transitionEnd - next.transitionStart) * 0.5);
 
     if (elapsed >= fadeStart && elapsed <= fadeEnd) {
-      const fade = (elapsed - fadeStart) / (fadeEnd - fadeStart);
+      const linearFade = (elapsed - fadeStart) / (fadeEnd - fadeStart);
+      const fade = applyEasing(linearFade, easingType);
       const imgB = nextLayer?.loaded ? nextLayer.image : null;
-      // Interpolate overlay colors
       const topA = parseRGB(current.overlayTop), topB = parseRGB(next.overlayTop);
       const midA = parseRGB(current.overlayMid), midB = parseRGB(next.overlayMid);
       const botA = parseRGB(current.overlayBottom), botB = parseRGB(next.overlayBottom);
@@ -115,7 +117,6 @@ function getPhaseBlend(elapsed: number): {
     }
   }
 
-  // No transition — solid phase
   return {
     imgA, imgB: null, fade: 0,
     overlayTop: parseRGB(current.overlayTop),

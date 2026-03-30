@@ -11,6 +11,8 @@ export interface BackgroundPhase {
   overlayBottom: string;
   overlayOpacity: number;
   sortOrder: number;
+  fadeDuration: number;
+  easingType: string;
 }
 
 export async function fetchBackgroundConfig(): Promise<BackgroundPhase[]> {
@@ -31,6 +33,8 @@ export async function fetchBackgroundConfig(): Promise<BackgroundPhase[]> {
       overlayBottom: r.overlay_bottom ?? '26,10,46',
       overlayOpacity: r.overlay_opacity ?? 0.4,
       sortOrder: r.sort_order ?? 0,
+      fadeDuration: r.fade_duration ?? 60,
+      easingType: r.easing_type ?? 'smoothstep',
     }));
   } catch {
     return [];
@@ -46,6 +50,8 @@ export async function updateBackgroundPhase(id: string, updates: Partial<Backgro
   if (updates.overlayMid !== undefined) mapped.overlay_mid = updates.overlayMid;
   if (updates.overlayBottom !== undefined) mapped.overlay_bottom = updates.overlayBottom;
   if (updates.overlayOpacity !== undefined) mapped.overlay_opacity = updates.overlayOpacity;
+  if (updates.fadeDuration !== undefined) mapped.fade_duration = updates.fadeDuration;
+  if (updates.easingType !== undefined) mapped.easing_type = updates.easingType;
   const { error } = await supabase.from('background_config').update(mapped).eq('id', id);
   return !error;
 }
