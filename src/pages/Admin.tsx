@@ -1673,6 +1673,86 @@ const BackgroundsPanel: React.FC<{
                   <EasingCurvePreview type={p.easingType || 'smoothstep'} color={meta.color} />
                 </div>
               </div>
+
+              {/* ─── Section: Display Mode ─── */}
+              <div style={{ padding: '14px 18px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                <div style={sectionHeaderStyle}>🖥️ Display Mode</div>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+                  {([
+                    { mode: 'single' as DisplayMode, icon: '📐', label: 'Single' },
+                    { mode: 'tiled' as DisplayMode, icon: '🔲', label: 'Tiled' },
+                    { mode: 'blur-edge' as DisplayMode, icon: '🌫️', label: 'Blur Edge' },
+                  ]).map(({ mode, icon, label }) => (
+                    <button
+                      key={mode}
+                      onClick={() => handleUpdate(p.id, { displayMode: mode })}
+                      style={{
+                        flex: 1, padding: '8px 6px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                        fontSize: 11, fontWeight: 700,
+                        background: (p.displayMode || 'single') === mode ? `${meta.color}20` : 'rgba(255,255,255,0.03)',
+                        color: (p.displayMode || 'single') === mode ? meta.color : 'rgba(148,163,184,0.4)',
+                        border: (p.displayMode || 'single') === mode ? `1px solid ${meta.color}40` : '1px solid rgba(255,255,255,0.06)',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {icon} {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Margin — only for single and blur-edge */}
+                {(p.displayMode || 'single') !== 'tiled' && (
+                  <SliderWithInput
+                    label="Margin"
+                    value={p.bgMargin ?? 400}
+                    min={0} max={1000} step={10}
+                    unit="px" color={meta.color}
+                    onChange={v => handleUpdate(p.id, { bgMargin: v })}
+                  />
+                )}
+
+                {/* Mini preview */}
+                {p.imageUrl && (
+                  <div style={{
+                    width: '100%', height: 60, borderRadius: 8, overflow: 'hidden',
+                    background: 'rgba(0,0,0,0.4)', position: 'relative', marginTop: 8,
+                    border: '1px solid rgba(255,255,255,0.06)',
+                  }}>
+                    {(p.displayMode || 'single') === 'single' && (
+                      <img src={p.imageUrl} alt="" style={{
+                        position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+                        height: '100%', width: 'auto', minWidth: '120%',
+                      }} />
+                    )}
+                    {(p.displayMode || 'single') === 'tiled' && (
+                      <div style={{ display: 'flex', height: '100%' }}>
+                        <img src={p.imageUrl} alt="" style={{ height: '100%', width: 'auto' }} />
+                        <img src={p.imageUrl} alt="" style={{ height: '100%', width: 'auto', transform: 'scaleX(-1)' }} />
+                        <img src={p.imageUrl} alt="" style={{ height: '100%', width: 'auto' }} />
+                      </div>
+                    )}
+                    {(p.displayMode || 'single') === 'blur-edge' && (
+                      <>
+                        <img src={p.imageUrl} alt="" style={{
+                          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                          objectFit: 'cover', filter: 'blur(8px)', transform: 'scale(1.1)',
+                        }} />
+                        <img src={p.imageUrl} alt="" style={{
+                          position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+                          height: '100%', width: 'auto',
+                        }} />
+                      </>
+                    )}
+                    <div style={{
+                      position: 'absolute', bottom: 2, right: 4, fontSize: 8,
+                      color: 'rgba(255,255,255,0.4)', background: 'rgba(0,0,0,0.6)',
+                      padding: '1px 5px', borderRadius: 3,
+                    }}>
+                      {(p.displayMode || 'single').toUpperCase()} PREVIEW
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
