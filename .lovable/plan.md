@@ -1,34 +1,28 @@
 
 
-# إصلاح المعاينة المباشرة للخلفيات في لوحة التحكم
+# إصلاح الخط الأسود بين تبليطات الخلفية على الهاتف
 
-## المشكلة
-مكون `BackgroundPreviewPlayer` يعاني من مشكلة أداء تمنعه من العمل بسلاسة:
+## السبب الدقيق
+في دالة `drawTiledImage` (سطر 148-169)، يتم حساب `drawX` و `drawW` بأرقام عشرية (floating-point). على الهاتف مع `devicePixelRatio` مرتفع (2x أو 3x)، تحدث فجوة بمقدار أقل من 1 بكسل بين التبليطة والتي تليها بسبب تقريب المتصفح للإحداثيات العشرية — فتظهر كخط أسود رفيع بارتفاع الصورة بالكامل.
 
-- `drawFrame` يستدعي `setProgress(...)` كل frame (60 مرة/ثانية)
-- هذا يسبب re-render لكامل المكون كل frame
-- `drawFrame` يعتمد على `playing` في dependency array الخاص بـ `useCallback`
-- كل re-render يُنشئ `drawFrame` جديد → `useEffect` يُلغي الـ RAF السابق ويبدأ واحد جديد
-- النتيجة: حلقة بدء/إلغاء متكررة تمنع الرسم المتواصل
+المشكلة تحديداً: `tile * drawW` ثم `(tile+1) * drawW` قد لا يتطابقان تماماً عند الحافة بسبب أخطاء الفاصلة العائمة.
 
-## الحل
+## الحل المضمون
+في `drawTiledImage`:
+1. تقريب `drawW` لأعلى بـ `Math.ceil` لضمان التداخل الطفيف بدل الفجوة
+2. حساب `drawX` لكل tile باستخدام `Math.floor(tile * drawW)` لتثبيت الإحداثيات على بكسلات صحيحة
+3. إضافة 1 بكسل إضافي لعرض الرسم (`drawW + 1`) لضمان تغطية أي فجوة محتملة
 
-### تعديل `src/pages/Admin.tsx` — مكون `BackgroundPreviewPlayer`
+```text
+قبل: tile0 يرسم من 0.00 إلى 399.73 | tile1 يرسم من 399.73 إلى 799.46
+      ↑ فجوة sub-pixel عند الحافة
 
-1. **استخدام `useRef` بدل `useState` لـ `playing`**:
-   - `playingRef = useRef(false)` لتجنب إعادة إنشاء `drawFrame`
-   - الاحتفاظ بـ `useState` فقط لتحديث الزر في الـ UI
+بعد:  tile0 يرسم من 0 إلى 401 | tile1 يرسم من 399 إلى 801
+      ↑ تداخل 1-2px يزيل الفجوة تماماً
+```
 
-2. **تقليل استدعاءات `setProgress`**:
-   - تحديث progress كل ~100ms بدل كل frame باستخدام `lastProgressUpdate` ref
-
-3. **إزالة `playing` من dependencies الـ `drawFrame`**:
-   - استخدام `playingRef.current` داخل `drawFrame` بدل المتغير `playing`
-   - هذا يمنع إعادة إنشاء الدالة عند كل تغيير
-
-4. **تشغيل أول frame مباشرة في `handlePlay`**:
-   - `startTimeRef.current = performance.now()` ثم `requestAnimationFrame(drawFrame)` مباشرة
-
-### ملف واحد فقط
-- `src/pages/Admin.tsx`
+### التعديل في `src/game/renderer.ts` — دالة `drawTiledImage` فقط
+- `Math.round` على `drawX` لتثبيت الموقع
+- رسم كل tile بعرض `Math.ceil(drawW) + 1` بدل `drawW` الدقيق
+- هذا التداخل الطفيف غير مرئي بصرياً لكنه يمنع الفجوة 100%
 
