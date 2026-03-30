@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { startMenuMusic } from '@/game/audio';
 
 interface GameLoaderProps {
   onLoaded: () => void;
@@ -32,16 +33,21 @@ const GameLoader: React.FC<GameLoaderProps> = ({ onLoaded, progress }) => {
     return () => clearInterval(interval);
   }, [progress]);
 
-  // Fade out when complete
+  const [ready, setReady] = useState(false);
+
+  // Show button when loading complete
   useEffect(() => {
     if (progress >= 100) {
-      const timer = setTimeout(() => {
-        setFadeOut(true);
-        setTimeout(onLoaded, 700);
-      }, 500);
+      const timer = setTimeout(() => setReady(true), 400);
       return () => clearTimeout(timer);
     }
-  }, [progress, onLoaded]);
+  }, [progress]);
+
+  const handleStart = async () => {
+    startMenuMusic();
+    setFadeOut(true);
+    setTimeout(onLoaded, 700);
+  };
 
   // Particle ring + floating particles
   useEffect(() => {

@@ -38,27 +38,7 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   const showTitle = branding?.showTitle ?? true;
   const hasName = name.trim().length > 0;
 
-  useEffect(() => {
-    let cleaned = false;
-    const cleanup = () => {
-      cleaned = true;
-      document.removeEventListener('click', tryStart);
-      document.removeEventListener('touchstart', tryStart);
-      document.removeEventListener('keydown', tryStart);
-    };
-    const tryStart = async () => {
-      if (cleaned) return;
-      const started = await startMenuMusic();
-      if (started && !cleaned) {
-        cleanup(); // only remove listeners once music actually started
-      }
-    };
-    document.addEventListener('click', tryStart, { passive: true });
-    document.addEventListener('touchstart', tryStart, { passive: true });
-    document.addEventListener('keydown', tryStart, { passive: true });
-
-    return () => { cleanup(); };
-  }, []);
+  // Music is now started from GameLoader button — no listeners needed here
 
   // Spark particles
   useEffect(() => {
