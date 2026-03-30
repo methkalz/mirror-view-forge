@@ -3,7 +3,7 @@ import { GameData, InputState } from '@/game/types';
 import { loadAudioSettings } from '@/game/audio';
 import { createGame, resetGame, update, updateIntro } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
-import { resumeAudio, stopMenuMusic } from '@/game/audio';
+import { resumeAudio, stopMenuMusic, cancelMenuMusicStart } from '@/game/audio';
 import { fetchGameConfig, fetchLeaderboard, submitScore, type RemoteGameConfig, type LeaderboardEntry } from '@/game/config';
 import { supabase } from '@/integrations/supabase/client';
 import NameEntry from './NameEntry';
@@ -190,6 +190,7 @@ const SkyfallGame: React.FC = () => {
         prevState = g.state;
         setShowButtons(g.state === 'playing');
         if (wasStart && g.state === 'intro') {
+          cancelMenuMusicStart();
           stopMenuMusic();
         }
         if (g.state === 'start') {

@@ -39,15 +39,19 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   const hasName = name.trim().length > 0;
 
   useEffect(() => {
-    // Only start music on actual user interaction (browser autoplay policy)
-    const tryStart = () => {
-      startMenuMusic();
-      cleanup();
-    };
+    let cleaned = false;
     const cleanup = () => {
+      cleaned = true;
       document.removeEventListener('click', tryStart);
       document.removeEventListener('touchstart', tryStart);
       document.removeEventListener('keydown', tryStart);
+    };
+    const tryStart = async () => {
+      if (cleaned) return;
+      const started = await startMenuMusic();
+      if (started && !cleaned) {
+        cleanup(); // only remove listeners once music actually started
+      }
     };
     document.addEventListener('click', tryStart, { passive: true });
     document.addEventListener('touchstart', tryStart, { passive: true });
