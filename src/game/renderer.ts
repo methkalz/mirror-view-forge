@@ -2861,7 +2861,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = '#f97316';
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`FIRE ${p.extinguisherTimer.toFixed(1)}s`, 30, effectY + 2);
+    ctx.fillText(`إطفاء ${p.extinguisherTimer.toFixed(1)}`, 30, effectY + 2);
     ctx.globalAlpha = 1;
     effectY += 18;
   }
