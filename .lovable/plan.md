@@ -1,27 +1,35 @@
 
 
-# إصلاح ظهور اللاعب أمام الدراجة أثناء مرحلة المغادرة
+# جعل أزرار التحكم متوافقة مع جميع المتصفحات والأجهزة (Safe Area)
 
 ## المشكلة
-في `renderIntroBike()` بملف `renderer.ts`:
-- أثناء `playerDismount`: اللاعب يُرسم **قبل** الدراجة (صحيح — يظهر خلفها) ✓
-- أثناء `bikeLeave`: اللاعب يُرسم **بعد** الدراجة (سطر 4302-4322 بعد سطر 4300) — يظهر **أمامها** ✗
-
-هذا يعني أن لحظة الانتقال من `playerDismount` إلى `bikeLeave`، يقفز اللاعب فجأة من خلف الدراجة إلى أمامها.
+جميع الأزرار الأربعة (L, R, FIRE, ROLL) تستخدم `bottom: 95px` ثابت. على الهواتف ذات الشريط السفلي (مثل iPhone مع Home Indicator أو متصفحات بشريط عنوان سفلي مثل Safari/Chrome)، يمكن أن تتداخل الأزرار مع المنطقة المحجوزة للنظام وتصبح غير قابلة للاستخدام.
 
 ## الحل
 
-### `src/game/renderer.ts` — نقل رسم اللاعب في `bikeLeave` إلى ما قبل الدراجة
-- نقل كتلة `bikeLeave` (سطور 4302-4322) إلى **قبل** استدعاء `renderMotorcycle` في سطر 4300
-- بهذا يُرسم اللاعب دائماً خلف الدراجة في كل مراحل الـ intro
+### 1. `index.html` — تفعيل Safe Area
+- إضافة `viewport-fit=cover` لعنصر meta viewport ليسمح للتطبيق بالامتداد تحت المناطق المحجوزة
 
+### 2. `src/index.css` — متغير CSS للمسافة الآمنة
+- إضافة متغير CSS مخصص يحسب المسافة السفلية:
+  - `--safe-bottom: env(safe-area-inset-bottom, 0px)`
+- هذا يعمل تلقائياً: على الأجهزة بدون notch/bar يكون 0، وعلى iPhone مثلاً يكون ~34px
+
+### 3. `src/components/SkyfallGame.tsx` — تعديل مواقع الأزرار
+- استبدال `bottom: 95` الثابت بحساب ديناميكي يأخذ بالاعتبار Safe Area
+- استخدام CSS `calc()` مع `env(safe-area-inset-bottom)`:
+  - `bottom: calc(95px + env(safe-area-inset-bottom, 0px))`
+- تطبيق هذا على جميع الأزرار الأربعة (L, R, FIRE, ROLL)
+
+## التدفق
 ```text
-الترتيب الجديد:
-1. رسم اللاعب أثناء playerDismount (إن وُجد) ← خلف الدراجة
-2. رسم اللاعب أثناء bikeLeave (إن وُجد) ← خلف الدراجة  
-3. renderMotorcycle() ← الدراجة فوق اللاعب دائماً
+جهاز عادي (بدون شريط سفلي):  bottom = 95px + 0 = 95px (كما هو)
+iPhone مع Home Indicator:     bottom = 95px + 34px = 129px (مرفوع)
+متصفح بشريط عنوان سفلي:      bottom = 95px + Xpx (مرفوع تلقائياً)
 ```
 
-### ملف واحد فقط
-- `src/game/renderer.ts`
+## الملفات المتأثرة
+- `index.html` — إضافة `viewport-fit=cover`
+- `src/index.css` — متغير safe area
+- `src/components/SkyfallGame.tsx` — تحديث bottom لجميع الأزرار
 
