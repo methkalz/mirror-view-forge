@@ -172,9 +172,30 @@ function getPhaseBlend(elapsed: number): {
 
   const resolved = bgPhases[resolvedIdx];
   const resolvedLayer = bgLayers[resolvedIdx];
+  const resolvedImg = resolvedLayer?.loaded ? resolvedLayer.image : (fallbackLoaded ? fallbackImg : null);
+
+  // ─── Loop fade: blend last phase → first phase ───
+  if (loopFadeBlend >= 0) {
+    const first = bgPhases[0];
+    const firstLayer = bgLayers[0];
+    const firstImg = firstLayer?.loaded ? firstLayer.image : null;
+    return {
+      imgA: resolvedImg,
+      imgB: firstImg,
+      fade: loopFadeBlend,
+      overlayTop: lerpColor(parseRGB(resolved.overlayTop), parseRGB(first.overlayTop), loopFadeBlend),
+      overlayMid: lerpColor(parseRGB(resolved.overlayMid), parseRGB(first.overlayMid), loopFadeBlend),
+      overlayBottom: lerpColor(parseRGB(resolved.overlayBottom), parseRGB(first.overlayBottom), loopFadeBlend),
+      overlayOpacity: resolved.overlayOpacity + (first.overlayOpacity - resolved.overlayOpacity) * loopFadeBlend,
+      displayModeA: resolved.displayMode || 'single',
+      displayModeB: first.displayMode || 'single',
+      bgMarginA: resolved.bgMargin ?? bgCameraMargin,
+      bgMarginB: first.bgMargin ?? bgCameraMargin,
+    };
+  }
 
   return {
-    imgA: resolvedLayer?.loaded ? resolvedLayer.image : (fallbackLoaded ? fallbackImg : null),
+    imgA: resolvedImg,
     imgB: null,
     fade: 0,
     overlayTop: parseRGB(resolved.overlayTop),
