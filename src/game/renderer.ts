@@ -110,6 +110,10 @@ function getPhaseBlend(elapsed: number): {
         overlayMid: parseRGB(current.overlayMid),
         overlayBottom: parseRGB(current.overlayBottom),
         overlayOpacity: current.overlayOpacity,
+        displayModeA: current.displayMode || 'single',
+        displayModeB: next.displayMode || 'single',
+        bgMarginA: current.bgMargin ?? bgCameraMargin,
+        bgMarginB: next.bgMargin ?? bgCameraMargin,
       };
     }
 
