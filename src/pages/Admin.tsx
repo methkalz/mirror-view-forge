@@ -1710,47 +1710,8 @@ const BackgroundsPanel: React.FC<{
                   />
                 )}
 
-                {/* Mini preview */}
-                {p.imageUrl && (
-                  <div style={{
-                    width: '100%', height: 60, borderRadius: 8, overflow: 'hidden',
-                    background: 'rgba(0,0,0,0.4)', position: 'relative', marginTop: 8,
-                    border: '1px solid rgba(255,255,255,0.06)',
-                  }}>
-                    {(p.displayMode || 'single') === 'single' && (
-                      <img src={p.imageUrl} alt="" style={{
-                        position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-                        height: '100%', width: 'auto', minWidth: '120%',
-                      }} />
-                    )}
-                    {(p.displayMode || 'single') === 'tiled' && (
-                      <div style={{ display: 'flex', height: '100%' }}>
-                        <img src={p.imageUrl} alt="" style={{ height: '100%', width: 'auto' }} />
-                        <img src={p.imageUrl} alt="" style={{ height: '100%', width: 'auto', transform: 'scaleX(-1)' }} />
-                        <img src={p.imageUrl} alt="" style={{ height: '100%', width: 'auto' }} />
-                      </div>
-                    )}
-                    {(p.displayMode || 'single') === 'blur-edge' && (
-                      <>
-                        <img src={p.imageUrl} alt="" style={{
-                          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-                          objectFit: 'cover', filter: 'blur(8px)', transform: 'scale(1.1)',
-                        }} />
-                        <img src={p.imageUrl} alt="" style={{
-                          position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-                          height: '100%', width: 'auto',
-                        }} />
-                      </>
-                    )}
-                    <div style={{
-                      position: 'absolute', bottom: 2, right: 4, fontSize: 8,
-                      color: 'rgba(255,255,255,0.4)', background: 'rgba(0,0,0,0.6)',
-                      padding: '1px 5px', borderRadius: 3,
-                    }}>
-                      {(p.displayMode || 'single').toUpperCase()} PREVIEW
-                    </div>
-                  </div>
-                )}
+                {/* Interactive Phone Mockup Preview */}
+                {p.imageUrl && <PhoneMockupPreview imageUrl={p.imageUrl} displayMode={(p.displayMode || 'single') as DisplayMode} margin={p.bgMargin ?? 400} color={meta.color} />}
               </div>
             </div>
           );
