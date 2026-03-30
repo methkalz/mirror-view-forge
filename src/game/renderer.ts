@@ -1,6 +1,6 @@
 import { GameData, Player, FirePool, GasCloud } from './types';
 import bgFallbackUrl from '../assets/bg-skyfall.jpeg';
-import type { BackgroundPhase } from './backgroundConfig';
+import type { BackgroundPhase, DisplayMode } from './backgroundConfig';
 
 // ─── Multi-Image Background System ───────────────────
 interface BgLayer {
