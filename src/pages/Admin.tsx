@@ -10,13 +10,18 @@ import {
   addAudioFile, removeAudioFile, fetchAnalytics, createAudioEntry, deleteAudioEntry,
   type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type GameAnalytics,
 } from '@/game/config';
+import {
+  fetchBackgroundConfig, updateBackgroundPhase, uploadBackgroundImage, deleteBackgroundImage,
+  type BackgroundPhase,
+} from '@/game/backgroundConfig';
 
-type TabKey = 'analytics' | 'config' | 'branding' | 'waves' | 'leaderboard' | 'audio';
+type TabKey = 'analytics' | 'config' | 'branding' | 'backgrounds' | 'waves' | 'leaderboard' | 'audio';
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'analytics', icon: '📊', label: 'Analytics' },
   { key: 'config', icon: '🎮', label: 'Config' },
   { key: 'branding', icon: '🎨', label: 'Brand' },
+  { key: 'backgrounds', icon: '🌅', label: 'Backgrounds' },
   { key: 'waves', icon: '🌊', label: 'Waves' },
   { key: 'audio', icon: '🔊', label: 'Audio' },
   { key: 'leaderboard', icon: '🏆', label: 'Leaders' },
