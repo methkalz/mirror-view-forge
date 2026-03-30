@@ -1935,6 +1935,29 @@ const BackgroundsPanel: React.FC<{
         </button>
       </div>
 
+      {/* ─── Loop Fade Duration Slider ─── */}
+      {config?.bgLoop && (
+        <div style={{
+          padding: '12px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.06)', marginBottom: 20,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>⏱ مدة انتقال العودة (ثانية)</span>
+            <span style={{ fontSize: 13, color: '#94a3b8' }}>{config?.bgLoopFadeDuration ?? 60}s</span>
+          </div>
+          <input
+            type="range" min={5} max={300} step={5}
+            value={config?.bgLoopFadeDuration ?? 60}
+            onChange={e => onSaveConfig({ bgLoopFadeDuration: Number(e.target.value) })}
+            style={{ width: '100%', accentColor: '#22c55e' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(148,163,184,0.4)', marginTop: 4 }}>
+            <span>5s (سريع)</span>
+            <span>300s (بطيء)</span>
+          </div>
+        </div>
+      )}
+
       {/* ─── Enhanced Timeline ─── */}
       <div style={{ marginBottom: 28, padding: '16px 18px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}
         onMouseMove={e => {
