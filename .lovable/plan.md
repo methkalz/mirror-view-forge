@@ -1,62 +1,48 @@
 
+# إصلاح نهائي لمشكلة توقيت موسيقى الشاشة الأولى (بدون تخمين)
 
-# إصلاح توقيت تشغيل موسيقى الشاشة الأولى
+## التشخيص المؤكد من الكود الحالي
+1. **الملف الصوتي موجود ومربوط صحيحاً**:
+   - `audio_config.sound_key = 'menuMusic'` مفعّل `enabled=true` وحجمه `volume=0.5`.
+   - يوجد ملف مرفوع في `audio_files` مرتبط بـ `menuMusic`.
+2. **نقطة الهشاشة الفعلية** في `NameEntry.tsx`:
+   - `tryStart()` يستدعي `startMenuMusic()` ثم ينفّذ `cleanup()` مباشرة.
+   - يعني: **يتم حذف مستمعات التفاعل بعد أول محاولة فقط** حتى لو فشلت/تأخرت.
+3. **سبب ظهور الموسيقى متأخرة عند بدء اللعب**:
+   - إذا أول محاولة لم تبدأ الصوت فعلياً فوراً (أو بقيت معلقة)، لا توجد محاولات لاحقة في شاشة الاسم لأن المستمعات انحذفت.
+   - لاحقاً عند ضغط Enter/بدء اللعب يحدث تفاعل جديد، فتكتمل محاولة قديمة/متأخرة وتبدأ موسيقى القائمة في توقيت خاطئ.
 
-## السبب الجذري — تحليل دقيق
+## ما سأعدّله
+### 1) `src/components/NameEntry.tsx`
+- تحويل بدء الموسيقى إلى **محاولات مستمرة حتى النجاح**:
+  - لا نحذف المستمعات بعد أول محاولة.
+  - نحذفها فقط عندما تؤكد `startMenuMusic()` أنها بدأت فعلياً.
+- إضافة حماية بسيطة لمنع استدعاءات متداخلة من نفس الشاشة (ref flag محلي).
 
-المشكلة هي **سباق بين استدعاءين متزامنين** لـ `startMenuMusic()`:
+### 2) `src/game/audio.ts`
+- جعل `startMenuMusic()` ترجع نتيجة صريحة `boolean` (بدأت/لم تبدأ).
+- إضافة آلية **إلغاء المحاولة المتأخرة** (attempt token) حتى لا تستطيع محاولة قديمة تشغيل الموسيقى بعد الانتقال للعبة.
+- إبقاء mutex الحالي، لكن مع فحص token بعد `await ctx.resume()` وقبل إنشاء node.
+- إضافة دالة إلغاء واضحة مثل `cancelMenuMusicStart()`.
 
-```text
-التسلسل الفعلي:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. التحميل: AudioContext يُنشأ (حالة: suspended)
-2. GameLoader ينتهي تلقائياً (بدون نقرة!)
-3. NameEntry يظهر → useEffect يستدعي startMenuMusic()
-   ↳ Call 1: ctx.state='suspended' → await ctx.resume() → عالق ⏳
-     (لا يوجد تفاعل من المستخدم = المتصفح يرفض التشغيل)
-   ↳ menuMusicNode لا يزال null
-4. المستخدم يكتب/ينقر → tryStart يستدعي startMenuMusic()
-   ↳ Call 2: menuMusicNode=null → يدخل الدالة
-   ↳ await ctx.resume() → ينجح (تفاعل مستخدم) ✓
-   ↳ يُنشئ node ويشغّل الموسيقى ✓
-   ↳ لكن Call 1 المعلّق يستيقظ أيضاً!
-   ↳ Call 1 يُنشئ node ثاني ويكتب فوق menuMusicNode
-   ↳ الآن يوجد عقدتان صوتيتان + واحدة يتيمة
-5. المستخدم يضغط "ابدأ المعركة" → ينتقل لشاشة Start
-6. Start screen → المستخدم يضغط Enter
-   ↳ startOrRestart → resumeAudio()
-   ↳ stopMenuMusic() يوقف node واحدة فقط
-   ↳ العقدة اليتيمة تستمر أو تُعيد الأمور
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+### 3) `src/components/SkyfallGame.tsx`
+- عند الانتقال الفعلي من `start -> intro`:
+  - استدعاء `stopMenuMusic()` (الموجود حالياً)
+  - ثم `cancelMenuMusicStart()` لضمان عدم عودة أي محاولة متأخرة.
 
-**السبب المحدد**: `startMenuMusic()` في useEffect (سطر 43) يعلق عند `await ctx.resume()` بدون تفاعل مستخدم. عندما يتفاعل المستخدم لاحقاً، يستيقظ الاستدعاء القديم ويتداخل مع الاستدعاء الجديد.
+## التفاصيل التقنية (مختصرة)
+- نمط آمن:
+  - `startMenuMusic(): Promise<boolean>`
+  - `menuMusicAttemptId` يزداد مع كل محاولة/إلغاء.
+  - أي محاولة تستيقظ متأخراً وتجد token تغيّر => تخرج بدون تشغيل.
+- في NameEntry:
+  - `tryStart` يصبح `async`.
+  - إذا `started === true` فقط عندها `cleanup()`.
+  - إذا `false` تبقى المستمعات لتجربة التفاعل التالي.
 
-## الحل
-
-### 1. `src/game/audio.ts` — إضافة حماية ضد التنفيذ المتزامن
-- إضافة متغير `menuMusicStarting = false` كـ mutex
-- في بداية `startMenuMusic()`: إذا `menuMusicStarting` أو `menuMusicNode` موجود → return
-- تعيين `menuMusicStarting = true` قبل `await ctx.resume()`
-- بعد إنشاء node: `menuMusicStarting = false`
-- في حالة الخطأ: `menuMusicStarting = false`
-
-```text
-startMenuMusic() الجديدة:
-├─ if (menuMusicNode || menuMusicStarting) → return
-├─ menuMusicStarting = true
-├─ await ctx.resume()
-├─ if (menuMusicNode) → menuMusicStarting=false; return  ← فحص ثاني
-├─ إنشاء node وتشغيل الموسيقى
-└─ menuMusicStarting = false
-```
-
-### 2. `src/components/NameEntry.tsx` — عدم استدعاء startMenuMusic من useEffect مباشرة
-- إزالة `startMenuMusic()` من السطر 43 (الاستدعاء المباشر في useEffect)
-- الإبقاء فقط على مستمعات الأحداث (click/touchstart/keydown) كطريقة وحيدة لبدء الموسيقى
-- هذا يضمن أن الموسيقى تبدأ فقط بتفاعل مستخدم حقيقي
-
-## الملفات المتأثرة
-- `src/game/audio.ts` — إضافة mutex لمنع التنفيذ المتزامن
-- `src/components/NameEntry.tsx` — إزالة الاستدعاء المباشر في useEffect
-
+## تحقق القبول بعد التنفيذ
+1. على شاشة الاسم: أول تفاعل حقيقي يبدأ موسيقى القائمة.
+2. إدخال الاسم + شاشة PRESS ENTER: الموسيقى **تستمر**.
+3. عند بدء اللعب الفعلي: الموسيقى **تتوقف** ولا تعود.
+4. لا يحدث سيناريو “الموسيقى تبدأ داخل اللعب” حتى مع نقرات سريعة أو أجهزة بطيئة.
+5. نفس السلوك على الهاتف والكمبيوتر.
