@@ -27,6 +27,7 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   const [focused, setFocused] = useState(false);
   const [phase, setPhase] = useState<'sound-hint' | 'name-entry'>('sound-hint');
   const [hintFading, setHintFading] = useState(false);
+  const hintWords = ['فعّل', 'الصوت', 'لتجربة', 'أفضل'];
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sparksRef = useRef<Spark[]>([]);
   const rafRef = useRef<number>(0);
