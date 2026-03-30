@@ -1248,21 +1248,29 @@ function updateDeliveryBike(g: GameData, dt: number) {
 function startNextWave(g: GameData) {
   g.waveNumber++;
   g.levelNumber = Math.floor((g.waveNumber - 1) / 3) + 1;
-  g.waveTimer = 60 + Math.random() * 10;
   g.waveElapsed = 0;
   g.waveFinale = false;
   g.wavePhase = 'active';
 
   // Apply recipe settings for this wave
   const recipe = getWaveRecipe(g.waveNumber, g);
+  g.waveTimer = recipe.duration || 60;
   g.bulletLevel = Math.max(g.bulletLevel, recipe.bulletLevel);
 
-  // Queue wave warnings for new threats
+  // Queue wave warnings — recipe custom warnings take priority over hardcoded
+  if (recipe.warningText) {
+    const customId = `custom_w${g.waveNumber}`;
+    if (!g.waveTriggered.has(customId)) {
+      const delay = recipe.phaseInDelay || 0;
+      if (delay <= 0) {
+        queueWaveEvent(g, { id: customId, text: recipe.warningText, sub: '', color: recipe.warningColor || '#ef4444', type: (recipe.warningType as 'warning' | 'upgrade') || 'warning', duration: 2.0 });
+      }
+    }
+  }
   const warnings = WAVE_WARNINGS[g.waveNumber];
   if (warnings) {
     for (const w of warnings) {
       if (!g.waveTriggered.has(w.id)) {
-        // Delay warnings by phaseInDelay
         const delay = recipe.phaseInDelay || 0;
         if (delay > 0) {
           // Will be triggered later by wave elapsed check
