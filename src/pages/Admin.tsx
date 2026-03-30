@@ -437,7 +437,7 @@ const LeaderboardPanel: React.FC<{ leaders: LeaderboardEntry[]; onDelete: (id: s
 
 // Helper: generate preview of auto-scaled waves
 function generatePreviewWaves(profile: DifficultyProfile, count: number = 20) {
-  const previews: { wave: number; threats: string[]; maxConcurrent: number; spawnInterval: number; droneTiers: string[]; clusterSplits: number; bulletLevel: number; hasBoss: boolean; hasChemical: boolean; hasIncendiary: boolean }[] = [];
+  const previews: { wave: number; threats: string[]; maxConcurrent: number; spawnInterval: number; droneTiers: string[]; clusterSplits: number; bulletLevel: number; hasBoss: boolean; hasChemical: boolean; hasIncendiary: boolean; duration: number; droneInterval: number }[] = [];
   for (let w = 1; w <= count; w++) {
     const threats: string[] = [];
     for (const [type, unlockWave] of Object.entries(profile.threatsUnlock)) {
@@ -460,13 +460,41 @@ function generatePreviewWaves(profile: DifficultyProfile, count: number = 20) {
     const hasBoss = w >= profile.bossStartWave && ((w - profile.bossStartWave) % profile.bossEveryNWaves === 0);
     const hasChemical = w >= (profile.dronesUnlock['chemical'] || 999);
     const hasIncendiary = w >= (profile.dronesUnlock['incendiary'] || 999);
-    previews.push({ wave: w, threats, maxConcurrent, spawnInterval, droneTiers, clusterSplits, bulletLevel, hasBoss, hasChemical, hasIncendiary });
+    // Drone interval
+    let droneInterval = 0;
+    if (droneTiers.length > 0) {
+      const firstDroneWave = Math.min(...Object.values(profile.dronesUnlock));
+      const wavesSinceDrones = w - firstDroneWave;
+      droneInterval = Math.max(profile.droneIntervalMin, +(profile.droneIntervalBase * Math.pow(profile.droneIntervalDecay, wavesSinceDrones)).toFixed(1));
+    }
+    previews.push({ wave: w, threats, maxConcurrent, spawnInterval, droneTiers, clusterSplits, bulletLevel, hasBoss, hasChemical, hasIncendiary, duration: profile.waveDuration, droneInterval });
   }
   return previews;
 }
 
 const THREAT_ICONS: Record<string, string> = { shrapnel: '💥', missile: '🚀', cluster: '🎯' };
 const DRONE_ICONS: Record<string, string> = { scout: '🔍', tracker: '📡', bomber: '💣', chemical: '☣️', incendiary: '🔥', cargo: '📦' };
+
+// Slider + numeric input combo
+const SliderWithInput: React.FC<{
+  label: string; value: number; min: number; max: number; step: number;
+  onChange: (v: number) => void; unit?: string; color?: string;
+}> = ({ label, value, min, max, step, onChange, unit = '', color = '#3b82f6' }) => (
+  <div style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+      <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.7)' }}>{label}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <input type="number" min={min} max={max} step={step} value={value}
+          onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) onChange(Math.max(min, Math.min(max, v))); }}
+          style={{ width: 64, padding: '3px 6px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.3)', color, fontSize: 12, fontWeight: 700, textAlign: 'center' as const, outline: 'none' }} />
+        {unit && <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.35)' }}>{unit}</span>}
+      </div>
+    </div>
+    <input type="range" min={min} max={max} step={step} value={value}
+      onChange={e => onChange(parseFloat(e.target.value))}
+      style={{ width: '100%', accentColor: color }} />
+  </div>
+);
 
 const WavesPanel: React.FC<{
   waves: RemoteWaveConfig[]; editingWave: RemoteWaveConfig | null;
@@ -480,6 +508,34 @@ const WavesPanel: React.FC<{
 
   const previews = diffProfile ? generatePreviewWaves(diffProfile, previewCount) : [];
   const overrideNums = new Set(waves.map(w => w.waveNumber));
+
+  // Create override from preview row
+  const createOverrideFromPreview = (p: typeof previews[0]) => {
+    const existing = waves.find(w => w.waveNumber === p.wave);
+    if (existing) {
+      setEditingWave({ ...existing });
+    } else {
+      setEditingWave({
+        waveNumber: p.wave,
+        duration: p.duration,
+        threats: p.threats,
+        maxConcurrent: p.maxConcurrent,
+        spawnRate: p.spawnInterval,
+        surgeMultiplier: 1.0,
+        droneTypes: p.droneTiers,
+        clusterSplits: p.clusterSplits,
+        bulletLevel: p.bulletLevel,
+        phaseInDelay: 0,
+        droneInterval: p.droneInterval,
+        hasBoss: p.hasBoss,
+        hasChemical: p.hasChemical,
+        hasIncendiary: p.hasIncendiary,
+        warningText: null,
+        warningColor: '#ef4444',
+        warningType: 'warning',
+      });
+    }
+  };
 
   return (
     <div>
@@ -502,35 +558,22 @@ const WavesPanel: React.FC<{
             <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 18, color: '#f1f5f9' }}>⚙️ إعدادات التصاعد التلقائي</h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: 14 }}>
-              {/* Spawn Settings */}
-              {([
-                { label: 'تهديدات متزامنة (بداية)', key: 'baseMaxConcurrent' as const, min: 1, max: 10, step: 1, val: diffProfile.baseMaxConcurrent },
-                { label: 'سقف التهديدات المتزامنة', key: 'maxConcurrentCap' as const, min: 5, max: 30, step: 1, val: diffProfile.maxConcurrentCap },
-                { label: 'نمو لكل موجة', key: 'concurrentGrowth' as const, min: 0.1, max: 2, step: 0.1, val: diffProfile.concurrentGrowth },
-                { label: 'فترة الإسقاط (بداية)', key: 'baseSpawnInterval' as const, min: 0.5, max: 5, step: 0.1, val: diffProfile.baseSpawnInterval },
-                { label: 'أسرع فترة إسقاط', key: 'minSpawnInterval' as const, min: 0.2, max: 2, step: 0.1, val: diffProfile.minSpawnInterval },
-                { label: 'تسارع الإسقاط', key: 'spawnIntervalDecay' as const, min: 0.01, max: 0.5, step: 0.01, val: diffProfile.spawnIntervalDecay },
-                { label: 'شظايا أولية', key: 'clusterSplitsBase' as const, min: 1, max: 6, step: 1, val: diffProfile.clusterSplitsBase },
-                { label: 'سقف الشظايا', key: 'clusterSplitsCap' as const, min: 2, max: 12, step: 1, val: diffProfile.clusterSplitsCap },
-                { label: 'نمو الشظايا', key: 'clusterSplitsGrowth' as const, min: 0.1, max: 1, step: 0.1, val: diffProfile.clusterSplitsGrowth },
-                { label: 'فترة الطائرات (بداية)', key: 'droneIntervalBase' as const, min: 5, max: 60, step: 1, val: diffProfile.droneIntervalBase },
-                { label: 'أسرع فترة طائرات', key: 'droneIntervalMin' as const, min: 2, max: 15, step: 1, val: diffProfile.droneIntervalMin },
-                { label: 'معامل تسارع الطائرات', key: 'droneIntervalDecay' as const, min: 0.5, max: 1, step: 0.05, val: diffProfile.droneIntervalDecay },
-                { label: 'بوس كل كم موجة', key: 'bossEveryNWaves' as const, min: 2, max: 20, step: 1, val: diffProfile.bossEveryNWaves },
-                { label: 'أول بوس في موجة', key: 'bossStartWave' as const, min: 3, max: 30, step: 1, val: diffProfile.bossStartWave },
-                { label: 'مدة الموجة (ثوانٍ)', key: 'waveDuration' as const, min: 20, max: 180, step: 5, val: diffProfile.waveDuration },
-                { label: 'تأخير التهديدات الجديدة', key: 'phaseInDelay' as const, min: 0, max: 30, step: 1, val: diffProfile.phaseInDelay },
-              ]).map(({ label, key, min, max, step, val }) => (
-                <div key={key} style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.7)' }}>{label}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa' }}>{val}</span>
-                  </div>
-                  <input type="range" min={min} max={max} step={step} value={val}
-                    onChange={e => onSaveDiffProfile({ [key]: parseFloat(e.target.value) })}
-                    style={{ width: '100%', accentColor: '#3b82f6' }} />
-                </div>
-              ))}
+              <SliderWithInput label="تهديدات متزامنة (بداية)" value={diffProfile.baseMaxConcurrent} min={1} max={10} step={1} onChange={v => onSaveDiffProfile({ baseMaxConcurrent: v })} />
+              <SliderWithInput label="سقف التهديدات المتزامنة" value={diffProfile.maxConcurrentCap} min={5} max={30} step={1} onChange={v => onSaveDiffProfile({ maxConcurrentCap: v })} />
+              <SliderWithInput label="نمو لكل موجة" value={diffProfile.concurrentGrowth} min={0.1} max={2} step={0.1} onChange={v => onSaveDiffProfile({ concurrentGrowth: v })} />
+              <SliderWithInput label="فترة الإسقاط (بداية)" value={diffProfile.baseSpawnInterval} min={0.5} max={5} step={0.1} onChange={v => onSaveDiffProfile({ baseSpawnInterval: v })} unit="s" />
+              <SliderWithInput label="أسرع فترة إسقاط" value={diffProfile.minSpawnInterval} min={0.2} max={2} step={0.1} onChange={v => onSaveDiffProfile({ minSpawnInterval: v })} unit="s" />
+              <SliderWithInput label="تسارع الإسقاط" value={diffProfile.spawnIntervalDecay} min={0.01} max={0.5} step={0.01} onChange={v => onSaveDiffProfile({ spawnIntervalDecay: v })} />
+              <SliderWithInput label="شظايا أولية" value={diffProfile.clusterSplitsBase} min={1} max={6} step={1} onChange={v => onSaveDiffProfile({ clusterSplitsBase: v })} />
+              <SliderWithInput label="سقف الشظايا" value={diffProfile.clusterSplitsCap} min={2} max={12} step={1} onChange={v => onSaveDiffProfile({ clusterSplitsCap: v })} />
+              <SliderWithInput label="نمو الشظايا" value={diffProfile.clusterSplitsGrowth} min={0.1} max={1} step={0.1} onChange={v => onSaveDiffProfile({ clusterSplitsGrowth: v })} />
+              <SliderWithInput label="فترة الطائرات (بداية)" value={diffProfile.droneIntervalBase} min={5} max={60} step={1} onChange={v => onSaveDiffProfile({ droneIntervalBase: v })} unit="s" />
+              <SliderWithInput label="أسرع فترة طائرات" value={diffProfile.droneIntervalMin} min={2} max={15} step={1} onChange={v => onSaveDiffProfile({ droneIntervalMin: v })} unit="s" />
+              <SliderWithInput label="معامل تسارع الطائرات" value={diffProfile.droneIntervalDecay} min={0.5} max={1} step={0.05} onChange={v => onSaveDiffProfile({ droneIntervalDecay: v })} />
+              <SliderWithInput label="بوس كل كم موجة" value={diffProfile.bossEveryNWaves} min={2} max={20} step={1} onChange={v => onSaveDiffProfile({ bossEveryNWaves: v })} />
+              <SliderWithInput label="أول بوس في موجة" value={diffProfile.bossStartWave} min={3} max={30} step={1} onChange={v => onSaveDiffProfile({ bossStartWave: v })} />
+              <SliderWithInput label="مدة الموجة" value={diffProfile.waveDuration} min={20} max={180} step={5} onChange={v => onSaveDiffProfile({ waveDuration: v })} unit="s" color="#22c55e" />
+              <SliderWithInput label="تأخير التهديدات الجديدة" value={diffProfile.phaseInDelay} min={0} max={30} step={1} onChange={v => onSaveDiffProfile({ phaseInDelay: v })} unit="s" />
             </div>
 
             {/* Unlock Thresholds */}
@@ -574,7 +617,7 @@ const WavesPanel: React.FC<{
 
           {/* Live Preview Table */}
           <div style={cardStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: '#f1f5f9' }}>📋 معاينة فورية</h3>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.4)' }}>عرض</span>
@@ -588,6 +631,9 @@ const WavesPanel: React.FC<{
                 <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.4)' }}>موجة</span>
               </div>
             </div>
+            <p style={{ fontSize: 10, color: 'rgba(148,163,184,0.35)', marginBottom: 12, lineHeight: 1.5 }}>
+              💡 انقر على أي صف لتحويله إلى تخصيص يدوي (override) أو تعديله إذا كان مخصصاً مسبقاً
+            </p>
 
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
@@ -597,6 +643,7 @@ const WavesPanel: React.FC<{
                     <th style={{ padding: '8px 6px', textAlign: 'right', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>التهديدات</th>
                     <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>متزامن</th>
                     <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>فترة</th>
+                    <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>مدة</th>
                     <th style={{ padding: '8px 6px', textAlign: 'right', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>طائرات</th>
                     <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>شظايا</th>
                     <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>سلاح</th>
@@ -606,12 +653,19 @@ const WavesPanel: React.FC<{
                 <tbody>
                   {previews.map(p => {
                     const isOverride = overrideNums.has(p.wave);
-                    const difficulty = Math.min(100, (p.maxConcurrent / diffProfile.maxConcurrentCap) * 50 + ((diffProfile.baseSpawnInterval - p.spawnInterval) / diffProfile.baseSpawnInterval) * 30 + (p.hasBoss ? 20 : 0));
+                    const isLevel = p.wave % 3 === 0;
                     return (
-                      <tr key={p.wave} style={{
-                        borderBottom: '1px solid rgba(255,255,255,0.03)',
-                        background: isOverride ? 'rgba(251,191,36,0.06)' : p.hasBoss ? 'rgba(220,38,38,0.04)' : 'transparent',
-                      }}>
+                      <tr key={p.wave}
+                        onClick={() => createOverrideFromPreview(p)}
+                        style={{
+                          borderBottom: isLevel ? '2px solid rgba(251,191,36,0.15)' : '1px solid rgba(255,255,255,0.03)',
+                          background: isOverride ? 'rgba(251,191,36,0.06)' : p.hasBoss ? 'rgba(220,38,38,0.04)' : 'transparent',
+                          cursor: 'pointer',
+                          transition: 'background 0.15s',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = isOverride ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.04)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = isOverride ? 'rgba(251,191,36,0.06)' : p.hasBoss ? 'rgba(220,38,38,0.04)' : 'transparent')}
+                      >
                         <td style={{ padding: '6px', textAlign: 'center', fontWeight: 700, color: isOverride ? '#fbbf24' : '#60a5fa' }}>
                           {p.wave} {isOverride && '✏️'}
                         </td>
@@ -620,6 +674,7 @@ const WavesPanel: React.FC<{
                         </td>
                         <td style={{ padding: '6px', textAlign: 'center', fontWeight: 600, color: p.maxConcurrent >= 10 ? '#f87171' : '#e2e8f0' }}>{p.maxConcurrent}</td>
                         <td style={{ padding: '6px', textAlign: 'center', color: p.spawnInterval <= 1 ? '#f87171' : '#e2e8f0' }}>{p.spawnInterval}s</td>
+                        <td style={{ padding: '6px', textAlign: 'center', color: '#94a3b8' }}>{p.duration}s</td>
                         <td style={{ padding: '6px', textAlign: 'right' }}>
                           {p.droneTiers.length === 0 ? <span style={{ color: 'rgba(148,163,184,0.2)' }}>—</span> :
                             p.droneTiers.map(t => <span key={t} title={t} style={{ marginLeft: 2 }}>{DRONE_ICONS[t] || t}</span>)}
@@ -643,7 +698,7 @@ const WavesPanel: React.FC<{
             <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>✏️ موجات مخصصة يدوياً</h3>
             <button onClick={() => setEditingWave({
               waveNumber: waves.length > 0 ? Math.max(...waves.map(w => w.waveNumber)) + 1 : 1,
-              duration: 60, threats: ['shrapnel'], maxConcurrent: 5, spawnRate: 3.5, surgeMultiplier: 1.0, droneTypes: [],
+              duration: diffProfile?.waveDuration || 60, threats: ['shrapnel'], maxConcurrent: 5, spawnRate: 3.5, surgeMultiplier: 1.0, droneTypes: [],
               clusterSplits: 0, bulletLevel: 1, phaseInDelay: 0, droneInterval: 0,
               hasBoss: false, hasChemical: false, hasIncendiary: false,
               warningText: null, warningColor: '#ef4444', warningType: 'warning',
@@ -662,8 +717,9 @@ const WavesPanel: React.FC<{
               }}>
                 <span style={{ fontWeight: 700, color: '#fbbf24', fontSize: 14, minWidth: 32 }}>W{w.waveNumber}</span>
                 <div style={{ flex: 1, fontSize: 10, color: 'rgba(148,163,184,0.5)', lineHeight: 1.5 }}>
-                  <div>{w.threats.map(t => THREAT_ICONS[t] || t).join(' ')} · {w.duration}s · max:{w.maxConcurrent}</div>
+                  <div>{w.threats.map(t => THREAT_ICONS[t] || t).join(' ')} · {w.duration}s · max:{w.maxConcurrent} · ⏱{w.spawnRate}s</div>
                   <div>{w.droneTypes.length > 0 ? w.droneTypes.map(t => DRONE_ICONS[t] || t).join(' ') : ''} {w.hasBoss ? '👹' : ''} {w.hasChemical ? '☣️' : ''} {w.hasIncendiary ? '🔥' : ''}</div>
+                  {w.warningText && <div style={{ color: 'rgba(239,68,68,0.6)', fontSize: 9 }}>⚠️ {w.warningText}</div>}
                 </div>
                 <button onClick={() => setEditingWave({ ...w })} style={{ ...btnPrimary, padding: '5px 10px', fontSize: 11 }}>تعديل</button>
                 <button onClick={() => onDeleteWave(w.waveNumber)} style={{ ...btnDanger, padding: '5px 8px', fontSize: 11 }}>✕</button>
