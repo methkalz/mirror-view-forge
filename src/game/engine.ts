@@ -111,7 +111,7 @@ export function createGame(w: number, h: number): GameData {
     // Wave system
     waveNumber: 1,
     wavePhase: 'active',
-    waveTimer: 60 + Math.random() * 10,
+    waveTimer: 60,
     levelNumber: 1,
     deliveryBike: null,
     upgradeCards: [],
