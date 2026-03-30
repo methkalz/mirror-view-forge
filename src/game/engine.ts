@@ -124,6 +124,7 @@ export function createGame(w: number, h: number): GameData {
     bikeZoomTimer: 0,
     waveEndSlowMo: 0,
     waveFinale: false,
+    waveAnnounceTimer: 0,
     activeHazardCount: 0,
     // Intro system
     introPhase: 'done' as IntroPhase,
@@ -1224,8 +1225,15 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         g.selectedUpgrade = null;
         sfxLevelUp();
       } else {
-        startNextWave(g);
+        // Enter announce phase instead of starting next wave immediately
+        g.wavePhase = 'announce';
+        g.waveAnnounceTimer = 3.0; // 3 seconds
       }
+    }
+  } else if (g.wavePhase === 'announce') {
+    g.waveAnnounceTimer -= dt;
+    if (g.waveAnnounceTimer <= 0) {
+      startNextWave(g);
     }
   } else if (g.wavePhase === 'cards') {
     g.cardsShownTimer += dt;
