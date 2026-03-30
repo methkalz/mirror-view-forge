@@ -1551,7 +1551,7 @@ const BackgroundsPanel: React.FC<{
                     <label style={{ ...labelStyle, marginBottom: 0 }}>End</label>
                     <span style={{ color: meta.color, fontSize: 12, fontWeight: 700 }}>{p.transitionEnd}s</span>
                   </div>
-                  <input type="range" min={0} max={900} step={10} value={p.transitionEnd}
+                  <input type="range" min={0} max={900} step={1} value={p.transitionEnd}
                     onChange={e => handleUpdate(p.id, { transitionEnd: parseFloat(e.target.value) })}
                     style={{ width: '100%', accentColor: meta.color }} />
                 </div>
