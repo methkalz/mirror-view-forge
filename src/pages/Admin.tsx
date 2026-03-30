@@ -42,6 +42,7 @@ const Admin: React.FC = () => {
   const [leaders, setLeaders] = useState<LeaderboardEntry[]>([]);
   const [audioEntries, setAudioEntries] = useState<AudioConfigEntry[]>([]);
   const [analytics, setAnalytics] = useState<GameAnalytics | null>(null);
+  const [bgPhases, setBgPhases] = useState<BackgroundPhase[]>([]);
 
   useEffect(() => {
     const check = async () => {
@@ -57,8 +58,8 @@ const Admin: React.FC = () => {
   }, [navigate]);
 
   const loadAll = useCallback(async () => {
-    const [c, w, l, a, an] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard(), fetchAudioConfig(), fetchAnalytics()]);
-    setConfig(c); setWaves(w); setLeaders(l); setAudioEntries(a); setAnalytics(an);
+    const [c, w, l, a, an, bg] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard(), fetchAudioConfig(), fetchAnalytics(), fetchBackgroundConfig()]);
+    setConfig(c); setWaves(w); setLeaders(l); setAudioEntries(a); setAnalytics(an); setBgPhases(bg);
   }, []);
 
   useEffect(() => { if (isAdmin) loadAll(); }, [isAdmin, loadAll]);
