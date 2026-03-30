@@ -11,7 +11,7 @@ export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo
 export type DroneState = 'entering' | 'tracking' | 'bombing';
 export type DroneTier = 'scout' | 'tracker' | 'bomber' | 'cargo' | 'incendiary' | 'chemical';
 export type PlayerAnim = 'idle' | 'walk' | 'roll' | 'hit';
-export type WavePhase = 'active' | 'clearing' | 'cards' | 'bike';
+export type WavePhase = 'active' | 'clearing' | 'announce' | 'cards' | 'bike';
 
 export interface Player {
   pos: Vec2;
