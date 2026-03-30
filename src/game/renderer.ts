@@ -3843,79 +3843,186 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
     }
   }
 
-  // ── Wheels with suspension + treads + rotation blur ──
+  // ── Helper: Metallic Surface Gradient ──
+  const drawMetallicSurface = (x: number, y: number, w2: number, h2: number, baseR: number, baseG: number, baseB: number, angle = 0) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    const mg = ctx.createLinearGradient(-w2/2, -h2/2, w2/2, h2/2);
+    mg.addColorStop(0, `rgb(${Math.min(255,baseR+60)},${Math.min(255,baseG+60)},${Math.min(255,baseB+60)})`);
+    mg.addColorStop(0.3, `rgb(${baseR},${baseG},${baseB})`);
+    mg.addColorStop(0.7, `rgb(${Math.max(0,baseR-30)},${Math.max(0,baseG-30)},${Math.max(0,baseB-30)})`);
+    mg.addColorStop(1, `rgb(${Math.max(0,baseR-50)},${Math.max(0,baseG-50)},${Math.max(0,baseB-50)})`);
+    ctx.fillStyle = mg;
+    ctx.fillRect(-w2/2, -h2/2, w2, h2);
+    // Rim light on top edge
+    ctx.strokeStyle = `rgba(255,255,255,0.12)`;
+    ctx.lineWidth = 0.3;
+    ctx.beginPath();
+    ctx.moveTo(-w2/2, -h2/2);
+    ctx.lineTo(w2/2, -h2/2);
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  // ── Wheels with suspension + enhanced treads + brake discs ──
   const wheelR = 8;
   const wheelY = 0;
   const frontWX = 22, rearWX = -20;
-  const frontWY = wheelY + suspCompress; // front fork compressed
+  const frontWY = wheelY + suspCompress;
   const rearWY = wheelY + rearSuspCompress;
-
   const highSpeed = Math.abs(bike.speed) > 150;
 
-  for (const [wx, wy] of [[frontWX, frontWY], [rearWX, rearWY]] as [number, number][]) {
-    // Tire outer
-    ctx.strokeStyle = '#1a1a1a';
-    ctx.lineWidth = 4;
+  for (const [wx, wy, isFront] of [[frontWX, frontWY, true], [rearWX, rearWY, false]] as [number, number, boolean][]) {
+    // ── Dual-layer tire ──
+    // Outer rubber ring
+    const tireGrad = ctx.createRadialGradient(wx, wy, wheelR - 2.5, wx, wy, wheelR + 1);
+    tireGrad.addColorStop(0, '#2a2a2a');
+    tireGrad.addColorStop(0.5, '#1a1a1a');
+    tireGrad.addColorStop(1, '#111');
+    ctx.fillStyle = tireGrad;
     ctx.beginPath();
-    ctx.arc(wx, wy, wheelR, 0, Math.PI * 2);
+    ctx.arc(wx, wy, wheelR + 0.5, 0, Math.PI * 2);
+    ctx.arc(wx, wy, wheelR - 2.5, 0, Math.PI * 2, true);
+    ctx.fill();
+
+    // Sidewall line
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 0.4;
+    ctx.beginPath();
+    ctx.arc(wx, wy, wheelR - 1.2, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Tire tread marks (grooves on rubber)
-    ctx.strokeStyle = 'rgba(60,60,60,0.5)';
-    ctx.lineWidth = 0.8;
-    for (let t = 0; t < 12; t++) {
-      const tAngle = bike.wheelAnim + t * Math.PI / 6;
-      const innerR = wheelR - 1.8;
-      const outerR = wheelR + 0.5;
+    // ── Herringbone tread pattern ──
+    ctx.strokeStyle = 'rgba(50,50,50,0.6)';
+    ctx.lineWidth = 0.5;
+    for (let t = 0; t < 24; t++) {
+      const tAngle = bike.wheelAnim + t * Math.PI / 12;
+      const midR = wheelR - 0.5;
+      const outerR = wheelR + 0.3;
+      const innerR = wheelR - 2;
+      // V-shape: two lines from center outward at angles
+      const cx2 = wx + Math.cos(tAngle) * midR;
+      const cy2 = wy + Math.sin(tAngle) * midR;
+      const perpAngle = tAngle + Math.PI / 2;
+      // Left arm of V
       ctx.beginPath();
-      ctx.moveTo(wx + Math.cos(tAngle) * innerR, wy + Math.sin(tAngle) * innerR);
-      ctx.lineTo(wx + Math.cos(tAngle) * outerR, wy + Math.sin(tAngle) * outerR);
+      ctx.moveTo(cx2, cy2);
+      ctx.lineTo(
+        wx + Math.cos(tAngle + 0.08) * outerR + Math.cos(perpAngle) * 0.3,
+        wy + Math.sin(tAngle + 0.08) * outerR + Math.sin(perpAngle) * 0.3
+      );
+      ctx.stroke();
+      // Right arm of V
+      ctx.beginPath();
+      ctx.moveTo(cx2, cy2);
+      ctx.lineTo(
+        wx + Math.cos(tAngle - 0.08) * innerR + Math.cos(perpAngle) * -0.3,
+        wy + Math.sin(tAngle - 0.08) * innerR + Math.sin(perpAngle) * -0.3
+      );
       ctx.stroke();
     }
 
-    // Rim
-    ctx.strokeStyle = '#777';
-    ctx.lineWidth = 1.5;
+    // ── Dual rim with chrome luster ──
+    const rimGrad = ctx.createRadialGradient(wx - 1, wy - 1, 0, wx, wy, wheelR - 2.5);
+    rimGrad.addColorStop(0, '#aaa');
+    rimGrad.addColorStop(0.5, '#888');
+    rimGrad.addColorStop(1, '#666');
+    ctx.strokeStyle = rimGrad as unknown as string;
+    // Outer rim
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.arc(wx, wy, wheelR - 3, 0, Math.PI * 2);
+    ctx.arc(wx, wy, wheelR - 2.8, 0, Math.PI * 2);
+    ctx.strokeStyle = '#999';
+    ctx.stroke();
+    // Inner rim
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.arc(wx, wy, wheelR - 3.5, 0, Math.PI * 2);
+    ctx.strokeStyle = '#777';
+    ctx.stroke();
+    // Chrome rim highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 0.4;
+    ctx.beginPath();
+    ctx.arc(wx, wy, wheelR - 2.9, -Math.PI * 0.7, -Math.PI * 0.2);
     ctx.stroke();
 
-    if (highSpeed) {
-      // Rotation blur — replace spokes with motion arc
-      ctx.strokeStyle = 'rgba(150,150,150,0.15)';
-      ctx.lineWidth = wheelR - 4;
+    // ── Brake disc (perforated) ──
+    const discR = wheelR - 4;
+    ctx.strokeStyle = '#aaa';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(wx, wy, discR, 0, Math.PI * 2);
+    ctx.stroke();
+    // Perforations
+    ctx.fillStyle = 'rgba(80,80,80,0.4)';
+    for (let d = 0; d < 8; d++) {
+      const dAngle = bike.wheelAnim * 0.5 + d * Math.PI / 4;
+      const dr = discR - 0.5;
       ctx.beginPath();
-      ctx.arc(wx, wy, (wheelR - 3) / 2 + 1, 0, Math.PI * 2);
+      ctx.arc(wx + Math.cos(dAngle) * dr, wy + Math.sin(dAngle) * dr, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Brake thermal glow (when braking)
+    if (isBrakingNow && isFront) {
+      const brGlow = ctx.createRadialGradient(wx, wy, discR - 1, wx, wy, discR + 2);
+      brGlow.addColorStop(0, 'rgba(255,120,40,0.08)');
+      brGlow.addColorStop(1, 'rgba(255,80,20,0)');
+      ctx.fillStyle = brGlow;
+      ctx.beginPath();
+      ctx.arc(wx, wy, discR + 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (highSpeed) {
+      // Rotation blur
+      ctx.strokeStyle = 'rgba(150,150,150,0.12)';
+      ctx.lineWidth = wheelR - 5;
+      ctx.beginPath();
+      ctx.arc(wx, wy, (wheelR - 3.5) / 2 + 1, 0, Math.PI * 2);
       ctx.stroke();
     } else {
-      // Spokes (visible at low speed)
-      ctx.strokeStyle = '#888';
-      ctx.lineWidth = 0.7;
-      for (let i = 0; i < 6; i++) {
-        const a = bike.wheelAnim + i * Math.PI / 3;
+      // ── 12 Spokes with tapered thickness ──
+      for (let i = 0; i < 12; i++) {
+        const a = bike.wheelAnim + i * Math.PI / 6;
+        const innerSpoke = 2.2;
+        const outerSpoke = wheelR - 3.2;
+        // Tapered: thicker at hub, thinner at rim
+        ctx.strokeStyle = '#999';
+        ctx.lineWidth = 0.8 - (i % 2) * 0.2;
         ctx.beginPath();
-        ctx.moveTo(wx + Math.cos(a) * 2, wy + Math.sin(a) * 2);
-        ctx.lineTo(wx + Math.cos(a) * (wheelR - 3), wy + Math.sin(a) * (wheelR - 3));
+        ctx.moveTo(wx + Math.cos(a) * innerSpoke, wy + Math.sin(a) * innerSpoke);
+        ctx.lineTo(wx + Math.cos(a) * outerSpoke, wy + Math.sin(a) * outerSpoke);
         ctx.stroke();
       }
     }
 
-    // Hub (chrome)
-    ctx.fillStyle = '#666';
+    // ── Hub (chrome with gradient) ──
+    const hubGrad = ctx.createRadialGradient(wx - 0.5, wy - 0.5, 0, wx, wy, 2.5);
+    hubGrad.addColorStop(0, '#ccc');
+    hubGrad.addColorStop(0.5, '#888');
+    hubGrad.addColorStop(1, '#555');
+    ctx.fillStyle = hubGrad;
     ctx.beginPath();
-    ctx.arc(wx, wy, 2, 0, Math.PI * 2);
+    ctx.arc(wx, wy, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    // Axle bolt
+    ctx.fillStyle = '#444';
+    ctx.beginPath();
+    ctx.arc(wx, wy, 0.8, 0, Math.PI * 2);
     ctx.fill();
     // Hub highlight
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
     ctx.beginPath();
-    ctx.arc(wx - 0.5, wy - 0.5, 1, 0, Math.PI * 2);
+    ctx.arc(wx - 0.6, wy - 0.6, 0.9, 0, Math.PI * 2);
     ctx.fill();
   }
 
   // ── Fork tubes (visual suspension) ──
-  ctx.strokeStyle = '#777';
-  ctx.lineWidth = 1.5;
-  // Front fork
+  // Front fork — dual tube with chrome
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 1.8;
   ctx.beginPath();
   ctx.moveTo(frontWX - 2, -12);
   ctx.lineTo(frontWX - 1, frontWY - wheelR + 1);
@@ -3924,31 +4031,67 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.moveTo(frontWX + 1, -11);
   ctx.lineTo(frontWX + 2, frontWY - wheelR + 1);
   ctx.stroke();
-  // Chrome fork highlight
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  // Chrome highlights on forks
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
   ctx.lineWidth = 0.5;
   ctx.beginPath();
   ctx.moveTo(frontWX - 1.5, -12);
   ctx.lineTo(frontWX - 0.5, frontWY - wheelR + 2);
   ctx.stroke();
-
-  // ── Fenders ──
-  ctx.strokeStyle = '#333';
+  // Fork lower (gold anodized)
+  ctx.strokeStyle = 'rgba(180,160,60,0.3)';
   ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(frontWX - 1.5, frontWY - wheelR + 1);
+  ctx.lineTo(frontWX - 1.5, frontWY - wheelR + 4);
+  ctx.stroke();
+
+  // ── Rear swingarm ──
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-4, -2);
+  ctx.lineTo(rearWX + 1, rearWY);
+  ctx.stroke();
+  // Swingarm highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(-4, -2.5);
+  ctx.lineTo(rearWX + 1, rearWY - 0.5);
+  ctx.stroke();
+
+  // ── Fenders (with depth) ──
   // Front fender
+  const fenderGrad = ctx.createLinearGradient(frontWX, wheelY - wheelR - 2, frontWX, wheelY - wheelR + 3);
+  fenderGrad.addColorStop(0, '#444');
+  fenderGrad.addColorStop(0.5, '#333');
+  fenderGrad.addColorStop(1, '#222');
+  ctx.strokeStyle = fenderGrad as unknown as string;
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.arc(frontWX, wheelY, wheelR + 2, -Math.PI * 0.8, -Math.PI * 0.2);
+  ctx.strokeStyle = '#333';
+  ctx.stroke();
+  // Front fender highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 0.4;
+  ctx.beginPath();
+  ctx.arc(frontWX, wheelY, wheelR + 2.8, -Math.PI * 0.7, -Math.PI * 0.3);
   ctx.stroke();
   // Rear fender
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.arc(rearWX, wheelY, wheelR + 2, -Math.PI * 0.85, -Math.PI * 0.15);
   ctx.stroke();
 
-  // ── Frame / Body (streamlined motorcycle shape with bezier curves) ──
+  // ── Frame / Body (multi-layer with panel lines) ──
   const frameGrad = ctx.createLinearGradient(-20, -20, 20, 0);
-  frameGrad.addColorStop(0, '#222');
-  frameGrad.addColorStop(0.5, '#333');
-  frameGrad.addColorStop(1, '#252525');
+  frameGrad.addColorStop(0, '#252525');
+  frameGrad.addColorStop(0.3, '#333');
+  frameGrad.addColorStop(0.7, '#2a2a2a');
+  frameGrad.addColorStop(1, '#222');
   ctx.fillStyle = frameGrad;
   ctx.beginPath();
   ctx.moveTo(rearWX + 3, wheelY - 2);
@@ -3958,13 +4101,34 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.lineTo(frontWX - 2, wheelY - 2);
   ctx.lineTo(rearWX + 3, wheelY - 2);
   ctx.fill();
+  // Panel lines (thin separations)
+  ctx.strokeStyle = 'rgba(80,80,80,0.4)';
+  ctx.lineWidth = 0.3;
+  ctx.beginPath();
+  ctx.moveTo(-2, -19);
+  ctx.bezierCurveTo(4, -18, 10, -16, 14, -13);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-8, -14);
+  ctx.lineTo(6, -8);
+  ctx.stroke();
+  // Subframe tubes (visible between engine and seat)
   ctx.strokeStyle = '#444';
-  ctx.lineWidth = 0.8;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-10, -14);
+  ctx.lineTo(-4, -6);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-6, -14);
+  ctx.lineTo(2, -6);
   ctx.stroke();
 
-  // ── Side panel (colored accent between engine and seat) ──
-  const panelGrad = ctx.createLinearGradient(-6, -16, 6, -8);
-  panelGrad.addColorStop(0, '#1e40af');
+  // ── Side fairing panel (colored accent — metallic blue) ──
+  const panelGrad = ctx.createLinearGradient(-6, -16, 8, -6);
+  panelGrad.addColorStop(0, '#1e50bf');
+  panelGrad.addColorStop(0.3, '#2563eb');
+  panelGrad.addColorStop(0.6, '#1e40af');
   panelGrad.addColorStop(1, '#1e3a8a');
   ctx.fillStyle = panelGrad;
   ctx.beginPath();
@@ -3974,89 +4138,302 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.lineTo(-8, -8);
   ctx.closePath();
   ctx.fill();
-  ctx.strokeStyle = '#1e3a8a';
-  ctx.lineWidth = 0.5;
+  // Fairing panel line
+  ctx.strokeStyle = 'rgba(30,58,138,0.6)';
+  ctx.lineWidth = 0.3;
+  ctx.beginPath();
+  ctx.moveTo(-4, -15);
+  ctx.lineTo(6, -9);
   ctx.stroke();
+  // Decal stripe on fairing
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(-5, -13);
+  ctx.bezierCurveTo(0, -13.5, 4, -12, 7, -10);
+  ctx.stroke();
+  // Environment reflection (moving highlight)
+  const reflX = Math.sin(g.elapsed * 0.8) * 4;
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.beginPath();
+  ctx.ellipse(reflX, -12, 3, 6, 0.3, 0, Math.PI * 2);
+  ctx.fill();
 
-  // ── Engine block (detailed) ──
-  ctx.fillStyle = '#3a3a3a';
+  // ── Engine block (detailed with cylinder depth + crankcase) ──
+  // Main block with metallic gradient
+  const engGrad = ctx.createLinearGradient(-9, -7, 7, 0);
+  engGrad.addColorStop(0, '#4a4a4a');
+  engGrad.addColorStop(0.4, '#3a3a3a');
+  engGrad.addColorStop(1, '#2a2a2a');
+  ctx.fillStyle = engGrad;
   ctx.beginPath();
   ctx.roundRect(-9, -7, 16, 7, 1);
   ctx.fill();
-  ctx.strokeStyle = '#4a4a4a';
+  ctx.strokeStyle = '#555';
   ctx.lineWidth = 0.5;
   ctx.stroke();
-  // Cooling fins
-  ctx.strokeStyle = '#555';
-  ctx.lineWidth = 0.6;
-  for (let i = 0; i < 5; i++) {
+  // Cylinder head with 3D depth
+  const cylGrad = ctx.createLinearGradient(-3, -10, 5, -7);
+  cylGrad.addColorStop(0, '#555');
+  cylGrad.addColorStop(0.5, '#4a4a4a');
+  cylGrad.addColorStop(1, '#3a3a3a');
+  ctx.fillStyle = cylGrad;
+  ctx.beginPath();
+  ctx.roundRect(-3, -9.5, 8, 3.5, 1);
+  ctx.fill();
+  ctx.strokeStyle = '#5a5a5a';
+  ctx.lineWidth = 0.3;
+  ctx.stroke();
+  // Valve covers (protruding bumps)
+  ctx.fillStyle = '#555';
+  ctx.beginPath();
+  ctx.ellipse(-1, -9, 2, 1, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.1)';
+  ctx.beginPath();
+  ctx.ellipse(-1.3, -9.3, 1, 0.5, 0, 0, Math.PI);
+  ctx.fill();
+  ctx.fillStyle = '#555';
+  ctx.beginPath();
+  ctx.ellipse(3, -9, 1.5, 0.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Cooling fins (more detailed)
+  ctx.strokeStyle = '#5a5a5a';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i < 7; i++) {
+    const finX = -8 + i * 2.2;
     ctx.beginPath();
-    ctx.moveTo(-7 + i * 3, -6);
-    ctx.lineTo(-7 + i * 3, -1);
+    ctx.moveTo(finX, -6.5);
+    ctx.lineTo(finX, -0.5);
+    ctx.stroke();
+    // Fin highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 0.2;
+    ctx.beginPath();
+    ctx.moveTo(finX + 0.3, -6.5);
+    ctx.lineTo(finX + 0.3, -0.5);
+    ctx.stroke();
+    ctx.strokeStyle = '#5a5a5a';
+    ctx.lineWidth = 0.5;
+  }
+  // Crankcase cover (circular)
+  ctx.fillStyle = '#444';
+  ctx.beginPath();
+  ctx.arc(4, -3, 3, 0, Math.PI * 2);
+  ctx.fill();
+  const ccGrad = ctx.createRadialGradient(3.5, -3.5, 0, 4, -3, 3);
+  ccGrad.addColorStop(0, 'rgba(255,255,255,0.12)');
+  ccGrad.addColorStop(0.5, 'rgba(255,255,255,0.03)');
+  ccGrad.addColorStop(1, 'rgba(0,0,0,0.1)');
+  ctx.fillStyle = ccGrad;
+  ctx.beginPath();
+  ctx.arc(4, -3, 3, 0, Math.PI * 2);
+  ctx.fill();
+  // Center bolt
+  ctx.fillStyle = '#666';
+  ctx.beginPath();
+  ctx.arc(4, -3, 0.8, 0, Math.PI * 2);
+  ctx.fill();
+  // Mounting bolts on engine
+  ctx.fillStyle = '#5a5a5a';
+  for (const [bx, by] of [[-7, -5], [-7, -1], [5, -6], [5, -1]] as [number, number][]) {
+    ctx.beginPath();
+    ctx.arc(bx, by, 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Radiator (small grid in front of engine)
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 0.3;
+  for (let i = 0; i < 6; i++) {
+    ctx.beginPath();
+    ctx.moveTo(8, -6 + i * 1);
+    ctx.lineTo(10, -6 + i * 1);
     ctx.stroke();
   }
-  // Cylinder head accent
-  ctx.fillStyle = '#4a4a4a';
+  ctx.strokeStyle = '#444';
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(7.5, -6.5, 3, 6);
+  // Oil/cooling pipes
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 0.6;
   ctx.beginPath();
-  ctx.roundRect(-3, -9, 8, 3, 1);
+  ctx.moveTo(7, -4);
+  ctx.quadraticCurveTo(9, -3, 10, -5);
+  ctx.stroke();
+
+  // Ambient occlusion under engine
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.beginPath();
+  ctx.ellipse(0, 0.5, 10, 1.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // ── Chain / drive belt ──
+  // ── Chain (individual links) ──
   ctx.strokeStyle = '#555';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([2, 2]);
+  ctx.lineWidth = 0.6;
+  const chainSegments = 14;
+  for (let i = 0; i < chainSegments; i++) {
+    const t = i / chainSegments;
+    const cx2 = -4 + (rearWX + 6) * t;
+    const cy2 = wheelY - 2 + Math.sin(t * Math.PI) * -0.5;
+    ctx.fillStyle = i % 2 === 0 ? '#555' : '#4a4a4a';
+    ctx.beginPath();
+    ctx.ellipse(cx2, cy2, 1.2, 0.6, bike.wheelAnim * 2 + i * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 0.3;
+    ctx.stroke();
+  }
+  // Chain sprockets
+  ctx.strokeStyle = '#666';
+  ctx.lineWidth = 0.6;
   ctx.beginPath();
-  ctx.moveTo(-4, wheelY - 2);
-  ctx.lineTo(rearWX + 2, wheelY);
+  ctx.arc(-4, wheelY - 2, 2.5, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.arc(rearWX + 2, rearWY, 2, 0, Math.PI * 2);
+  ctx.stroke();
 
-  // ── Fuel tank (sculpted, with highlight) ──
+  // ── Fuel tank (sculpted with bezier, specular, pinstripe) ──
+  // Tank base shape (3-layer bezier for sculpted look)
   const tankGrad = ctx.createLinearGradient(-8, -22, 6, -14);
-  tankGrad.addColorStop(0, '#1e40af');
-  tankGrad.addColorStop(0.4, '#3b82f6');
-  tankGrad.addColorStop(0.6, '#2563eb');
+  tankGrad.addColorStop(0, '#1e50bf');
+  tankGrad.addColorStop(0.25, '#3b82f6');
+  tankGrad.addColorStop(0.5, '#2563eb');
+  tankGrad.addColorStop(0.75, '#1e40af');
   tankGrad.addColorStop(1, '#1e3a8a');
   ctx.fillStyle = tankGrad;
   ctx.beginPath();
-  ctx.ellipse(0, -16, 9, 4.5, -0.08, 0, Math.PI * 2);
+  ctx.moveTo(-8, -15);
+  ctx.bezierCurveTo(-8, -20, -4, -21, 0, -20.5);
+  ctx.bezierCurveTo(4, -20, 8, -19, 8, -16);
+  ctx.bezierCurveTo(8, -14, 4, -13, 0, -13.5);
+  ctx.bezierCurveTo(-4, -14, -8, -13, -8, -15);
   ctx.fill();
   ctx.strokeStyle = '#1e3a8a';
   ctx.lineWidth = 0.6;
   ctx.stroke();
-  // Tank shine (top highlight)
-  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  // Knee recess (shadow indent)
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
   ctx.beginPath();
-  ctx.ellipse(-1, -18, 5, 1.5, -0.1, 0, Math.PI);
+  ctx.ellipse(-5, -16, 2, 3, 0.2, 0, Math.PI * 2);
   ctx.fill();
-  // Tank cap
+  ctx.beginPath();
+  ctx.ellipse(5, -16, 2, 3, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  // Primary specular highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.22)';
+  ctx.beginPath();
+  ctx.ellipse(-1, -19, 4.5, 1.2, -0.1, 0, Math.PI);
+  ctx.fill();
+  // Secondary smaller highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.1)';
+  ctx.beginPath();
+  ctx.ellipse(3, -18, 2, 0.6, 0, 0, Math.PI);
+  ctx.fill();
+  // Pinstripe (gold centerline)
+  ctx.strokeStyle = 'rgba(200,170,60,0.35)';
+  ctx.lineWidth = 0.4;
+  ctx.beginPath();
+  ctx.moveTo(-6, -17);
+  ctx.bezierCurveTo(-2, -17.8, 2, -17.5, 6, -16.5);
+  ctx.stroke();
+  // Tank cap (detailed)
   ctx.fillStyle = '#888';
   ctx.beginPath();
-  ctx.arc(0, -20, 1.5, 0, Math.PI * 2);
+  ctx.arc(0, -20.5, 1.8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#666';
+  ctx.lineWidth = 0.4;
+  ctx.stroke();
+  // Cap hinge
+  ctx.fillStyle = '#777';
+  ctx.fillRect(-0.3, -22.2, 0.6, 0.8);
+  // Cap highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.beginPath();
+  ctx.arc(-0.5, -21, 0.7, 0, Math.PI * 2);
   ctx.fill();
 
-  // ── Exhaust pipe (curved, with heat shimmer) ──
-  ctx.strokeStyle = '#888';
-  ctx.lineWidth = 2.5;
+  // ── Exhaust pipe (dual header with heat gradient + heat shield) ──
+  // Header pipe 1 (from engine top)
+  ctx.strokeStyle = '#999';
+  ctx.lineWidth = 1.8;
   ctx.beginPath();
-  ctx.moveTo(-6, -3);
-  ctx.bezierCurveTo(-12, -2, -18, -1, -22, -5);
-  ctx.bezierCurveTo(-24, -6, -26, -7, -27, -6);
+  ctx.moveTo(-4, -5);
+  ctx.bezierCurveTo(-10, -4, -15, -3, -18, -4);
   ctx.stroke();
-  // Chrome highlight
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-  ctx.lineWidth = 1;
+  // Header pipe 2 (from engine bottom)
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-6, -2);
+  ctx.bezierCurveTo(-12, -1, -16, -2, -18, -4);
+  ctx.stroke();
+  // Main exhaust pipe (merged)
+  const exhGrad = ctx.createLinearGradient(-18, -4, -28, -6);
+  exhGrad.addColorStop(0, '#aaa');
+  exhGrad.addColorStop(0.3, '#999');
+  exhGrad.addColorStop(0.7, '#888');
+  exhGrad.addColorStop(1, '#777');
+  ctx.strokeStyle = exhGrad as unknown as string;
+  ctx.lineWidth = 2.8;
+  ctx.beginPath();
+  ctx.moveTo(-18, -4);
+  ctx.bezierCurveTo(-22, -5, -25, -6, -27, -6);
+  ctx.strokeStyle = '#999';
+  ctx.stroke();
+  // Heat gradient near engine (blue/gold tint)
+  ctx.strokeStyle = 'rgba(100,120,200,0.15)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-6, -3.5);
+  ctx.bezierCurveTo(-10, -3, -14, -2.5, -16, -3.5);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(180,160,60,0.1)';
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(-8, -4);
-  ctx.bezierCurveTo(-14, -3, -20, -2, -24, -6);
+  ctx.bezierCurveTo(-11, -3.5, -13, -3, -15, -3.8);
   ctx.stroke();
-  // Exhaust tip
+  // Heat shield (perforated panel above pipe)
+  ctx.strokeStyle = '#777';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(-12, -5.5);
+  ctx.lineTo(-24, -7);
+  ctx.stroke();
+  // Heat shield holes
+  ctx.fillStyle = 'rgba(40,40,40,0.3)';
+  for (let h = 0; h < 5; h++) {
+    ctx.beginPath();
+    ctx.arc(-13 - h * 2.4, -6 - h * 0.3, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Chrome highlight on exhaust
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(-8, -5);
+  ctx.bezierCurveTo(-14, -4, -20, -4.5, -24, -6.5);
+  ctx.stroke();
+  // Exhaust tip (oval opening with depth)
   ctx.fillStyle = '#666';
   ctx.beginPath();
-  ctx.ellipse(-27, -6, 2.5, 1.8, 0, 0, Math.PI * 2);
+  ctx.ellipse(-27, -6, 2.8, 2, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = '#444';
-  ctx.lineWidth = 0.5;
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 0.6;
+  ctx.stroke();
+  // Inner darkness
+  ctx.fillStyle = 'rgba(20,20,20,0.6)';
+  ctx.beginPath();
+  ctx.ellipse(-27, -6, 1.8, 1.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Chrome rim on tip
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 0.4;
+  ctx.beginPath();
+  ctx.arc(-27, -6, 2.6, -Math.PI * 0.6, Math.PI * 0.1);
   ctx.stroke();
 
   // ── Seat (extended dual-cushion with gradient) ──
@@ -4075,15 +4452,22 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.strokeStyle = '#333';
   ctx.lineWidth = 0.5;
   ctx.stroke();
-  // Seat stitch line (divider between driver & passenger)
+  // Seat stitch line
   ctx.strokeStyle = '#444';
   ctx.lineWidth = 0.5;
   ctx.beginPath();
   ctx.moveTo(-4, -20.5);
   ctx.lineTo(-4, -17.5);
   ctx.stroke();
+  // Seat edge highlight
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 0.3;
+  ctx.beginPath();
+  ctx.moveTo(-12, -20);
+  ctx.bezierCurveTo(-6, -21.5, 0, -20.5, 5, -19);
+  ctx.stroke();
 
-  // ── Footpegs ──
+  // ── Footpegs (driver + folding passenger peg) ──
   ctx.fillStyle = '#666';
   ctx.strokeStyle = '#444';
   ctx.lineWidth = 1;
@@ -4092,20 +4476,38 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.roundRect(4, -1, 5, 2, 0.5);
   ctx.fill();
   ctx.stroke();
-  // Passenger footpeg
+  // Serrated grip on driver peg
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 0.3;
+  for (let s = 0; s < 3; s++) {
+    ctx.beginPath();
+    ctx.moveTo(5 + s * 1.2, -0.8);
+    ctx.lineTo(5 + s * 1.2, 0.8);
+    ctx.stroke();
+  }
+  // Passenger footpeg (folding style)
+  ctx.fillStyle = '#555';
+  ctx.strokeStyle = '#444';
+  ctx.lineWidth = 0.8;
+  // Mount bracket
   ctx.beginPath();
-  ctx.roundRect(-10, -1, 5, 2, 0.5);
+  ctx.moveTo(-8, -2);
+  ctx.lineTo(-10, -1);
+  ctx.stroke();
+  // Peg
+  ctx.beginPath();
+  ctx.roundRect(-12, -1.5, 4, 1.5, 0.5);
   ctx.fill();
   ctx.stroke();
 
-  // ── Handlebar (with mirrors) — curves INWARD toward driver ──
+  // ── Handlebar (with brake/clutch levers + instrument cluster) ──
   ctx.strokeStyle = '#666';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(10, -18);
   ctx.quadraticCurveTo(8, -22, 5, -24);
   ctx.stroke();
-  // Grips (rubber)
+  // Grips (rubber texture)
   ctx.strokeStyle = '#222';
   ctx.lineWidth = 3.5;
   ctx.lineCap = 'round';
@@ -4114,6 +4516,26 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.lineTo(4, -25.5);
   ctx.stroke();
   ctx.lineCap = 'butt';
+  // Grip texture lines
+  ctx.strokeStyle = 'rgba(60,60,60,0.3)';
+  ctx.lineWidth = 0.3;
+  for (let gr = 0; gr < 4; gr++) {
+    const gy = -24.2 - gr * 0.35;
+    ctx.beginPath();
+    ctx.moveTo(3.8, gy);
+    ctx.lineTo(5.2, gy);
+    ctx.stroke();
+  }
+  // Brake lever
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(5, -24.5);
+  ctx.lineTo(7, -23);
+  ctx.lineTo(8.5, -21);
+  ctx.stroke();
+  // Clutch lever (other side implied)
+
   // Mirror
   ctx.fillStyle = 'rgba(150,200,255,0.4)';
   ctx.strokeStyle = '#555';
@@ -4121,6 +4543,48 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.beginPath();
   ctx.ellipse(3, -26.5, 2, 1.2, 0.3, 0, Math.PI * 2);
   ctx.fill();
+  ctx.stroke();
+  // Mirror stalk
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(4, -25.5);
+  ctx.lineTo(3.5, -26);
+  ctx.stroke();
+
+  // ── Instrument cluster (backlit) ──
+  ctx.fillStyle = 'rgba(20,20,20,0.8)';
+  ctx.beginPath();
+  ctx.roundRect(8, -16, 6, 3, 1);
+  ctx.fill();
+  // Screen glow
+  ctx.fillStyle = `rgba(100,200,150,${0.15 + Math.sin(g.elapsed * 2) * 0.05})`;
+  ctx.beginPath();
+  ctx.roundRect(8.5, -15.5, 5, 2, 0.5);
+  ctx.fill();
+  // Tiny indicators
+  ctx.fillStyle = 'rgba(50,200,100,0.3)';
+  ctx.beginPath();
+  ctx.arc(9.5, -14.5, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(200,100,50,0.2)';
+  ctx.beginPath();
+  ctx.arc(11, -14.5, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Small windscreen ──
+  ctx.strokeStyle = 'rgba(200,220,255,0.15)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(12, -16);
+  ctx.quadraticCurveTo(15, -20, 16, -22);
+  ctx.stroke();
+  // Windscreen reflection
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 0.4;
+  ctx.beginPath();
+  ctx.moveTo(13, -17);
+  ctx.quadraticCurveTo(14.5, -19.5, 15, -21);
   ctx.stroke();
 
   // ── Rear rack (for delivery box) ──
@@ -4132,7 +4596,15 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.lineTo(-22, -16);
   ctx.stroke();
 
-  // ── Orange delivery box (OTLOP) — drawn FIRST (behind characters) ──
+  // ── Rim lighting on body top edges ──
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(rearWX + 8, -18);
+  ctx.bezierCurveTo(-5, -21, 5, -20, 14, -16);
+  ctx.stroke();
+
+  // ── Orange delivery box (OTLOP) ──
   ctx.fillStyle = '#e8760a';
   const boxX = -24, boxY = -32, boxW = 16, boxH = 14;
   ctx.beginPath();
