@@ -5498,61 +5498,78 @@ function drawSlideTitle(ctx: CanvasRenderingContext2D, w: number, h: number, tex
   ctx.shadowColor = 'transparent';
 }
 
+// ── Helper: Glassmorphism Card ──
+function drawGlassCard(ctx: CanvasRenderingContext2D, x: number, y: number, cw: number, ch: number, accentColor: string, radius: number = 12) {
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+  roundRect(ctx, x, y, cw, ch, radius);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+  ctx.lineWidth = 0.5;
+  roundRect(ctx, x, y, cw, ch, radius);
+  ctx.stroke();
+  const lineW = cw * 0.5;
+  const lineX = x + (cw - lineW) / 2;
+  const prevAlpha = ctx.globalAlpha;
+  ctx.globalAlpha = 0.6;
+  ctx.fillStyle = accentColor;
+  roundRect(ctx, lineX, y + 1, lineW, 2, 1);
+  ctx.fill();
+  ctx.globalAlpha = prevAlpha;
+}
+
 // ── Slide 0: هدفك ──
 function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
   ctx.save();
   ctx.textAlign = 'center';
   ctx.direction = 'rtl';
 
-  drawSlideTitle(ctx, w, h, 'هدفك', 0.18);
+  drawSlideTitle(ctx, w, h, 'هدفك', 0.14);
+  drawGoldDivider(ctx, w, h * 0.18, t);
 
-  // Gold divider
-  drawGoldDivider(ctx, w, h * 0.22, t);
-
-  // Main text
-  ctx.fillStyle = 'rgba(230, 230, 230, 0.9)';
-  ctx.font = '18px Tajawal, sans-serif';
-  ctx.fillText('انجُ من السماء', w / 2, h * 0.32);
-
-  ctx.fillStyle = 'rgba(190, 190, 190, 0.75)';
+  const card1W = w * 0.82;
+  const card1H = h * 0.22;
+  const card1X = (w - card1W) / 2;
+  const card1Y = h * 0.23 + Math.sin(t * 1.5) * 2;
+  drawGlassCard(ctx, card1X, card1Y, card1W, card1H, 'rgba(239, 68, 68, 0.8)');
+  ctx.fillStyle = 'rgba(240, 240, 240, 0.95)';
+  ctx.font = 'bold 19px Tajawal, sans-serif';
+  ctx.fillText('انجُ من السماء', w / 2, card1Y + card1H * 0.35);
+  ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
   ctx.font = '15px Tajawal, sans-serif';
-  ctx.fillText('تسقط تهديدات من الأعلى.. اهرب أو أسقطها', w / 2, h * 0.39);
+  ctx.fillText('تسقط تهديدات من الأعلى', w / 2, card1Y + card1H * 0.58);
+  ctx.fillText('اهرب منها أو أسقطها', w / 2, card1Y + card1H * 0.78);
 
-  // Scoring mechanic — highlighted
-  ctx.fillStyle = 'rgba(251, 191, 36, 0.85)';
-  ctx.font = '16px Tajawal, sans-serif';
-  ctx.fillText('كلما سقط التهديد أقرب إليك', w / 2, h * 0.50);
-  ctx.fillText('حصلت على نقاط أكثر', w / 2, h * 0.56);
+  const card2W = w * 0.82;
+  const card2H = h * 0.26;
+  const card2X = (w - card2W) / 2;
+  const card2Y = card1Y + card1H + 16 + Math.sin(t * 1.5 + 1.5) * 2;
+  drawGlassCard(ctx, card2X, card2Y, card2W, card2H, 'rgba(251, 191, 36, 0.8)');
+  ctx.fillStyle = 'rgba(251, 191, 36, 0.95)';
+  ctx.font = 'bold 18px Tajawal, sans-serif';
+  ctx.fillText('نظام النقاط', w / 2, card2Y + card2H * 0.25);
+  ctx.fillStyle = 'rgba(230, 230, 230, 0.85)';
+  ctx.font = '15px Tajawal, sans-serif';
+  ctx.fillText('كلما سقط التهديد أقرب إليك', w / 2, card2Y + card2H * 0.48);
+  ctx.fillText('حصلت على نقاط أكثر', w / 2, card2Y + card2H * 0.65);
 
-  // Visual accent — danger zone illustration
-  const illustY = h * 0.67;
-  // Draw a simple player silhouette
-  ctx.fillStyle = 'rgba(100, 200, 255, 0.5)';
+  const vizY = card2Y + card2H * 0.85;
+  ctx.fillStyle = 'rgba(100, 200, 255, 0.6)';
   ctx.beginPath();
-  ctx.arc(w / 2, illustY, 8, 0, Math.PI * 2);
+  ctx.arc(w / 2, vizY, 5, 0, Math.PI * 2);
   ctx.fill();
-  // Draw falling threat nearby
-  const threatX = w / 2 + 30 + Math.sin(t * 2) * 5;
+  const threatOffset = 25 + Math.sin(t * 2) * 8;
   ctx.fillStyle = 'rgba(239, 68, 68, 0.6)';
   ctx.beginPath();
-  ctx.moveTo(threatX, illustY - 15);
-  ctx.lineTo(threatX - 6, illustY + 5);
-  ctx.lineTo(threatX + 6, illustY + 5);
-  ctx.closePath();
+  ctx.arc(w / 2 + threatOffset, vizY, 4, 0, Math.PI * 2);
   ctx.fill();
-  // Proximity arrow
-  ctx.strokeStyle = 'rgba(251, 191, 36, 0.5)';
+  ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
   ctx.lineWidth = 1;
-  ctx.setLineDash([3, 3]);
+  ctx.setLineDash([2, 2]);
   ctx.beginPath();
-  ctx.moveTo(w / 2 + 8, illustY);
-  ctx.lineTo(threatX - 6, illustY);
+  ctx.moveTo(w / 2 + 5, vizY);
+  ctx.lineTo(w / 2 + threatOffset - 4, vizY);
   ctx.stroke();
   ctx.setLineDash([]);
-  // Label
-  ctx.fillStyle = 'rgba(251, 191, 36, 0.6)';
-  ctx.font = '10px Tajawal, sans-serif';
-  ctx.fillText('= نقاط أكثر', w / 2 + 15, illustY - 20);
 
   ctx.restore();
 }
@@ -5563,39 +5580,35 @@ function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.textAlign = 'center';
   ctx.direction = 'rtl';
 
-  drawSlideTitle(ctx, w, h, 'التحكم والمعدات', 0.14);
+  drawSlideTitle(ctx, w, h, 'التحكم والمعدات', 0.12);
+  drawGoldDivider(ctx, w, h * 0.16, t);
 
-  drawGoldDivider(ctx, w, h * 0.18, t);
+  const ctrlW = w * 0.39;
+  const ctrlH = h * 0.1;
+  const ctrlGap = w * 0.04;
+  const ctrlY = h * 0.20 + Math.sin(t * 1.5) * 1.5;
 
-  // Controls section
-  const ctrlY = h * 0.27;
-  // Left side
-  ctx.fillStyle = 'rgba(100, 200, 255, 0.15)';
-  roundRect(ctx, w * 0.08, ctrlY - 16, w * 0.38, 34, 6);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(100, 200, 255, 0.8)';
-  ctx.font = '15px Tajawal, sans-serif';
-  ctx.fillText('الجهة اليسرى', w * 0.27, ctrlY);
+  const lx = w / 2 - ctrlGap / 2 - ctrlW;
+  drawGlassCard(ctx, lx, ctrlY, ctrlW, ctrlH, 'rgba(100, 200, 255, 0.7)');
+  ctx.fillStyle = 'rgba(100, 200, 255, 0.9)';
+  ctx.font = 'bold 15px Tajawal, sans-serif';
+  ctx.fillText('الجهة اليسرى', lx + ctrlW / 2, ctrlY + ctrlH * 0.45);
   ctx.fillStyle = 'rgba(180, 180, 180, 0.6)';
   ctx.font = '13px Tajawal, sans-serif';
-  ctx.fillText('تحريك', w * 0.27, ctrlY + 14);
+  ctx.fillText('تحريك', lx + ctrlW / 2, ctrlY + ctrlH * 0.75);
 
-  // Right side
-  ctx.fillStyle = 'rgba(239, 68, 68, 0.12)';
-  roundRect(ctx, w * 0.54, ctrlY - 16, w * 0.38, 34, 6);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(239, 130, 130, 0.8)';
-  ctx.font = '15px Tajawal, sans-serif';
-  ctx.fillText('الجهة اليمنى', w * 0.73, ctrlY);
+  const rx = w / 2 + ctrlGap / 2;
+  drawGlassCard(ctx, rx, ctrlY, ctrlW, ctrlH, 'rgba(239, 68, 68, 0.7)');
+  ctx.fillStyle = 'rgba(239, 130, 130, 0.9)';
+  ctx.font = 'bold 15px Tajawal, sans-serif';
+  ctx.fillText('الجهة اليمنى', rx + ctrlW / 2, ctrlY + ctrlH * 0.45);
   ctx.fillStyle = 'rgba(180, 180, 180, 0.6)';
   ctx.font = '13px Tajawal, sans-serif';
-  ctx.fillText('دحرجة', w * 0.73, ctrlY + 14);
+  ctx.fillText('دحرجة', rx + ctrlW / 2, ctrlY + ctrlH * 0.75);
 
-  // Power-ups list — clean minimal style
-  const puStartY = h * 0.42;
   ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
   ctx.font = '16px Tajawal, sans-serif';
-  ctx.fillText('التقط الصناديق للحصول على', w / 2, puStartY);
+  ctx.fillText('التقط الصناديق للحصول على', w / 2, ctrlY + ctrlH + 30);
 
   const items: { name: string; color: string }[] = [
     { name: 'إسعاف', color: '#22c55e' },
@@ -5606,29 +5619,28 @@ function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: numbe
     { name: 'اعتراض', color: '#f97316' },
   ];
 
-  const cols = 2;
-  const itemW = w * 0.38;
-  const startX = w / 2 - itemW;
-  const rowH = 28;
+  const gridCols = 3;
+  const itemW = (w * 0.82 - 16) / gridCols;
+  const itemH = h * 0.08;
+  const gridStartX = (w - (itemW * gridCols + 8 * (gridCols - 1))) / 2;
+  const gridStartY = ctrlY + ctrlH + 48;
 
   items.forEach((item, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const ix = startX + col * itemW + itemW / 2;
-    const iy = puStartY + 28 + row * rowH;
-
-    // Colored dot
+    const col = i % gridCols;
+    const row = Math.floor(i / gridCols);
+    const ix = gridStartX + col * (itemW + 8);
+    const iy = gridStartY + row * (itemH + 8) + Math.sin(t * 1.2 + i * 0.8) * 1;
+    drawGlassCard(ctx, ix, iy, itemW, itemH, item.color + 'aa', 8);
+    const prevA = ctx.globalAlpha;
     ctx.fillStyle = item.color;
     ctx.globalAlpha = 0.8;
     ctx.beginPath();
-    ctx.arc(ix + 28, iy - 4, 4, 0, Math.PI * 2);
+    ctx.arc(ix + itemW / 2 + 20, iy + itemH * 0.5, 4, 0, Math.PI * 2);
     ctx.fill();
-    ctx.globalAlpha = 1;
-
-    // Name
-    ctx.fillStyle = 'rgba(210, 210, 210, 0.75)';
-    ctx.font = '14px Tajawal, sans-serif';
-    ctx.fillText(item.name, ix, iy);
+    ctx.globalAlpha = prevA;
+    ctx.fillStyle = 'rgba(220, 220, 220, 0.8)';
+    ctx.font = '13px Tajawal, sans-serif';
+    ctx.fillText(item.name, ix + itemW / 2 - 4, iy + itemH * 0.55 + 4);
   });
 
   ctx.restore();
@@ -5640,25 +5652,27 @@ function renderTutorialSlide2(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.textAlign = 'center';
   ctx.direction = 'rtl';
 
-  drawSlideTitle(ctx, w, h, 'بطاقات الترقية', 0.15);
+  drawSlideTitle(ctx, w, h, 'بطاقات الترقية', 0.14);
+  drawGoldDivider(ctx, w, h * 0.18, t);
 
-  drawGoldDivider(ctx, w, h * 0.19, t);
-
-  // Description
-  ctx.fillStyle = 'rgba(220, 220, 220, 0.85)';
-  ctx.font = '16px Tajawal, sans-serif';
-  ctx.fillText('كل 3 موجات تحصل على بطاقة ترقية', w / 2, h * 0.28);
-  ctx.fillStyle = 'rgba(180, 180, 180, 0.7)';
+  const descW = w * 0.82;
+  const descH = h * 0.1;
+  const descX = (w - descW) / 2;
+  const descY = h * 0.22;
+  drawGlassCard(ctx, descX, descY, descW, descH, 'rgba(168, 85, 247, 0.6)');
+  ctx.fillStyle = 'rgba(230, 230, 230, 0.9)';
   ctx.font = '15px Tajawal, sans-serif';
-  ctx.fillText('اختر واحدة لتعزيز قدراتك', w / 2, h * 0.34);
+  ctx.fillText('كل 3 موجات تحصل على بطاقة ترقية', w / 2, descY + descH * 0.42);
+  ctx.fillStyle = 'rgba(190, 190, 190, 0.7)';
+  ctx.font = '14px Tajawal, sans-serif';
+  ctx.fillText('اختر واحدة لتعزيز قدراتك', w / 2, descY + descH * 0.75);
 
-  // Draw 3 sample upgrade cards
-  const cardW = Math.min(85, (w - 60) / 3);
+  const cardW = Math.min(90, (w - 56) / 3);
   const cardH = cardW * 1.4;
-  const cardGap = 12;
-  const totalW = cardW * 3 + cardGap * 2;
-  const cardsStartX = (w - totalW) / 2;
-  const cardY = h * 0.42;
+  const cardGap = 10;
+  const totalCardsW = cardW * 3 + cardGap * 2;
+  const cardsStartX = (w - totalCardsW) / 2;
+  const cardY = descY + descH + 20;
 
   const sampleCards = [
     { name: 'سرعة', color: '#3b82f6', icon: '→' },
@@ -5669,50 +5683,42 @@ function renderTutorialSlide2(ctx: CanvasRenderingContext2D, w: number, h: numbe
   sampleCards.forEach((card, i) => {
     const cx = cardsStartX + i * (cardW + cardGap);
     const hover = Math.sin(t * 2 + i * 1.2) * 3;
+    const isMiddle = i === 1;
+    if (isMiddle) { ctx.shadowColor = `${card.color}40`; ctx.shadowBlur = 20; }
 
-    // Card shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    roundRect(ctx, cx + 2, cardY + hover + 2, cardW, cardH, 8);
-    ctx.fill();
-
-    // Card background
     const cardBg = ctx.createLinearGradient(cx, cardY + hover, cx, cardY + hover + cardH);
     cardBg.addColorStop(0, 'rgba(30, 30, 50, 0.9)');
     cardBg.addColorStop(1, 'rgba(20, 20, 35, 0.95)');
     ctx.fillStyle = cardBg;
-    roundRect(ctx, cx, cardY + hover, cardW, cardH, 8);
+    roundRect(ctx, cx, cardY + hover, cardW, cardH, 10);
     ctx.fill();
-
-    // Card border
-    ctx.strokeStyle = `${card.color}44`;
-    ctx.lineWidth = 1;
-    roundRect(ctx, cx, cardY + hover, cardW, cardH, 8);
+    ctx.strokeStyle = isMiddle ? `${card.color}66` : `${card.color}33`;
+    ctx.lineWidth = isMiddle ? 1.5 : 0.8;
+    roundRect(ctx, cx, cardY + hover, cardW, cardH, 10);
     ctx.stroke();
+    ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
 
-    // Top accent line
+    const barW = cardW * 0.7;
+    const prevA = ctx.globalAlpha;
+    ctx.globalAlpha = 0.7;
     ctx.fillStyle = card.color;
-    ctx.globalAlpha = 0.6;
-    roundRect(ctx, cx + 4, cardY + hover + 4, cardW - 8, 3, 1);
+    roundRect(ctx, cx + (cardW - barW) / 2, cardY + hover + 3, barW, 3, 1.5);
     ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = prevA;
 
-    // Icon
     ctx.fillStyle = card.color;
-    ctx.font = 'bold 22px monospace';
+    ctx.font = 'bold 24px monospace';
     ctx.direction = 'ltr';
     ctx.fillText(card.icon, cx + cardW / 2, cardY + hover + cardH * 0.45);
     ctx.direction = 'rtl';
-
-    // Card name
     ctx.fillStyle = 'rgba(220, 220, 220, 0.85)';
-    ctx.font = '11px Tajawal, sans-serif';
+    ctx.font = '12px Tajawal, sans-serif';
     ctx.fillText(card.name, cx + cardW / 2, cardY + hover + cardH * 0.75);
   });
 
-  // Hint
   ctx.fillStyle = 'rgba(251, 191, 36, 0.5)';
   ctx.font = '14px Tajawal, sans-serif';
-  ctx.fillText('اختر بحكمة.. كل بطاقة تغيّر مجرى اللعبة', w / 2, cardY + cardH + 35);
+  ctx.fillText('اختر بحكمة.. كل بطاقة تغيّر مجرى اللعبة', w / 2, cardY + cardH + 30);
 
   ctx.restore();
 }
