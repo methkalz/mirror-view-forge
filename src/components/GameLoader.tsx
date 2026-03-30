@@ -279,7 +279,7 @@ const GameLoader: React.FC<GameLoaderProps> = ({ onLoaded, progress }) => {
             onTouchStart={e => (e.currentTarget.style.transform = 'scale(0.96)')}
             onTouchEnd={e => (e.currentTarget.style.transform = 'scale(1)')}
           >
-            ابدأ المغامرة ⚔️
+            التالي
           </button>
         )}
       </div>

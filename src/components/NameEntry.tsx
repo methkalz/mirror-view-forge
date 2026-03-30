@@ -379,10 +379,7 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
                     pointerEvents: 'none',
                   }} />
                 )}
-                <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <span>ابدأ المعركة</span>
-                  {hasName && <span style={{ fontSize: 16, opacity: 0.8 }}>⚔</span>}
-                </span>
+                <span style={{ position: 'relative', zIndex: 2 }}>أنا مُستعد</span>
               </button>
             </div>
           </div>
