@@ -1,35 +1,32 @@
 
 
-# جعل أزرار التحكم متوافقة مع جميع المتصفحات والأجهزة (Safe Area)
+# إصلاح مشكلة أزرار التحكم في Safari (شريط العنوان الديناميكي)
 
 ## المشكلة
-جميع الأزرار الأربعة (L, R, FIRE, ROLL) تستخدم `bottom: 95px` ثابت. على الهواتف ذات الشريط السفلي (مثل iPhone مع Home Indicator أو متصفحات بشريط عنوان سفلي مثل Safari/Chrome)، يمكن أن تتداخل الأزرار مع المنطقة المحجوزة للنظام وتصبح غير قابلة للاستخدام.
+`env(safe-area-inset-bottom)` يعالج فقط مؤشر Home على iPhone، لكنه **لا يتتبع** شريط عنوان Safari الديناميكي الذي يظهر ويختفي. لذلك الأزرار أحياناً تكون مرئية (عندما الشريط مخفي) وأحياناً محجوبة (عندما الشريط ظاهر).
 
-## الحل
+## الحل: استخدام `dvh` (Dynamic Viewport Height)
 
-### 1. `index.html` — تفعيل Safe Area
-- إضافة `viewport-fit=cover` لعنصر meta viewport ليسمح للتطبيق بالامتداد تحت المناطق المحجوزة
+بدل الاعتماد على `env()` فقط، نجعل الحاوية الرئيسية للعبة تستخدم `100dvh` بدلاً من `100vh`. وحدة `dvh` تتغير ديناميكياً مع ظهور/اختفاء شريط Safari، فتبقى الأزرار دائماً داخل المنطقة المرئية.
 
-### 2. `src/index.css` — متغير CSS للمسافة الآمنة
-- إضافة متغير CSS مخصص يحسب المسافة السفلية:
-  - `--safe-bottom: env(safe-area-inset-bottom, 0px)`
-- هذا يعمل تلقائياً: على الأجهزة بدون notch/bar يكون 0، وعلى iPhone مثلاً يكون ~34px
+### التفاصيل التقنية
 
-### 3. `src/components/SkyfallGame.tsx` — تعديل مواقع الأزرار
-- استبدال `bottom: 95` الثابت بحساب ديناميكي يأخذ بالاعتبار Safe Area
-- استخدام CSS `calc()` مع `env(safe-area-inset-bottom)`:
-  - `bottom: calc(95px + env(safe-area-inset-bottom, 0px))`
-- تطبيق هذا على جميع الأزرار الأربعة (L, R, FIRE, ROLL)
+### 1. `src/components/SkyfallGame.tsx`
+- تغيير ارتفاع الحاوية الرئيسية (سطر 345) وكل الشاشات من `100vh` إلى `100dvh` مع fallback:
+  - `height: '100dvh'` (مع fallback `100vh` للمتصفحات القديمة عبر CSS)
+- تغيير ارتفاع الـ canvas أيضاً
+- الأزرار تبقى `position: absolute` مع `bottom: calc(95px + env(safe-area-inset-bottom, 0px))` — لكن الآن الحاوية نفسها تتقلص مع شريط Safari فالأزرار ترتفع تلقائياً
 
-## التدفق
+### 2. `src/index.css` — إضافة متغير CSS للارتفاع الديناميكي
+- إضافة `--app-height: 100dvh` مع fallback `100vh`
+- استخدامه عبر `var(--app-height)` في الحاوية
+
 ```text
-جهاز عادي (بدون شريط سفلي):  bottom = 95px + 0 = 95px (كما هو)
-iPhone مع Home Indicator:     bottom = 95px + 34px = 129px (مرفوع)
-متصفح بشريط عنوان سفلي:      bottom = 95px + Xpx (مرفوع تلقائياً)
+Safari شريط مخفي:  dvh = vh = كامل الشاشة → أزرار في مكانها ✓
+Safari شريط ظاهر:  dvh < vh = شاشة أصغر → أزرار ترتفع تلقائياً ✓
 ```
 
-## الملفات المتأثرة
-- `index.html` — إضافة `viewport-fit=cover`
-- `src/index.css` — متغير safe area
-- `src/components/SkyfallGame.tsx` — تحديث bottom لجميع الأزرار
+### الملفات المتأثرة
+- `src/index.css` — متغير الارتفاع الديناميكي
+- `src/components/SkyfallGame.tsx` — استبدال `100vh` بـ `100dvh` في جميع الحاويات والـ canvas
 
