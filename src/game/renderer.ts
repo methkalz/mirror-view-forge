@@ -5115,18 +5115,13 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.textBaseline = 'middle';
     ctx.fillText(card.icon, cx + cardW / 2, iconY);
 
-    // ── Name (English) ──
+    // Arabic name only — RTL with Tajawal font
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 14px Arial, sans-serif';
+    ctx.font = 'bold 15px Tajawal, Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(card.name, cx + cardW / 2, cy + 105);
-
-    // Arabic name — RTL with Tajawal font
-    ctx.fillStyle = card.color;
-    ctx.font = 'bold 13px Tajawal, Arial, sans-serif';
     ctx.direction = 'rtl';
-    ctx.fillText(card.nameAr, cx + cardW / 2, cy + 126);
+    ctx.fillText(card.nameAr, cx + cardW / 2, cy + 115);
     ctx.direction = 'ltr';
 
     ctx.restore();
