@@ -114,7 +114,7 @@ const Admin: React.FC = () => {
 
   // ─── Render ───
   return (
-    <div style={{
+    <div className="admin-panel" style={{
       minHeight: '100vh',
       background: '#0a0f1a',
       color: '#e2e8f0',
