@@ -87,6 +87,7 @@ const DEFAULT_CONFIG: RemoteGameConfig = {
   developerUrl: null,
   showTitle: true,
   cameraMargin: 400,
+  bgLoop: false,
 };
 
 export async function fetchGameConfig(): Promise<RemoteGameConfig> {
