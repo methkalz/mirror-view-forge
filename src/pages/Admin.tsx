@@ -12,6 +12,7 @@ import {
 } from '@/game/config';
 import {
   fetchBackgroundConfig, updateBackgroundPhase, uploadBackgroundImage, deleteBackgroundImage,
+  createBackgroundPhase, deleteBackgroundPhase,
   type BackgroundPhase,
 } from '@/game/backgroundConfig';
 import { playSynthesizedPreview } from '@/game/audio';
