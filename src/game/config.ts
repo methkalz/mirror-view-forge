@@ -16,6 +16,7 @@ export interface RemoteGameConfig {
   developerUrl: string | null;
   showTitle: boolean;
   cameraMargin: number;
+  bgLoop: boolean;
 }
 
 export interface RemoteWaveConfig {
@@ -86,6 +87,7 @@ const DEFAULT_CONFIG: RemoteGameConfig = {
   developerUrl: null,
   showTitle: true,
   cameraMargin: 400,
+  bgLoop: false,
 };
 
 export async function fetchGameConfig(): Promise<RemoteGameConfig> {
@@ -110,6 +112,7 @@ export async function fetchGameConfig(): Promise<RemoteGameConfig> {
       developerUrl: (data as any).developer_url ?? null,
       showTitle: (data as any).show_title ?? true,
       cameraMargin: (data as any).camera_margin ?? 400,
+      bgLoop: (data as any).bg_loop ?? false,
     };
   } catch {
     return DEFAULT_CONFIG;
@@ -427,6 +430,7 @@ export async function updateGameConfig(config: Partial<RemoteGameConfig>): Promi
   if (config.developerUrl !== undefined) mapped.developer_url = config.developerUrl;
   if (config.showTitle !== undefined) mapped.show_title = config.showTitle;
   if (config.cameraMargin !== undefined) mapped.camera_margin = config.cameraMargin;
+  if (config.bgLoop !== undefined) mapped.bg_loop = config.bgLoop;
 
   const { data: rows } = await supabase.from('game_config').select('id').limit(1);
   if (!rows || rows.length === 0) return false;

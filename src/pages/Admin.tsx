@@ -291,7 +291,7 @@ const Admin: React.FC = () => {
 
         {tab === 'branding' && config && <BrandingPanel config={config} onSave={saveConfig} isDesktop={isDesktop} />}
 
-        {tab === 'backgrounds' && <BackgroundsPanel phases={bgPhases} setPhases={setBgPhases} isDesktop={isDesktop} />}
+        {tab === 'backgrounds' && <BackgroundsPanel phases={bgPhases} setPhases={setBgPhases} isDesktop={isDesktop} config={config} onSaveConfig={saveConfig} />}
 
         {tab === 'waves' && (
           <WavesPanel waves={waves} editingWave={editingWave} setEditingWave={setEditingWave} onSaveWave={handleSaveWave} onDeleteWave={handleDeleteWave} isDesktop={isDesktop}
@@ -1802,7 +1802,9 @@ const BackgroundsPanel: React.FC<{
   phases: BackgroundPhase[];
   setPhases: React.Dispatch<React.SetStateAction<BackgroundPhase[]>>;
   isDesktop: boolean;
-}> = ({ phases, setPhases, isDesktop }) => {
+  config: RemoteGameConfig | null;
+  onSaveConfig: (updates: Partial<RemoteGameConfig>) => Promise<void>;
+}> = ({ phases, setPhases, isDesktop, config, onSaveConfig }) => {
   const [uploading, setUploading] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [timelineHover, setTimelineHover] = useState<number | null>(null);
@@ -1905,6 +1907,33 @@ const BackgroundsPanel: React.FC<{
       <p style={{ fontSize: 11, color: 'rgba(148,163,184,0.4)', marginBottom: 24 }}>
         Manage background phases with smooth cross-fade transitions
       </p>
+
+      {/* ─── Loop Toggle ─── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '12px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.06)', marginBottom: 20,
+      }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>🔄 تكرار الخلفيات (Loop)</div>
+          <div style={{ fontSize: 11, color: 'rgba(148,163,184,0.5)', marginTop: 2 }}>بعد آخر مرحلة تعود الخلفية إلى الأولى وتتكرر</div>
+        </div>
+        <button
+          onClick={() => onSaveConfig({ bgLoop: !config?.bgLoop })}
+          style={{
+            width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+            background: config?.bgLoop ? '#22c55e' : 'rgba(255,255,255,0.1)',
+            position: 'relative', transition: 'background 0.2s',
+          }}
+        >
+          <div style={{
+            width: 18, height: 18, borderRadius: 9, background: '#fff',
+            position: 'absolute', top: 3,
+            left: config?.bgLoop ? 23 : 3,
+            transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+          }} />
+        </button>
+      </div>
 
       {/* ─── Enhanced Timeline ─── */}
       <div style={{ marginBottom: 28, padding: '16px 18px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}

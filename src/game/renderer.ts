@@ -20,6 +20,7 @@ let bgLayers: BgLayer[] = [];
 let bgPhases: BackgroundPhase[] = [];
 let bgConfigLoaded = false;
 let bgCameraMargin = 400;
+let bgLoopEnabled = false;
 
 /** Set camera margin from game config (legacy — per-phase margin takes priority) */
 export function setCameraMargin(margin: number) {
@@ -27,9 +28,10 @@ export function setCameraMargin(margin: number) {
 }
 
 /** Called once from GameLoader to inject background config */
-export function setBackgroundConfig(phases: BackgroundPhase[]) {
+export function setBackgroundConfig(phases: BackgroundPhase[], loop?: boolean) {
   bgPhases = phases;
   bgConfigLoaded = true;
+  bgLoopEnabled = loop ?? false;
   // Load images from URLs
   bgLayers = phases.map(p => {
     const img = new Image();
@@ -87,6 +89,16 @@ function getPhaseBlend(elapsed: number): {
 
   if (!bgConfigLoaded || bgPhases.length === 0) return defaultResult;
 
+  // ─── Loop support: wrap elapsed time ───
+  let effectiveElapsed = elapsed;
+  if (bgLoopEnabled && bgPhases.length >= 2) {
+    const lastPhase = bgPhases[bgPhases.length - 1];
+    const cycleLength = lastPhase.transitionStart + Math.max(0.001, lastPhase.fadeDuration || 60);
+    if (cycleLength > 0 && elapsed >= cycleLength) {
+      effectiveElapsed = elapsed % cycleLength;
+    }
+  }
+
   let resolvedIdx = 0;
 
   for (let i = 0; i < bgPhases.length - 1; i++) {
@@ -101,7 +113,7 @@ function getPhaseBlend(elapsed: number): {
     const fadeEnd = fadeStart + fadeDuration;
     const easingType = next.easingType || 'smoothstep';
 
-    if (elapsed < fadeStart) {
+    if (effectiveElapsed < fadeStart) {
       return {
         imgA,
         imgB: null,
@@ -117,8 +129,8 @@ function getPhaseBlend(elapsed: number): {
       };
     }
 
-    if (elapsed < fadeEnd) {
-      const linearFade = (elapsed - fadeStart) / (fadeEnd - fadeStart);
+    if (effectiveElapsed < fadeEnd) {
+      const linearFade = (effectiveElapsed - fadeStart) / (fadeEnd - fadeStart);
       const fade = applyEasing(linearFade, easingType);
       const imgB = nextLayer?.loaded ? nextLayer.image : null;
       const topA = parseRGB(current.overlayTop);
