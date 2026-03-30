@@ -167,23 +167,19 @@ function drawSingleImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h
 function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
   const { width: w, height: h } = g;
   const camX = g.camera.x;
-  const margin = 200;
-  const left = camX - margin;
-  const right = camX + w + margin;
-  const totalW = right - left;
   const parallax = 0.3;
 
   const blend = getPhaseBlend(g.elapsed);
 
   if (blend.imgA) {
     // Draw primary image
-    drawTiledImage(ctx, blend.imgA, h, camX, left, right, parallax);
+    drawSingleImage(ctx, blend.imgA, h, w, camX, parallax);
 
     // Cross-fade second image on top
     if (blend.imgB && blend.fade > 0) {
       ctx.save();
       ctx.globalAlpha = blend.fade;
-      drawTiledImage(ctx, blend.imgB, h, camX, left, right, parallax);
+      drawSingleImage(ctx, blend.imgB, h, w, camX, parallax);
       ctx.restore();
     }
   } else {
