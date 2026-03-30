@@ -1,48 +1,44 @@
 
 
-# إضافة خيارات نوع الانتقال ومدته إلى تبويب الخلفيات في لوحة التحكم
+# تحسين احترافية إعدادات الخلفية في لوحة التحكم
 
-## الفكرة
-نقل إعدادات نوع الانتقال (Easing) ومدة Cross-fade من الكود الثابت إلى لوحة التحكم، ليتمكن الأدمن من تعديلها مباشرة.
+## الوضع الحالي
+البانل الحالي يعمل لكنه بسيط: بطاقات متراصة مع sliders أساسية بدون تنظيم واضح أو معاينة حية.
 
-## التنفيذ
+## التحسينات المقترحة
 
-### 1. إضافة عمودين جديدين لجدول `background_config`
-```sql
-ALTER TABLE background_config 
-  ADD COLUMN fade_duration FLOAT DEFAULT 60,
-  ADD COLUMN easing_type TEXT DEFAULT 'smoothstep';
-```
-- `fade_duration`: مدة الانتقال بالثواني (افتراضي 60)
-- `easing_type`: نوع المنحنى (`linear`, `smoothstep`, `ease-in`, `ease-out`)
+### 1. إعادة هيكلة كل بطاقة مرحلة (Phase Card)
+- تقسيم داخلي إلى **3 أقسام واضحة** بعناوين:
+  - **📷 Image** — معاينة + رفع/حذف
+  - **⏱ Timing** — Start / End / Fade Duration مع عرض رقمي واضح
+  - **🎨 Overlay** — Opacity + ألوان RGB (top, mid, bottom) مع **color pickers**
+  - **⚡ Easing** — قائمة منسدلة + **منحنى بصري** يوضح شكل الـ easing المختار (رسم SVG صغير)
 
-### 2. `src/game/backgroundConfig.ts`
-- إضافة `fadeDuration` و `easingType` إلى واجهة `BackgroundPhase`
-- تحديث `fetchBackgroundConfig` و `updateBackgroundPhase` لتشمل الحقول الجديدة
+### 2. معاينة حية للـ Overlay
+- مربع صغير يعرض **gradient preview** بألوان الـ overlay الحالية فوق الصورة، ليرى الأدمن كيف ستبدو النتيجة النهائية
 
-### 3. `src/game/renderer.ts`
-- إضافة دوال الـ easing: `smoothstep`, `easeIn`, `easeOut`
-- تعديل `getPhaseBlend()`:
-  - قراءة `fadeDuration` من الـ config بدل القيمة الثابتة `60`
-  - تطبيق `easingType` من الـ config على قيمة الـ fade
-  - تطبيق نفس الـ easing على ألوان الـ overlay
+### 3. تحسين الـ Timeline Bar
+- إضافة **thumbnails** مصغرة لكل مرحلة في شريط الجدول الزمني
+- مؤشر "▶ NOW" يظهر أين سيكون اللاعب عند وقت معين (hover/drag)
 
-```text
-linear:      ████████████████████  (خطي ثابت)
-smoothstep:  ░░▒▒▓▓████████▓▓▒▒░░  (ناعم — الافتراضي)
-ease-in:     ░░░░░▒▒▓▓██████████  (بطيء البداية)
-ease-out:    ██████████▓▓▒▒░░░░░  (بطيء النهاية)
-```
+### 4. التحكم في ألوان الـ Overlay بـ Color Pickers
+- إضافة 3 حقول ألوان (Top, Mid, Bottom) لكل مرحلة باستخدام `<input type="color">`
+- تحويل من/إلى صيغة `"R,G,B"` المخزنة في قاعدة البيانات
 
-### 4. `src/pages/Admin.tsx` — تعديل `BackgroundsPanel`
-إضافة قسم جديد **"Transition Settings"** أعلى بطاقات المراحل يحتوي:
-- **Easing Type**: قائمة منسدلة (Linear / Smoothstep / Ease In / Ease Out)
-- **Fade Duration**: slider من 10 إلى 180 ثانية
-- هذه الإعدادات تُطبّق على كل مرحلة بشكل مستقل (كل بطاقة لها إعداداتها)
+### 5. منحنى Easing بصري (SVG)
+- رسم SVG صغير (80×40px) بجانب قائمة الـ easing يعرض شكل المنحنى المختار
 
-### الملفات المتأثرة
-- Migration SQL جديد (عمودين)
-- `src/game/backgroundConfig.ts` — حقول جديدة
-- `src/game/renderer.ts` — دوال easing + قراءة من config
-- `src/pages/Admin.tsx` — عناصر تحكم جديدة في BackgroundsPanel
+## التعديلات التقنية
+
+### `src/pages/Admin.tsx` — BackgroundsPanel
+- إضافة دوال `handleUpdateOverlayColor` للألوان الثلاث
+- مكون `EasingCurvePreview` — SVG يرسم المنحنى
+- مكون `OverlayPreview` — div بـ gradient فوق الصورة المصغرة
+- إعادة تنظيم البطاقة بأقسام منفصلة
+
+### `src/game/backgroundConfig.ts`
+- التأكد أن `updateBackgroundPhase` يدعم تحديث `overlayTop`, `overlayMid`, `overlayBottom` (موجود بالفعل)
+
+### ملفات متأثرة
+- `src/pages/Admin.tsx` فقط (تحسينات UI)
 
