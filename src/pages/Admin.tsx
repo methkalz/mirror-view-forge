@@ -1222,7 +1222,6 @@ function drawCoverImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cw
   }
   ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
 }
-};
 
 const BackgroundsPanel: React.FC<{
   phases: BackgroundPhase[];
