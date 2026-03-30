@@ -234,7 +234,7 @@ function drawBlurEdgeImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement,
 function drawBgImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, h: number, viewportW: number, camX: number, parallax: number, mode: DisplayMode, margin: number) {
   switch (mode) {
     case 'tiled':
-      drawTiledImage(ctx, img, h, viewportW, camX, parallax);
+      drawTiledImage(ctx, img, h, viewportW, camX, parallax, margin);
       break;
     case 'blur-edge':
       drawBlurEdgeImage(ctx, img, h, viewportW, camX, parallax, margin);
