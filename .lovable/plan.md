@@ -1,33 +1,34 @@
 
 
-# إضافة معاينة حية لانتقال الخلفيات في لوحة التحكم
+# إصلاح المعاينة المباشرة للخلفيات في لوحة التحكم
 
-## الفكرة
-زر "▶ Preview" في تبويب Backgrounds يشغّل محاكاة مضغوطة (5 ثوان لكل مرحلة) تعرض كيف تنتقل الخلفيات بإعدادات الـ easing والألوان الحالية — بدون انتظار 90 ثانية.
+## المشكلة
+مكون `BackgroundPreviewPlayer` يعاني من مشكلة أداء تمنعه من العمل بسلاسة:
 
-## التنفيذ في `src/pages/Admin.tsx`
+- `drawFrame` يستدعي `setProgress(...)` كل frame (60 مرة/ثانية)
+- هذا يسبب re-render لكامل المكون كل frame
+- `drawFrame` يعتمد على `playing` في dependency array الخاص بـ `useCallback`
+- كل re-render يُنشئ `drawFrame` جديد → `useEffect` يُلغي الـ RAF السابق ويبدأ واحد جديد
+- النتيجة: حلقة بدء/إلغاء متكررة تمنع الرسم المتواصل
 
-### 1. مكون `BackgroundPreviewPlayer`
-- **Canvas** بعرض كامل ونسبة 16:9، يرسم الخلفيات بنفس منطق `renderer.ts` (mirror tiling + cross-fade + overlay gradient)
-- **توقيت مضغوط**: يحسب `simulatedElapsed` بناءً على مراحل الـ config لكن بمدة 5 ثوان لكل مرحلة بدل القيم الحقيقية
-- يستخدم `requestAnimationFrame` لتحريك الانتقال
-- يطبّق نفس دوال `smoothstep`, `easeIn`, `easeOut` المستخدمة في المحرك
+## الحل
 
-### 2. عناصر التحكم
-- زر **▶ Preview / ⏹ Stop** فوق الـ Timeline
-- شريط تقدم (progress bar) يعرض الوقت المحاكى
-- مؤشر يبيّن أي مرحلة نشطة حالياً أثناء المعاينة
+### تعديل `src/pages/Admin.tsx` — مكون `BackgroundPreviewPlayer`
 
-### 3. المنطق
-```text
-3 مراحل × 5 ثوان = 15 ثانية إجمالي المعاينة
-المرحلة 1 (Day):    0s → 5s
-المرحلة 2 (Sunset): 5s → 10s  (مع fade بناءً على easingType)
-المرحلة 3 (Night):  10s → 15s (مع fade بناءً على easingType)
-```
-- يتم تحويل الـ `elapsed` المحاكى إلى الـ `elapsed` الحقيقي عبر mapping خطي
-- هذا يضمن تطبيق نفس الإعدادات (easing, overlay colors, opacity) بالضبط
+1. **استخدام `useRef` بدل `useState` لـ `playing`**:
+   - `playingRef = useRef(false)` لتجنب إعادة إنشاء `drawFrame`
+   - الاحتفاظ بـ `useState` فقط لتحديث الزر في الـ UI
+
+2. **تقليل استدعاءات `setProgress`**:
+   - تحديث progress كل ~100ms بدل كل frame باستخدام `lastProgressUpdate` ref
+
+3. **إزالة `playing` من dependencies الـ `drawFrame`**:
+   - استخدام `playingRef.current` داخل `drawFrame` بدل المتغير `playing`
+   - هذا يمنع إعادة إنشاء الدالة عند كل تغيير
+
+4. **تشغيل أول frame مباشرة في `handlePlay`**:
+   - `startTimeRef.current = performance.now()` ثم `requestAnimationFrame(drawFrame)` مباشرة
 
 ### ملف واحد فقط
-- `src/pages/Admin.tsx` — إضافة مكون المعاينة + زر التشغيل داخل `BackgroundsPanel`
+- `src/pages/Admin.tsx`
 
