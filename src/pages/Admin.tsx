@@ -769,7 +769,7 @@ const WavesPanel: React.FC<{
         </div>
       )}
 
-      {editingWave && <WaveEditor wave={editingWave} onSave={onSaveWave} onCancel={() => setEditingWave(null)} />}
+      {editingWave && <WaveEditor wave={editingWave} onSave={onSaveWave} onCancel={() => setEditingWave(null)} audioEntries={audioEntries} />}
     </div>
   );
 };
