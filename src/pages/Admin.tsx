@@ -1217,6 +1217,7 @@ const AudioPanel: React.FC<{
                     category: newSoundCategory,
                     label: newSoundLabel.trim(),
                     labelAr: newSoundLabelAr.trim(),
+                    ...(newSoundCategory === 'ambientFX' ? { intervalSeconds: 15, playMode: 'random' as PlayMode } : {}),
                   });
                   if (entry) {
                     setEntries(prev => [...prev, entry]);
