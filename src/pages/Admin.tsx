@@ -669,7 +669,8 @@ const WavesPanel: React.FC<{
                     <th style={{ padding: '8px 6px', textAlign: 'right', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>طائرات</th>
                     <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>شظايا</th>
                     <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>سلاح</th>
-                    <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>بوس</th>
+                     <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>بوس</th>
+                     <th style={{ padding: '8px 6px', textAlign: 'right', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>رسالة</th>
                   </tr>
                 </thead>
                 <tbody>
