@@ -663,6 +663,7 @@ export async function createAudioEntry(entry: {
     playMode: (data.play_mode || 'single') as PlayMode,
     intervalSeconds: data.interval_seconds,
     maxConcurrent: data.max_concurrent,
+    allowOverlap: (data as any).allow_overlap ?? false,
     files: [],
   };
 }
