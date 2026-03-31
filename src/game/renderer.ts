@@ -3355,28 +3355,14 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.globalAlpha = 1;
     effectY += 18;
   }
-  // Gas mask timer
-  if (p.gasMaskTimer > 0) {
-    const blink = p.gasMaskTimer < 3 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
-    ctx.globalAlpha = blink;
-    drawCircularProgress(20, effectY - 2, 5, p.gasMaskTimer / 15, '#16a34a');
-    ctx.fillStyle = '#16a34a';
-    ctx.font = 'bold 9px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(`كمامة ${p.gasMaskTimer.toFixed(1)}`, 30, effectY + 2);
+  // Gas mask owned icon
+  if (g.gasMaskOwned) {
     ctx.globalAlpha = 1;
-  }
-  // Gas mask owned icon (left side under effects)
-  if (g.gasMaskOwned && g.player.gasMaskTimer > 0) {
+    ctx.fillStyle = '#16a34a';
+    ctx.font = 'bold 11px Tajawal, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('😷 كمامة نشطة', 15, effectY + 2);
     effectY += 18;
-    const blink = g.player.gasMaskTimer < 3 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
-    ctx.globalAlpha = blink;
-    ctx.fillStyle = '#16a34a';
-    ctx.font = 'bold 11px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText('😷 كمامة', 15, effectY + 2);
-    drawCircularProgress(8, effectY - 2, 4, g.player.gasMaskTimer / 15, '#16a34a');
-    ctx.globalAlpha = 1;
   }
 
   // Gas mask purchase offer card — styled like upgrade cards
