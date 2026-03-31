@@ -800,8 +800,10 @@ export function startPeriodicAmbient() {
     }
   }
 
-  // Legacy fallback: if no periodic sounds configured, use default random ambient
-  if (periodicTimers.size === 0) {
+  // Legacy fallback: if no ambient-category sounds have periodic timers, add default random ambient
+  const ambientKeys = ['distantExplosion', 'windGust', 'distantSiren', 'thunder'];
+  const hasAmbientPeriodic = ambientKeys.some(k => periodicTimers.has(k));
+  if (!hasAmbientPeriodic) {
     const timer = setInterval(() => {
       const r = Math.random();
       if (r < 0.3) sfxDistantExplosion();
