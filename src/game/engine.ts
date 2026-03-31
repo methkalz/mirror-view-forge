@@ -605,6 +605,7 @@ function remoteToRecipe(r: RemoteWaveConfig): WaveRecipe {
     warningText: r.warningText,
     warningColor: r.warningColor,
     warningType: r.warningType,
+    warningSoundKey: r.warningSoundKey,
   };
 }
 
