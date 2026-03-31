@@ -1088,7 +1088,7 @@ const AudioPanel: React.FC<{
                       <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.3)' }}>{item.labelAr}</div>
                     </div>
                     <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.35)', width: 34, textAlign: 'right' }}>{Math.round(item.volume * 100)}%</span>
-                    <input type="range" min={0} max={2} step={0.05} value={item.volume} onChange={e => handleUpdate(item.id, { volume: parseFloat(e.target.value) })} style={{ width: 80, accentColor: meta.color }} />
+                    <input type="range" min={0} max={2} step={0.01} value={item.volume} onChange={e => handleUpdate(item.id, { volume: parseFloat(e.target.value) })} style={{ width: 80, accentColor: meta.color }} />
                     {item.category === 'ambientFX' && item.intervalSeconds != null && (
                       <span style={{ fontSize: 9, color: '#06b6d4', background: 'rgba(6,182,212,0.1)', padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>⏱{item.intervalSeconds}s</span>
                     )}
