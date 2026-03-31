@@ -390,6 +390,15 @@ export function sfxPickup() {
   setTimeout(() => playTone(1100, 0.04, 'sine', 0.05 * v), 150);
 }
 
+export function sfxScoreTick() {
+  if (!isSoundEnabled('scoreTick')) return;
+  if (playCustomAudio('scoreTick')) return;
+  const v = getSoundVolume('scoreTick', 1);
+  // Metallic click — short high-frequency ping with noise burst
+  playTone(2800 + Math.random() * 400, 0.025, 'square', 0.04 * v);
+  playNoise(0.02, 0.03 * v, { type: 'highpass', freq: 4000 });
+}
+
 export function sfxDamage() {
   if (!isSoundEnabled('damage')) return;
   if (playCustomAudio('damage')) return;
