@@ -13,6 +13,7 @@ interface SoundSetting {
   intervalSeconds: number | null;
   maxConcurrent: number;
   allowOverlap: boolean;
+  volumeMode: VolumeMode;
   files: AudioFileEntry[];
 }
 let audioSettings: Map<string, SoundSetting> = new Map();
