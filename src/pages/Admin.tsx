@@ -9,7 +9,7 @@ import {
   fetchDifficultyProfile, updateDifficultyProfile,
   fetchAudioConfig, updateAudioEntry, updateAudioCategory, uploadAudioFile, deleteAudioFile, listAudioLibrary,
   addAudioFile, removeAudioFile, fetchAnalytics, createAudioEntry, deleteAudioEntry, updateAudioFileVolume,
-  type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type GameAnalytics, type DifficultyProfile,
+  type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type VolumeMode, type GameAnalytics, type DifficultyProfile,
 } from '@/game/config';
 import {
   fetchBackgroundConfig, updateBackgroundPhase, uploadBackgroundImage, deleteBackgroundImage,
@@ -948,6 +948,7 @@ const AudioPanel: React.FC<{
     if (updates.intervalSeconds !== undefined) db.intervalSeconds = updates.intervalSeconds;
     if (updates.maxConcurrent !== undefined) db.maxConcurrent = updates.maxConcurrent;
     if (updates.allowOverlap !== undefined) db.allowOverlap = updates.allowOverlap;
+    if ((updates as any).volumeMode !== undefined) (db as any).volumeMode = (updates as any).volumeMode;
     if (Object.keys(db).length > 0) updateAudioEntry(id, db);
   };
 
@@ -1099,6 +1100,7 @@ const AudioPanel: React.FC<{
                       </div>
                       <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.3)' }}>{item.labelAr}</div>
                     </div>
+                    {item.volumeMode !== 'individual' && <>
                     <input type="number" min={0} max={200} step={1}
                       value={Math.round(item.volume * 100)}
                       onChange={e => { const v = Math.max(0, Math.min(200, parseInt(e.target.value) || 0)) / 100; handleUpdate(item.id, { volume: v }); }}
@@ -1106,6 +1108,7 @@ const AudioPanel: React.FC<{
                       style={{ width: 42, padding: '1px 3px', borderRadius: 5, border: `1px solid ${meta.color}22`, background: 'rgba(0,0,0,0.3)', color: 'rgba(148,163,184,0.6)', fontSize: 10, fontWeight: 700, textAlign: 'center' as const, outline: 'none' }} />
                     <span style={{ fontSize: 9, color: 'rgba(148,163,184,0.25)' }}>%</span>
                     <input type="range" min={0} max={2} step={0.01} value={item.volume} onChange={e => handleUpdate(item.id, { volume: parseFloat(e.target.value) })} style={{ width: 70, accentColor: meta.color }} />
+                    </>}
                     {item.category === 'ambientFX' && item.intervalSeconds != null && (
                       <span style={{ fontSize: 9, color: '#06b6d4', background: 'rgba(6,182,212,0.1)', padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>⏱{item.intervalSeconds}s</span>
                     )}
@@ -1154,6 +1157,18 @@ const AudioPanel: React.FC<{
                           color: item.allowOverlap ? '#86efac' : 'rgba(148,163,184,0.4)',
                         }}>
                           {item.allowOverlap ? '✅ تشغيل متزامن' : '🔇 ملف واحد فقط'}
+                      </button>
+                      </div>
+
+                      {/* Volume Mode Toggle */}
+                      <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.4)' }}>🎚️ Volume Mode</div>
+                        <button onClick={() => handleUpdate(item.id, { volumeMode: item.volumeMode === 'group' ? 'individual' : 'group' } as any)} style={{
+                          padding: '3px 10px', borderRadius: 8, fontSize: 10, border: 'none', cursor: 'pointer',
+                          background: item.volumeMode === 'individual' ? 'rgba(168,85,247,0.15)' : 'rgba(59,130,246,0.15)',
+                          color: item.volumeMode === 'individual' ? '#c084fc' : '#93c5fd',
+                        }}>
+                          {item.volumeMode === 'individual' ? '🎵 مستوى فردي لكل ملف' : '🔊 مستوى المجموعة'}
                         </button>
                       </div>
 
@@ -1164,6 +1179,7 @@ const AudioPanel: React.FC<{
                           <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 0', borderBottom: idx < item.files.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none', flexWrap: 'wrap' }}>
                             <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.3)', width: 18 }}>#{idx + 1}</span>
                             <span style={{ fontSize: 10, color: '#e2e8f0', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 60 }}>{f.fileName}</span>
+                            {item.volumeMode === 'individual' && <>
                             <input type="number" min={0} max={200} step={1}
                               value={Math.round(f.volume * 100)}
                               onChange={async e => {
@@ -1181,6 +1197,7 @@ const AudioPanel: React.FC<{
                                 setEntries(prev => prev.map(entry => entry.id === item.id ? { ...entry, files: entry.files.map(ff => ff.id === f.id ? { ...ff, volume: v } : ff) } : entry));
                               }}
                               style={{ width: 50, accentColor: meta.color }} />
+                            </>}
                             <button onClick={() => handlePreview(f.fileUrl)} style={smallBtn('rgba(59,130,246,0.15)', '#93c5fd')}>▶</button>
                             <button onClick={stopAllPreview} style={smallBtn('rgba(255,255,255,0.06)', 'rgba(148,163,184,0.4)')}>⏹</button>
                             <button onClick={() => handleRemoveFile(item.id, f.id, f.fileUrl)} style={smallBtn('rgba(220,38,38,0.12)', '#fca5a5')}>✕</button>

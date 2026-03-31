@@ -1,4 +1,4 @@
-import { fetchAudioConfig, type AudioConfigEntry, type AudioFileEntry, type PlayMode } from './config';
+import { fetchAudioConfig, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type VolumeMode } from './config';
 
 let audioCtx: AudioContext | null = null;
 let ambientNode: AudioBufferSourceNode | null = null;
@@ -13,6 +13,7 @@ interface SoundSetting {
   intervalSeconds: number | null;
   maxConcurrent: number;
   allowOverlap: boolean;
+  volumeMode: VolumeMode;
   files: AudioFileEntry[];
 }
 let audioSettings: Map<string, SoundSetting> = new Map();
@@ -39,6 +40,7 @@ export async function loadAudioSettings(onProgress?: (pct: number) => void) {
         intervalSeconds: e.intervalSeconds,
         maxConcurrent: e.maxConcurrent,
         allowOverlap: e.allowOverlap,
+        volumeMode: e.volumeMode,
         files: e.files,
       });
     }
@@ -63,6 +65,7 @@ export async function reloadAudioSettings() {
         intervalSeconds: e.intervalSeconds,
         maxConcurrent: e.maxConcurrent,
         allowOverlap: e.allowOverlap,
+        volumeMode: e.volumeMode,
         files: e.files,
       });
     }
@@ -175,8 +178,9 @@ function playCustomAudio(key: string): boolean {
   const src = ctx.createBufferSource();
   src.buffer = buffer;
   const gain = ctx.createGain();
-  // Apply both group volume and individual file volume
-  gain.gain.value = s.volume * file.volume;
+  // Apply volume based on volumeMode
+  const finalVolume = s.volumeMode === 'individual' ? file.volume : s.volume;
+  gain.gain.value = finalVolume;
   src.connect(gain).connect(ctx.destination);
   src.start();
 
