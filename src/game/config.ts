@@ -148,6 +148,7 @@ export async function fetchWaveConfigs(): Promise<RemoteWaveConfig[]> {
       warningText: w.warning_text ?? null,
       warningColor: w.warning_color ?? '#ef4444',
       warningType: w.warning_type ?? 'warning',
+      warningSoundKey: w.warning_sound_key ?? null,
     }));
   } catch {
     return [];
