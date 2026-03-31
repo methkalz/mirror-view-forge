@@ -6376,7 +6376,7 @@ function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.textAlign = 'center';
   ctx.direction = 'rtl';
 
-  drawSlideTitle(ctx, w, h, 'هدفك', 0.14);
+  drawSlideTitle(ctx, w, h, 'شرح عالسريع', 0.14);
   drawGoldDivider(ctx, w, h * 0.18, t);
 
   const card1W = w * 0.82;
