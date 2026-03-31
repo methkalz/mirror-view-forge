@@ -40,6 +40,7 @@ export async function loadAudioSettings(onProgress?: (pct: number) => void) {
         intervalSeconds: e.intervalSeconds,
         maxConcurrent: e.maxConcurrent,
         allowOverlap: e.allowOverlap,
+        volumeMode: e.volumeMode,
         files: e.files,
       });
     }
