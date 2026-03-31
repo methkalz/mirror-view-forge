@@ -136,6 +136,20 @@ function pickFile(key: string): AudioFileEntry | null {
       const idx = (sequentialIndex.get(key) || 0) % s.files.length;
       sequentialIndex.set(key, idx + 1);
       return s.files[idx];
+    } else if (mode === 'shuffle') {
+      // Fisher-Yates shuffle without repeat until all played
+      let queue = shuffleQueue.get(key);
+      if (!queue || queue.length === 0) {
+        queue = Array.from({ length: s.files.length }, (_, i) => i);
+        // Fisher-Yates
+        for (let i = queue.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [queue[i], queue[j]] = [queue[j], queue[i]];
+        }
+        shuffleQueue.set(key, queue);
+      }
+      const idx = queue.shift()!;
+      return s.files[idx];
     } else {
       return s.files[0];
     }
