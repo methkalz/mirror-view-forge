@@ -566,7 +566,7 @@ export async function fetchAudioConfig(): Promise<AudioConfigEntry[]> {
 export async function updateAudioEntry(id: string, updates: {
   volume?: number; enabled?: boolean; audioUrl?: string | null;
   playMode?: PlayMode; intervalSeconds?: number | null; maxConcurrent?: number;
-  allowOverlap?: boolean;
+  allowOverlap?: boolean; volumeMode?: VolumeMode;
 }): Promise<boolean> {
   const mapped: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (updates.volume !== undefined) mapped.volume = updates.volume;
