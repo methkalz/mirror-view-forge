@@ -1010,7 +1010,11 @@ const AudioPanel: React.FC<{
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
           <span style={{ fontSize: 18 }}>🎚️</span>
           <span style={{ fontSize: 13, fontWeight: 700, flex: 1 }}>Master Volume</span>
-          <span style={{ fontSize: 12, color: '#60a5fa', fontWeight: 600 }}>{entries.length > 0 ? Math.round(entries.reduce((a, e) => a + e.volume, 0) / entries.length * 100) : 100}%</span>
+          <input type="number" min={0} max={100} step={1}
+            value={entries.length > 0 ? Math.round(entries.reduce((a, e) => a + e.volume, 0) / entries.length * 100) : 100}
+            onChange={e => { const v = Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) / 100; for (const cat of categories) onCategoryUpdate(cat, { volume: v }); }}
+            style={{ width: 52, padding: '2px 4px', borderRadius: 6, border: '1px solid rgba(59,130,246,0.2)', background: 'rgba(0,0,0,0.3)', color: '#60a5fa', fontSize: 12, fontWeight: 700, textAlign: 'center' as const, outline: 'none' }} />
+          <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.4)' }}>%</span>
         </div>
         <input type="range" min={0} max={1} step={0.01}
           value={entries.length > 0 ? entries.reduce((a, e) => a + e.volume, 0) / entries.length : 1}
