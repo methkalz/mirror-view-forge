@@ -2440,7 +2440,7 @@ export function update(g: GameData, input: InputState, dt: number) {
 
         // Keep drones in upper portion of screen
         const minY = g.height * 0.08;
-        const maxY = g.height * 0.58;
+        const maxY = g.height * 0.42;
         d.pos.y = Math.max(minY, Math.min(maxY, d.pos.y));
         d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
 
