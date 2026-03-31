@@ -551,6 +551,7 @@ export async function fetchAudioConfig(): Promise<AudioConfigEntry[]> {
       playMode: ((r as any).play_mode || 'single') as PlayMode,
       intervalSeconds: (r as any).interval_seconds ?? null,
       maxConcurrent: (r as any).max_concurrent ?? 1,
+      allowOverlap: (r as any).allow_overlap ?? false,
       files: filesMap.get(r.id) || [],
     }));
   } catch {
