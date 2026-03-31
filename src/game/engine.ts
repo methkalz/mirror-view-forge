@@ -1328,6 +1328,8 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         g.gasMaskOfferDelay = 0;
         const cost = Math.max(10, Math.ceil(g.score * 0.1));
         g.gasMaskOffer = { active: true, timer: 8, cost };
+        g.slowMoFactor = 0.1; // Heavy slow-mo while offer is shown
+        sfxUpgradeAlert(); // Same sound as upgrade cards
       }
     }
 
@@ -1336,21 +1338,23 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
       g.gasMaskOffer.timer -= dt;
       if (g.gasMaskOffer.timer <= 0) {
         g.gasMaskOffer = null;
+        g.slowMoFactor = 1; // Restore normal speed
       }
       // Handle purchase via cardClick
       if (input.cardClick) {
         const { x, y } = input.cardClick;
-        // Card is centered: 140x195
-        const cardW = 140, cardH = 195;
+        // Card is centered: 200x270
+        const cardW = 200, cardH = 270;
         const cardX = (g.width - cardW) / 2;
-        const cardY = g.height * 0.5 - cardH / 2 + 20;
+        const cardY = g.height * 0.5 - cardH / 2;
         if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
           input.cardClick = null;
           if (g.score >= g.gasMaskOffer.cost) {
             g.score -= g.gasMaskOffer.cost;
             g.gasMaskOwned = true;
-            g.player.gasMaskTimer = 15;
             g.gasMaskOffer = null;
+            g.slowMoFactor = 1; // Restore normal speed
+            sfxUpgradeSelect(); // Same sound as upgrade selection
             addFloatingText(g, 'كمامة! 🛡️', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#16a34a');
             spawnParticles(g, g.player.pos, 10, '#16a34a', 90);
           } else {
