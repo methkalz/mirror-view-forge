@@ -62,6 +62,7 @@ export async function reloadAudioSettings() {
         playMode: e.playMode,
         intervalSeconds: e.intervalSeconds,
         maxConcurrent: e.maxConcurrent,
+        allowOverlap: e.allowOverlap,
         files: e.files,
       });
     }
