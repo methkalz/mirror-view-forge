@@ -1114,12 +1114,19 @@ const AudioPanel: React.FC<{
                         </div>
                       </div>
 
-                      <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.4)', whiteSpace: 'nowrap' }}>⏱ Interval (sec)</div>
-                        <input type="number" min={0} step={1} value={item.intervalSeconds ?? ''} placeholder="—"
-                          onChange={e => handleUpdate(item.id, { intervalSeconds: e.target.value ? parseFloat(e.target.value) : null } as any)}
-                          style={{ width: 64, padding: '5px 8px', borderRadius: 8, fontSize: 11, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.25)', color: '#f1f5f9', outline: 'none' }}
-                        />
+                      <div style={{ marginBottom: 12, padding: item.category === 'ambientFX' ? '10px 12px' : 0, borderRadius: 10, background: item.category === 'ambientFX' ? 'rgba(6,182,212,0.06)' : 'transparent', border: item.category === 'ambientFX' ? '1px solid rgba(6,182,212,0.12)' : 'none' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: item.category === 'ambientFX' ? 8 : 0 }}>
+                          <div style={{ fontSize: 10, color: item.category === 'ambientFX' ? '#06b6d4' : 'rgba(148,163,184,0.4)', whiteSpace: 'nowrap', fontWeight: item.category === 'ambientFX' ? 700 : 400 }}>⏱ Interval (sec)</div>
+                          <input type="number" min={0} step={1} value={item.intervalSeconds ?? ''} placeholder="—"
+                            onChange={e => handleUpdate(item.id, { intervalSeconds: e.target.value ? parseFloat(e.target.value) : null } as any)}
+                            style={{ width: 64, padding: '5px 8px', borderRadius: 8, fontSize: 11, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.25)', color: '#f1f5f9', outline: 'none' }}
+                          />
+                        </div>
+                        {item.category === 'ambientFX' && (
+                          <input type="range" min={5} max={120} step={1} value={item.intervalSeconds ?? 15}
+                            onChange={e => handleUpdate(item.id, { intervalSeconds: parseFloat(e.target.value) } as any)}
+                            style={{ width: '100%', accentColor: '#06b6d4' }} />
+                        )}
                       </div>
 
                       <div style={{ marginBottom: 10 }}>
