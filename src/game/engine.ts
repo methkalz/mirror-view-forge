@@ -2088,12 +2088,7 @@ export function update(g: GameData, input: InputState, dt: number) {
           g.firePools.length = 0;
           break;
         }
-        case 'gasmask': {
-          addFloatingText(g, 'GAS MASK!', { x: p.pos.x, y: p.pos.y - 40 }, '#16a34a');
-          spawnParticles(g, p.pos, 10, '#16a34a', 90);
-          p.gasMaskTimer = 15;
-          break;
-        }
+        // gasmask removed — now purchased via card only
         case 'water': {
           const heal = 20;
           p.health = Math.min(p.maxHealth, p.health + heal);
