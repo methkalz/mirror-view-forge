@@ -142,6 +142,7 @@ export function createGame(w: number, h: number): GameData {
     gasMaskOffer: null,
     gasMaskOwned: false,
     gasMaskOfferDelay: 0,
+    scoreCountdown: null,
   };
 }
 
