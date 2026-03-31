@@ -2469,6 +2469,7 @@ export function update(g: GameData, input: InputState, dt: number) {
             bomb.isClusterBomb = false;
             bomb.rotation = 0;
             bomb.trailTimer = 0;
+            g.activeHazardCount++;
             sfxWarning();
             addFloatingText(g, '💣', { x: d.pos.x, y: d.pos.y + 15 }, '#ef4444');
           }
