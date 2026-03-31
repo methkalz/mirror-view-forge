@@ -178,8 +178,9 @@ function playCustomAudio(key: string): boolean {
   const src = ctx.createBufferSource();
   src.buffer = buffer;
   const gain = ctx.createGain();
-  // Apply both group volume and individual file volume
-  gain.gain.value = s.volume * file.volume;
+  // Apply volume based on volumeMode
+  const finalVolume = s.volumeMode === 'individual' ? file.volume : s.volume;
+  gain.gain.value = finalVolume;
   src.connect(gain).connect(ctx.destination);
   src.start();
 
