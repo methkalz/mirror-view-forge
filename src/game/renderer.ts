@@ -3096,10 +3096,10 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.fillText(`${g.score}`, 0, 0);
   ctx.restore();
 
-  ctx.font = '10px monospace';
+  ctx.font = '10px Tajawal, sans-serif';
   ctx.fillStyle = '#666';
   ctx.textAlign = 'right';
-  ctx.fillText(`أعلى: ${g.highScore}`, w - 14, 42);
+  ctx.fillText(`أعلى علامة: ${g.highScore}`, w - 14, 42);
 
   // ─ Wave (removed — shown by renderWaveIndicator instead) ─
 
