@@ -391,18 +391,9 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
               background: 'linear-gradient(90deg, transparent, rgba(100,116,139,0.3), transparent)',
             }} />
             <p style={{
-              fontFamily: "'Tajawal', system-ui, sans-serif",
-              fontSize: 13,
-              color: 'rgba(100,116,139,0.65)',
-              fontWeight: 600,
-              direction: 'rtl',
-            }}>
-              تطوير: {developer}
-            </p>
-            <p style={{
               fontFamily: "monospace",
               fontSize: 10,
-              color: 'rgba(100,116,139,0.35)',
+              color: 'rgba(100,116,139,0.5)',
               letterSpacing: 3,
               textTransform: 'uppercase',
             }}>
