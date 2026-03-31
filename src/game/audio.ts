@@ -1076,6 +1076,8 @@ export async function startMenuMusic(): Promise<boolean> {
 }
 
 export function stopMenuMusic() {
+  cancelMenuMusicStart();
+
   const node = menuMusicNode;
   const gain = menuMusicGain;
   menuMusicNode = null;
@@ -1094,6 +1096,15 @@ export function stopMenuMusic() {
         node.disconnect();
       }
     } catch { /* already stopped */ }
+  }
+
+  // Also kill any menuMusic instances spawned via playCustomAudio
+  const extra = activeSources.get('menuMusic');
+  if (extra) {
+    for (const e of extra) {
+      try { e.source.stop(); e.source.disconnect(); } catch {}
+    }
+    activeSources.delete('menuMusic');
   }
 }
 
