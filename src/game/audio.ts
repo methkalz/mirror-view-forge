@@ -124,7 +124,9 @@ function getSoundVolume(key: string, baseVol: number): number {
   const s = audioSettings.get(key);
   if (!s) return baseVol;
   if (!s.enabled) return 0;
-  return baseVol * s.volume;
+  // Exponential scaling for perceptible slider response
+  const v = s.volume;
+  return baseVol * (v * v);
 }
 
 function isSoundEnabled(key: string): boolean {
