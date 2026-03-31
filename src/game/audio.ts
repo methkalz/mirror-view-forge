@@ -1006,10 +1006,12 @@ let menuMusicNode: AudioBufferSourceNode | null = null;
 let menuMusicGain: GainNode | null = null;
 let menuMusicStarting = false;
 let menuMusicAttemptId = 0;
+let menuMusicKilled = false;
 
 export function cancelMenuMusicStart() {
   menuMusicAttemptId++;
   menuMusicStarting = false;
+  menuMusicKilled = true;
 }
 
 export async function startMenuMusic(): Promise<boolean> {
