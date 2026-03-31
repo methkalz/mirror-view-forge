@@ -532,6 +532,7 @@ export async function fetchAudioConfig(): Promise<AudioConfigEntry[]> {
         fileUrl: f.file_url,
         fileName: f.file_name,
         sortOrder: f.sort_order,
+        volume: (f as any).volume ?? 1.0,
       };
       const arr = filesMap.get(f.sound_config_id) || [];
       arr.push(entry);
