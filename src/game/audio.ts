@@ -45,6 +45,38 @@ export async function loadAudioSettings(onProgress?: (pct: number) => void) {
   }
 }
 
+// Reload settings from DB without re-downloading audio files
+export async function reloadAudioSettings() {
+  try {
+    const entries = await fetchAudioConfig();
+    audioSettings.clear();
+    for (const e of entries) {
+      audioSettings.set(e.soundKey, {
+        volume: e.volume,
+        enabled: e.enabled,
+        audioUrl: e.audioUrl,
+        playMode: e.playMode,
+        intervalSeconds: e.intervalSeconds,
+        maxConcurrent: e.maxConcurrent,
+        files: e.files,
+      });
+    }
+    settingsLoaded = true;
+    // Update active ambient gain immediately
+    if (ambientGainNode && audioCtx) {
+      const newVol = getSoundVolume('ambient', ambientNode ? 0.5 : 0.15);
+      ambientGainNode.gain.setTargetAtTime(newVol, audioCtx.currentTime, 0.1);
+    }
+    // Update active menu music gain immediately
+    if (menuMusicGain && audioCtx) {
+      const newVol = getSoundVolume('menuMusic', 0.4);
+      menuMusicGain.gain.setTargetAtTime(newVol, audioCtx.currentTime, 0.1);
+    }
+  } catch {
+    // silently fail
+  }
+}
+
 async function preloadAllAudio(onProgress?: (pct: number) => void) {
   const ctx = getCtx();
   const urlsToLoad = new Set<string>();
