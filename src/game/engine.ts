@@ -1331,6 +1331,16 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
   if (g.wavePhase === 'active') {
     g.waveTimer -= dt;
 
+    // Gas mask offer delay countdown
+    if (g.gasMaskOfferDelay > 0) {
+      g.gasMaskOfferDelay -= dt;
+      if (g.gasMaskOfferDelay <= 0) {
+        g.gasMaskOfferDelay = 0;
+        const cost = Math.max(10, Math.ceil(g.score * 0.1));
+        g.gasMaskOffer = { active: true, timer: 8, cost };
+      }
+    }
+
     // Gas mask offer timer
     if (g.gasMaskOffer && g.gasMaskOffer.active) {
       g.gasMaskOffer.timer -= dt;
@@ -1340,10 +1350,10 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
       // Handle purchase via cardClick
       if (input.cardClick) {
         const { x, y } = input.cardClick;
-        // Card is at bottom center: 160x60
-        const cardW = 160, cardH = 60;
+        // Card is centered: 140x195
+        const cardW = 140, cardH = 195;
         const cardX = (g.width - cardW) / 2;
-        const cardY = g.height * 0.55;
+        const cardY = g.height * 0.5 - cardH / 2 + 20;
         if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
           input.cardClick = null;
           if (g.score >= g.gasMaskOffer.cost) {
