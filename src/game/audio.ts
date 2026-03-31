@@ -22,6 +22,8 @@ let settingsLoaded = false;
 const audioBufferCache: Map<string, AudioBuffer> = new Map();
 // ─── Sequential playback index per sound key ───
 const sequentialIndex: Map<string, number> = new Map();
+// ─── Shuffle queue per sound key ───
+const shuffleQueue: Map<string, number[]> = new Map();
 // ─── Periodic ambient timers ───
 const periodicTimers: Map<string, ReturnType<typeof setInterval>> = new Map();
 // ─── Active sources for overlap control ───
