@@ -471,6 +471,7 @@ export async function upsertWaveConfig(wave: RemoteWaveConfig): Promise<boolean>
     warning_text: wave.warningText,
     warning_color: wave.warningColor,
     warning_type: wave.warningType,
+    warning_sound_key: wave.warningSoundKey,
   };
 
   if (existing) {
