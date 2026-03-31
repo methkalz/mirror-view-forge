@@ -519,11 +519,11 @@ export function sfxBossExplosion() {
   if (!isSoundEnabled('bossExplosion')) return;
   if (playCustomAudio('bossExplosion')) return;
   const v = getSoundVolume('bossExplosion', 1);
-  playTone(30, 0.8, 'sawtooth', 0.15 * v);
-  playTone(50, 0.6, 'sine', 0.12 * v);
-  playNoise(0.8, 0.15 * v, { type: 'lowpass', freq: 500 });
-  setTimeout(() => { playNoise(0.5, 0.1 * v, { type: 'lowpass', freq: 300 }); playTone(25, 0.5, 'sine', 0.08 * v); }, 200);
-  setTimeout(() => playNoise(0.4, 0.06 * v, { type: 'bandpass', freq: 1000 }), 400);
+  playTone(30, 0.8, 'sawtooth', 0.25 * v);
+  playTone(50, 0.6, 'sine', 0.2 * v);
+  playNoise(0.8, 0.2 * v, { type: 'lowpass', freq: 500 });
+  setTimeout(() => { playNoise(0.5, 0.15 * v, { type: 'lowpass', freq: 300 }); playTone(25, 0.5, 'sine', 0.12 * v); }, 200);
+  setTimeout(() => playNoise(0.4, 0.1 * v, { type: 'bandpass', freq: 1000 }), 400);
 }
 
 export function sfxShoot1() {
