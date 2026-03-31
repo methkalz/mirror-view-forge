@@ -324,7 +324,8 @@ const SkyfallGame: React.FC = () => {
     const onPointerDown = (e: PointerEvent) => {
       if ((e.target as HTMLElement) !== canvas) return;
       e.preventDefault();
-      if (g.wavePhase === 'cards' && g.upgradeCards.length > 0) {
+      const hasGasMaskOffer = g.gasMaskOffer && g.gasMaskOffer.active;
+      if ((g.wavePhase === 'cards' && g.upgradeCards.length > 0) || hasGasMaskOffer) {
         const rect = canvas.getBoundingClientRect();
         inputRef.current.cardClick = { x: e.clientX - rect.left, y: e.clientY - rect.top };
         return;
