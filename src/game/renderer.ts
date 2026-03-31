@@ -2573,6 +2573,18 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.fill();
       ctx.shadowBlur = 0;
 
+      // Camera flash — periodic white burst
+      const flashCycle = Math.sin(g.elapsed * 2.5);
+      if (flashCycle > 0.95) {
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(0, d.size * 0.2, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
     } else if (d.tier === 'tracker') {
       // TRACKER: Stealth recon drone — dark metallic with delta wings
       const dir = facingRight ? 1 : -1;
