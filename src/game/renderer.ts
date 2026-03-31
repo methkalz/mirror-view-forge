@@ -6376,7 +6376,7 @@ function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.textAlign = 'center';
   ctx.direction = 'rtl';
 
-  drawSlideTitle(ctx, w, h, 'هدفك', 0.14);
+  drawSlideTitle(ctx, w, h, 'شرح عالسريع', 0.14);
   drawGoldDivider(ctx, w, h * 0.18, t);
 
   const card1W = w * 0.82;
@@ -6386,7 +6386,7 @@ function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: numbe
   drawGlassCard(ctx, card1X, card1Y, card1W, card1H, 'rgba(239, 68, 68, 0.8)');
   ctx.fillStyle = 'rgba(240, 240, 240, 0.95)';
   ctx.font = 'bold 19px Tajawal, sans-serif';
-  ctx.fillText('انجُ من السماء', w / 2, card1Y + card1H * 0.35);
+  ctx.fillText('هل تُجيد الهرب؟', w / 2, card1Y + card1H * 0.35);
   ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
   ctx.font = '15px Tajawal, sans-serif';
   ctx.fillText('تسقط تهديدات من الأعلى', w / 2, card1Y + card1H * 0.58);
@@ -6399,7 +6399,7 @@ function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: numbe
   drawGlassCard(ctx, card2X, card2Y, card2W, card2H, 'rgba(251, 191, 36, 0.8)');
   ctx.fillStyle = 'rgba(251, 191, 36, 0.95)';
   ctx.font = 'bold 18px Tajawal, sans-serif';
-  ctx.fillText('نظام النقاط', w / 2, card2Y + card2H * 0.25);
+  ctx.fillText('بعيد لكن قريب', w / 2, card2Y + card2H * 0.25);
   ctx.fillStyle = 'rgba(230, 230, 230, 0.85)';
   ctx.font = '15px Tajawal, sans-serif';
   ctx.fillText('كلما سقط التهديد أقرب إليك', w / 2, card2Y + card2H * 0.48);
