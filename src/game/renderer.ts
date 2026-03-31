@@ -2942,6 +2942,7 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
     elapsed: g.elapsed,
     isShooting,
     shootTimer: p.shootTimer,
+    hasGasMask: p.gasMaskTimer > 0,
   });
 
   // Health bar above head (drawn after character, in player's local space)
