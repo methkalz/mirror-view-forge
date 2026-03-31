@@ -7,7 +7,7 @@ export type GameState = 'start' | 'intro' | 'playing' | 'gameover';
 export type IntroPhase = 'bikeEnter' | 'bikeStop' | 'playerDismount' | 'bikeLeave' | 'done';
 
 export type HazardType = 'shrapnel' | 'missile' | 'cluster';
-export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike' | 'gasmask' | 'extinguisher' | 'water';
+export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike' | 'extinguisher' | 'water';
 export type DroneState = 'entering' | 'tracking' | 'bombing';
 export type DroneTier = 'scout' | 'tracker' | 'bomber' | 'cargo' | 'incendiary' | 'chemical';
 export type PlayerAnim = 'idle' | 'walk' | 'roll' | 'hit';

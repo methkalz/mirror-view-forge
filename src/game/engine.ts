@@ -2131,7 +2131,17 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Player protection timers ===
-  if (p.gasMaskTimer > 0) p.gasMaskTimer -= dt;
+  // Gas mask stays active as long as gasMaskOwned AND chemical threat exists
+  if (g.gasMaskOwned) {
+    p.gasMaskTimer = 1; // Keep active
+    const hasChemThreat = g.gasClouds.length > 0 || g.drones.some(d => d.active && d.tier === 'chemical');
+    if (!hasChemThreat) {
+      g.gasMaskOwned = false;
+      p.gasMaskTimer = 0;
+    }
+  } else if (p.gasMaskTimer > 0) {
+    p.gasMaskTimer -= dt;
+  }
   if (p.extinguisherTimer > 0) p.extinguisherTimer -= dt;
 
   // === Update Fire Pools ===
