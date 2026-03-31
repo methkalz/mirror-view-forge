@@ -1145,13 +1145,41 @@ const AudioPanel: React.FC<{
                         )}
                       </div>
 
+                      <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.4)' }}>🔀 Overlap</div>
+                        <button onClick={() => handleUpdate(item.id, { allowOverlap: !item.allowOverlap } as any)} style={{
+                          padding: '3px 10px', borderRadius: 8, fontSize: 10, border: 'none', cursor: 'pointer',
+                          background: item.allowOverlap ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
+                          color: item.allowOverlap ? '#86efac' : 'rgba(148,163,184,0.4)',
+                        }}>
+                          {item.allowOverlap ? '✅ تشغيل متزامن' : '🔇 ملف واحد فقط'}
+                        </button>
+                      </div>
+
                       <div style={{ marginBottom: 10 }}>
                         <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.4)', marginBottom: 6 }}>🎵 Audio Files ({item.files.length})</div>
                         {item.files.length === 0 && <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.2)', padding: '6px 0' }}>Using synthesized sound</div>}
                         {item.files.map((f, idx) => (
-                          <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: idx < item.files.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>
+                          <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 0', borderBottom: idx < item.files.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none', flexWrap: 'wrap' }}>
                             <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.3)', width: 18 }}>#{idx + 1}</span>
-                            <span style={{ fontSize: 10, color: '#e2e8f0', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.fileName}</span>
+                            <span style={{ fontSize: 10, color: '#e2e8f0', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 60 }}>{f.fileName}</span>
+                            <input type="number" min={0} max={200} step={1}
+                              value={Math.round(f.volume * 100)}
+                              onChange={async e => {
+                                const v = Math.max(0, Math.min(200, parseInt(e.target.value) || 0)) / 100;
+                                await updateAudioFileVolume(f.id, v);
+                                setEntries(prev => prev.map(entry => entry.id === item.id ? { ...entry, files: entry.files.map(ff => ff.id === f.id ? { ...ff, volume: v } : ff) } : entry));
+                              }}
+                              onClick={e => e.stopPropagation()}
+                              style={{ width: 38, padding: '1px 2px', borderRadius: 5, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.3)', color: 'rgba(148,163,184,0.6)', fontSize: 9, fontWeight: 700, textAlign: 'center' as const, outline: 'none' }} />
+                            <span style={{ fontSize: 8, color: 'rgba(148,163,184,0.2)' }}>%</span>
+                            <input type="range" min={0} max={2} step={0.01} value={f.volume}
+                              onChange={async e => {
+                                const v = parseFloat(e.target.value);
+                                await updateAudioFileVolume(f.id, v);
+                                setEntries(prev => prev.map(entry => entry.id === item.id ? { ...entry, files: entry.files.map(ff => ff.id === f.id ? { ...ff, volume: v } : ff) } : entry));
+                              }}
+                              style={{ width: 50, accentColor: meta.color }} />
                             <button onClick={() => handlePreview(f.fileUrl)} style={smallBtn('rgba(59,130,246,0.15)', '#93c5fd')}>▶</button>
                             <button onClick={stopAllPreview} style={smallBtn('rgba(255,255,255,0.06)', 'rgba(148,163,184,0.4)')}>⏹</button>
                             <button onClick={() => handleRemoveFile(item.id, f.id, f.fileUrl)} style={smallBtn('rgba(220,38,38,0.12)', '#fca5a5')}>✕</button>
