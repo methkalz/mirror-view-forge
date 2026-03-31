@@ -1502,7 +1502,7 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     airstrike:    { base: '#fbbf24', light: '#fcd34d', dark: '#b45309' },
     interceptor:  { base: '#f97316', light: '#fb923c', dark: '#c2410c' },
     extinguisher: { base: '#dc2626', light: '#ef4444', dark: '#991b1b' },
-    gasmask:      { base: '#16a34a', light: '#22c55e', dark: '#14532d' },
+    
     water:        { base: '#0ea5e9', light: '#38bdf8', dark: '#0284c7' },
   };
 
@@ -1929,7 +1929,7 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     else if (pu.type === 'airstrike') drawAirstrikeIcon(ctx, iconScale);
     else if (pu.type === 'interceptor') drawInterceptorIcon(ctx, iconScale);
     else if (pu.type === 'extinguisher') drawExtinguisherIcon(ctx, iconScale);
-    else if (pu.type === 'gasmask') drawGasMaskIcon(ctx, iconScale);
+    
     else if (pu.type === 'water') drawWaterIcon(ctx, iconScale);
     ctx.restore();
 
@@ -3355,117 +3355,101 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.globalAlpha = 1;
     effectY += 18;
   }
-  // Gas mask timer
-  if (p.gasMaskTimer > 0) {
-    const blink = p.gasMaskTimer < 3 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
-    ctx.globalAlpha = blink;
-    drawCircularProgress(20, effectY - 2, 5, p.gasMaskTimer / 15, '#16a34a');
-    ctx.fillStyle = '#16a34a';
-    ctx.font = 'bold 9px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(`كمامة ${p.gasMaskTimer.toFixed(1)}`, 30, effectY + 2);
+  // Gas mask owned icon
+  if (g.gasMaskOwned) {
     ctx.globalAlpha = 1;
-  }
-  // Gas mask owned icon (left side under effects)
-  if (g.gasMaskOwned && g.player.gasMaskTimer > 0) {
+    ctx.fillStyle = '#16a34a';
+    ctx.font = 'bold 11px Tajawal, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('😷 كمامة نشطة', 15, effectY + 2);
     effectY += 18;
-    const blink = g.player.gasMaskTimer < 3 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
-    ctx.globalAlpha = blink;
-    ctx.fillStyle = '#16a34a';
-    ctx.font = 'bold 11px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText('😷 كمامة', 15, effectY + 2);
-    drawCircularProgress(8, effectY - 2, 4, g.player.gasMaskTimer / 15, '#16a34a');
-    ctx.globalAlpha = 1;
   }
 
-  // Gas mask purchase offer card — styled like upgrade cards
+  // Gas mask purchase offer card — styled like upgrade cards (large, prominent)
   if (g.gasMaskOffer && g.gasMaskOffer.active && g.state === 'playing') {
-    const cardW = 140, cardH = 195;
+    const cardW = 200, cardH = 270;
     const cardX = (g.width - cardW) / 2;
     const offerDuration = 8;
     const slideIn = Math.min(1, (offerDuration - g.gasMaskOffer.timer) * 4);
     const fadeOut = g.gasMaskOffer.timer < 1 ? g.gasMaskOffer.timer : 1;
-    const slideY = (1 - slideIn) * 60;
-    const cardY = g.height * 0.5 - cardH / 2 + 20 + slideY;
+    const slideY = (1 - slideIn) * 80;
+    const cardY = g.height * 0.5 - cardH / 2 + slideY;
 
-    // Dark overlay
-    ctx.fillStyle = `rgba(0, 0, 0, ${0.35 * slideIn * fadeOut})`;
+    // Heavy dark overlay
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.7 * slideIn * fadeOut})`;
     ctx.fillRect(0, 0, g.width, g.height);
 
     ctx.globalAlpha = slideIn * fadeOut;
 
     // Card shadow
-    ctx.shadowColor = 'rgba(0, 200, 80, 0.3)';
-    ctx.shadowBlur = 20;
+    ctx.shadowColor = 'rgba(0, 200, 80, 0.4)';
+    ctx.shadowBlur = 30;
 
     // Card background gradient
     const bgGrad = ctx.createLinearGradient(cardX, cardY, cardX, cardY + cardH);
-    bgGrad.addColorStop(0, 'rgba(20, 83, 45, 0.95)');
-    bgGrad.addColorStop(0.5, 'rgba(15, 60, 35, 0.95)');
-    bgGrad.addColorStop(1, 'rgba(10, 40, 25, 0.95)');
+    bgGrad.addColorStop(0, 'rgba(20, 83, 45, 0.97)');
+    bgGrad.addColorStop(0.5, 'rgba(15, 60, 35, 0.97)');
+    bgGrad.addColorStop(1, 'rgba(10, 40, 25, 0.97)');
     ctx.fillStyle = bgGrad;
-    roundRect(ctx, cardX, cardY, cardW, cardH, 14);
+    roundRect(ctx, cardX, cardY, cardW, cardH, 16);
     ctx.fill();
 
-    // Reset shadow
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
 
     // Border glow
     ctx.strokeStyle = `rgba(74, 222, 128, ${0.5 + Math.sin(g.elapsed * 3) * 0.2})`;
-    ctx.lineWidth = 2;
-    roundRect(ctx, cardX, cardY, cardW, cardH, 14);
+    ctx.lineWidth = 2.5;
+    roundRect(ctx, cardX, cardY, cardW, cardH, 16);
     ctx.stroke();
 
-    // Inner subtle border
+    // Inner border
     ctx.strokeStyle = 'rgba(74, 222, 128, 0.15)';
     ctx.lineWidth = 1;
-    roundRect(ctx, cardX + 3, cardY + 3, cardW - 6, cardH - 6, 11);
+    roundRect(ctx, cardX + 4, cardY + 4, cardW - 8, cardH - 8, 13);
     ctx.stroke();
 
     const cx = cardX + cardW / 2;
 
     // Icon circle background
-    const iconY = cardY + 50;
-    const iconGrad = ctx.createRadialGradient(cx, iconY, 0, cx, iconY, 28);
+    const iconY = cardY + 65;
+    const iconGrad = ctx.createRadialGradient(cx, iconY, 0, cx, iconY, 36);
     iconGrad.addColorStop(0, 'rgba(74, 222, 128, 0.25)');
     iconGrad.addColorStop(1, 'rgba(74, 222, 128, 0.05)');
     ctx.fillStyle = iconGrad;
     ctx.beginPath();
-    ctx.arc(cx, iconY, 28, 0, Math.PI * 2);
+    ctx.arc(cx, iconY, 36, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = 'rgba(74, 222, 128, 0.3)';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Gas mask icon (drawn)
+    // Gas mask icon (drawn larger)
     ctx.save();
     ctx.translate(cx, iconY);
+    const s = 1.4;
     // Mask body
     ctx.fillStyle = '#2d5a3d';
     ctx.beginPath();
-    ctx.ellipse(0, 2, 16, 14, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 2 * s, 16 * s, 14 * s, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#4ade80';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     ctx.stroke();
     // Eye windows
     ctx.fillStyle = 'rgba(180, 255, 200, 0.4)';
     ctx.strokeStyle = '#3a7a50';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.ellipse(-6, -2, 4, 3.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    ctx.ellipse(-6 * s, -2 * s, 4 * s, 3.5 * s, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
     ctx.beginPath();
-    ctx.ellipse(6, -2, 4, 3.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    ctx.ellipse(6 * s, -2 * s, 4 * s, 3.5 * s, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
     // Filter canister
     ctx.fillStyle = '#1a3a25';
     ctx.beginPath();
-    ctx.arc(0, 10, 5, 0, Math.PI * 2);
+    ctx.arc(0, 10 * s, 5 * s, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#4ade80';
     ctx.lineWidth = 1;
@@ -3474,55 +3458,51 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.strokeStyle = 'rgba(74, 222, 128, 0.4)';
     ctx.lineWidth = 0.8;
     ctx.beginPath();
-    ctx.moveTo(-3, 9);
-    ctx.lineTo(3, 9);
-    ctx.moveTo(-2, 11);
-    ctx.lineTo(2, 11);
+    ctx.moveTo(-3 * s, 9 * s); ctx.lineTo(3 * s, 9 * s);
+    ctx.moveTo(-2 * s, 11 * s); ctx.lineTo(2 * s, 11 * s);
     ctx.stroke();
     // Straps
     ctx.strokeStyle = 'rgba(74, 222, 128, 0.3)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(-14, -2);
-    ctx.lineTo(-18, -6);
-    ctx.moveTo(14, -2);
-    ctx.lineTo(18, -6);
+    ctx.moveTo(-14 * s, -2 * s); ctx.lineTo(-18 * s, -6 * s);
+    ctx.moveTo(14 * s, -2 * s); ctx.lineTo(18 * s, -6 * s);
     ctx.stroke();
     ctx.restore();
 
     // Title — Arabic
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 15px Tajawal, sans-serif';
+    ctx.font = 'bold 20px Tajawal, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.direction = 'rtl';
-    ctx.fillText('كمامة غاز', cx, cardY + 92);
+    ctx.fillText('كمامة غاز', cx, cardY + 120);
 
     // Hint text
-    ctx.fillStyle = 'rgba(200, 255, 200, 0.7)';
-    ctx.font = '11px Tajawal, sans-serif';
-    ctx.fillText('احمِ نفسك من الغاز!', cx, cardY + 112);
+    ctx.fillStyle = 'rgba(200, 255, 200, 0.8)';
+    ctx.font = '13px Tajawal, sans-serif';
+    ctx.fillText('احمِ نفسك من الغاز!', cx, cardY + 148);
 
     // Cost
     ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 18px Tajawal, sans-serif';
-    ctx.fillText(`⭐ ${g.gasMaskOffer.cost}`, cx, cardY + 142);
+    ctx.font = 'bold 22px Tajawal, sans-serif';
+    ctx.fillText(`⭐ ${g.gasMaskOffer.cost}`, cx, cardY + 185);
 
     // "اضغط للشراء" hint
     const pressPulse = 0.5 + Math.sin(g.elapsed * 4) * 0.3;
     ctx.fillStyle = `rgba(74, 222, 128, ${pressPulse})`;
-    ctx.font = '10px Tajawal, sans-serif';
-    ctx.fillText('اضغط للشراء', cx, cardY + 165);
+    ctx.font = 'bold 14px Tajawal, sans-serif';
+    ctx.fillText('اضغط للشراء', cx, cardY + 218);
 
     ctx.direction = 'ltr';
 
     // Timer bar at bottom
     const timerRatio = g.gasMaskOffer.timer / offerDuration;
     ctx.fillStyle = 'rgba(74, 222, 128, 0.2)';
-    roundRect(ctx, cardX + 4, cardY + cardH - 8, cardW - 8, 4, 2);
+    roundRect(ctx, cardX + 6, cardY + cardH - 12, cardW - 12, 6, 3);
     ctx.fill();
     ctx.fillStyle = 'rgba(74, 222, 128, 0.7)';
-    roundRect(ctx, cardX + 4, cardY + cardH - 8, (cardW - 8) * timerRatio, 4, 2);
+    roundRect(ctx, cardX + 6, cardY + cardH - 12, (cardW - 12) * timerRatio, 6, 3);
     ctx.fill();
 
     ctx.globalAlpha = 1;

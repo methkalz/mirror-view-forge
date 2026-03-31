@@ -1005,17 +1005,7 @@ function applyWaveEvent(g: GameData, id: string) {
     return;
   }
 
-  // Gas mask drop
-  if (id.includes('gasmask')) {
-    const pu = getFromPool<PowerUp>(g.powerUps, () => ({
-      active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
-      parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
-    }), 20);
-    pu.type = 'gasmask';
-    pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
-    pu.size = 14; pu.parachuting = true; pu.fallSpeed = 30; pu.bobTimer = 0; pu.groundTimer = 0;
-    return;
-  }
+  // Gas mask drop — removed, now purchased via card only
 
   // Incendiary drones
   if (id.includes('incendiary')) {
@@ -1338,6 +1328,8 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         g.gasMaskOfferDelay = 0;
         const cost = Math.max(10, Math.ceil(g.score * 0.1));
         g.gasMaskOffer = { active: true, timer: 8, cost };
+        g.slowMoFactor = 0.1; // Heavy slow-mo while offer is shown
+        sfxUpgradeAlert(); // Same sound as upgrade cards
       }
     }
 
@@ -1346,21 +1338,23 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
       g.gasMaskOffer.timer -= dt;
       if (g.gasMaskOffer.timer <= 0) {
         g.gasMaskOffer = null;
+        g.slowMoFactor = 1; // Restore normal speed
       }
       // Handle purchase via cardClick
       if (input.cardClick) {
         const { x, y } = input.cardClick;
-        // Card is centered: 140x195
-        const cardW = 140, cardH = 195;
+        // Card is centered: 200x270
+        const cardW = 200, cardH = 270;
         const cardX = (g.width - cardW) / 2;
-        const cardY = g.height * 0.5 - cardH / 2 + 20;
+        const cardY = g.height * 0.5 - cardH / 2;
         if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
           input.cardClick = null;
           if (g.score >= g.gasMaskOffer.cost) {
             g.score -= g.gasMaskOffer.cost;
             g.gasMaskOwned = true;
-            g.player.gasMaskTimer = 15;
             g.gasMaskOffer = null;
+            g.slowMoFactor = 1; // Restore normal speed
+            sfxUpgradeSelect(); // Same sound as upgrade selection
             addFloatingText(g, 'كمامة! 🛡️', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#16a34a');
             spawnParticles(g, g.player.pos, 10, '#16a34a', 90);
           } else {
@@ -2094,12 +2088,7 @@ export function update(g: GameData, input: InputState, dt: number) {
           g.firePools.length = 0;
           break;
         }
-        case 'gasmask': {
-          addFloatingText(g, 'GAS MASK!', { x: p.pos.x, y: p.pos.y - 40 }, '#16a34a');
-          spawnParticles(g, p.pos, 10, '#16a34a', 90);
-          p.gasMaskTimer = 15;
-          break;
-        }
+        // gasmask removed — now purchased via card only
         case 'water': {
           const heal = 20;
           p.health = Math.min(p.maxHealth, p.health + heal);
@@ -2142,7 +2131,17 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Player protection timers ===
-  if (p.gasMaskTimer > 0) p.gasMaskTimer -= dt;
+  // Gas mask stays active as long as gasMaskOwned AND chemical threat exists
+  if (g.gasMaskOwned) {
+    p.gasMaskTimer = 1; // Keep active
+    const hasChemThreat = g.gasClouds.length > 0 || g.drones.some(d => d.active && d.tier === 'chemical');
+    if (!hasChemThreat) {
+      g.gasMaskOwned = false;
+      p.gasMaskTimer = 0;
+    }
+  } else if (p.gasMaskTimer > 0) {
+    p.gasMaskTimer -= dt;
+  }
   if (p.extinguisherTimer > 0) p.extinguisherTimer -= dt;
 
   // === Update Fire Pools ===
