@@ -288,8 +288,8 @@ const SkyfallGame: React.FC = () => {
           g.remoteWaveOverrides = wc;
           difficultyProfileRef.current = dp;
           waveOverridesRef.current = wc;
+          resetGame(g);
         });
-        resetGame(g);
       } else if (g.state === 'gameover') {
         resumeAudio();
         scoreSubmittedRef.current = false;
@@ -306,9 +306,9 @@ const SkyfallGame: React.FC = () => {
           g.remoteWaveOverrides = wc;
           difficultyProfileRef.current = dp;
           waveOverridesRef.current = wc;
+          g.tutorialPage = 3;
+          resetGame(g);
         });
-        g.tutorialPage = 3;
-        resetGame(g);
       }
     };
 

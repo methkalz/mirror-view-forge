@@ -230,8 +230,11 @@ export function resetGame(g: GameData) {
   // Wave system reset
   g.waveNumber = 1;
   g.wavePhase = 'active';
-  g.waveTimer = 60;
   g.levelNumber = 1;
+  // Apply wave 1 recipe from overrides/profile instead of hardcoded 60
+  const wave1Recipe = getWaveRecipe(1, g);
+  g.waveTimer = wave1Recipe.duration || 60;
+  g.bulletLevel = wave1Recipe.bulletLevel;
   g.deliveryBike = null;
   g.upgradeCards = [];
   g.selectedUpgrade = null;
@@ -650,7 +653,7 @@ function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
 }
 
 // Warning messages for new threats introduced in each wave
-const WAVE_WARNINGS: Record<number, { id: string; text: string; sub: string; color: string; type: 'warning' | 'upgrade' }[]> = {
+export const WAVE_WARNINGS: Record<number, { id: string; text: string; sub: string; color: string; type: 'warning' | 'upgrade' }[]> = {
   1: [{ id: 'w1_shrapnel', text: 'تحذير: شظايا متساقطة!', sub: '', color: '#ef4444', type: 'warning' }],
   2: [{ id: 'w2_missile', text: 'تحذير: صواريخ قادمة!', sub: '', color: '#dc2626', type: 'warning' }],
   3: [{ id: 'w3_bullet2', text: 'تطوير: طلقة مزدوجة', sub: '', color: '#22c55e', type: 'upgrade' }],
