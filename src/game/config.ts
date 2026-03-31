@@ -38,6 +38,7 @@ export interface RemoteWaveConfig {
   warningText: string | null;
   warningColor: string;
   warningType: string;
+  warningSoundKey: string | null;
 }
 
 export interface DifficultyProfile {
