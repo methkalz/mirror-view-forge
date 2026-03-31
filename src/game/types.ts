@@ -349,6 +349,8 @@ export interface GameData {
   gasMaskOffer: { active: boolean; timer: number; cost: number } | null;
   gasMaskOwned: boolean;
   gasMaskOfferDelay: number;
+  // Score countdown animation
+  scoreCountdown: { remaining: number; tickTimer: number; totalCost: number } | null;
 }
 
 export interface InputState {

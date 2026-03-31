@@ -1351,11 +1351,13 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
           input.cardClick = null;
           if (g.score >= g.gasMaskOffer.cost) {
-            g.score -= g.gasMaskOffer.cost;
+            // Start score countdown animation instead of instant deduction
+            const cost = g.gasMaskOffer.cost;
+            g.scoreCountdown = { remaining: cost, tickTimer: 0, totalCost: cost };
             g.gasMaskOwned = true;
             g.gasMaskOffer = null;
-            g.slowMoFactor = 1; // Restore normal speed
-            sfxUpgradeSelect(); // Same sound as upgrade selection
+            g.slowMoFactor = 0.5; // Partial slow-mo during countdown
+            sfxUpgradeSelect();
             addFloatingText(g, 'كمامة! 🛡️', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#16a34a');
             spawnParticles(g, g.player.pos, 10, '#16a34a', 90);
           } else {
