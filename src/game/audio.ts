@@ -508,7 +508,7 @@ export function sfxBossSiren() {
   osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.5);
   osc.frequency.linearRampToValueAtTime(400, ctx.currentTime + 1.0);
   osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 1.5);
-  gain.gain.setValueAtTime(0.08 * v, ctx.currentTime);
+  gain.gain.setValueAtTime(0.2 * v, ctx.currentTime);
   gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 2);
   osc.connect(gain).connect(ctx.destination);
   osc.start();
