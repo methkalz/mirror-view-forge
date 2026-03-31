@@ -892,6 +892,7 @@ const AnalyticsPanel: React.FC<{ data: GameAnalytics; onRefresh: () => void; isM
 // ─── Audio Panel ───
 const CATEGORY_META: Record<string, { icon: string; label: string; labelAr: string; color: string }> = {
   ambient: { icon: '🌬️', label: 'Ambient', labelAr: 'خلفية', color: '#22d3ee' },
+  ambientFX: { icon: '🎵', label: 'Ambient FX', labelAr: 'أصوات مرافقة', color: '#06b6d4' },
   threats: { icon: '💥', label: 'Threats', labelAr: 'تهديدات', color: '#f87171' },
   combat: { icon: '🔫', label: 'Combat', labelAr: 'قتال', color: '#fb923c' },
   player: { icon: '🏃', label: 'Player', labelAr: 'اللاعب', color: '#a78bfa' },
@@ -1088,6 +1089,9 @@ const AudioPanel: React.FC<{
                     </div>
                     <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.35)', width: 34, textAlign: 'right' }}>{Math.round(item.volume * 100)}%</span>
                     <input type="range" min={0} max={2} step={0.05} value={item.volume} onChange={e => handleUpdate(item.id, { volume: parseFloat(e.target.value) })} style={{ width: 80, accentColor: meta.color }} />
+                    {item.category === 'ambientFX' && item.intervalSeconds != null && (
+                      <span style={{ fontSize: 9, color: '#06b6d4', background: 'rgba(6,182,212,0.1)', padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>⏱{item.intervalSeconds}s</span>
+                    )}
                     <button onClick={() => handleUpdate(item.id, { enabled: !item.enabled })} style={{
                       width: 30, height: 16, borderRadius: 8, border: 'none', cursor: 'pointer',
                       background: item.enabled ? meta.color + '33' : 'rgba(255,255,255,0.06)', position: 'relative', transition: 'background 0.2s', flexShrink: 0,
@@ -1110,12 +1114,19 @@ const AudioPanel: React.FC<{
                         </div>
                       </div>
 
-                      <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.4)', whiteSpace: 'nowrap' }}>⏱ Interval (sec)</div>
-                        <input type="number" min={0} step={1} value={item.intervalSeconds ?? ''} placeholder="—"
-                          onChange={e => handleUpdate(item.id, { intervalSeconds: e.target.value ? parseFloat(e.target.value) : null } as any)}
-                          style={{ width: 64, padding: '5px 8px', borderRadius: 8, fontSize: 11, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.25)', color: '#f1f5f9', outline: 'none' }}
-                        />
+                      <div style={{ marginBottom: 12, padding: item.category === 'ambientFX' ? '10px 12px' : 0, borderRadius: 10, background: item.category === 'ambientFX' ? 'rgba(6,182,212,0.06)' : 'transparent', border: item.category === 'ambientFX' ? '1px solid rgba(6,182,212,0.12)' : 'none' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: item.category === 'ambientFX' ? 8 : 0 }}>
+                          <div style={{ fontSize: 10, color: item.category === 'ambientFX' ? '#06b6d4' : 'rgba(148,163,184,0.4)', whiteSpace: 'nowrap', fontWeight: item.category === 'ambientFX' ? 700 : 400 }}>⏱ Interval (sec)</div>
+                          <input type="number" min={0} step={1} value={item.intervalSeconds ?? ''} placeholder="—"
+                            onChange={e => handleUpdate(item.id, { intervalSeconds: e.target.value ? parseFloat(e.target.value) : null } as any)}
+                            style={{ width: 64, padding: '5px 8px', borderRadius: 8, fontSize: 11, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.25)', color: '#f1f5f9', outline: 'none' }}
+                          />
+                        </div>
+                        {item.category === 'ambientFX' && (
+                          <input type="range" min={5} max={120} step={1} value={item.intervalSeconds ?? 15}
+                            onChange={e => handleUpdate(item.id, { intervalSeconds: parseFloat(e.target.value) } as any)}
+                            style={{ width: '100%', accentColor: '#06b6d4' }} />
+                        )}
                       </div>
 
                       <div style={{ marginBottom: 10 }}>
@@ -1206,6 +1217,7 @@ const AudioPanel: React.FC<{
                     category: newSoundCategory,
                     label: newSoundLabel.trim(),
                     labelAr: newSoundLabelAr.trim(),
+                    ...(newSoundCategory === 'ambientFX' ? { intervalSeconds: 15, playMode: 'random' as PlayMode } : {}),
                   });
                   if (entry) {
                     setEntries(prev => [...prev, entry]);

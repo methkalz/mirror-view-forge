@@ -72,6 +72,11 @@ export async function reloadAudioSettings() {
       const newVol = getSoundVolume('menuMusic', 0.4);
       menuMusicGain.gain.setTargetAtTime(newVol, audioCtx.currentTime, 0.1);
     }
+    // Restart periodic ambient timers with updated settings
+    if (periodicTimers.size > 0) {
+      stopPeriodicAmbient();
+      startPeriodicAmbient();
+    }
   } catch {
     // silently fail
   }
