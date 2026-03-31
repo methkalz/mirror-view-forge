@@ -5,7 +5,7 @@ import {
 } from './types';
 import type { DifficultyProfile, RemoteWaveConfig } from './config';
 import { getFromPool } from './pool';
-import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameStart, sfxUpgradeSelect, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber } from './audio';
+import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameStart, sfxUpgradeSelect, sfxScoreTick, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber } from './audio';
 
 const DASH_SPEED = 500;
 const DASH_DURATION = 0.25;
@@ -1378,8 +1378,8 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         g.score -= deduct;
         g.scoreCountdown.remaining -= deduct;
         g.scoreCountdown.tickTimer = 0.04; // Fast ticks
-        // Tick sound — use a quick pickup-like blip
-        sfxPickup();
+        // Metallic tick sound for score countdown
+        sfxScoreTick();
         if (g.scoreCountdown.remaining <= 0) {
           g.scoreCountdown = null;
           g.slowMoFactor = 1; // Restore normal speed
