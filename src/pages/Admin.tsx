@@ -1179,6 +1179,7 @@ const AudioPanel: React.FC<{
                           <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 0', borderBottom: idx < item.files.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none', flexWrap: 'wrap' }}>
                             <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.3)', width: 18 }}>#{idx + 1}</span>
                             <span style={{ fontSize: 10, color: '#e2e8f0', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 60 }}>{f.fileName}</span>
+                            {item.volumeMode === 'individual' && <>
                             <input type="number" min={0} max={200} step={1}
                               value={Math.round(f.volume * 100)}
                               onChange={async e => {
@@ -1196,6 +1197,7 @@ const AudioPanel: React.FC<{
                                 setEntries(prev => prev.map(entry => entry.id === item.id ? { ...entry, files: entry.files.map(ff => ff.id === f.id ? { ...ff, volume: v } : ff) } : entry));
                               }}
                               style={{ width: 50, accentColor: meta.color }} />
+                            </>}
                             <button onClick={() => handlePreview(f.fileUrl)} style={smallBtn('rgba(59,130,246,0.15)', '#93c5fd')}>▶</button>
                             <button onClick={stopAllPreview} style={smallBtn('rgba(255,255,255,0.06)', 'rgba(148,163,184,0.4)')}>⏹</button>
                             <button onClick={() => handleRemoveFile(item.id, f.id, f.fileUrl)} style={smallBtn('rgba(220,38,38,0.12)', '#fca5a5')}>✕</button>
