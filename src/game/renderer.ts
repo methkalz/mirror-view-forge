@@ -1929,7 +1929,7 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     else if (pu.type === 'airstrike') drawAirstrikeIcon(ctx, iconScale);
     else if (pu.type === 'interceptor') drawInterceptorIcon(ctx, iconScale);
     else if (pu.type === 'extinguisher') drawExtinguisherIcon(ctx, iconScale);
-    else if (pu.type === 'gasmask') drawGasMaskIcon(ctx, iconScale);
+    
     else if (pu.type === 'water') drawWaterIcon(ctx, iconScale);
     ctx.restore();
 
