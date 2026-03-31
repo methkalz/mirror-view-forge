@@ -1046,7 +1046,14 @@ const AudioPanel: React.FC<{
             </div>
 
             {expanded && <div style={{ padding: '0 16px 10px' }}>
-              <input type="range" min={0} max={1} step={0.01} value={catAvgVol} onChange={e => onCategoryUpdate(cat, { volume: parseFloat(e.target.value) })} style={{ width: '100%', accentColor: meta.color }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input type="range" min={0} max={1} step={0.01} value={catAvgVol} onChange={e => onCategoryUpdate(cat, { volume: parseFloat(e.target.value) })} style={{ flex: 1, accentColor: meta.color }} />
+                <input type="number" min={0} max={100} step={1}
+                  value={Math.round(catAvgVol * 100)}
+                  onChange={e => { const v = Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) / 100; onCategoryUpdate(cat, { volume: v }); }}
+                  style={{ width: 48, padding: '2px 4px', borderRadius: 6, border: `1px solid ${meta.color}22`, background: 'rgba(0,0,0,0.3)', color: meta.color, fontSize: 11, fontWeight: 700, textAlign: 'center' as const, outline: 'none' }} />
+                <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.35)' }}>%</span>
+              </div>
             </div>}
 
             {expanded && items.map(item => {
