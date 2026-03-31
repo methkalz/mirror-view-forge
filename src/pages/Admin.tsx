@@ -1012,7 +1012,7 @@ const AudioPanel: React.FC<{
           <span style={{ fontSize: 13, fontWeight: 700, flex: 1 }}>Master Volume</span>
           <span style={{ fontSize: 12, color: '#60a5fa', fontWeight: 600 }}>{entries.length > 0 ? Math.round(entries.reduce((a, e) => a + e.volume, 0) / entries.length * 100) : 100}%</span>
         </div>
-        <input type="range" min={0} max={1} step={0.05}
+        <input type="range" min={0} max={1} step={0.01}
           value={entries.length > 0 ? entries.reduce((a, e) => a + e.volume, 0) / entries.length : 1}
           onChange={e => { const v = parseFloat(e.target.value); for (const cat of categories) onCategoryUpdate(cat, { volume: v }); }}
           style={{ width: '100%', accentColor: '#3b82f6' }} />
@@ -1042,7 +1042,7 @@ const AudioPanel: React.FC<{
             </div>
 
             {expanded && <div style={{ padding: '0 16px 10px' }}>
-              <input type="range" min={0} max={1} step={0.05} value={catAvgVol} onChange={e => onCategoryUpdate(cat, { volume: parseFloat(e.target.value) })} style={{ width: '100%', accentColor: meta.color }} />
+              <input type="range" min={0} max={1} step={0.01} value={catAvgVol} onChange={e => onCategoryUpdate(cat, { volume: parseFloat(e.target.value) })} style={{ width: '100%', accentColor: meta.color }} />
             </div>}
 
             {expanded && items.map(item => {
@@ -1088,7 +1088,7 @@ const AudioPanel: React.FC<{
                       <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.3)' }}>{item.labelAr}</div>
                     </div>
                     <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.35)', width: 34, textAlign: 'right' }}>{Math.round(item.volume * 100)}%</span>
-                    <input type="range" min={0} max={2} step={0.05} value={item.volume} onChange={e => handleUpdate(item.id, { volume: parseFloat(e.target.value) })} style={{ width: 80, accentColor: meta.color }} />
+                    <input type="range" min={0} max={2} step={0.01} value={item.volume} onChange={e => handleUpdate(item.id, { volume: parseFloat(e.target.value) })} style={{ width: 80, accentColor: meta.color }} />
                     {item.category === 'ambientFX' && item.intervalSeconds != null && (
                       <span style={{ fontSize: 9, color: '#06b6d4', background: 'rgba(6,182,212,0.1)', padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>⏱{item.intervalSeconds}s</span>
                     )}
