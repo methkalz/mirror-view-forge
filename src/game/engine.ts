@@ -233,6 +233,7 @@ export function resetGame(g: GameData) {
   g.chemicalTimer = 200;
   g.gasMaskOffer = null;
   g.gasMaskOwned = false;
+  g.gasMaskOfferDelay = 0;
   // Wave system reset
   g.waveNumber = 1;
   g.wavePhase = 'active';
