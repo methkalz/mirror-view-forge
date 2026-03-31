@@ -17,6 +17,7 @@ import {
   type BackgroundPhase, type DisplayMode,
 } from '@/game/backgroundConfig';
 import { playSynthesizedPreview } from '@/game/audio';
+import { WAVE_WARNINGS } from '@/game/engine';
 
 type TabKey = 'analytics' | 'config' | 'branding' | 'backgrounds' | 'waves' | 'leaderboard' | 'audio';
 
