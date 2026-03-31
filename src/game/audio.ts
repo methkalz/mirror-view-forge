@@ -829,7 +829,6 @@ export function startPeriodicAmbient() {
 
   // Start periodic timers for sounds with intervalSeconds set
   for (const [key, s] of audioSettings) {
-    if (key === 'menuMusic') continue; // Menu music has its own lifecycle
     if (s.intervalSeconds && s.intervalSeconds > 0 && s.enabled) {
       const ms = s.intervalSeconds * 1000;
       const timer = setInterval(() => {
@@ -1006,18 +1005,15 @@ let menuMusicNode: AudioBufferSourceNode | null = null;
 let menuMusicGain: GainNode | null = null;
 let menuMusicStarting = false;
 let menuMusicAttemptId = 0;
-let menuMusicKilled = false;
 
 export function cancelMenuMusicStart() {
   menuMusicAttemptId++;
   menuMusicStarting = false;
-  menuMusicKilled = true;
 }
 
 export async function startMenuMusic(): Promise<boolean> {
-  menuMusicKilled = false;
-  if (menuMusicNode) return true;
-  if (menuMusicStarting) return false;
+  if (menuMusicNode) return true; // already playing
+  if (menuMusicStarting) return false; // another attempt in progress
   if (!isSoundEnabled('menuMusic')) return false;
 
   const myAttempt = ++menuMusicAttemptId;
@@ -1027,48 +1023,49 @@ export async function startMenuMusic(): Promise<boolean> {
     if (ctx.state === 'suspended') {
       await ctx.resume();
     }
-    if (menuMusicKilled || myAttempt !== menuMusicAttemptId) return false;
+    // After await: check if cancelled or another call succeeded
+    if (myAttempt !== menuMusicAttemptId) return false;
     if (menuMusicNode) return true;
 
-    const url = pickFileUrl('menuMusic');
-    const buf = url ? audioBufferCache.get(url) : null;
-    if (buf) {
-      if (menuMusicKilled || myAttempt !== menuMusicAttemptId) return false;
-      menuMusicNode = ctx.createBufferSource();
-      menuMusicNode.buffer = buf;
-      menuMusicNode.loop = true;
-      menuMusicGain = ctx.createGain();
-      menuMusicGain.gain.value = getSoundVolume('menuMusic', 0.4);
-      menuMusicNode.connect(menuMusicGain).connect(ctx.destination);
-      menuMusicNode.start();
-      return true;
-    }
-
-    // Fallback: ambient synth pad
-    const bufferSize = ctx.sampleRate * 4;
-    const buffer = ctx.createBuffer(2, bufferSize, ctx.sampleRate);
-    for (let ch = 0; ch < 2; ch++) {
-      const data = buffer.getChannelData(ch);
-      let phase1 = 0, phase2 = 0, phase3 = 0;
-      const f1 = 65.41, f2 = 82.41, f3 = 98;
-      for (let i = 0; i < bufferSize; i++) {
-        phase1 += (f1 / ctx.sampleRate) * Math.PI * 2;
-        phase2 += (f2 / ctx.sampleRate) * Math.PI * 2;
-        phase3 += (f3 / ctx.sampleRate) * Math.PI * 2;
-        const env = Math.sin((i / bufferSize) * Math.PI);
-        data[i] = (Math.sin(phase1) * 0.3 + Math.sin(phase2) * 0.25 + Math.sin(phase3) * 0.2) * env * 0.15;
-        if (ch === 1) data[i] *= 0.95;
-      }
-    }
-    if (menuMusicKilled || myAttempt !== menuMusicAttemptId) return false;
+  // Try custom audio
+  const url = pickFileUrl('menuMusic');
+  const buf = url ? audioBufferCache.get(url) : null;
+  if (buf) {
     menuMusicNode = ctx.createBufferSource();
-    menuMusicNode.buffer = buffer;
+    menuMusicNode.buffer = buf;
     menuMusicNode.loop = true;
     menuMusicGain = ctx.createGain();
-    menuMusicGain.gain.value = getSoundVolume('menuMusic', 0.3);
+    menuMusicGain.gain.value = getSoundVolume('menuMusic', 0.4);
     menuMusicNode.connect(menuMusicGain).connect(ctx.destination);
     menuMusicNode.start();
     return true;
+  }
+
+  // Fallback: ambient synth pad
+  const bufferSize = ctx.sampleRate * 4;
+  const buffer = ctx.createBuffer(2, bufferSize, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buffer.getChannelData(ch);
+    let phase1 = 0, phase2 = 0, phase3 = 0;
+    const f1 = 65.41, f2 = 82.41, f3 = 98;
+    for (let i = 0; i < bufferSize; i++) {
+      phase1 += (f1 / ctx.sampleRate) * Math.PI * 2;
+      phase2 += (f2 / ctx.sampleRate) * Math.PI * 2;
+      phase3 += (f3 / ctx.sampleRate) * Math.PI * 2;
+      const env = Math.sin((i / bufferSize) * Math.PI);
+      data[i] = (Math.sin(phase1) * 0.3 + Math.sin(phase2) * 0.25 + Math.sin(phase3) * 0.2) * env * 0.15;
+      if (ch === 1) data[i] *= 0.95;
+    }
+  }
+  if (myAttempt !== menuMusicAttemptId) return false; // check again after heavy work
+  menuMusicNode = ctx.createBufferSource();
+  menuMusicNode.buffer = buffer;
+  menuMusicNode.loop = true;
+  menuMusicGain = ctx.createGain();
+  menuMusicGain.gain.value = getSoundVolume('menuMusic', 0.3);
+  menuMusicNode.connect(menuMusicGain).connect(ctx.destination);
+  menuMusicNode.start();
+  return true;
   } catch (e) {
     console.warn('startMenuMusic error:', e);
     return false;
@@ -1078,28 +1075,24 @@ export async function startMenuMusic(): Promise<boolean> {
 }
 
 export function stopMenuMusic() {
-  cancelMenuMusicStart();
-
   const node = menuMusicNode;
   const gain = menuMusicGain;
   menuMusicNode = null;
   menuMusicGain = null;
   if (node) {
-    try { node.stop(); } catch {}
-    try { node.disconnect(); } catch {}
-  }
-  if (gain) {
-    try { gain.disconnect(); } catch {}
-  }
-
-  // Also kill any menuMusic instances spawned via playCustomAudio
-  const extra = activeSources.get('menuMusic');
-  if (extra) {
-    for (const e of extra) {
-      try { e.source.stop(); } catch {}
-      try { e.source.disconnect(); } catch {}
-    }
-    activeSources.delete('menuMusic');
+    try {
+      if (gain) {
+        const ctx = getCtx();
+        gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.15);
+        setTimeout(() => {
+          try { node.stop(); node.disconnect(); } catch {}
+        }, 200);
+      } else {
+        node.stop();
+        node.disconnect();
+      }
+    } catch { /* already stopped */ }
   }
 }
 
