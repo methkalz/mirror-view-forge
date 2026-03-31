@@ -555,6 +555,7 @@ export async function fetchAudioConfig(): Promise<AudioConfigEntry[]> {
       intervalSeconds: (r as any).interval_seconds ?? null,
       maxConcurrent: (r as any).max_concurrent ?? 1,
       allowOverlap: (r as any).allow_overlap ?? false,
+      volumeMode: ((r as any).volume_mode || 'group') as VolumeMode,
       files: filesMap.get(r.id) || [],
     }));
   } catch {
