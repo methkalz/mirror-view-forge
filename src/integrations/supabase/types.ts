@@ -396,7 +396,6 @@ export type Database = {
           surge_multiplier: number
           threats: Json
           warning_color: string | null
-          warning_sound_key: string | null
           warning_text: string | null
           warning_type: string | null
           wave_number: number
@@ -417,7 +416,6 @@ export type Database = {
           surge_multiplier?: number
           threats?: Json
           warning_color?: string | null
-          warning_sound_key?: string | null
           warning_text?: string | null
           warning_type?: string | null
           wave_number: number
@@ -438,7 +436,6 @@ export type Database = {
           surge_multiplier?: number
           threats?: Json
           warning_color?: string | null
-          warning_sound_key?: string | null
           warning_text?: string | null
           warning_type?: string | null
           wave_number?: number

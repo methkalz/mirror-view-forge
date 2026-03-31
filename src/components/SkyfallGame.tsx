@@ -137,10 +137,6 @@ const SkyfallGame: React.FC = () => {
     // Apply difficulty profile and wave overrides
     g.difficultyProfile = difficultyProfileRef.current;
     g.remoteWaveOverrides = waveOverridesRef.current;
-    // Apply wave 1 recipe duration now that overrides are set
-    if (g.difficultyProfile || g.remoteWaveOverrides.length > 0) {
-      resetGame(g);
-    }
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -277,8 +273,6 @@ const SkyfallGame: React.FC = () => {
           return;
         }
         // Last slide — start game
-        cancelMenuMusicStart();
-        stopMenuMusic();
         resumeAudio();
         scoreSubmittedRef.current = false;
         setGameOverData(null);
@@ -294,8 +288,8 @@ const SkyfallGame: React.FC = () => {
           g.remoteWaveOverrides = wc;
           difficultyProfileRef.current = dp;
           waveOverridesRef.current = wc;
-          resetGame(g);
         });
+        resetGame(g);
       } else if (g.state === 'gameover') {
         resumeAudio();
         scoreSubmittedRef.current = false;
@@ -312,9 +306,9 @@ const SkyfallGame: React.FC = () => {
           g.remoteWaveOverrides = wc;
           difficultyProfileRef.current = dp;
           waveOverridesRef.current = wc;
-          g.tutorialPage = 3;
-          resetGame(g);
         });
+        g.tutorialPage = 3;
+        resetGame(g);
       }
     };
 

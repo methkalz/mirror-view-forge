@@ -5,7 +5,7 @@ import {
 } from './types';
 import type { DifficultyProfile, RemoteWaveConfig } from './config';
 import { getFromPool } from './pool';
-import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameStart, sfxUpgradeSelect, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber, playCustomAudioByKey } from './audio';
+import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameStart, sfxUpgradeSelect, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber } from './audio';
 
 const DASH_SPEED = 500;
 const DASH_DURATION = 0.25;
@@ -111,7 +111,7 @@ export function createGame(w: number, h: number): GameData {
     // Wave system
     waveNumber: 1,
     wavePhase: 'active',
-    waveTimer: 60, // will be overwritten when remoteWaveOverrides are set
+    waveTimer: 60,
     levelNumber: 1,
     deliveryBike: null,
     upgradeCards: [],
@@ -230,9 +230,7 @@ export function resetGame(g: GameData) {
   // Wave system reset
   g.waveNumber = 1;
   g.wavePhase = 'active';
-  // Apply wave 1 recipe duration from overrides/profile
-  const wave1Recipe = getWaveRecipe(1, g);
-  g.waveTimer = wave1Recipe.duration || 60;
+  g.waveTimer = 60;
   g.levelNumber = 1;
   g.deliveryBike = null;
   g.upgradeCards = [];
@@ -503,7 +501,6 @@ interface WaveRecipe {
   warningText?: string | null;
   warningColor?: string;
   warningType?: string;
-  warningSoundKey?: string | null;
 }
 
 function generateWaveFromProfile(wave: number, profile: DifficultyProfile): WaveRecipe {
@@ -605,7 +602,6 @@ function remoteToRecipe(r: RemoteWaveConfig): WaveRecipe {
     warningText: r.warningText,
     warningColor: r.warningColor,
     warningType: r.warningType,
-    warningSoundKey: r.warningSoundKey,
   };
 }
 
@@ -921,7 +917,7 @@ function spawnChemicalDrone(g: GameData) {
 
 function queueWaveEvent(
   g: GameData,
-  event: { id: string; text: string; sub: string; color: string; duration: number; type: 'warning' | 'upgrade'; soundKey?: string | null }
+  event: { id: string; text: string; sub: string; color: string; duration: number; type: 'warning' | 'upgrade' }
 ) {
   const resolveDelay = 2 + Math.random() * 3;
   const resolveAt = g.elapsed + resolveDelay;
@@ -945,13 +941,6 @@ function queueWaveEvent(
     type: event.type,
   };
   g.slowMoFactor = 0.1;
-
-  // If a custom sound key is specified, try to play it first
-  if (event.soundKey) {
-    const played = playCustomAudioByKey(event.soundKey);
-    if (played) return;
-  }
-
   // Play different sound based on event type
   if (event.type === 'warning') {
     // Play threat-specific warning sound based on event id
@@ -1274,7 +1263,7 @@ function startNextWave(g: GameData) {
     if (!g.waveTriggered.has(customId)) {
       const delay = recipe.phaseInDelay || 0;
       if (delay <= 0) {
-        queueWaveEvent(g, { id: customId, text: recipe.warningText, sub: '', color: recipe.warningColor || '#ef4444', type: (recipe.warningType as 'warning' | 'upgrade') || 'warning', duration: 2.0, soundKey: recipe.warningSoundKey });
+        queueWaveEvent(g, { id: customId, text: recipe.warningText, sub: '', color: recipe.warningColor || '#ef4444', type: (recipe.warningType as 'warning' | 'upgrade') || 'warning', duration: 2.0 });
       }
     }
   }

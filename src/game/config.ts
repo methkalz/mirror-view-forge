@@ -38,7 +38,6 @@ export interface RemoteWaveConfig {
   warningText: string | null;
   warningColor: string;
   warningType: string;
-  warningSoundKey: string | null;
 }
 
 export interface DifficultyProfile {
@@ -148,7 +147,6 @@ export async function fetchWaveConfigs(): Promise<RemoteWaveConfig[]> {
       warningText: w.warning_text ?? null,
       warningColor: w.warning_color ?? '#ef4444',
       warningType: w.warning_type ?? 'warning',
-      warningSoundKey: w.warning_sound_key ?? null,
     }));
   } catch {
     return [];
@@ -471,7 +469,6 @@ export async function upsertWaveConfig(wave: RemoteWaveConfig): Promise<boolean>
     warning_text: wave.warningText,
     warning_color: wave.warningColor,
     warning_type: wave.warningType,
-    warning_sound_key: wave.warningSoundKey,
   };
 
   if (existing) {

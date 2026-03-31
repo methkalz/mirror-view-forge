@@ -294,7 +294,7 @@ const Admin: React.FC = () => {
         {tab === 'backgrounds' && <BackgroundsPanel phases={bgPhases} setPhases={setBgPhases} isDesktop={isDesktop} config={config} onSaveConfig={saveConfig} />}
 
         {tab === 'waves' && (
-          <WavesPanel waves={waves} editingWave={editingWave} setEditingWave={setEditingWave} onSaveWave={handleSaveWave} onDeleteWave={handleDeleteWave} isDesktop={isDesktop} audioEntries={audioEntries}
+          <WavesPanel waves={waves} editingWave={editingWave} setEditingWave={setEditingWave} onSaveWave={handleSaveWave} onDeleteWave={handleDeleteWave} isDesktop={isDesktop}
             diffProfile={diffProfile} onSaveDiffProfile={async (updates) => {
               if (!diffProfile) return;
               setDiffProfile({ ...diffProfile, ...updates });
@@ -502,8 +502,7 @@ const WavesPanel: React.FC<{
   onSaveWave: (w: RemoteWaveConfig) => void; onDeleteWave: (n: number) => void; isDesktop: boolean;
   diffProfile: DifficultyProfile | null;
   onSaveDiffProfile: (updates: Partial<DifficultyProfile>) => void;
-  audioEntries: AudioConfigEntry[];
-}> = ({ waves, editingWave, setEditingWave, onSaveWave, onDeleteWave, isDesktop, diffProfile, onSaveDiffProfile, audioEntries }) => {
+}> = ({ waves, editingWave, setEditingWave, onSaveWave, onDeleteWave, isDesktop, diffProfile, onSaveDiffProfile }) => {
   const [showAutoScale, setShowAutoScale] = useState(true);
   const [previewCount, setPreviewCount] = useState(20);
 
@@ -527,10 +526,6 @@ const WavesPanel: React.FC<{
       hasChemical: override.hasChemical,
       hasIncendiary: override.hasIncendiary,
       droneInterval: override.droneInterval,
-      warningText: override.warningText,
-      warningColor: override.warningColor,
-      warningType: override.warningType,
-      warningSoundKey: override.warningSoundKey,
     };
   });
 
@@ -558,7 +553,6 @@ const WavesPanel: React.FC<{
         warningText: null,
         warningColor: '#ef4444',
         warningType: 'warning',
-        warningSoundKey: null,
       });
     }
   };
@@ -674,7 +668,6 @@ const WavesPanel: React.FC<{
                     <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>شظايا</th>
                     <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>سلاح</th>
                     <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>بوس</th>
-                    <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>رسالة</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -709,13 +702,6 @@ const WavesPanel: React.FC<{
                         <td style={{ padding: '6px', textAlign: 'center', color: p.clusterSplits >= 5 ? '#f87171' : '#e2e8f0' }}>{p.clusterSplits || '—'}</td>
                         <td style={{ padding: '6px', textAlign: 'center' }}>{'⭐'.repeat(p.bulletLevel)}</td>
                         <td style={{ padding: '6px', textAlign: 'center' }}>{p.hasBoss ? '👹' : ''}</td>
-                        <td style={{ padding: '6px', textAlign: 'center', fontSize: 9, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {(p as any).warningText ? (
-                            <span style={{ color: (p as any).warningColor || '#ef4444' }} title={(p as any).warningText}>
-                              {(p as any).warningType === 'upgrade' ? '⬆️' : '⚠️'} {(p as any).warningText}
-                            </span>
-                          ) : ''}
-                        </td>
                       </tr>
                     );
                   })}
@@ -735,7 +721,7 @@ const WavesPanel: React.FC<{
               duration: diffProfile?.waveDuration || 60, threats: ['shrapnel'], maxConcurrent: 5, spawnRate: 3.5, surgeMultiplier: 1.0, droneTypes: [],
               clusterSplits: 0, bulletLevel: 1, phaseInDelay: 0, droneInterval: 0,
               hasBoss: false, hasChemical: false, hasIncendiary: false,
-              warningText: null, warningColor: '#ef4444', warningType: 'warning', warningSoundKey: null,
+              warningText: null, warningColor: '#ef4444', warningType: 'warning',
             })} style={btnPrimary}>+ إضافة موجة</button>
           </div>
 
@@ -769,7 +755,7 @@ const WavesPanel: React.FC<{
         </div>
       )}
 
-      {editingWave && <WaveEditor wave={editingWave} onSave={onSaveWave} onCancel={() => setEditingWave(null)} audioEntries={audioEntries} />}
+      {editingWave && <WaveEditor wave={editingWave} onSave={onSaveWave} onCancel={() => setEditingWave(null)} />}
     </div>
   );
 };
@@ -2490,8 +2476,7 @@ const WaveEditor: React.FC<{
   wave: RemoteWaveConfig;
   onSave: (w: RemoteWaveConfig) => void;
   onCancel: () => void;
-  audioEntries: AudioConfigEntry[];
-}> = ({ wave, onSave, onCancel, audioEntries }) => {
+}> = ({ wave, onSave, onCancel }) => {
   const [w, setW] = useState(wave);
 
   const toggle = (arr: string[], item: string) =>
@@ -2502,13 +2487,6 @@ const WaveEditor: React.FC<{
     background: active ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.04)',
     color: active ? '#60a5fa' : 'rgba(148,163,184,0.4)',
   });
-
-  const WARNING_TYPES = [
-    { value: 'warning', label: '⚠️ تحذير', color: '#ef4444' },
-    { value: 'upgrade', label: '⬆️ ترقية', color: '#22c55e' },
-  ];
-
-  const PRESET_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#ffffff'];
 
   return (
     <div style={{
@@ -2575,79 +2553,11 @@ const WaveEditor: React.FC<{
           ))}
         </div>
 
-        {/* ─── Warning / Message Section ─── */}
-        <div style={{
-          background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.12)',
-          borderRadius: 14, padding: '16px 14px', marginBottom: 16,
-        }}>
-          <label style={{ ...labelStyle, fontSize: 13, marginBottom: 12, display: 'block' }}>📢 رسالة تحذيرية / ترقية</label>
-
-          {/* Warning text */}
-          <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>النص</label>
-            <input type="text" value={w.warningText || ''} placeholder="مثال: تحذير: موجة صعبة!"
-              onChange={e => setW({ ...w, warningText: e.target.value || null })} style={inputStyle} />
-          </div>
-
-          {/* Warning type */}
-          <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>النوع</label>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {WARNING_TYPES.map(t => (
-                <button key={t.value} onClick={() => setW({ ...w, warningType: t.value })}
-                  style={{
-                    ...chipStyle(w.warningType === t.value),
-                    borderColor: w.warningType === t.value ? t.color : 'transparent',
-                    borderWidth: 1, borderStyle: 'solid',
-                  }}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Warning color */}
-          <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>اللون</label>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-              {PRESET_COLORS.map(c => (
-                <button key={c} onClick={() => setW({ ...w, warningColor: c })}
-                  style={{
-                    width: 24, height: 24, borderRadius: 8, border: w.warningColor === c ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)',
-                    background: c, cursor: 'pointer', padding: 0,
-                  }} />
-              ))}
-              <input type="color" value={w.warningColor} onChange={e => setW({ ...w, warningColor: e.target.value })}
-                style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: 'transparent' }} />
-            </div>
-          </div>
-
-          {/* Warning sound */}
-          <div>
-            <label style={labelStyle}>🔊 الصوت المرافق</label>
-            <select value={w.warningSoundKey || ''}
-              onChange={e => setW({ ...w, warningSoundKey: e.target.value || null })}
-              style={{ ...inputStyle, cursor: 'pointer' }}>
-              <option value="">تلقائي (حسب نوع التهديد)</option>
-              {audioEntries.map(a => (
-                <option key={a.soundKey} value={a.soundKey}>
-                  {a.labelAr || a.label} ({a.soundKey})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Preview */}
-          {w.warningText && (
-            <div style={{
-              marginTop: 12, padding: '8px 14px', borderRadius: 10,
-              background: 'rgba(0,0,0,0.3)', textAlign: 'center',
-            }}>
-              <span style={{ color: w.warningColor, fontWeight: 700, fontSize: 13 }}>
-                {w.warningType === 'upgrade' ? '⬆️' : '⚠️'} {w.warningText}
-              </span>
-            </div>
-          )}
+        {/* Warning text */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={labelStyle}>نص تحذير مخصص (اختياري)</label>
+          <input type="text" value={w.warningText || ''} placeholder="مثال: تحذير: موجة صعبة!"
+            onChange={e => setW({ ...w, warningText: e.target.value || null })} style={inputStyle} />
         </div>
 
         <div style={{ display: 'flex', gap: 12 }}>

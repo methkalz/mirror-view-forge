@@ -1,1 +1,0 @@
-ALTER TABLE public.wave_configs ADD COLUMN IF NOT EXISTS warning_sound_key text DEFAULT NULL;
