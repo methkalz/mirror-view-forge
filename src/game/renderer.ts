@@ -6607,11 +6607,59 @@ function renderTutorialSlide3(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.fillText('هل أنت مستعد؟', w / 2, h * 0.48);
   ctx.direction = 'ltr';
 
-  // ── 3. Button "يلا يلا" — larger, elegant ──
+  // ── 3. Button "يلا يلا" — larger, elegant with fire & smoke ──
   const btnW = 200, btnH = 48;
   const btnX = w / 2 - btnW / 2, btnY = h * 0.53;
   const borderAlpha = 0.2 + Math.sin(t * 1.5) * 0.1;
 
+  // ── Fire & smoke particles around button ──
+  ctx.save();
+  for (let i = 0; i < 12; i++) {
+    const seed = i * 137.508;
+    const life = ((t * 0.8 + seed) % 2) / 2; // 0→1 cycle
+    const px = btnX + (Math.sin(seed) * 0.5 + 0.5) * btnW;
+    const py = btnY + btnH - life * 60;
+    const size = (1 - life) * 4 + 1;
+
+    if (i < 7) {
+      // Fire particles — orange/yellow
+      const r = 255;
+      const g2 = Math.floor(120 + (1 - life) * 100);
+      const b = Math.floor(20 * (1 - life));
+      ctx.globalAlpha = (1 - life) * 0.5;
+      ctx.fillStyle = `rgb(${r},${g2},${b})`;
+      ctx.beginPath();
+      ctx.arc(px + Math.sin(t * 3 + seed) * 4, py, size, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Smoke particles — grey, rising slower
+      const smokeLife = ((t * 0.5 + seed) % 3) / 3;
+      const sx = btnX + (Math.sin(seed * 0.7) * 0.5 + 0.5) * btnW;
+      const sy = btnY + btnH - smokeLife * 80;
+      ctx.globalAlpha = (1 - smokeLife) * 0.15;
+      ctx.fillStyle = `rgba(180, 170, 160, 1)`;
+      ctx.beginPath();
+      ctx.arc(sx + Math.sin(t * 1.5 + seed) * 6, sy, size * 1.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+
+  // ── Bottom edge glow (ember line) ──
+  const emberGrad = ctx.createLinearGradient(btnX, btnY + btnH, btnX + btnW, btnY + btnH);
+  emberGrad.addColorStop(0, 'rgba(255, 100, 20, 0)');
+  emberGrad.addColorStop(0.3, `rgba(255, 140, 40, ${0.15 + Math.sin(t * 2) * 0.1})`);
+  emberGrad.addColorStop(0.5, `rgba(255, 180, 60, ${0.25 + Math.sin(t * 2.5) * 0.1})`);
+  emberGrad.addColorStop(0.7, `rgba(255, 140, 40, ${0.15 + Math.sin(t * 2) * 0.1})`);
+  emberGrad.addColorStop(1, 'rgba(255, 100, 20, 0)');
+  ctx.strokeStyle = emberGrad;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(btnX + 10, btnY + btnH);
+  ctx.lineTo(btnX + btnW - 10, btnY + btnH);
+  ctx.stroke();
+
+  // ── Button body ──
   ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
   roundRect(ctx, btnX, btnY, btnW, btnH, 8);
   ctx.fill();
