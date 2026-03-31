@@ -12,6 +12,7 @@ interface SoundSetting {
   playMode: PlayMode;
   intervalSeconds: number | null;
   maxConcurrent: number;
+  allowOverlap: boolean;
   files: AudioFileEntry[];
 }
 let audioSettings: Map<string, SoundSetting> = new Map();
@@ -22,6 +23,8 @@ const audioBufferCache: Map<string, AudioBuffer> = new Map();
 const sequentialIndex: Map<string, number> = new Map();
 // ─── Periodic ambient timers ───
 const periodicTimers: Map<string, ReturnType<typeof setInterval>> = new Map();
+// ─── Active sources for overlap control ───
+const activeSources: Map<string, { source: AudioBufferSourceNode; gain: GainNode }[]> = new Map();
 
 export async function loadAudioSettings(onProgress?: (pct: number) => void) {
   try {
