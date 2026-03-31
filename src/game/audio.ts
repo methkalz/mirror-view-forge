@@ -2,6 +2,7 @@ import { fetchAudioConfig, type AudioConfigEntry, type AudioFileEntry, type Play
 
 let audioCtx: AudioContext | null = null;
 let ambientNode: AudioBufferSourceNode | null = null;
+let ambientGainNode: GainNode | null = null;
 
 // ─── Remote audio settings cache ───
 interface SoundSetting {
@@ -41,6 +42,38 @@ export async function loadAudioSettings(onProgress?: (pct: number) => void) {
     await preloadAllAudio(onProgress);
   } catch {
     settingsLoaded = false;
+  }
+}
+
+// Reload settings from DB without re-downloading audio files
+export async function reloadAudioSettings() {
+  try {
+    const entries = await fetchAudioConfig();
+    audioSettings.clear();
+    for (const e of entries) {
+      audioSettings.set(e.soundKey, {
+        volume: e.volume,
+        enabled: e.enabled,
+        audioUrl: e.audioUrl,
+        playMode: e.playMode,
+        intervalSeconds: e.intervalSeconds,
+        maxConcurrent: e.maxConcurrent,
+        files: e.files,
+      });
+    }
+    settingsLoaded = true;
+    // Update active ambient gain immediately
+    if (ambientGainNode && audioCtx) {
+      const newVol = getSoundVolume('ambient', ambientNode ? 0.5 : 0.15);
+      ambientGainNode.gain.setTargetAtTime(newVol, audioCtx.currentTime, 0.1);
+    }
+    // Update active menu music gain immediately
+    if (menuMusicGain && audioCtx) {
+      const newVol = getSoundVolume('menuMusic', 0.4);
+      menuMusicGain.gain.setTargetAtTime(newVol, audioCtx.currentTime, 0.1);
+    }
+  } catch {
+    // silently fail
   }
 }
 
@@ -123,7 +156,9 @@ function getSoundVolume(key: string, baseVol: number): number {
   const s = audioSettings.get(key);
   if (!s) return baseVol;
   if (!s.enabled) return 0;
-  return baseVol * s.volume;
+  // Exponential scaling for perceptible slider response
+  const v = s.volume;
+  return baseVol * (v * v);
 }
 
 function isSoundEnabled(key: string): boolean {
@@ -230,6 +265,7 @@ function startAmbient() {
     gain.gain.value = getSoundVolume('ambient', 0.5);
     ambientNode.connect(gain).connect(ctx.destination);
     ambientNode.start();
+    ambientGainNode = gain;
     return;
   }
 
@@ -248,36 +284,37 @@ function startAmbient() {
   ambientNode.buffer = buffer;
   ambientNode.loop = true;
   const gain = ctx.createGain();
-  gain.gain.value = getSoundVolume('ambient', 0.03);
+  gain.gain.value = getSoundVolume('ambient', 0.15);
   const bq = ctx.createBiquadFilter();
   bq.type = 'lowpass';
   bq.frequency.value = 400;
   ambientNode.connect(bq).connect(gain).connect(ctx.destination);
   ambientNode.start();
+  ambientGainNode = gain;
 }
 
 export function sfxExplosion() {
   if (!isSoundEnabled('explosion')) return;
   if (playCustomAudio('explosion')) return;
   const v = getSoundVolume('explosion', 1);
-  playTone(40, 0.15, 'sine', 0.03 * v);
-  playNoise(0.12, 0.025 * v, { type: 'lowpass', freq: 250 });
+  playTone(40, 0.15, 'sine', 0.15 * v);
+  playNoise(0.12, 0.12 * v, { type: 'lowpass', freq: 250 });
 }
 
 export function sfxImpactLight() {
   if (!isSoundEnabled('impactLight')) return;
   if (playCustomAudio('impactLight')) return;
   const v = getSoundVolume('impactLight', 1);
-  playNoise(0.05, 0.12 * v, { type: 'lowpass', freq: 250 + Math.random() * 300 });
-  playTone(120 + Math.random() * 80, 0.04, 'sine', 0.08 * v);
+  playNoise(0.05, 0.2 * v, { type: 'lowpass', freq: 250 + Math.random() * 300 });
+  playTone(120 + Math.random() * 80, 0.04, 'sine', 0.15 * v);
 }
 
 export function sfxImpactHeavy() {
   if (!isSoundEnabled('impactHeavy')) return;
   if (playCustomAudio('impactHeavy')) return;
   const v = getSoundVolume('impactHeavy', 1);
-  playTone(45, 0.18, 'sine', 0.18 * v);
-  playNoise(0.14, 0.13 * v, { type: 'lowpass', freq: 200 });
+  playTone(45, 0.18, 'sine', 0.25 * v);
+  playNoise(0.14, 0.2 * v, { type: 'lowpass', freq: 200 });
 }
 
 export function sfxPickup() {
@@ -326,8 +363,8 @@ export function sfxWarning() {
   if (!isSoundEnabled('warning')) return;
   if (playCustomAudio('warning')) return;
   const v = getSoundVolume('warning', 1);
-  playTone(800, 0.08, 'sine', 0.03 * v);
-  setTimeout(() => playTone(1000, 0.06, 'sine', 0.02 * v), 80);
+  playTone(800, 0.08, 'sine', 0.12 * v);
+  setTimeout(() => playTone(1000, 0.06, 'sine', 0.1 * v), 80);
 }
 
 // ─── Threat-specific Warning Sounds ───
@@ -336,17 +373,15 @@ export function sfxWarningShrapnel() {
   if (!isSoundEnabled('warningShrapnel')) return;
   if (playCustomAudio('warningShrapnel')) return;
   const v = getSoundVolume('warningShrapnel', 1);
-  // Sharp metallic ping descending
-  playTone(1200, 0.06, 'square', 0.04 * v);
-  setTimeout(() => playTone(900, 0.06, 'square', 0.03 * v), 70);
-  setTimeout(() => playNoise(0.08, 0.03 * v, { type: 'highpass', freq: 4000 }), 120);
+  playTone(1200, 0.06, 'square', 0.12 * v);
+  setTimeout(() => playTone(900, 0.06, 'square', 0.1 * v), 70);
+  setTimeout(() => playNoise(0.08, 0.08 * v, { type: 'highpass', freq: 4000 }), 120);
 }
 
 export function sfxWarningMissile() {
   if (!isSoundEnabled('warningMissile')) return;
   if (playCustomAudio('warningMissile')) return;
   const v = getSoundVolume('warningMissile', 1);
-  // Low growling siren
   const ctx = getCtx();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
@@ -354,7 +389,7 @@ export function sfxWarningMissile() {
   osc.frequency.setValueAtTime(200, ctx.currentTime);
   osc.frequency.linearRampToValueAtTime(500, ctx.currentTime + 0.3);
   osc.frequency.linearRampToValueAtTime(200, ctx.currentTime + 0.6);
-  gain.gain.setValueAtTime(0.05 * v, ctx.currentTime);
+  gain.gain.setValueAtTime(0.15 * v, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
   osc.connect(gain).connect(ctx.destination);
   osc.start();
@@ -365,9 +400,8 @@ export function sfxWarningCluster() {
   if (!isSoundEnabled('warningCluster')) return;
   if (playCustomAudio('warningCluster')) return;
   const v = getSoundVolume('warningCluster', 1);
-  // Rapid staccato beeps
   for (let i = 0; i < 4; i++) {
-    setTimeout(() => playTone(700 + i * 100, 0.04, 'square', 0.04 * v), i * 60);
+    setTimeout(() => playTone(700 + i * 100, 0.04, 'square', 0.12 * v), i * 60);
   }
 }
 
@@ -375,7 +409,6 @@ export function sfxWarningDrone() {
   if (!isSoundEnabled('warningDrone')) return;
   if (playCustomAudio('warningDrone')) return;
   const v = getSoundVolume('warningDrone', 1);
-  // Electronic scanning sweep
   const ctx = getCtx();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
@@ -383,7 +416,7 @@ export function sfxWarningDrone() {
   osc.frequency.setValueAtTime(400, ctx.currentTime);
   osc.frequency.exponentialRampToValueAtTime(1600, ctx.currentTime + 0.3);
   osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.6);
-  gain.gain.setValueAtTime(0.04 * v, ctx.currentTime);
+  gain.gain.setValueAtTime(0.12 * v, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
   osc.connect(gain).connect(ctx.destination);
   osc.start();
@@ -394,15 +427,14 @@ export function sfxWarningBoss() {
   if (!isSoundEnabled('warningBoss')) return;
   if (playCustomAudio('warningBoss')) return;
   const v = getSoundVolume('warningBoss', 1);
-  // Deep horn blast
   const ctx = getCtx();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = 'sawtooth';
   osc.frequency.setValueAtTime(100, ctx.currentTime);
   osc.frequency.linearRampToValueAtTime(150, ctx.currentTime + 0.4);
-  gain.gain.setValueAtTime(0.08 * v, ctx.currentTime);
-  gain.gain.linearRampToValueAtTime(0.06 * v, ctx.currentTime + 0.4);
+  gain.gain.setValueAtTime(0.2 * v, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.15 * v, ctx.currentTime + 0.4);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
   const bq = ctx.createBiquadFilter();
   bq.type = 'lowpass';
@@ -410,28 +442,26 @@ export function sfxWarningBoss() {
   osc.connect(bq).connect(gain).connect(ctx.destination);
   osc.start();
   osc.stop(ctx.currentTime + 1.0);
-  playNoise(0.6, 0.04 * v, { type: 'lowpass', freq: 200 });
+  playNoise(0.6, 0.1 * v, { type: 'lowpass', freq: 200 });
 }
 
 export function sfxWarningHazard() {
   if (!isSoundEnabled('warningHazard')) return;
   if (playCustomAudio('warningHazard')) return;
   const v = getSoundVolume('warningHazard', 1);
-  // Bubbling chemical alert
-  playTone(300, 0.1, 'triangle', 0.04 * v);
-  setTimeout(() => playTone(350, 0.08, 'triangle', 0.03 * v), 100);
-  setTimeout(() => playNoise(0.15, 0.03 * v, { type: 'bandpass', freq: 800 }), 150);
+  playTone(300, 0.1, 'triangle', 0.12 * v);
+  setTimeout(() => playTone(350, 0.08, 'triangle', 0.1 * v), 100);
+  setTimeout(() => playNoise(0.15, 0.08 * v, { type: 'bandpass', freq: 800 }), 150);
 }
 
 export function sfxWarningBomber() {
   if (!isSoundEnabled('warningBomber')) return;
   if (playCustomAudio('warningBomber')) return;
   const v = getSoundVolume('warningBomber', 1);
-  // Heavy engine drone + alarm
-  playTone(80, 0.3, 'sawtooth', 0.05 * v);
-  playNoise(0.2, 0.04 * v, { type: 'lowpass', freq: 300 });
-  setTimeout(() => playTone(600, 0.08, 'square', 0.04 * v), 200);
-  setTimeout(() => playTone(500, 0.08, 'square', 0.03 * v), 300);
+  playTone(80, 0.3, 'sawtooth', 0.15 * v);
+  playNoise(0.2, 0.1 * v, { type: 'lowpass', freq: 300 });
+  setTimeout(() => playTone(600, 0.08, 'square', 0.12 * v), 200);
+  setTimeout(() => playTone(500, 0.08, 'square', 0.1 * v), 300);
 }
 
 export function sfxSlideTransition() {
@@ -510,7 +540,7 @@ export function sfxBossSiren() {
   osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.5);
   osc.frequency.linearRampToValueAtTime(400, ctx.currentTime + 1.0);
   osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 1.5);
-  gain.gain.setValueAtTime(0.08 * v, ctx.currentTime);
+  gain.gain.setValueAtTime(0.2 * v, ctx.currentTime);
   gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 2);
   osc.connect(gain).connect(ctx.destination);
   osc.start();
@@ -521,11 +551,11 @@ export function sfxBossExplosion() {
   if (!isSoundEnabled('bossExplosion')) return;
   if (playCustomAudio('bossExplosion')) return;
   const v = getSoundVolume('bossExplosion', 1);
-  playTone(30, 0.8, 'sawtooth', 0.15 * v);
-  playTone(50, 0.6, 'sine', 0.12 * v);
-  playNoise(0.8, 0.15 * v, { type: 'lowpass', freq: 500 });
-  setTimeout(() => { playNoise(0.5, 0.1 * v, { type: 'lowpass', freq: 300 }); playTone(25, 0.5, 'sine', 0.08 * v); }, 200);
-  setTimeout(() => playNoise(0.4, 0.06 * v, { type: 'bandpass', freq: 1000 }), 400);
+  playTone(30, 0.8, 'sawtooth', 0.25 * v);
+  playTone(50, 0.6, 'sine', 0.2 * v);
+  playNoise(0.8, 0.2 * v, { type: 'lowpass', freq: 500 });
+  setTimeout(() => { playNoise(0.5, 0.15 * v, { type: 'lowpass', freq: 300 }); playTone(25, 0.5, 'sine', 0.12 * v); }, 200);
+  setTimeout(() => playNoise(0.4, 0.1 * v, { type: 'bandpass', freq: 1000 }), 400);
 }
 
 export function sfxShoot1() {
