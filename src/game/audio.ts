@@ -800,8 +800,27 @@ export function startPeriodicAmbient() {
     }
   }
 
-  // Legacy fallback: if no periodic sounds configured, use default random ambient
-  if (periodicTimers.size === 0) {
+  // Legacy fallback: if no ambient-category sounds have periodic timers, use default random ambient
+  const hasAmbientPeriodic = [...audioSettings.entries()].some(
+    ([, s]) => s.intervalSeconds && s.intervalSeconds > 0 && s.enabled &&
+    !['ambientFX'].some(cat => {
+      const entry = [...audioSettings.entries()].find(([k]) => k === [...audioSettings.entries()].find(([k2, s2]) => s2 === s)?.[0]);
+      return entry !== undefined;
+    })
+  );
+  // Simpler check: see if any ambient-category periodic sounds exist
+  let hasAmbientCategoryPeriodic = false;
+  for (const [key, s] of audioSettings) {
+    if (s.intervalSeconds && s.intervalSeconds > 0 && s.enabled && periodicTimers.has(key)) {
+      // Check if this key is an ambient sound (not ambientFX)
+      // We check by looking at known ambient keys
+      if (['distantExplosion', 'windGust', 'distantSiren', 'thunder'].includes(key)) {
+        hasAmbientCategoryPeriodic = true;
+        break;
+      }
+    }
+  }
+  if (!hasAmbientCategoryPeriodic) {
     const timer = setInterval(() => {
       const r = Math.random();
       if (r < 0.3) sfxDistantExplosion();
