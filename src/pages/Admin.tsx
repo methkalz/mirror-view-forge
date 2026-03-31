@@ -1012,7 +1012,7 @@ const AudioPanel: React.FC<{
           <span style={{ fontSize: 13, fontWeight: 700, flex: 1 }}>Master Volume</span>
           <span style={{ fontSize: 12, color: '#60a5fa', fontWeight: 600 }}>{entries.length > 0 ? Math.round(entries.reduce((a, e) => a + e.volume, 0) / entries.length * 100) : 100}%</span>
         </div>
-        <input type="range" min={0} max={1} step={0.05}
+        <input type="range" min={0} max={1} step={0.01}
           value={entries.length > 0 ? entries.reduce((a, e) => a + e.volume, 0) / entries.length : 1}
           onChange={e => { const v = parseFloat(e.target.value); for (const cat of categories) onCategoryUpdate(cat, { volume: v }); }}
           style={{ width: '100%', accentColor: '#3b82f6' }} />
