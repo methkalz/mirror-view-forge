@@ -4355,45 +4355,107 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
     ctx.stroke();
   }
 
-  // ── Eyes ──
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.ellipse(-2.2, headY - 0.5, 1.6, 1.4, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#111';
-  ctx.beginPath();
-  ctx.arc(-1.8, headY - 0.5, 0.8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.ellipse(2.5, headY - 0.5, 1.6, 1.4, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#111';
-  ctx.beginPath();
-  ctx.arc(2.9, headY - 0.5, 0.8, 0, Math.PI * 2);
-  ctx.fill();
-
-  // ── Eyebrows ──
-  ctx.strokeStyle = '#2a1a0a';
-  ctx.lineWidth = 1;
-  if (isHit) {
+  if (hasGasMask) {
+    // ── Gas Mask over face ──
+    // Mask body (covers lower face)
+    ctx.fillStyle = '#2d4a35';
     ctx.beginPath();
-    ctx.moveTo(-3.5, headY - 3);
-    ctx.lineTo(-1, headY - 2);
+    ctx.ellipse(0, headY + 1, 5.5, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#4ade80';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+
+    // Eye windows (tinted green)
+    ctx.fillStyle = 'rgba(100, 255, 150, 0.35)';
+    ctx.strokeStyle = '#3a6a4a';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.ellipse(-2.2, headY - 0.5, 2, 1.6, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(1.5, headY - 2);
-    ctx.lineTo(4, headY - 3);
+    ctx.ellipse(2.2, headY - 0.5, 2, 1.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Eye reflections
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.beginPath();
+    ctx.ellipse(-2.5, headY - 1, 0.8, 0.5, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(1.8, headY - 1, 0.8, 0.5, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Filter canister (side)
+    ctx.fillStyle = '#1a3a25';
+    ctx.beginPath();
+    ctx.arc(5.5, headY + 2, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#4ade80';
+    ctx.lineWidth = 0.6;
+    ctx.stroke();
+    // Filter lines
+    ctx.strokeStyle = 'rgba(74, 222, 128, 0.4)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(4.5, headY + 1.5);
+    ctx.lineTo(6.5, headY + 1.5);
+    ctx.moveTo(4.8, headY + 2.5);
+    ctx.lineTo(6.2, headY + 2.5);
+    ctx.stroke();
+
+    // Straps
+    ctx.strokeStyle = 'rgba(74, 222, 128, 0.25)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-5, headY);
+    ctx.lineTo(-6.5, headY - 3);
+    ctx.moveTo(5, headY);
+    ctx.lineTo(6.5, headY - 3);
     ctx.stroke();
   } else {
+    // ── Eyes ──
+    ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.moveTo(-3.5, headY - 2.5);
-    ctx.lineTo(-0.8, headY - 2.8);
-    ctx.stroke();
+    ctx.ellipse(-2.2, headY - 0.5, 1.6, 1.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#111';
     ctx.beginPath();
-    ctx.moveTo(1.5, headY - 2.8);
-    ctx.lineTo(4, headY - 2.5);
-    ctx.stroke();
+    ctx.arc(-1.8, headY - 0.5, 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(2.5, headY - 0.5, 1.6, 1.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(2.9, headY - 0.5, 0.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ── Eyebrows ──
+    ctx.strokeStyle = '#2a1a0a';
+    ctx.lineWidth = 1;
+    if (isHit) {
+      ctx.beginPath();
+      ctx.moveTo(-3.5, headY - 3);
+      ctx.lineTo(-1, headY - 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(1.5, headY - 2);
+      ctx.lineTo(4, headY - 3);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(-3.5, headY - 2.5);
+      ctx.lineTo(-0.8, headY - 2.8);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(1.5, headY - 2.8);
+      ctx.lineTo(4, headY - 2.5);
+      ctx.stroke();
+    }
   }
 
   ctx.restore();
