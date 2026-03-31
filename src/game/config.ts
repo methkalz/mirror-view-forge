@@ -589,7 +589,7 @@ export async function addAudioFile(soundConfigId: string, fileUrl: string, fileN
     sort_order: sortOrder,
   }).select().single();
   if (error || !data) return null;
-  return { id: data.id, soundConfigId: data.sound_config_id, fileUrl: data.file_url, fileName: data.file_name, sortOrder: data.sort_order };
+  return { id: data.id, soundConfigId: data.sound_config_id, fileUrl: data.file_url, fileName: data.file_name, sortOrder: data.sort_order, volume: (data as any).volume ?? 1.0 };
 }
 
 export async function removeAudioFile(id: string): Promise<boolean> {
