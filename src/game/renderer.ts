@@ -6484,16 +6484,22 @@ function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: numbe
     const ix = gridStartX + col * (itemW + 8);
     const iy = gridStartY + row * (itemH + 8) + Math.sin(t * 1.2 + i * 0.8) * 1;
     drawGlassCard(ctx, ix, iy, itemW, itemH, item.color + 'aa', 8);
+    // Measure text to position dot with consistent spacing
+    ctx.fillStyle = 'rgba(220, 220, 220, 0.8)';
+    ctx.font = '13px Tajawal, sans-serif';
+    const textW = ctx.measureText(item.name).width;
+    const centerX = ix + itemW / 2;
+    const dotGap = 8;
+    // Draw text centered
+    ctx.fillText(item.name, centerX, iy + itemH * 0.55 + 4);
+    // Draw dot to the left of text with consistent gap
     const prevA = ctx.globalAlpha;
     ctx.fillStyle = item.color;
     ctx.globalAlpha = 0.8;
     ctx.beginPath();
-    ctx.arc(ix + itemW / 2 + 20, iy + itemH * 0.5, 4, 0, Math.PI * 2);
+    ctx.arc(centerX + textW / 2 + dotGap, iy + itemH * 0.5, 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = prevA;
-    ctx.fillStyle = 'rgba(220, 220, 220, 0.8)';
-    ctx.font = '13px Tajawal, sans-serif';
-    ctx.fillText(item.name, ix + itemW / 2 - 4, iy + itemH * 0.55 + 4);
   });
 
   ctx.restore();
