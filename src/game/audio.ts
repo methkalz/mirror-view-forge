@@ -1015,12 +1015,11 @@ export function cancelMenuMusicStart() {
 }
 
 export async function startMenuMusic(): Promise<boolean> {
-  if (menuMusicKilled) return false;
+  menuMusicKilled = false;
   if (menuMusicNode) return true;
   if (menuMusicStarting) return false;
   if (!isSoundEnabled('menuMusic')) return false;
 
-  menuMusicKilled = false;
   const myAttempt = ++menuMusicAttemptId;
   menuMusicStarting = true;
   try {
