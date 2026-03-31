@@ -368,9 +368,8 @@ export function sfxWarningCluster() {
   if (!isSoundEnabled('warningCluster')) return;
   if (playCustomAudio('warningCluster')) return;
   const v = getSoundVolume('warningCluster', 1);
-  // Rapid staccato beeps
   for (let i = 0; i < 4; i++) {
-    setTimeout(() => playTone(700 + i * 100, 0.04, 'square', 0.04 * v), i * 60);
+    setTimeout(() => playTone(700 + i * 100, 0.04, 'square', 0.12 * v), i * 60);
   }
 }
 
