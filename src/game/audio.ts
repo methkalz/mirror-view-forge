@@ -341,10 +341,9 @@ export function sfxWarningShrapnel() {
   if (!isSoundEnabled('warningShrapnel')) return;
   if (playCustomAudio('warningShrapnel')) return;
   const v = getSoundVolume('warningShrapnel', 1);
-  // Sharp metallic ping descending
-  playTone(1200, 0.06, 'square', 0.04 * v);
-  setTimeout(() => playTone(900, 0.06, 'square', 0.03 * v), 70);
-  setTimeout(() => playNoise(0.08, 0.03 * v, { type: 'highpass', freq: 4000 }), 120);
+  playTone(1200, 0.06, 'square', 0.12 * v);
+  setTimeout(() => playTone(900, 0.06, 'square', 0.1 * v), 70);
+  setTimeout(() => playNoise(0.08, 0.08 * v, { type: 'highpass', freq: 4000 }), 120);
 }
 
 export function sfxWarningMissile() {
