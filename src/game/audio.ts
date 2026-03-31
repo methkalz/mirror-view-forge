@@ -1086,26 +1086,19 @@ export function stopMenuMusic() {
   menuMusicNode = null;
   menuMusicGain = null;
   if (node) {
-    try {
-      if (gain) {
-        const ctx = getCtx();
-        gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.15);
-        setTimeout(() => {
-          try { node.stop(); node.disconnect(); } catch {}
-        }, 200);
-      } else {
-        node.stop();
-        node.disconnect();
-      }
-    } catch { /* already stopped */ }
+    try { node.stop(); } catch {}
+    try { node.disconnect(); } catch {}
+  }
+  if (gain) {
+    try { gain.disconnect(); } catch {}
   }
 
   // Also kill any menuMusic instances spawned via playCustomAudio
   const extra = activeSources.get('menuMusic');
   if (extra) {
     for (const e of extra) {
-      try { e.source.stop(); e.source.disconnect(); } catch {}
+      try { e.source.stop(); } catch {}
+      try { e.source.disconnect(); } catch {}
     }
     activeSources.delete('menuMusic');
   }
