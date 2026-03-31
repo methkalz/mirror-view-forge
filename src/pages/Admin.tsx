@@ -2565,12 +2565,61 @@ const WaveEditor: React.FC<{
           ))}
         </div>
 
-        {/* Warning text */}
-        <div style={{ marginBottom: 16 }}>
-          <label style={labelStyle}>نص تحذير مخصص (اختياري)</label>
-          <input type="text" value={w.warningText || ''} placeholder="مثال: تحذير: موجة صعبة!"
-            onChange={e => setW({ ...w, warningText: e.target.value || null })} style={inputStyle} />
+        {/* Warning message section */}
+        <div style={{ marginBottom: 16, padding: 14, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <label style={{ ...labelStyle, marginBottom: 10, fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>📢 رسالة الموجة</label>
+          
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelStyle}>نص الرسالة (اختياري)</label>
+            <input type="text" value={w.warningText || ''} placeholder="مثال: تحذير: موجة صعبة!"
+              onChange={e => setW({ ...w, warningText: e.target.value || null })} style={inputStyle} />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+            <div>
+              <label style={labelStyle}>النوع</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => setW({ ...w, warningType: 'warning' })} style={chipStyle(w.warningType === 'warning')}>⚠️ تحذير</button>
+                <button onClick={() => setW({ ...w, warningType: 'upgrade' })} style={chipStyle(w.warningType === 'upgrade')}>⬆️ ترقية</button>
+              </div>
+            </div>
+            <div>
+              <label style={labelStyle}>اللون</label>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <input type="color" value={w.warningColor || '#ef4444'}
+                  onChange={e => setW({ ...w, warningColor: e.target.value })}
+                  style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', cursor: 'pointer', padding: 0 }} />
+                <input type="text" value={w.warningColor || '#ef4444'}
+                  onChange={e => setW({ ...w, warningColor: e.target.value })}
+                  style={{ ...inputStyle, width: 90, fontSize: 11 }} />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>صوت الرسالة (اختياري)</label>
+            <input type="text" value={w.warningSoundKey || ''} placeholder="مفتاح الصوت مثل: warning_alert"
+              onChange={e => setW({ ...w, warningSoundKey: e.target.value || null })} style={inputStyle} />
+            <span style={{ fontSize: 9, color: 'rgba(148,163,184,0.3)', marginTop: 4, display: 'block' }}>
+              أدخل مفتاح الصوت (sound_key) من قسم الأصوات لتشغيله مع الرسالة
+            </span>
+          </div>
         </div>
+
+        {/* Hardcoded warnings for this wave */}
+        {WAVE_WARNINGS[w.waveNumber] && (
+          <div style={{ marginBottom: 16, padding: 12, borderRadius: 10, background: 'rgba(251,191,36,0.05)', border: '1px solid rgba(251,191,36,0.1)' }}>
+            <span style={{ fontSize: 11, color: '#fbbf24', fontWeight: 600 }}>📋 رسائل مدمجة لهذه الموجة:</span>
+            {WAVE_WARNINGS[w.waveNumber].map(ww => (
+              <div key={ww.id} style={{ fontSize: 11, color: ww.color, marginTop: 4 }}>
+                {ww.type === 'upgrade' ? '⬆️' : '⚠️'} {ww.text}
+              </div>
+            ))}
+            <span style={{ fontSize: 9, color: 'rgba(148,163,184,0.3)', marginTop: 6, display: 'block' }}>
+              الرسالة المخصصة أعلاه تأخذ الأولوية على هذه الرسائل المدمجة
+            </span>
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 12 }}>
           <button onClick={() => onSave(w)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'rgba(59,130,246,0.2)', color: '#60a5fa', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>حفظ</button>
