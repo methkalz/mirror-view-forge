@@ -1,34 +1,48 @@
 
 
-# تبسيط نظام مستوى الصوت: مجموعة أو ملفات فردية (وليس كلاهما)
+# إصلاح: جدول المعاينة لا يعكس قيم التخصيص اليدوي (Override)
 
-## الفكرة
-حالياً يوجد تحكم بمستوى صوت المجموعة (group volume) وأيضاً مستوى صوت كل ملف (file volume) مما يُسبب ارتباكاً. سنجعل المستخدم يختار: إما مستوى واحد للمجموعة كلها، أو مستوى مستقل لكل ملف.
+## المشكلة
+عند تعديل موجة (مثلاً تغيير المدة من 60 إلى 20)، القائمة المنبثقة (WaveEditor) تعرض القيمة الصحيحة، لكن جدول المعاينة الفورية يستمر بعرض القيم المولّدة تلقائياً من `generatePreviewWaves()` ويتجاهل البيانات الفعلية المحفوظة.
 
-## التفاصيل التقنية
+## الحل
+**ملف واحد**: `src/pages/Admin.tsx`
 
-### قاعدة البيانات
-إضافة عمود `volume_mode` لجدول `audio_config`:
-```sql
-ALTER TABLE public.audio_config ADD COLUMN volume_mode text NOT NULL DEFAULT 'group';
+بعد توليد `previews` من `generatePreviewWaves()`, نمر على النتائج ونستبدل قيم أي موجة لها override محفوظ في `waves` بالقيم الحقيقية من قاعدة البيانات.
+
+```text
+previews (auto) ──► لكل موجة: هل لها override؟ ──► نعم: استبدال القيم ──► عرض في الجدول
+                                                  ──► لا: إبقاء القيم التلقائية
 ```
-- `'group'`: مستوى صوت واحد للمجموعة (الحقل `volume` الحالي) — يُتجاهل `audio_files.volume`
-- `'individual'`: لكل ملف مستوى خاص — يُتجاهل `audio_config.volume`
 
-### الملفات المتأثرة
+### التغيير (سطر ~509)
+بعد السطر:
+```js
+const previews = diffProfile ? generatePreviewWaves(diffProfile, previewCount) : [];
+```
 
-**1. `src/game/config.ts`**
-- إضافة `volumeMode: 'group' | 'individual'` لـ `AudioConfigEntry`
-- قراءة الحقل الجديد في `fetchAudioConfig`
+إضافة دمج (merge) قيم الـ overrides الفعلية:
+```js
+// Merge actual override values into preview rows
+const mergedPreviews = previews.map(p => {
+  const override = waves.find(w => w.waveNumber === p.wave);
+  if (!override) return p;
+  return {
+    ...p,
+    duration: override.duration,
+    threats: override.threats,
+    maxConcurrent: override.maxConcurrent,
+    spawnInterval: override.spawnRate,
+    droneTiers: override.droneTypes,
+    clusterSplits: override.clusterSplits,
+    bulletLevel: override.bulletLevel,
+    hasBoss: override.hasBoss,
+    hasChemical: override.hasChemical,
+    hasIncendiary: override.hasIncendiary,
+    droneInterval: override.droneInterval,
+  };
+});
+```
 
-**2. `src/game/audio.ts`**
-- تعديل `playCustomAudio`: 
-  - إذا `volumeMode === 'group'` → `gain = s.volume` (تجاهل file.volume)
-  - إذا `volumeMode === 'individual'` → `gain = file.volume` (تجاهل s.volume)
-
-**3. `src/pages/Admin.tsx`**
-- إضافة toggle في إعدادات كل صوت: "مستوى المجموعة" / "مستوى فردي لكل ملف"
-- عند اختيار "مجموعة": إظهار slider واحد للمجموعة فقط، إخفاء sliders الملفات
-- عند اختيار "فردي": إظهار slider لكل ملف، إخفاء slider المجموعة
-- إزالة slider مستوى الصوت من الصف الرئيسي للصوت (خارج القائمة المنسدلة) لتجنب الازدواجية
+ثم استخدام `mergedPreviews` بدل `previews` في الـ `map` داخل الجدول (سطر ~654).
 
