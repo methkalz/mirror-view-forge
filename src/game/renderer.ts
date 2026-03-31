@@ -2739,12 +2739,28 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
       // Bomb bay indicator — glowing underside
       const bombReady = d.bombTimer >= d.bombCooldown * 0.8;
       if (bombReady) {
-        ctx.fillStyle = 'rgba(255, 80, 0, 0.5)';
+        // Pulsing fire ring
+        const ringPulse = 0.5 + Math.sin(g.elapsed * 8) * 0.3;
+        ctx.fillStyle = `rgba(255, 80, 0, ${ringPulse})`;
         ctx.shadowColor = '#ff5000';
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 15;
         ctx.beginPath();
         ctx.ellipse(0, d.size * 0.35, d.size * 0.5, d.size * 0.2, 0, 0, Math.PI * 2);
         ctx.fill();
+        // Inner white-hot core
+        ctx.fillStyle = `rgba(255, 200, 50, ${ringPulse * 0.6})`;
+        ctx.beginPath();
+        ctx.ellipse(0, d.size * 0.35, d.size * 0.25, d.size * 0.1, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Sparks
+        for (let si = 0; si < 3; si++) {
+          const sx = (Math.random() - 0.5) * d.size * 0.8;
+          const sy = d.size * 0.35 + (Math.random() - 0.5) * d.size * 0.3;
+          ctx.fillStyle = Math.random() > 0.5 ? '#fbbf24' : '#ffffff';
+          ctx.beginPath();
+          ctx.arc(sx, sy, 0.8 + Math.random(), 0, Math.PI * 2);
+          ctx.fill();
+        }
         ctx.shadowBlur = 0;
       }
       // Bomb bay hatch lines
