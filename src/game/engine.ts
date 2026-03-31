@@ -1291,10 +1291,9 @@ function startNextWave(g: GameData) {
     }
   }
 
-  // Gas mask purchase offer when chemical wave starts
+  // Gas mask purchase offer — delayed after chemical warning
   if (recipe.hasChemical && !g.gasMaskOwned && g.player.gasMaskTimer <= 0) {
-    const cost = Math.max(10, Math.ceil(g.score * 0.1));
-    g.gasMaskOffer = { active: true, timer: 6, cost };
+    g.gasMaskOfferDelay = 2.5;
   }
 }
 
