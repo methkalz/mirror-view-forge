@@ -495,6 +495,7 @@ export interface AudioFileEntry {
   fileUrl: string;
   fileName: string;
   sortOrder: number;
+  volume: number;
 }
 
 export interface AudioConfigEntry {
