@@ -1,4 +1,4 @@
-import { fetchAudioConfig, type AudioConfigEntry, type AudioFileEntry, type PlayMode } from './config';
+import { fetchAudioConfig, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type VolumeMode } from './config';
 
 let audioCtx: AudioContext | null = null;
 let ambientNode: AudioBufferSourceNode | null = null;
