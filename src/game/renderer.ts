@@ -2942,6 +2942,7 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
     elapsed: g.elapsed,
     isShooting,
     shootTimer: p.shootTimer,
+    hasGasMask: p.gasMaskTimer > 0,
   });
 
   // Health bar above head (drawn after character, in player's local space)
@@ -3378,46 +3379,150 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.globalAlpha = 1;
   }
 
-  // Gas mask purchase offer card
+  // Gas mask purchase offer card — styled like upgrade cards
   if (g.gasMaskOffer && g.gasMaskOffer.active && g.state === 'playing') {
-    const cardW = 160, cardH = 60;
+    const cardW = 140, cardH = 195;
     const cardX = (g.width - cardW) / 2;
-    const cardY = g.height * 0.55;
-    const fadeIn = Math.min(1, (6 - g.gasMaskOffer.timer) * 3);
+    const offerDuration = 8;
+    const slideIn = Math.min(1, (offerDuration - g.gasMaskOffer.timer) * 4);
     const fadeOut = g.gasMaskOffer.timer < 1 ? g.gasMaskOffer.timer : 1;
-    ctx.globalAlpha = fadeIn * fadeOut * 0.9;
+    const slideY = (1 - slideIn) * 60;
+    const cardY = g.height * 0.5 - cardH / 2 + 20 + slideY;
 
-    // Card background
-    ctx.fillStyle = 'rgba(20, 83, 45, 0.85)';
-    roundRect(ctx, cardX, cardY, cardW, cardH, 12);
+    // Dark overlay
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.35 * slideIn * fadeOut})`;
+    ctx.fillRect(0, 0, g.width, g.height);
+
+    ctx.globalAlpha = slideIn * fadeOut;
+
+    // Card shadow
+    ctx.shadowColor = 'rgba(0, 200, 80, 0.3)';
+    ctx.shadowBlur = 20;
+
+    // Card background gradient
+    const bgGrad = ctx.createLinearGradient(cardX, cardY, cardX, cardY + cardH);
+    bgGrad.addColorStop(0, 'rgba(20, 83, 45, 0.95)');
+    bgGrad.addColorStop(0.5, 'rgba(15, 60, 35, 0.95)');
+    bgGrad.addColorStop(1, 'rgba(10, 40, 25, 0.95)');
+    ctx.fillStyle = bgGrad;
+    roundRect(ctx, cardX, cardY, cardW, cardH, 14);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(74, 222, 128, 0.6)';
-    ctx.lineWidth = 1.5;
-    roundRect(ctx, cardX, cardY, cardW, cardH, 12);
+
+    // Reset shadow
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+
+    // Border glow
+    ctx.strokeStyle = `rgba(74, 222, 128, ${0.5 + Math.sin(g.elapsed * 3) * 0.2})`;
+    ctx.lineWidth = 2;
+    roundRect(ctx, cardX, cardY, cardW, cardH, 14);
     ctx.stroke();
 
-    // Icon
-    ctx.font = '20px sans-serif';
+    // Inner subtle border
+    ctx.strokeStyle = 'rgba(74, 222, 128, 0.15)';
+    ctx.lineWidth = 1;
+    roundRect(ctx, cardX + 3, cardY + 3, cardW - 6, cardH - 6, 11);
+    ctx.stroke();
+
+    const cx = cardX + cardW / 2;
+
+    // Icon circle background
+    const iconY = cardY + 50;
+    const iconGrad = ctx.createRadialGradient(cx, iconY, 0, cx, iconY, 28);
+    iconGrad.addColorStop(0, 'rgba(74, 222, 128, 0.25)');
+    iconGrad.addColorStop(1, 'rgba(74, 222, 128, 0.05)');
+    ctx.fillStyle = iconGrad;
+    ctx.beginPath();
+    ctx.arc(cx, iconY, 28, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(74, 222, 128, 0.3)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Gas mask icon (drawn)
+    ctx.save();
+    ctx.translate(cx, iconY);
+    // Mask body
+    ctx.fillStyle = '#2d5a3d';
+    ctx.beginPath();
+    ctx.ellipse(0, 2, 16, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#4ade80';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // Eye windows
+    ctx.fillStyle = 'rgba(180, 255, 200, 0.4)';
+    ctx.strokeStyle = '#3a7a50';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(-6, -2, 4, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(6, -2, 4, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Filter canister
+    ctx.fillStyle = '#1a3a25';
+    ctx.beginPath();
+    ctx.arc(0, 10, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#4ade80';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Filter lines
+    ctx.strokeStyle = 'rgba(74, 222, 128, 0.4)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-3, 9);
+    ctx.lineTo(3, 9);
+    ctx.moveTo(-2, 11);
+    ctx.lineTo(2, 11);
+    ctx.stroke();
+    // Straps
+    ctx.strokeStyle = 'rgba(74, 222, 128, 0.3)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-14, -2);
+    ctx.lineTo(-18, -6);
+    ctx.moveTo(14, -2);
+    ctx.lineTo(18, -6);
+    ctx.stroke();
+    ctx.restore();
+
+    // Title — Arabic
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 15px Tajawal, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('😷', cardX + 28, cardY + cardH / 2);
+    ctx.direction = 'rtl';
+    ctx.fillText('كمامة غاز', cx, cardY + 92);
 
-    // Text
-    ctx.font = 'bold 11px monospace';
-    ctx.fillStyle = '#4ade80';
-    ctx.textAlign = 'left';
-    ctx.fillText('شراء كمامة', cardX + 48, cardY + 20);
+    // Hint text
+    ctx.fillStyle = 'rgba(200, 255, 200, 0.7)';
+    ctx.font = '11px Tajawal, sans-serif';
+    ctx.fillText('احمِ نفسك من الغاز!', cx, cardY + 112);
 
     // Cost
-    ctx.font = 'bold 13px monospace';
     ctx.fillStyle = '#fbbf24';
-    ctx.fillText(`⭐ ${g.gasMaskOffer.cost}`, cardX + 48, cardY + 40);
+    ctx.font = 'bold 18px Tajawal, sans-serif';
+    ctx.fillText(`⭐ ${g.gasMaskOffer.cost}`, cx, cardY + 142);
 
-    // Timer bar
-    const timerRatio = g.gasMaskOffer.timer / 6;
-    ctx.fillStyle = 'rgba(74, 222, 128, 0.3)';
-    roundRect(ctx, cardX + 4, cardY + cardH - 6, (cardW - 8) * timerRatio, 3, 2);
+    // "اضغط للشراء" hint
+    const pressPulse = 0.5 + Math.sin(g.elapsed * 4) * 0.3;
+    ctx.fillStyle = `rgba(74, 222, 128, ${pressPulse})`;
+    ctx.font = '10px Tajawal, sans-serif';
+    ctx.fillText('اضغط للشراء', cx, cardY + 165);
+
+    ctx.direction = 'ltr';
+
+    // Timer bar at bottom
+    const timerRatio = g.gasMaskOffer.timer / offerDuration;
+    ctx.fillStyle = 'rgba(74, 222, 128, 0.2)';
+    roundRect(ctx, cardX + 4, cardY + cardH - 8, cardW - 8, 4, 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(74, 222, 128, 0.7)';
+    roundRect(ctx, cardX + 4, cardY + cardH - 8, (cardW - 8) * timerRatio, 4, 2);
     ctx.fill();
 
     ctx.globalAlpha = 1;
@@ -3700,13 +3805,14 @@ interface CharacterOptions {
   isWaving?: boolean;
   hasGoggles?: boolean;
   lookingBack?: boolean;
+  hasGasMask?: boolean;
 }
 
 function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
   const {
     x, y, scale, sitting, facingRight, isDriver, helmetColor,
     bodyBob, armOffset, legOffset, isHit, elapsed,
-    holdingDriver, isShooting, shootTimer, isWaving, hasGoggles, lookingBack,
+    holdingDriver, isShooting, shootTimer, isWaving, hasGoggles, lookingBack, hasGasMask,
   } = opts;
 
   ctx.save();
@@ -4249,45 +4355,107 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
     ctx.stroke();
   }
 
-  // ── Eyes ──
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.ellipse(-2.2, headY - 0.5, 1.6, 1.4, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#111';
-  ctx.beginPath();
-  ctx.arc(-1.8, headY - 0.5, 0.8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.ellipse(2.5, headY - 0.5, 1.6, 1.4, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#111';
-  ctx.beginPath();
-  ctx.arc(2.9, headY - 0.5, 0.8, 0, Math.PI * 2);
-  ctx.fill();
-
-  // ── Eyebrows ──
-  ctx.strokeStyle = '#2a1a0a';
-  ctx.lineWidth = 1;
-  if (isHit) {
+  if (hasGasMask) {
+    // ── Gas Mask over face ──
+    // Mask body (covers lower face)
+    ctx.fillStyle = '#2d4a35';
     ctx.beginPath();
-    ctx.moveTo(-3.5, headY - 3);
-    ctx.lineTo(-1, headY - 2);
+    ctx.ellipse(0, headY + 1, 5.5, 4.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#4ade80';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+
+    // Eye windows (tinted green)
+    ctx.fillStyle = 'rgba(100, 255, 150, 0.35)';
+    ctx.strokeStyle = '#3a6a4a';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.ellipse(-2.2, headY - 0.5, 2, 1.6, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(1.5, headY - 2);
-    ctx.lineTo(4, headY - 3);
+    ctx.ellipse(2.2, headY - 0.5, 2, 1.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Eye reflections
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.beginPath();
+    ctx.ellipse(-2.5, headY - 1, 0.8, 0.5, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(1.8, headY - 1, 0.8, 0.5, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Filter canister (side)
+    ctx.fillStyle = '#1a3a25';
+    ctx.beginPath();
+    ctx.arc(5.5, headY + 2, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#4ade80';
+    ctx.lineWidth = 0.6;
+    ctx.stroke();
+    // Filter lines
+    ctx.strokeStyle = 'rgba(74, 222, 128, 0.4)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(4.5, headY + 1.5);
+    ctx.lineTo(6.5, headY + 1.5);
+    ctx.moveTo(4.8, headY + 2.5);
+    ctx.lineTo(6.2, headY + 2.5);
+    ctx.stroke();
+
+    // Straps
+    ctx.strokeStyle = 'rgba(74, 222, 128, 0.25)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-5, headY);
+    ctx.lineTo(-6.5, headY - 3);
+    ctx.moveTo(5, headY);
+    ctx.lineTo(6.5, headY - 3);
     ctx.stroke();
   } else {
+    // ── Eyes ──
+    ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.moveTo(-3.5, headY - 2.5);
-    ctx.lineTo(-0.8, headY - 2.8);
-    ctx.stroke();
+    ctx.ellipse(-2.2, headY - 0.5, 1.6, 1.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#111';
     ctx.beginPath();
-    ctx.moveTo(1.5, headY - 2.8);
-    ctx.lineTo(4, headY - 2.5);
-    ctx.stroke();
+    ctx.arc(-1.8, headY - 0.5, 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(2.5, headY - 0.5, 1.6, 1.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(2.9, headY - 0.5, 0.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ── Eyebrows ──
+    ctx.strokeStyle = '#2a1a0a';
+    ctx.lineWidth = 1;
+    if (isHit) {
+      ctx.beginPath();
+      ctx.moveTo(-3.5, headY - 3);
+      ctx.lineTo(-1, headY - 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(1.5, headY - 2);
+      ctx.lineTo(4, headY - 3);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(-3.5, headY - 2.5);
+      ctx.lineTo(-0.8, headY - 2.8);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(1.5, headY - 2.8);
+      ctx.lineTo(4, headY - 2.5);
+      ctx.stroke();
+    }
   }
 
   ctx.restore();
