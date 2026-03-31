@@ -8,7 +8,7 @@ import {
   fetchWaveConfigs, upsertWaveConfig, deleteWaveConfig,
   fetchDifficultyProfile, updateDifficultyProfile,
   fetchAudioConfig, updateAudioEntry, updateAudioCategory, uploadAudioFile, deleteAudioFile, listAudioLibrary,
-  addAudioFile, removeAudioFile, fetchAnalytics, createAudioEntry, deleteAudioEntry,
+  addAudioFile, removeAudioFile, fetchAnalytics, createAudioEntry, deleteAudioEntry, updateAudioFileVolume,
   type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type GameAnalytics, type DifficultyProfile,
 } from '@/game/config';
 import {
