@@ -6386,7 +6386,7 @@ function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: numbe
   drawGlassCard(ctx, card1X, card1Y, card1W, card1H, 'rgba(239, 68, 68, 0.8)');
   ctx.fillStyle = 'rgba(240, 240, 240, 0.95)';
   ctx.font = 'bold 19px Tajawal, sans-serif';
-  ctx.fillText('انجُ من السماء', w / 2, card1Y + card1H * 0.35);
+  ctx.fillText('هل تُجيد الهرب؟', w / 2, card1Y + card1H * 0.35);
   ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
   ctx.font = '15px Tajawal, sans-serif';
   ctx.fillText('تسقط تهديدات من الأعلى', w / 2, card1Y + card1H * 0.58);
