@@ -576,6 +576,7 @@ export async function updateAudioEntry(id: string, updates: {
   if (updates.intervalSeconds !== undefined) mapped.interval_seconds = updates.intervalSeconds;
   if (updates.maxConcurrent !== undefined) mapped.max_concurrent = updates.maxConcurrent;
   if (updates.allowOverlap !== undefined) mapped.allow_overlap = updates.allowOverlap;
+  if (updates.volumeMode !== undefined) mapped.volume_mode = updates.volumeMode;
   const { error } = await supabase.from('audio_config').update(mapped).eq('id', id);
   return !error;
 }
