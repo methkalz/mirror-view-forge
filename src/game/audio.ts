@@ -2,6 +2,7 @@ import { fetchAudioConfig, type AudioConfigEntry, type AudioFileEntry, type Play
 
 let audioCtx: AudioContext | null = null;
 let ambientNode: AudioBufferSourceNode | null = null;
+let ambientGainNode: GainNode | null = null;
 
 // ─── Remote audio settings cache ───
 interface SoundSetting {
