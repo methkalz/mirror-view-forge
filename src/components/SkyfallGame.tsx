@@ -277,6 +277,8 @@ const SkyfallGame: React.FC = () => {
           return;
         }
         // Last slide — start game
+        cancelMenuMusicStart();
+        stopMenuMusic();
         resumeAudio();
         scoreSubmittedRef.current = false;
         setGameOverData(null);
