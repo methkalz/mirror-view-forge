@@ -2401,7 +2401,7 @@ export function update(g: GameData, input: InputState, dt: number) {
       } else {
         // Active tracking for scout/bomber
         const dx = p.pos.x - d.pos.x;
-        const targetY = d.tier === 'bomber' ? p.pos.y - 80 - d.altitudeOffset * 0.5 : p.pos.y - 30 - d.altitudeOffset * 0.5;
+        const targetY = d.tier === 'bomber' ? p.pos.y - 150 - d.altitudeOffset * 0.5 : p.pos.y - 120 - d.altitudeOffset * 0.5;
         const dy = targetY - d.pos.y;
         const dd = Math.sqrt(dx * dx + dy * dy);
         
