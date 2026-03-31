@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { GameData, InputState } from '@/game/types';
-import { loadAudioSettings, reloadAudioSettings } from '@/game/audio';
+import { loadAudioSettings } from '@/game/audio';
 import { createGame, resetGame, update, updateIntro } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
 import { resumeAudio, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition } from '@/game/audio';
@@ -103,15 +103,7 @@ const SkyfallGame: React.FC = () => {
       })
       .subscribe();
 
-    // Realtime subscription for audio config changes
-    const audioChannel = supabase
-      .channel('audio-config-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'audio_config' }, () => {
-        reloadAudioSettings();
-      })
-      .subscribe();
-
-    return () => { mounted = false; supabase.removeChannel(channel); supabase.removeChannel(bgChannel); supabase.removeChannel(audioChannel); };
+    return () => { mounted = false; supabase.removeChannel(channel); supabase.removeChannel(bgChannel); };
   }, []);
 
   const handleNameSubmit = useCallback((name: string) => {

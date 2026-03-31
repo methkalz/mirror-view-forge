@@ -44,27 +44,6 @@ export async function loadAudioSettings(onProgress?: (pct: number) => void) {
   }
 }
 
-/** Re-fetch audio settings from DB without re-preloading buffers */
-export async function reloadAudioSettings() {
-  try {
-    const entries = await fetchAudioConfig();
-    for (const e of entries) {
-      audioSettings.set(e.soundKey, {
-        volume: e.volume,
-        enabled: e.enabled,
-        audioUrl: e.audioUrl,
-        playMode: e.playMode,
-        intervalSeconds: e.intervalSeconds,
-        maxConcurrent: e.maxConcurrent,
-        files: e.files,
-      });
-    }
-    settingsLoaded = true;
-  } catch {
-    // keep existing settings on error
-  }
-}
-
 async function preloadAllAudio(onProgress?: (pct: number) => void) {
   const ctx = getCtx();
   const urlsToLoad = new Set<string>();
