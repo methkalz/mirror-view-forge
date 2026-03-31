@@ -6399,7 +6399,7 @@ function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: numbe
   drawGlassCard(ctx, card2X, card2Y, card2W, card2H, 'rgba(251, 191, 36, 0.8)');
   ctx.fillStyle = 'rgba(251, 191, 36, 0.95)';
   ctx.font = 'bold 18px Tajawal, sans-serif';
-  ctx.fillText('نظام النقاط', w / 2, card2Y + card2H * 0.25);
+  ctx.fillText('بعيد لكن قريب', w / 2, card2Y + card2H * 0.25);
   ctx.fillStyle = 'rgba(230, 230, 230, 0.85)';
   ctx.font = '15px Tajawal, sans-serif';
   ctx.fillText('كلما سقط التهديد أقرب إليك', w / 2, card2Y + card2H * 0.48);
