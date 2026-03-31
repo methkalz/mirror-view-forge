@@ -1100,6 +1100,7 @@ const AudioPanel: React.FC<{
                       </div>
                       <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.3)' }}>{item.labelAr}</div>
                     </div>
+                    {item.volumeMode !== 'individual' && <>
                     <input type="number" min={0} max={200} step={1}
                       value={Math.round(item.volume * 100)}
                       onChange={e => { const v = Math.max(0, Math.min(200, parseInt(e.target.value) || 0)) / 100; handleUpdate(item.id, { volume: v }); }}
@@ -1107,6 +1108,7 @@ const AudioPanel: React.FC<{
                       style={{ width: 42, padding: '1px 3px', borderRadius: 5, border: `1px solid ${meta.color}22`, background: 'rgba(0,0,0,0.3)', color: 'rgba(148,163,184,0.6)', fontSize: 10, fontWeight: 700, textAlign: 'center' as const, outline: 'none' }} />
                     <span style={{ fontSize: 9, color: 'rgba(148,163,184,0.25)' }}>%</span>
                     <input type="range" min={0} max={2} step={0.01} value={item.volume} onChange={e => handleUpdate(item.id, { volume: parseFloat(e.target.value) })} style={{ width: 70, accentColor: meta.color }} />
+                    </>}
                     {item.category === 'ambientFX' && item.intervalSeconds != null && (
                       <span style={{ fontSize: 9, color: '#06b6d4', background: 'rgba(6,182,212,0.1)', padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>⏱{item.intervalSeconds}s</span>
                     )}
