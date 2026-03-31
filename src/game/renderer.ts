@@ -1502,7 +1502,7 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
     airstrike:    { base: '#fbbf24', light: '#fcd34d', dark: '#b45309' },
     interceptor:  { base: '#f97316', light: '#fb923c', dark: '#c2410c' },
     extinguisher: { base: '#dc2626', light: '#ef4444', dark: '#991b1b' },
-    gasmask:      { base: '#16a34a', light: '#22c55e', dark: '#14532d' },
+    
     water:        { base: '#0ea5e9', light: '#38bdf8', dark: '#0284c7' },
   };
 
