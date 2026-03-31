@@ -2456,16 +2456,17 @@ export function update(g: GameData, input: InputState, dt: number) {
               speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
               rotation: 0, trailTimer: 0
             }));
-            bomb.type = 'cluster';
+            bomb.type = 'shrapnel';
             bomb.pos = { x: d.pos.x, y: d.pos.y + d.size };
             bomb.targetPos = { x: d.pos.x + (Math.random() - 0.5) * 30, y: g.height * GROUND_RATIO };
-            bomb.speed = 170 + Math.random() * 60;
+            bomb.speed = 220 + Math.random() * 60;
             bomb.size = 10;
             bomb.damage = 18;
             bomb.warningDuration = 0;
             bomb.warningTimer = 0;
             bomb.falling = true;
             bomb.splitDone = false;
+            bomb.isClusterBomb = false;
             bomb.rotation = 0;
             bomb.trailTimer = 0;
             sfxWarning();
