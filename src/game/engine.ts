@@ -1378,8 +1378,8 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         g.score -= deduct;
         g.scoreCountdown.remaining -= deduct;
         g.scoreCountdown.tickTimer = 0.04; // Fast ticks
-        // Tick sound — use a quick pickup-like blip
-        sfxPickup();
+        // Metallic tick sound for score countdown
+        sfxScoreTick();
         if (g.scoreCountdown.remaining <= 0) {
           g.scoreCountdown = null;
           g.slowMoFactor = 1; // Restore normal speed
