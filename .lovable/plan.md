@@ -1,48 +1,86 @@
 
 
-# إصلاح: جدول المعاينة لا يعكس قيم التخصيص اليدوي (Override)
+# إصلاح ربط إعدادات الموجات باللعبة + إظهار الرسائل التحذيرية في لوحة التحكم
 
-## المشكلة
-عند تعديل موجة (مثلاً تغيير المدة من 60 إلى 20)، القائمة المنبثقة (WaveEditor) تعرض القيمة الصحيحة، لكن جدول المعاينة الفورية يستمر بعرض القيم المولّدة تلقائياً من `generatePreviewWaves()` ويتجاهل البيانات الفعلية المحفوظة.
+## المشاكل المكتشفة
 
-## الحل
-**ملف واحد**: `src/pages/Admin.tsx`
-
-بعد توليد `previews` من `generatePreviewWaves()`, نمر على النتائج ونستبدل قيم أي موجة لها override محفوظ في `waves` بالقيم الحقيقية من قاعدة البيانات.
-
+### 1. خلل حرج: سباق توقيت (Race Condition)
+عند بدء اللعبة، يتم استدعاء `resetGame(g)` **قبل** اكتمال جلب البيانات من قاعدة البيانات:
 ```text
-previews (auto) ──► لكل موجة: هل لها override؟ ──► نعم: استبدال القيم ──► عرض في الجدول
-                                                  ──► لا: إبقاء القيم التلقائية
+resetGame(g)  ← يعمل فوراً مع waveTimer = 60 (ثابت)
+Promise.all([...]).then(...)  ← يُحمّل البيانات لاحقاً لكن بعد فوات الأوان
 ```
+لذلك الموجة الأولى تبدأ دائماً بـ 60 ثانية بغض النظر عن أي تعديل.
 
-### التغيير (سطر ~509)
-بعد السطر:
-```js
-const previews = diffProfile ? generatePreviewWaves(diffProfile, previewCount) : [];
-```
+### 2. الموجة الأولى لا تقرأ الوصفة (Recipe)
+`resetGame()` يضع `waveTimer = 60` ثابتة ولا يستدعي `getWaveRecipe(1)` لقراءة المدة والإعدادات من الـ override.
+بينما `startNextWave()` (للموجات 2+) يقرأ الوصفة بشكل صحيح.
 
-إضافة دمج (merge) قيم الـ overrides الفعلية:
-```js
-// Merge actual override values into preview rows
-const mergedPreviews = previews.map(p => {
-  const override = waves.find(w => w.waveNumber === p.wave);
-  if (!override) return p;
-  return {
-    ...p,
-    duration: override.duration,
-    threats: override.threats,
-    maxConcurrent: override.maxConcurrent,
-    spawnInterval: override.spawnRate,
-    droneTiers: override.droneTypes,
-    clusterSplits: override.clusterSplits,
-    bulletLevel: override.bulletLevel,
-    hasBoss: override.hasBoss,
-    hasChemical: override.hasChemical,
-    hasIncendiary: override.hasIncendiary,
-    droneInterval: override.droneInterval,
-  };
+### 3. الرسائل التحذيرية مخفية عن لوحة التحكم
+يوجد 12 رسالة تحذيرية/تطويرية مشفرة (hardcoded) في `WAVE_WARNINGS` بالمحرك ولكنها:
+- لا تظهر في لوحة التحكم إطلاقاً
+- لا يمكن تعديلها أو إضافة أصوات لها
+
+---
+
+## خطة الإصلاح
+
+### الملف 1: `src/components/SkyfallGame.tsx`
+**إصلاح سباق التوقيت**: نقل `resetGame(g)` داخل `.then()` بحيث يعمل **بعد** اكتمال جلب البيانات:
+```text
+Promise.all([...]).then(([cfg, dp, wc]) => {
+  g.difficultyProfile = dp;
+  g.remoteWaveOverrides = wc;
+  // ... تطبيق الإعدادات
+  resetGame(g);  ← الآن بعد تحميل البيانات
 });
 ```
 
-ثم استخدام `mergedPreviews` بدل `previews` في الـ `map` داخل الجدول (سطر ~654).
+### الملف 2: `src/game/engine.ts`
+**إصلاح الموجة الأولى**: بعد `resetGame()` يضع القيم الافتراضية، نضيف قراءة الوصفة للموجة 1:
+```typescript
+// بعد إعادة الضبط، تطبيق وصفة الموجة 1
+const recipe = getWaveRecipe(g.waveNumber, g);
+g.waveTimer = recipe.duration || 60;
+g.spawnTimer = recipe.spawnInterval || g.spawnTimer;
+g.bulletLevel = recipe.bulletLevel;
+```
+
+**تصدير `WAVE_WARNINGS`**: تحويلها من `const` داخلي إلى `export` ليتم عرضها في لوحة التحكم.
+
+### الملف 3: `src/pages/Admin.tsx`
+**إظهار الرسائل التحذيرية**: إضافة قسم جديد في تبويب الموجات يعرض:
+
+```text
+┌─────────────────────────────────────────────────┐
+│ 📢 رسائل الموجات                                │
+│                                                  │
+│ الموجة 1: ⚠️ تحذير: شظايا متساقطة!              │
+│ الموجة 2: ⚠️ تحذير: صواريخ قادمة!               │
+│ الموجة 3: ⬆️ تطوير: طلقة مزدوجة                 │
+│ ...                                              │
+│ + كل موجة مخصصة لها warningText                  │
+│                                                  │
+│ [يمكن التعديل عبر الضغط على أي صف]              │
+└─────────────────────────────────────────────────┘
+```
+
+- عرض **كل الرسائل** (المشفرة + المخصصة من DB) مرتبة حسب رقم الموجة
+- في جدول المعاينة الفورية: إضافة عمود "رسالة" يعرض نص التحذير إن وجد
+- في محرر الموجة (WaveEditor): إضافة حقول:
+  - **نوع الرسالة**: warning / upgrade (radio buttons)
+  - **لون الرسالة**: color picker
+  - **صوت الرسالة**: قائمة منسدلة من الأصوات المضافة في audio_config
+
+### الملف 4: `src/game/config.ts`
+- إضافة `warningSoundKey` إلى `RemoteWaveConfig`
+- تحديث `fetchWaveConfigs` و `upsertWaveConfig` لقراءة/كتابة `warning_sound_key`
+
+---
+
+## الملفات المتأثرة
+1. **`src/components/SkyfallGame.tsx`** — إصلاح سباق التوقيت
+2. **`src/game/engine.ts`** — تطبيق وصفة الموجة 1 + تصدير WAVE_WARNINGS
+3. **`src/pages/Admin.tsx`** — عرض الرسائل + حقول التحكم الجديدة
+4. **`src/game/config.ts`** — إضافة warningSoundKey
 
