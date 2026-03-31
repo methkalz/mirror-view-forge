@@ -29,6 +29,7 @@ export type Database = {
           sound_key: string
           updated_at: string
           volume: number
+          volume_mode: string
         }
         Insert: {
           allow_overlap?: boolean
@@ -44,6 +45,7 @@ export type Database = {
           sound_key: string
           updated_at?: string
           volume?: number
+          volume_mode?: string
         }
         Update: {
           allow_overlap?: boolean
@@ -59,6 +61,7 @@ export type Database = {
           sound_key?: string
           updated_at?: string
           volume?: number
+          volume_mode?: string
         }
         Relationships: []
       }

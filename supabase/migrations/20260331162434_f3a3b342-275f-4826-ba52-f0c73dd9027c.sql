@@ -1,0 +1,1 @@
+ALTER TABLE public.audio_config ADD COLUMN volume_mode text NOT NULL DEFAULT 'group';

@@ -498,6 +498,8 @@ export interface AudioFileEntry {
   volume: number;
 }
 
+export type VolumeMode = 'group' | 'individual';
+
 export interface AudioConfigEntry {
   id: string;
   soundKey: string;
@@ -511,6 +513,7 @@ export interface AudioConfigEntry {
   intervalSeconds: number | null;
   maxConcurrent: number;
   allowOverlap: boolean;
+  volumeMode: VolumeMode;
   files: AudioFileEntry[];
 }
 
