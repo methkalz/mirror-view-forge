@@ -948,7 +948,7 @@ function queueWaveEvent(
 
   // If a custom sound key is specified, try to play it first
   if (event.soundKey) {
-    const played = playCustomAudio(event.soundKey);
+    const played = playCustomAudioByKey(event.soundKey);
     if (played) return;
   }
 
