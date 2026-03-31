@@ -3365,6 +3365,63 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillText(`كمامة ${p.gasMaskTimer.toFixed(1)}`, 30, effectY + 2);
     ctx.globalAlpha = 1;
   }
+  // Gas mask owned icon (left side under effects)
+  if (g.gasMaskOwned && g.player.gasMaskTimer > 0) {
+    effectY += 18;
+    const blink = g.player.gasMaskTimer < 3 ? (Math.sin(g.elapsed * 12) > 0 ? 1 : 0.3) : 1;
+    ctx.globalAlpha = blink;
+    ctx.fillStyle = '#16a34a';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('😷 كمامة', 15, effectY + 2);
+    drawCircularProgress(8, effectY - 2, 4, g.player.gasMaskTimer / 15, '#16a34a');
+    ctx.globalAlpha = 1;
+  }
+
+  // Gas mask purchase offer card
+  if (g.gasMaskOffer && g.gasMaskOffer.active && g.state === 'playing') {
+    const cardW = 160, cardH = 60;
+    const cardX = (g.width - cardW) / 2;
+    const cardY = g.height * 0.55;
+    const fadeIn = Math.min(1, (6 - g.gasMaskOffer.timer) * 3);
+    const fadeOut = g.gasMaskOffer.timer < 1 ? g.gasMaskOffer.timer : 1;
+    ctx.globalAlpha = fadeIn * fadeOut * 0.9;
+
+    // Card background
+    ctx.fillStyle = 'rgba(20, 83, 45, 0.85)';
+    roundRect(ctx, cardX, cardY, cardW, cardH, 12);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(74, 222, 128, 0.6)';
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, cardX, cardY, cardW, cardH, 12);
+    ctx.stroke();
+
+    // Icon
+    ctx.font = '20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('😷', cardX + 28, cardY + cardH / 2);
+
+    // Text
+    ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = '#4ade80';
+    ctx.textAlign = 'left';
+    ctx.fillText('شراء كمامة', cardX + 48, cardY + 20);
+
+    // Cost
+    ctx.font = 'bold 13px monospace';
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillText(`⭐ ${g.gasMaskOffer.cost}`, cardX + 48, cardY + 40);
+
+    // Timer bar
+    const timerRatio = g.gasMaskOffer.timer / 6;
+    ctx.fillStyle = 'rgba(74, 222, 128, 0.3)';
+    roundRect(ctx, cardX + 4, cardY + cardH - 6, (cardW - 8) * timerRatio, 3, 2);
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+  }
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
