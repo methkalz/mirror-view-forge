@@ -506,8 +506,28 @@ const WavesPanel: React.FC<{
   const [showAutoScale, setShowAutoScale] = useState(true);
   const [previewCount, setPreviewCount] = useState(20);
 
-  const previews = diffProfile ? generatePreviewWaves(diffProfile, previewCount) : [];
+  const rawPreviews = diffProfile ? generatePreviewWaves(diffProfile, previewCount) : [];
   const overrideNums = new Set(waves.map(w => w.waveNumber));
+
+  // Merge actual override values into preview rows
+  const previews = rawPreviews.map(p => {
+    const override = waves.find(w => w.waveNumber === p.wave);
+    if (!override) return p;
+    return {
+      ...p,
+      duration: override.duration,
+      threats: override.threats,
+      maxConcurrent: override.maxConcurrent,
+      spawnInterval: override.spawnRate,
+      droneTiers: override.droneTypes,
+      clusterSplits: override.clusterSplits,
+      bulletLevel: override.bulletLevel,
+      hasBoss: override.hasBoss,
+      hasChemical: override.hasChemical,
+      hasIncendiary: override.hasIncendiary,
+      droneInterval: override.droneInterval,
+    };
+  });
 
   // Create override from preview row
   const createOverrideFromPreview = (p: typeof previews[0]) => {
