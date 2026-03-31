@@ -921,7 +921,7 @@ function spawnChemicalDrone(g: GameData) {
 
 function queueWaveEvent(
   g: GameData,
-  event: { id: string; text: string; sub: string; color: string; duration: number; type: 'warning' | 'upgrade' }
+  event: { id: string; text: string; sub: string; color: string; duration: number; type: 'warning' | 'upgrade'; soundKey?: string | null }
 ) {
   const resolveDelay = 2 + Math.random() * 3;
   const resolveAt = g.elapsed + resolveDelay;
@@ -945,6 +945,13 @@ function queueWaveEvent(
     type: event.type,
   };
   g.slowMoFactor = 0.1;
+
+  // If a custom sound key is specified, try to play it first
+  if (event.soundKey) {
+    const played = playCustomAudio(event.soundKey);
+    if (played) return;
+  }
+
   // Play different sound based on event type
   if (event.type === 'warning') {
     // Play threat-specific warning sound based on event id
