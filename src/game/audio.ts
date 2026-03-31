@@ -829,6 +829,7 @@ export function startPeriodicAmbient() {
 
   // Start periodic timers for sounds with intervalSeconds set
   for (const [key, s] of audioSettings) {
+    if (key === 'menuMusic') continue; // Menu music has its own lifecycle
     if (s.intervalSeconds && s.intervalSeconds > 0 && s.enabled) {
       const ms = s.intervalSeconds * 1000;
       const timer = setInterval(() => {
