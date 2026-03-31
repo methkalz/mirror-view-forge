@@ -947,6 +947,7 @@ const AudioPanel: React.FC<{
     if (updates.playMode !== undefined) db.playMode = updates.playMode;
     if (updates.intervalSeconds !== undefined) db.intervalSeconds = updates.intervalSeconds;
     if (updates.maxConcurrent !== undefined) db.maxConcurrent = updates.maxConcurrent;
+    if (updates.allowOverlap !== undefined) db.allowOverlap = updates.allowOverlap;
     if (Object.keys(db).length > 0) updateAudioEntry(id, db);
   };
 
