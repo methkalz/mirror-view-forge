@@ -233,6 +233,7 @@ function startAmbient() {
     gain.gain.value = getSoundVolume('ambient', 0.5);
     ambientNode.connect(gain).connect(ctx.destination);
     ambientNode.start();
+    ambientGainNode = gain;
     return;
   }
 
@@ -251,12 +252,13 @@ function startAmbient() {
   ambientNode.buffer = buffer;
   ambientNode.loop = true;
   const gain = ctx.createGain();
-  gain.gain.value = getSoundVolume('ambient', 0.03);
+  gain.gain.value = getSoundVolume('ambient', 0.15);
   const bq = ctx.createBiquadFilter();
   bq.type = 'lowpass';
   bq.frequency.value = 400;
   ambientNode.connect(bq).connect(gain).connect(ctx.destination);
   ambientNode.start();
+  ambientGainNode = gain;
 }
 
 export function sfxExplosion() {
