@@ -626,6 +626,7 @@ export async function updateAudioCategory(category: string, updates: { volume?: 
 
 export async function createAudioEntry(entry: {
   soundKey: string; category: string; label: string; labelAr: string;
+  intervalSeconds?: number; playMode?: PlayMode;
 }): Promise<AudioConfigEntry | null> {
   const { data, error } = await supabase.from('audio_config').insert({
     sound_key: entry.soundKey,
@@ -634,8 +635,9 @@ export async function createAudioEntry(entry: {
     label_ar: entry.labelAr,
     volume: 1.0,
     enabled: true,
-    play_mode: 'single',
+    play_mode: entry.playMode || 'single',
     max_concurrent: 1,
+    interval_seconds: entry.intervalSeconds ?? null,
   }).select().single();
   if (error || !data) return null;
   return {
