@@ -265,8 +265,8 @@ export function sfxExplosion() {
   if (!isSoundEnabled('explosion')) return;
   if (playCustomAudio('explosion')) return;
   const v = getSoundVolume('explosion', 1);
-  playTone(40, 0.15, 'sine', 0.03 * v);
-  playNoise(0.12, 0.025 * v, { type: 'lowpass', freq: 250 });
+  playTone(40, 0.15, 'sine', 0.15 * v);
+  playNoise(0.12, 0.12 * v, { type: 'lowpass', freq: 250 });
 }
 
 export function sfxImpactLight() {
