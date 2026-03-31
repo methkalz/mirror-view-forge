@@ -22,6 +22,8 @@ let settingsLoaded = false;
 const audioBufferCache: Map<string, AudioBuffer> = new Map();
 // ─── Sequential playback index per sound key ───
 const sequentialIndex: Map<string, number> = new Map();
+// ─── Shuffle queue per sound key ───
+const shuffleQueue: Map<string, number[]> = new Map();
 // ─── Periodic ambient timers ───
 const periodicTimers: Map<string, ReturnType<typeof setInterval>> = new Map();
 // ─── Active sources for overlap control ───
@@ -133,6 +135,20 @@ function pickFile(key: string): AudioFileEntry | null {
     } else if (mode === 'sequential') {
       const idx = (sequentialIndex.get(key) || 0) % s.files.length;
       sequentialIndex.set(key, idx + 1);
+      return s.files[idx];
+    } else if (mode === 'shuffle') {
+      // Fisher-Yates shuffle without repeat until all played
+      let queue = shuffleQueue.get(key);
+      if (!queue || queue.length === 0) {
+        queue = Array.from({ length: s.files.length }, (_, i) => i);
+        // Fisher-Yates
+        for (let i = queue.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [queue[i], queue[j]] = [queue[j], queue[i]];
+        }
+        shuffleQueue.set(key, queue);
+      }
+      const idx = queue.shift()!;
       return s.files[idx];
     } else {
       return s.files[0];

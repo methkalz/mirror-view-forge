@@ -139,6 +139,8 @@ export function createGame(w: number, h: number): GameData {
     tutorialFade: 1,
     difficultyProfile: null,
     remoteWaveOverrides: [],
+    gasMaskOffer: null,
+    gasMaskOwned: false,
   };
 }
 
@@ -228,6 +230,8 @@ export function resetGame(g: GameData) {
   g.gasClouds = [];
   g.incendiaryTimer = 160;
   g.chemicalTimer = 200;
+  g.gasMaskOffer = null;
+  g.gasMaskOwned = false;
   // Wave system reset
   g.waveNumber = 1;
   g.wavePhase = 'active';
@@ -1284,6 +1288,12 @@ function startNextWave(g: GameData) {
       }
     }
   }
+
+  // Gas mask purchase offer when chemical wave starts
+  if (recipe.hasChemical && !g.gasMaskOwned && g.player.gasMaskTimer <= 0) {
+    const cost = Math.max(10, Math.ceil(g.score * 0.1));
+    g.gasMaskOffer = { active: true, timer: 6, cost };
+  }
 }
 
 function updateWaveSystem(g: GameData, input: InputState, dt: number) {
@@ -1319,6 +1329,35 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
 
   if (g.wavePhase === 'active') {
     g.waveTimer -= dt;
+
+    // Gas mask offer timer
+    if (g.gasMaskOffer && g.gasMaskOffer.active) {
+      g.gasMaskOffer.timer -= dt;
+      if (g.gasMaskOffer.timer <= 0) {
+        g.gasMaskOffer = null;
+      }
+      // Handle purchase via cardClick
+      if (input.cardClick) {
+        const { x, y } = input.cardClick;
+        // Card is at bottom center: 160x60
+        const cardW = 160, cardH = 60;
+        const cardX = (g.width - cardW) / 2;
+        const cardY = g.height * 0.55;
+        if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
+          input.cardClick = null;
+          if (g.score >= g.gasMaskOffer.cost) {
+            g.score -= g.gasMaskOffer.cost;
+            g.gasMaskOwned = true;
+            g.player.gasMaskTimer = 15;
+            g.gasMaskOffer = null;
+            addFloatingText(g, 'كمامة! 🛡️', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#16a34a');
+            spawnParticles(g, g.player.pos, 10, '#16a34a', 90);
+          } else {
+            addFloatingText(g, 'نقاط غير كافية!', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#ef4444');
+          }
+        }
+      }
+    }
 
     // Wave Finale — last 5 seconds
     if (g.waveTimer <= 5 && !g.waveFinale) {
@@ -1804,8 +1843,8 @@ export function update(g: GameData, input: InputState, dt: number) {
           sh.pos = { x: h.pos.x + spreadX, y: h.pos.y + 10 };
           // Bombs fall vertically — no horizontal drift
           sh.targetPos = { x: h.pos.x + spreadX, y: groundY - 5 + Math.random() * 10 };
-          sh.speed = 80 + Math.random() * 80; // slow falling bombs with varied speeds
-          sh.size = 4 + Math.random() * 1.5;
+          sh.speed = 60 + Math.random() * 100; // varied falling speeds
+          sh.size = 5 + Math.random() * 4; // larger, varied sub-bombs
           sh.damage = 7;
           sh.warningDuration = 0.3;
           sh.warningTimer = 0.3;
@@ -2385,6 +2424,21 @@ export function update(g: GameData, input: InputState, dt: number) {
             d.vel.x += (dx / dd) * steerForce * dt;
             d.vel.y += (dy / dd) * steerForce * dt;
           }
+
+          // === Separation force for trackers ===
+          for (const other of g.drones) {
+            if (!other.active || other === d) continue;
+            const sx = d.pos.x - other.pos.x;
+            const sy = d.pos.y - other.pos.y;
+            const sd = Math.sqrt(sx * sx + sy * sy);
+            const minSep = d.size + other.size + 40;
+            if (sd < minSep && sd > 0) {
+              const force = (minSep - sd) * 4;
+              d.vel.x += (sx / sd) * force * dt;
+              d.vel.y += (sy / sd) * force * dt;
+            }
+          }
+
           const vLen = Math.sqrt(d.vel.x * d.vel.x + d.vel.y * d.vel.y);
           if (vLen > d.speed) {
             d.vel.x = (d.vel.x / vLen) * d.speed;

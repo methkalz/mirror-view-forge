@@ -941,6 +941,7 @@ const PLAY_MODES: { value: PlayMode; label: string; icon: string }[] = [
   { value: 'random', label: 'Random', icon: '🎲' },
   { value: 'sequential', label: 'Sequential', icon: '🔄' },
   { value: 'loop', label: 'Loop', icon: '♾️' },
+  { value: 'shuffle', label: 'Shuffle', icon: '🔀' },
 ];
 
 const AudioPanel: React.FC<{
