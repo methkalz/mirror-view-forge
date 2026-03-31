@@ -230,6 +230,8 @@ export function resetGame(g: GameData) {
   g.gasClouds = [];
   g.incendiaryTimer = 160;
   g.chemicalTimer = 200;
+  g.gasMaskOffer = null;
+  g.gasMaskOwned = false;
   // Wave system reset
   g.waveNumber = 1;
   g.wavePhase = 'active';
