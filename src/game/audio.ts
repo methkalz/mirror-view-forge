@@ -417,10 +417,9 @@ export function sfxWarningHazard() {
   if (!isSoundEnabled('warningHazard')) return;
   if (playCustomAudio('warningHazard')) return;
   const v = getSoundVolume('warningHazard', 1);
-  // Bubbling chemical alert
-  playTone(300, 0.1, 'triangle', 0.04 * v);
-  setTimeout(() => playTone(350, 0.08, 'triangle', 0.03 * v), 100);
-  setTimeout(() => playNoise(0.15, 0.03 * v, { type: 'bandpass', freq: 800 }), 150);
+  playTone(300, 0.1, 'triangle', 0.12 * v);
+  setTimeout(() => playTone(350, 0.08, 'triangle', 0.1 * v), 100);
+  setTimeout(() => playNoise(0.15, 0.08 * v, { type: 'bandpass', freq: 800 }), 150);
 }
 
 export function sfxWarningBomber() {
