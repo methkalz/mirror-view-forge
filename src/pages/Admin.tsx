@@ -705,6 +705,15 @@ const WavesPanel: React.FC<{
                         <td style={{ padding: '6px', textAlign: 'center', color: p.clusterSplits >= 5 ? '#f87171' : '#e2e8f0' }}>{p.clusterSplits || '—'}</td>
                         <td style={{ padding: '6px', textAlign: 'center' }}>{'⭐'.repeat(p.bulletLevel)}</td>
                         <td style={{ padding: '6px', textAlign: 'center' }}>{p.hasBoss ? '👹' : ''}</td>
+                        <td style={{ padding: '6px', textAlign: 'right', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {(() => {
+                            const override = waves.find(w => w.waveNumber === p.wave);
+                            if (override?.warningText) return <span style={{ color: override.warningColor || '#ef4444', fontSize: 10 }}>{override.warningType === 'upgrade' ? '⬆️' : '⚠️'} {override.warningText}</span>;
+                            const hw = WAVE_WARNINGS[p.wave];
+                            if (hw && hw.length > 0) return <span style={{ color: hw[0].color, fontSize: 10 }}>{hw[0].type === 'upgrade' ? '⬆️' : '⚠️'} {hw[0].text}</span>;
+                            return <span style={{ color: 'rgba(148,163,184,0.2)' }}>—</span>;
+                          })()}
+                        </td>
                       </tr>
                     );
                   })}
