@@ -892,6 +892,7 @@ const AnalyticsPanel: React.FC<{ data: GameAnalytics; onRefresh: () => void; isM
 // ─── Audio Panel ───
 const CATEGORY_META: Record<string, { icon: string; label: string; labelAr: string; color: string }> = {
   ambient: { icon: '🌬️', label: 'Ambient', labelAr: 'خلفية', color: '#22d3ee' },
+  ambientFX: { icon: '🎵', label: 'Ambient FX', labelAr: 'أصوات مرافقة', color: '#06b6d4' },
   threats: { icon: '💥', label: 'Threats', labelAr: 'تهديدات', color: '#f87171' },
   combat: { icon: '🔫', label: 'Combat', labelAr: 'قتال', color: '#fb923c' },
   player: { icon: '🏃', label: 'Player', labelAr: 'اللاعب', color: '#a78bfa' },
