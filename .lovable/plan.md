@@ -1,48 +1,30 @@
 
 
-# إصلاح: جدول المعاينة لا يعكس قيم التخصيص اليدوي (Override)
+# إصلاح: موسيقى القائمة تستمر أثناء اللعب
 
-## المشكلة
-عند تعديل موجة (مثلاً تغيير المدة من 60 إلى 20)، القائمة المنبثقة (WaveEditor) تعرض القيمة الصحيحة، لكن جدول المعاينة الفورية يستمر بعرض القيم المولّدة تلقائياً من `generatePreviewWaves()` ويتجاهل البيانات الفعلية المحفوظة.
+## المشكلة الحقيقية
+دالة `startPeriodicAmbient()` تمر على **جميع** الأصوات في `audioSettings` بما فيها `menuMusic`. إذا كان لـ menuMusic قيمة `intervalSeconds > 0` في قاعدة البيانات، فسيُعاد تشغيله دورياً أثناء اللعب عبر `playCustomAudio('menuMusic')` — وهذه عقد صوتية منفصلة عن `menuMusicNode` فلا تتأثر بـ `stopMenuMusic()`.
 
-## الحل
-**ملف واحد**: `src/pages/Admin.tsx`
+**ملاحظة**: موسيقى القائمة لها نظام إدارة مستقل (`startMenuMusic` / `stopMenuMusic`) ولا يجب أن تدخل في نظام الأصوات الدورية إطلاقاً.
 
-بعد توليد `previews` من `generatePreviewWaves()`, نمر على النتائج ونستبدل قيم أي موجة لها override محفوظ في `waves` بالقيم الحقيقية من قاعدة البيانات.
+## الحل — تغيير بسيط ونظيف
 
-```text
-previews (auto) ──► لكل موجة: هل لها override؟ ──► نعم: استبدال القيم ──► عرض في الجدول
-                                                  ──► لا: إبقاء القيم التلقائية
+**ملف واحد**: `src/game/audio.ts`
+
+في دالة `startPeriodicAmbient()` (سطر ~831)، إضافة سطر واحد لتخطي `menuMusic`:
+
+```typescript
+for (const [key, s] of audioSettings) {
+  if (key === 'menuMusic') continue;  // ← هذا السطر فقط
+  if (s.intervalSeconds && s.intervalSeconds > 0 && s.enabled) {
+    // ...
+  }
+}
 ```
 
-### التغيير (سطر ~509)
-بعد السطر:
-```js
-const previews = diffProfile ? generatePreviewWaves(diffProfile, previewCount) : [];
-```
-
-إضافة دمج (merge) قيم الـ overrides الفعلية:
-```js
-// Merge actual override values into preview rows
-const mergedPreviews = previews.map(p => {
-  const override = waves.find(w => w.waveNumber === p.wave);
-  if (!override) return p;
-  return {
-    ...p,
-    duration: override.duration,
-    threats: override.threats,
-    maxConcurrent: override.maxConcurrent,
-    spawnInterval: override.spawnRate,
-    droneTiers: override.droneTypes,
-    clusterSplits: override.clusterSplits,
-    bulletLevel: override.bulletLevel,
-    hasBoss: override.hasBoss,
-    hasChemical: override.hasChemical,
-    hasIncendiary: override.hasIncendiary,
-    droneInterval: override.droneInterval,
-  };
-});
-```
-
-ثم استخدام `mergedPreviews` بدل `previews` في الـ `map` داخل الجدول (سطر ~654).
+هذا يضمن:
+- ✅ موسيقى القائمة تستمر بالتشغيل (loop) طالما اللاعب لم يبدأ اللعبة
+- ✅ عند بدء اللعب، `stopMenuMusic()` توقفها نهائياً
+- ✅ لا يتم إعادة تشغيلها من نظام الأصوات الدورية أثناء اللعب
+- ✅ لا تعقيد إضافي، سطر واحد فقط
 
