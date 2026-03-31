@@ -395,15 +395,14 @@ export function sfxWarningBoss() {
   if (!isSoundEnabled('warningBoss')) return;
   if (playCustomAudio('warningBoss')) return;
   const v = getSoundVolume('warningBoss', 1);
-  // Deep horn blast
   const ctx = getCtx();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = 'sawtooth';
   osc.frequency.setValueAtTime(100, ctx.currentTime);
   osc.frequency.linearRampToValueAtTime(150, ctx.currentTime + 0.4);
-  gain.gain.setValueAtTime(0.08 * v, ctx.currentTime);
-  gain.gain.linearRampToValueAtTime(0.06 * v, ctx.currentTime + 0.4);
+  gain.gain.setValueAtTime(0.2 * v, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.15 * v, ctx.currentTime + 0.4);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
   const bq = ctx.createBiquadFilter();
   bq.type = 'lowpass';
@@ -411,7 +410,7 @@ export function sfxWarningBoss() {
   osc.connect(bq).connect(gain).connect(ctx.destination);
   osc.start();
   osc.stop(ctx.currentTime + 1.0);
-  playNoise(0.6, 0.04 * v, { type: 'lowpass', freq: 200 });
+  playNoise(0.6, 0.1 * v, { type: 'lowpass', freq: 200 });
 }
 
 export function sfxWarningHazard() {
