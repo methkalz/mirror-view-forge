@@ -708,6 +708,13 @@ const WavesPanel: React.FC<{
                         <td style={{ padding: '6px', textAlign: 'center', color: p.clusterSplits >= 5 ? '#f87171' : '#e2e8f0' }}>{p.clusterSplits || '—'}</td>
                         <td style={{ padding: '6px', textAlign: 'center' }}>{'⭐'.repeat(p.bulletLevel)}</td>
                         <td style={{ padding: '6px', textAlign: 'center' }}>{p.hasBoss ? '👹' : ''}</td>
+                        <td style={{ padding: '6px', textAlign: 'center', fontSize: 9, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {(p as any).warningText ? (
+                            <span style={{ color: (p as any).warningColor || '#ef4444' }} title={(p as any).warningText}>
+                              {(p as any).warningType === 'upgrade' ? '⬆️' : '⚠️'} {(p as any).warningText}
+                            </span>
+                          ) : ''}
+                        </td>
                       </tr>
                     );
                   })}
