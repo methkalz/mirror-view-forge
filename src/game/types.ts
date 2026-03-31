@@ -345,6 +345,9 @@ export interface GameData {
   // Tutorial slides
   tutorialPage: number;
   tutorialFade: number;
+  // Gas mask purchase system
+  gasMaskOffer: { active: boolean; timer: number; cost: number } | null;
+  gasMaskOwned: boolean;
 }
 
 export interface InputState {

@@ -490,7 +490,7 @@ export async function deleteWaveConfig(waveNumber: number): Promise<boolean> {
 
 // ─── Audio Config ───
 
-export type PlayMode = 'single' | 'random' | 'sequential' | 'loop';
+export type PlayMode = 'single' | 'random' | 'sequential' | 'loop' | 'shuffle';
 
 export interface AudioFileEntry {
   id: string;
