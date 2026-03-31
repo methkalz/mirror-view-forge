@@ -426,11 +426,10 @@ export function sfxWarningBomber() {
   if (!isSoundEnabled('warningBomber')) return;
   if (playCustomAudio('warningBomber')) return;
   const v = getSoundVolume('warningBomber', 1);
-  // Heavy engine drone + alarm
-  playTone(80, 0.3, 'sawtooth', 0.05 * v);
-  playNoise(0.2, 0.04 * v, { type: 'lowpass', freq: 300 });
-  setTimeout(() => playTone(600, 0.08, 'square', 0.04 * v), 200);
-  setTimeout(() => playTone(500, 0.08, 'square', 0.03 * v), 300);
+  playTone(80, 0.3, 'sawtooth', 0.15 * v);
+  playNoise(0.2, 0.1 * v, { type: 'lowpass', freq: 300 });
+  setTimeout(() => playTone(600, 0.08, 'square', 0.12 * v), 200);
+  setTimeout(() => playTone(500, 0.08, 'square', 0.1 * v), 300);
 }
 
 export function sfxSlideTransition() {
