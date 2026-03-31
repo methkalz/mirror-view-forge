@@ -1157,6 +1157,18 @@ const AudioPanel: React.FC<{
                           color: item.allowOverlap ? '#86efac' : 'rgba(148,163,184,0.4)',
                         }}>
                           {item.allowOverlap ? '✅ تشغيل متزامن' : '🔇 ملف واحد فقط'}
+                      </button>
+                      </div>
+
+                      {/* Volume Mode Toggle */}
+                      <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.4)' }}>🎚️ Volume Mode</div>
+                        <button onClick={() => handleUpdate(item.id, { volumeMode: item.volumeMode === 'group' ? 'individual' : 'group' } as any)} style={{
+                          padding: '3px 10px', borderRadius: 8, fontSize: 10, border: 'none', cursor: 'pointer',
+                          background: item.volumeMode === 'individual' ? 'rgba(168,85,247,0.15)' : 'rgba(59,130,246,0.15)',
+                          color: item.volumeMode === 'individual' ? '#c084fc' : '#93c5fd',
+                        }}>
+                          {item.volumeMode === 'individual' ? '🎵 مستوى فردي لكل ملف' : '🔊 مستوى المجموعة'}
                         </button>
                       </div>
 
