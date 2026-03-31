@@ -2265,14 +2265,35 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.arc(-fuseLen * 0.565, -fuseH * 2.2, sz * 0.06, 0, Math.PI * 2);
       ctx.fill();
 
-      // "OTLOP" label — always readable
+      // ── Orange cargo box (centered on fuselage) ──
+      const cBoxW = sz * 0.32;
+      const cBoxH = sz * 0.16;
+      const cBoxX = -cBoxW / 2;
+      const cBoxY = -cBoxH / 2;
+      ctx.fillStyle = '#e8760a';
+      ctx.beginPath();
+      ctx.roundRect(cBoxX, cBoxY, cBoxW, cBoxH, 2);
+      ctx.fill();
+      ctx.strokeStyle = '#b05508';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Box lid line
+      ctx.strokeStyle = '#d06808';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(cBoxX + 2, cBoxY + 3);
+      ctx.lineTo(cBoxX + cBoxW - 2, cBoxY + 3);
+      ctx.stroke();
+
+      // "OTLOP" text — above the box, always readable
       ctx.save();
       ctx.scale(dir, 1); // un-mirror for text
-      ctx.fillStyle = 'rgba(255,255,255,0.75)';
-      ctx.font = `bold ${Math.max(6, sz * 0.18)}px monospace`;
+      const otlopFontSize = Math.max(7, sz * 0.16);
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${otlopFontSize}px monospace`;
       ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(d.label || 'OTLOP', 0, -sz * 0.05);
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('OTLOP', 0, (cBoxY - 2) * dir);
       ctx.restore();
 
       ctx.restore(); // un-scale dir
