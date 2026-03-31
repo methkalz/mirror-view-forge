@@ -331,8 +331,8 @@ export function sfxWarning() {
   if (!isSoundEnabled('warning')) return;
   if (playCustomAudio('warning')) return;
   const v = getSoundVolume('warning', 1);
-  playTone(800, 0.08, 'sine', 0.03 * v);
-  setTimeout(() => playTone(1000, 0.06, 'sine', 0.02 * v), 80);
+  playTone(800, 0.08, 'sine', 0.12 * v);
+  setTimeout(() => playTone(1000, 0.06, 'sine', 0.1 * v), 80);
 }
 
 // ─── Threat-specific Warning Sounds ───
