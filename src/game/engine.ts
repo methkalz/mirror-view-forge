@@ -111,7 +111,7 @@ export function createGame(w: number, h: number): GameData {
     // Wave system
     waveNumber: 1,
     wavePhase: 'active',
-    waveTimer: 60,
+    waveTimer: 60, // will be overwritten when remoteWaveOverrides are set
     levelNumber: 1,
     deliveryBike: null,
     upgradeCards: [],
