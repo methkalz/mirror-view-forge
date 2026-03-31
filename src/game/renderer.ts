@@ -3700,6 +3700,7 @@ interface CharacterOptions {
   isWaving?: boolean;
   hasGoggles?: boolean;
   lookingBack?: boolean;
+  hasGasMask?: boolean;
 }
 
 function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
