@@ -2389,6 +2389,21 @@ export function update(g: GameData, input: InputState, dt: number) {
             d.vel.x += (dx / dd) * steerForce * dt;
             d.vel.y += (dy / dd) * steerForce * dt;
           }
+
+          // === Separation force for trackers ===
+          for (const other of g.drones) {
+            if (!other.active || other === d) continue;
+            const sx = d.pos.x - other.pos.x;
+            const sy = d.pos.y - other.pos.y;
+            const sd = Math.sqrt(sx * sx + sy * sy);
+            const minSep = d.size + other.size + 40;
+            if (sd < minSep && sd > 0) {
+              const force = (minSep - sd) * 4;
+              d.vel.x += (sx / sd) * force * dt;
+              d.vel.y += (sy / sd) * force * dt;
+            }
+          }
+
           const vLen = Math.sqrt(d.vel.x * d.vel.x + d.vel.y * d.vel.y);
           if (vLen > d.speed) {
             d.vel.x = (d.vel.x / vLen) * d.speed;
