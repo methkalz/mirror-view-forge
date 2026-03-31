@@ -1,25 +1,21 @@
 
 
-# إصلاح: زر شراء الكمامة لا يعمل
+# تحسين بطاقة شراء الكمامة + إصلاح منطق الحماية
 
-## المشكلة
-في `src/components/SkyfallGame.tsx` سطر 327، `cardClick` يُسجَّل فقط عندما `wavePhase === 'cards'` (مرحلة بطاقات الترقية). بطاقة الكمامة تظهر أثناء `wavePhase === 'active'` (مرحلة اللعب)، لذلك النقر عليها لا يُسجَّل أبداً — الزر لا يعمل.
+## التغييرات
 
-## الحل
-**ملف واحد**: `src/components/SkyfallGame.tsx`
+### 1. تكبير البطاقة + تعتيم أقوى + إبطاء اللعبة (`src/game/renderer.ts`)
+- تكبير البطاقة من 140×195 إلى 200×270
+- زيادة تعتيم الخلفية من 0.35 إلى 0.7
+- تحديث إحداثيات الرسم (أيقونة، نصوص، شريط المؤقت) لتتناسب مع الحجم الجديد
 
-تعديل شرط `onPointerDown` (سطر 327) ليشمل حالة عرض بطاقة الكمامة:
+### 2. إبطاء اللعبة أثناء عرض البطاقة (`src/game/engine.ts`)
+- عند إنشاء `gasMaskOffer`: تعيين `g.slowMoFactor = 0.1` (إبطاء شديد)
+- عند الشراء أو انتهاء المؤقت: إعادة `g.slowMoFactor = 1`
 
-```typescript
-// قبل
-if (g.wavePhase === 'cards' && g.upgradeCards.length > 0) {
+### 3. مؤثرات صوتية (`src/game/engine.ts`)
+- عند ظهور البطاقة: `sfxUpgradeAlert()` (نفس صوت بطاقات الترقية)
+- عند الشراء: `sfxUpgradeSelect()` (نفس صوت اختيار الترقية)
 
-// بعد
-const hasGasMaskOffer = g.gasMaskOffer && g.gasMaskOffer.active;
-if ((g.wavePhase === 'cards' && g.upgradeCards.length > 0) || hasGasMaskOffer) {
-```
-
-هذا يجعل النقر يُسجَّل كـ `cardClick` عند ظهور بطاقة الكمامة أيضاً، فيتمكن كود `engine.ts` (سطر 1351) من معالجة الشراء.
-
-المؤقت 8 ثوان موجود بالفعل في الكود (engine سطر 1340 + renderer سطر 3386).
-
+### 4. إلغاء الكمامة من الباراشوت (`src/game/engine.ts`)
+- حذف كود إسقاط الكمامة بال
