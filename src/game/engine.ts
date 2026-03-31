@@ -139,6 +139,8 @@ export function createGame(w: number, h: number): GameData {
     tutorialFade: 1,
     difficultyProfile: null,
     remoteWaveOverrides: [],
+    gasMaskOffer: null,
+    gasMaskOwned: false,
   };
 }
 
