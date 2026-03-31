@@ -2457,6 +2457,17 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.ellipse(-dir * sz * 0.85, 0, 3, 2, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
+      // Green gas puffs emanating from below
+      for (let gi = 0; gi < 2; gi++) {
+        const gx = (Math.random() - 0.5) * sz * 0.4;
+        const gy = sz * 0.35 + Math.random() * sz * 0.4;
+        const gs = 2 + Math.random() * 3;
+        const ga = 0.1 + Math.random() * 0.15;
+        ctx.fillStyle = `rgba(74, 222, 128, ${ga})`;
+        ctx.beginPath();
+        ctx.arc(gx, gy, gs, 0, Math.PI * 2);
+        ctx.fill();
+      }
       // Health bar
       if (damaged) {
         const barW = sz * 2; const barH = 3; const barY = -sz * 0.5;
