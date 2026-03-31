@@ -502,7 +502,8 @@ const WavesPanel: React.FC<{
   onSaveWave: (w: RemoteWaveConfig) => void; onDeleteWave: (n: number) => void; isDesktop: boolean;
   diffProfile: DifficultyProfile | null;
   onSaveDiffProfile: (updates: Partial<DifficultyProfile>) => void;
-}> = ({ waves, editingWave, setEditingWave, onSaveWave, onDeleteWave, isDesktop, diffProfile, onSaveDiffProfile }) => {
+  audioEntries: AudioConfigEntry[];
+}> = ({ waves, editingWave, setEditingWave, onSaveWave, onDeleteWave, isDesktop, diffProfile, onSaveDiffProfile, audioEntries }) => {
   const [showAutoScale, setShowAutoScale] = useState(true);
   const [previewCount, setPreviewCount] = useState(20);
 
