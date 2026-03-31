@@ -104,6 +104,7 @@ export function createGame(w: number, h: number): GameData {
     deathPhase: 'alive',
     firstAmmoDropped: false,
     cargoTimer: 120,
+    clearingTimer: 0,
     firePools: [],
     gasClouds: [],
     incendiaryTimer: 160,
@@ -1337,6 +1338,9 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
     g.firePools.length = 0;
     g.gasClouds.length = 0;
 
+    // Clearing timeout timer
+    g.clearingTimer = (g.clearingTimer || 0) + dt;
+
     // Force-clear drones that left screen
     for (const d of g.drones) {
       if (d.active && d.tier !== 'cargo') {
@@ -1346,9 +1350,20 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
       }
     }
 
+    // Force-remove all remaining drones after 5 seconds timeout
+    if (g.clearingTimer >= 5) {
+      for (const d of g.drones) {
+        if (d.active && d.tier !== 'cargo') {
+          addExplosion(g, d.pos, 15);
+          d.active = false;
+        }
+      }
+    }
+
     // Check if scene is clear
     const activeDrones = g.drones.filter(d => d.active && d.tier !== 'cargo').length;
     if (g.activeHazardCount <= 0 && activeDrones === 0) {
+      g.clearingTimer = 0;
       g.activeHazardCount = 0; // safety reset
       // Only show cards+bike at end of level (every 3 waves)
       if (g.waveNumber % 3 === 0) {
@@ -2302,16 +2317,47 @@ export function update(g: GameData, input: InputState, dt: number) {
         d.pos.x += Math.sin(d.wobble * 1.5) * 20 * dt;
         d.pos.y += Math.cos(d.wobble * 1.2) * 8 * dt;
       } else if (d.tier === 'tracker') {
-        // TRACKER: Orbital movement with dive attacks
+        // TRACKER: Orbital movement with dive attacks + projectile fire
         d.bombTimer += dt;
         const orbitRadius = 120;
         const orbitSpeed = 2.0;
         const isDiving = d.bombTimer >= d.bombCooldown;
         
         if (isDiving) {
-          // Dive attack — straight line toward player at double speed
+          // Fire a projectile toward the player at dive start
+          if (d.bombTimer - dt < d.bombCooldown) {
+            // First frame of dive — spawn projectile
+            const projDx = p.pos.x - d.pos.x;
+            const projDy = p.pos.y - d.pos.y;
+            const projDd = Math.sqrt(projDx * projDx + projDy * projDy);
+            if (projDd > 0) {
+              const proj = getFromPool<Hazard>(g.hazards, () => ({
+                active: false, type: 'shrapnel', pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
+                speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
+                rotation: 0, trailTimer: 0
+              }));
+              proj.type = 'shrapnel';
+              proj.pos = { x: d.pos.x, y: d.pos.y + d.size * 0.5 };
+              proj.targetPos = { x: p.pos.x, y: g.height * GROUND_RATIO };
+              proj.speed = 250;
+              proj.size = 6;
+              proj.damage = 10;
+              proj.warningDuration = 0;
+              proj.warningTimer = 0;
+              proj.falling = true;
+              proj.splitDone = false;
+              proj.isClusterBomb = false;
+              proj.rotation = 0;
+              proj.trailTimer = 0;
+              g.activeHazardCount++;
+              sfxWarning();
+              addFloatingText(g, '⚡', { x: d.pos.x, y: d.pos.y + 15 }, '#fbbf24');
+            }
+          }
+
+          // Dive movement toward player
           const dx = p.pos.x - d.pos.x;
-          const dy = (p.pos.y - 20) - d.pos.y;
+          const dy = (p.pos.y - 60) - d.pos.y;
           const dd = Math.sqrt(dx * dx + dy * dy);
           if (dd > 0) {
             d.vel.x = (dx / dd) * d.speed * 2.2;
@@ -2320,17 +2366,17 @@ export function update(g: GameData, input: InputState, dt: number) {
           d.pos.x += d.vel.x * g.slowMoFactor * dt;
           d.pos.y += d.vel.y * g.slowMoFactor * dt;
           
-          // Reset after passing player level or getting close
-          if (d.pos.y > p.pos.y - 10 || Math.sqrt((d.pos.x - p.pos.x) ** 2 + (d.pos.y - p.pos.y) ** 2) < 25) {
+          // Reset after reaching safe distance above player
+          if (d.pos.y > p.pos.y - 60) {
             d.bombTimer = 0;
-            // Pull back up
-            d.vel.y = -d.speed * 0.8;
+            d.vel.y = -d.speed * 1.5;
+            d.vel.x = (d.pos.x < p.pos.x ? -1 : 1) * d.speed * 0.8;
           }
         } else {
-          // Orbit around player
+          // Orbit around player at safe altitude
           const orbitAngle = d.wobble * orbitSpeed;
           const targetX = p.pos.x + Math.cos(orbitAngle) * orbitRadius;
-          const targetY = (p.pos.y - 80 - d.altitudeOffset * 0.5) + Math.sin(orbitAngle * 0.7) * 30;
+          const targetY = (p.pos.y - 160 - d.altitudeOffset * 0.5) + Math.sin(orbitAngle * 0.7) * 20;
           const dx = targetX - d.pos.x;
           const dy = targetY - d.pos.y;
           const dd = Math.sqrt(dx * dx + dy * dy);
@@ -2348,15 +2394,15 @@ export function update(g: GameData, input: InputState, dt: number) {
           d.pos.y += d.vel.y * g.slowMoFactor * dt;
         }
 
-        // Keep in bounds
+        // Keep in bounds — higher altitude
         const minY = g.height * 0.08;
-        const maxY = g.height * 0.58;
+        const maxY = g.height * 0.42;
         d.pos.y = Math.max(minY, Math.min(maxY, d.pos.y));
         d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
       } else {
         // Active tracking for scout/bomber
         const dx = p.pos.x - d.pos.x;
-        const targetY = d.tier === 'bomber' ? p.pos.y - 80 - d.altitudeOffset * 0.5 : p.pos.y - 30 - d.altitudeOffset * 0.5;
+        const targetY = d.tier === 'bomber' ? p.pos.y - 150 - d.altitudeOffset * 0.5 : p.pos.y - 120 - d.altitudeOffset * 0.5;
         const dy = targetY - d.pos.y;
         const dd = Math.sqrt(dx * dx + dy * dy);
         
@@ -2395,7 +2441,7 @@ export function update(g: GameData, input: InputState, dt: number) {
 
         // Keep drones in upper portion of screen
         const minY = g.height * 0.08;
-        const maxY = g.height * 0.58;
+        const maxY = g.height * 0.42;
         d.pos.y = Math.max(minY, Math.min(maxY, d.pos.y));
         d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
 
@@ -2410,18 +2456,20 @@ export function update(g: GameData, input: InputState, dt: number) {
               speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
               rotation: 0, trailTimer: 0
             }));
-            bomb.type = 'cluster';
+            bomb.type = 'shrapnel';
             bomb.pos = { x: d.pos.x, y: d.pos.y + d.size };
             bomb.targetPos = { x: d.pos.x + (Math.random() - 0.5) * 30, y: g.height * GROUND_RATIO };
-            bomb.speed = 170 + Math.random() * 60;
+            bomb.speed = 220 + Math.random() * 60;
             bomb.size = 10;
             bomb.damage = 18;
             bomb.warningDuration = 0;
             bomb.warningTimer = 0;
             bomb.falling = true;
             bomb.splitDone = false;
+            bomb.isClusterBomb = false;
             bomb.rotation = 0;
             bomb.trailTimer = 0;
+            g.activeHazardCount++;
             sfxWarning();
             addFloatingText(g, '💣', { x: d.pos.x, y: d.pos.y + 15 }, '#ef4444');
           }

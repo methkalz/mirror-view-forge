@@ -306,6 +306,7 @@ export interface GameData {
   deathPhase: 'alive' | 'dying' | 'dead';
   firstAmmoDropped: boolean;
   cargoTimer: number;
+  clearingTimer: number;
   firePools: FirePool[];
   gasClouds: GasCloud[];
   incendiaryTimer: number;
