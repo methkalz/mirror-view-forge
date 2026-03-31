@@ -306,9 +306,9 @@ const SkyfallGame: React.FC = () => {
           g.remoteWaveOverrides = wc;
           difficultyProfileRef.current = dp;
           waveOverridesRef.current = wc;
+          g.tutorialPage = 3;
+          resetGame(g);
         });
-        g.tutorialPage = 3;
-        resetGame(g);
       }
     };
 
