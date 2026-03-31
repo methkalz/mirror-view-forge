@@ -12,6 +12,7 @@ interface SoundSetting {
   playMode: PlayMode;
   intervalSeconds: number | null;
   maxConcurrent: number;
+  allowOverlap: boolean;
   files: AudioFileEntry[];
 }
 let audioSettings: Map<string, SoundSetting> = new Map();
@@ -22,6 +23,8 @@ const audioBufferCache: Map<string, AudioBuffer> = new Map();
 const sequentialIndex: Map<string, number> = new Map();
 // ─── Periodic ambient timers ───
 const periodicTimers: Map<string, ReturnType<typeof setInterval>> = new Map();
+// ─── Active sources for overlap control ───
+const activeSources: Map<string, { source: AudioBufferSourceNode; gain: GainNode }[]> = new Map();
 
 export async function loadAudioSettings(onProgress?: (pct: number) => void) {
   try {
@@ -35,6 +38,7 @@ export async function loadAudioSettings(onProgress?: (pct: number) => void) {
         playMode: e.playMode,
         intervalSeconds: e.intervalSeconds,
         maxConcurrent: e.maxConcurrent,
+        allowOverlap: e.allowOverlap,
         files: e.files,
       });
     }
@@ -58,6 +62,7 @@ export async function reloadAudioSettings() {
         playMode: e.playMode,
         intervalSeconds: e.intervalSeconds,
         maxConcurrent: e.maxConcurrent,
+        allowOverlap: e.allowOverlap,
         files: e.files,
       });
     }
@@ -114,46 +119,79 @@ async function preloadAllAudio(onProgress?: (pct: number) => void) {
   );
 }
 
-function pickFileUrl(key: string): string | null {
+function pickFile(key: string): AudioFileEntry | null {
   const s = audioSettings.get(key);
   if (!s) return null;
 
-  // If multi-file
   if (s.files.length > 0) {
     const mode = s.playMode;
     if (mode === 'random') {
-      return s.files[Math.floor(Math.random() * s.files.length)].fileUrl;
+      return s.files[Math.floor(Math.random() * s.files.length)];
     } else if (mode === 'sequential') {
       const idx = (sequentialIndex.get(key) || 0) % s.files.length;
       sequentialIndex.set(key, idx + 1);
-      return s.files[idx].fileUrl;
+      return s.files[idx];
     } else {
-      // single or loop: use first file
-      return s.files[0].fileUrl;
+      return s.files[0];
     }
   }
 
   // Fallback to legacy single audioUrl
-  return s.audioUrl || null;
+  if (s.audioUrl) {
+    return { id: '', soundConfigId: '', fileUrl: s.audioUrl, fileName: '', sortOrder: 0, volume: 1.0 };
+  }
+  return null;
+}
+
+// Keep backward compat
+function pickFileUrl(key: string): string | null {
+  const f = pickFile(key);
+  return f ? f.fileUrl : null;
 }
 
 function playCustomAudio(key: string): boolean {
   const s = audioSettings.get(key);
   if (!s) return false;
 
-  const url = pickFileUrl(key);
-  if (!url) return false;
+  const file = pickFile(key);
+  if (!file) return false;
 
-  const buffer = audioBufferCache.get(url);
+  const buffer = audioBufferCache.get(file.fileUrl);
   if (!buffer) return false;
 
   const ctx = getCtx();
+
+  // Overlap control: if not allowed, stop previous sources for this key
+  if (!s.allowOverlap) {
+    const existing = activeSources.get(key);
+    if (existing) {
+      for (const e of existing) {
+        try { e.gain.gain.setValueAtTime(0, ctx.currentTime); e.source.stop(); } catch {}
+      }
+    }
+    activeSources.set(key, []);
+  }
+
   const src = ctx.createBufferSource();
   src.buffer = buffer;
   const gain = ctx.createGain();
-  gain.gain.value = s.volume;
+  // Apply both group volume and individual file volume
+  gain.gain.value = s.volume * file.volume;
   src.connect(gain).connect(ctx.destination);
   src.start();
+
+  // Track active source
+  const arr = activeSources.get(key) || [];
+  arr.push({ source: src, gain });
+  activeSources.set(key, arr);
+  src.onended = () => {
+    const list = activeSources.get(key);
+    if (list) {
+      const idx = list.findIndex(e => e.source === src);
+      if (idx >= 0) list.splice(idx, 1);
+    }
+  };
+
   return true;
 }
 

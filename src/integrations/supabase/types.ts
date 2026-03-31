@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       audio_config: {
         Row: {
+          allow_overlap: boolean
           audio_url: string | null
           category: string
           enabled: boolean
@@ -30,6 +31,7 @@ export type Database = {
           volume: number
         }
         Insert: {
+          allow_overlap?: boolean
           audio_url?: string | null
           category: string
           enabled?: boolean
@@ -44,6 +46,7 @@ export type Database = {
           volume?: number
         }
         Update: {
+          allow_overlap?: boolean
           audio_url?: string | null
           category?: string
           enabled?: boolean
@@ -67,6 +70,7 @@ export type Database = {
           id: string
           sort_order: number
           sound_config_id: string
+          volume: number
         }
         Insert: {
           created_at?: string
@@ -75,6 +79,7 @@ export type Database = {
           id?: string
           sort_order?: number
           sound_config_id: string
+          volume?: number
         }
         Update: {
           created_at?: string
@@ -83,6 +88,7 @@ export type Database = {
           id?: string
           sort_order?: number
           sound_config_id?: string
+          volume?: number
         }
         Relationships: [
           {
