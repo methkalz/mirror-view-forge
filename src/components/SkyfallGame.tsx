@@ -103,7 +103,15 @@ const SkyfallGame: React.FC = () => {
       })
       .subscribe();
 
-    return () => { mounted = false; supabase.removeChannel(channel); supabase.removeChannel(bgChannel); };
+    // Realtime subscription for audio config changes
+    const audioChannel = supabase
+      .channel('audio-config-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'audio_config' }, () => {
+        reloadAudioSettings();
+      })
+      .subscribe();
+
+    return () => { mounted = false; supabase.removeChannel(channel); supabase.removeChannel(bgChannel); supabase.removeChannel(audioChannel); };
   }, []);
 
   const handleNameSubmit = useCallback((name: string) => {
