@@ -553,6 +553,7 @@ const WavesPanel: React.FC<{
         warningText: null,
         warningColor: '#ef4444',
         warningType: 'warning',
+        warningSoundKey: null,
       });
     }
   };
