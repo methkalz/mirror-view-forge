@@ -1808,8 +1808,8 @@ export function update(g: GameData, input: InputState, dt: number) {
           sh.pos = { x: h.pos.x + spreadX, y: h.pos.y + 10 };
           // Bombs fall vertically — no horizontal drift
           sh.targetPos = { x: h.pos.x + spreadX, y: groundY - 5 + Math.random() * 10 };
-          sh.speed = 80 + Math.random() * 80; // slow falling bombs with varied speeds
-          sh.size = 4 + Math.random() * 1.5;
+          sh.speed = 60 + Math.random() * 100; // varied falling speeds
+          sh.size = 5 + Math.random() * 4; // larger, varied sub-bombs
           sh.damage = 7;
           sh.warningDuration = 0.3;
           sh.warningTimer = 0.3;
