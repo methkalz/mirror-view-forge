@@ -142,6 +142,7 @@ export function createGame(w: number, h: number): GameData {
     gasMaskOffer: null,
     gasMaskOwned: false,
     gasMaskOfferDelay: 0,
+    scoreCountdown: null,
   };
 }
 
@@ -234,6 +235,7 @@ export function resetGame(g: GameData) {
   g.gasMaskOffer = null;
   g.gasMaskOwned = false;
   g.gasMaskOfferDelay = 0;
+  g.scoreCountdown = null;
   // Wave system reset
   g.waveNumber = 1;
   g.wavePhase = 'active';
@@ -1350,11 +1352,13 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
           input.cardClick = null;
           if (g.score >= g.gasMaskOffer.cost) {
-            g.score -= g.gasMaskOffer.cost;
+            // Start score countdown animation instead of instant deduction
+            const cost = g.gasMaskOffer.cost;
+            g.scoreCountdown = { remaining: cost, tickTimer: 0, totalCost: cost };
             g.gasMaskOwned = true;
             g.gasMaskOffer = null;
-            g.slowMoFactor = 1; // Restore normal speed
-            sfxUpgradeSelect(); // Same sound as upgrade selection
+            g.slowMoFactor = 0.5; // Partial slow-mo during countdown
+            sfxUpgradeSelect();
             addFloatingText(g, 'كمامة! 🛡️', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#16a34a');
             spawnParticles(g, g.player.pos, 10, '#16a34a', 90);
           } else {
@@ -1364,7 +1368,27 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
       }
     }
 
-    // Wave Finale — last 5 seconds
+    // Score countdown animation
+    if (g.scoreCountdown) {
+      g.scoreCountdown.tickTimer -= dt;
+      if (g.scoreCountdown.tickTimer <= 0) {
+        // Deduct in chunks for smooth countdown
+        const chunk = Math.max(1, Math.ceil(g.scoreCountdown.remaining / 10));
+        const deduct = Math.min(chunk, g.scoreCountdown.remaining);
+        g.score -= deduct;
+        g.scoreCountdown.remaining -= deduct;
+        g.scoreCountdown.tickTimer = 0.04; // Fast ticks
+        // Tick sound — use a quick pickup-like blip
+        sfxPickup();
+        if (g.scoreCountdown.remaining <= 0) {
+          g.scoreCountdown = null;
+          g.slowMoFactor = 1; // Restore normal speed
+          addFloatingText(g, 'كمامة! 🛡️', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#16a34a');
+          spawnParticles(g, g.player.pos, 10, '#16a34a', 90);
+        }
+      }
+    }
+
     if (g.waveTimer <= 5 && !g.waveFinale) {
       g.waveFinale = true;
     }
