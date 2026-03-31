@@ -111,7 +111,7 @@ export function createGame(w: number, h: number): GameData {
     // Wave system
     waveNumber: 1,
     wavePhase: 'active',
-    waveTimer: 60,
+    waveTimer: 60, // will be overwritten when remoteWaveOverrides are set
     levelNumber: 1,
     deliveryBike: null,
     upgradeCards: [],
@@ -230,7 +230,9 @@ export function resetGame(g: GameData) {
   // Wave system reset
   g.waveNumber = 1;
   g.wavePhase = 'active';
-  g.waveTimer = 60;
+  // Apply wave 1 recipe duration from overrides/profile
+  const wave1Recipe = getWaveRecipe(1, g);
+  g.waveTimer = wave1Recipe.duration || 60;
   g.levelNumber = 1;
   g.deliveryBike = null;
   g.upgradeCards = [];
