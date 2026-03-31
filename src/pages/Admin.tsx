@@ -722,7 +722,7 @@ const WavesPanel: React.FC<{
               duration: diffProfile?.waveDuration || 60, threats: ['shrapnel'], maxConcurrent: 5, spawnRate: 3.5, surgeMultiplier: 1.0, droneTypes: [],
               clusterSplits: 0, bulletLevel: 1, phaseInDelay: 0, droneInterval: 0,
               hasBoss: false, hasChemical: false, hasIncendiary: false,
-              warningText: null, warningColor: '#ef4444', warningType: 'warning',
+              warningText: null, warningColor: '#ef4444', warningType: 'warning', warningSoundKey: null,
             })} style={btnPrimary}>+ إضافة موجة</button>
           </div>
 
