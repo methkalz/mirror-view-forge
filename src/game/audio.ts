@@ -281,8 +281,8 @@ export function sfxImpactHeavy() {
   if (!isSoundEnabled('impactHeavy')) return;
   if (playCustomAudio('impactHeavy')) return;
   const v = getSoundVolume('impactHeavy', 1);
-  playTone(45, 0.18, 'sine', 0.18 * v);
-  playNoise(0.14, 0.13 * v, { type: 'lowpass', freq: 200 });
+  playTone(45, 0.18, 'sine', 0.25 * v);
+  playNoise(0.14, 0.2 * v, { type: 'lowpass', freq: 200 });
 }
 
 export function sfxPickup() {
