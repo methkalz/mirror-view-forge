@@ -1,39 +1,34 @@
 
 
-# إضافة مستوى صوت فردي لكل ملف + تحكم بالتشغيل المتزامن
+# تبسيط نظام مستوى الصوت: مجموعة أو ملفات فردية (وليس كلاهما)
 
-## ما سيتغير
-
-### 1. مستوى صوت فردي لكل ملف صوتي
-حالياً كل ملفات الصوت داخل مجموعة واحدة تشترك بنفس مستوى الصوت. سنضيف عمود `volume` لجدول `audio_files` بحيث يكون لكل ملف مستوى صوت مستقل.
-
-### 2. تشغيل متزامن أو حصري
-إضافة عمود `allow_overlap` (boolean) لجدول `audio_config` يحدد: هل يُسمح بتشغيل أكثر من ملف من نفس المجموعة في الوقت ذاته، أم ملف واحد فقط (يتوقف السابق عند بدء الجديد).
-
----
+## الفكرة
+حالياً يوجد تحكم بمستوى صوت المجموعة (group volume) وأيضاً مستوى صوت كل ملف (file volume) مما يُسبب ارتباكاً. سنجعل المستخدم يختار: إما مستوى واحد للمجموعة كلها، أو مستوى مستقل لكل ملف.
 
 ## التفاصيل التقنية
 
-### قاعدة البيانات (Migration)
+### قاعدة البيانات
+إضافة عمود `volume_mode` لجدول `audio_config`:
 ```sql
-ALTER TABLE public.audio_files ADD COLUMN volume real NOT NULL DEFAULT 1.0;
-ALTER TABLE public.audio_config ADD COLUMN allow_overlap boolean NOT NULL DEFAULT false;
+ALTER TABLE public.audio_config ADD COLUMN volume_mode text NOT NULL DEFAULT 'group';
 ```
+- `'group'`: مستوى صوت واحد للمجموعة (الحقل `volume` الحالي) — يُتجاهل `audio_files.volume`
+- `'individual'`: لكل ملف مستوى خاص — يُتجاهل `audio_config.volume`
 
 ### الملفات المتأثرة
 
 **1. `src/game/config.ts`**
-- إضافة `volume` لـ `AudioFileEntry`
-- إضافة `allowOverlap` لـ `AudioConfigEntry`
-- تحديث `fetchAudioConfig` لقراءة الحقول الجديدة
+- إضافة `volumeMode: 'group' | 'individual'` لـ `AudioConfigEntry`
+- قراءة الحقل الجديد في `fetchAudioConfig`
 
 **2. `src/game/audio.ts`**
-- تحديث `SoundSetting` بإضافة `allowOverlap`
-- تعديل `playCustomAudio`: استخدام `file.volume` كمُعامل إضافي عند حساب gain
-- إضافة منطق التشغيل الحصري: عند `allowOverlap = false`، إيقاف أي صوت قيد التشغيل من نفس المجموعة قبل بدء الجديد (تتبع الـ sources النشطة بـ Map)
+- تعديل `playCustomAudio`: 
+  - إذا `volumeMode === 'group'` → `gain = s.volume` (تجاهل file.volume)
+  - إذا `volumeMode === 'individual'` → `gain = file.volume` (تجاهل s.volume)
 
 **3. `src/pages/Admin.tsx`**
-- إضافة slider + حقل رقمي لمستوى الصوت بجانب كل ملف في قائمة Audio Files
-- إضافة toggle "تشغيل متزامن" / "ملف واحد فقط" في إعدادات كل صوت
-- حفظ التغييرات مباشرة إلى قاعدة البيانات
+- إضافة toggle في إعدادات كل صوت: "مستوى المجموعة" / "مستوى فردي لكل ملف"
+- عند اختيار "مجموعة": إظهار slider واحد للمجموعة فقط، إخفاء sliders الملفات
+- عند اختيار "فردي": إظهار slider لكل ملف، إخفاء slider المجموعة
+- إزالة slider مستوى الصوت من الصف الرئيسي للصوت (خارج القائمة المنسدلة) لتجنب الازدواجية
 
