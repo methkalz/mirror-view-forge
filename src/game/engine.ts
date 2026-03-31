@@ -1005,17 +1005,7 @@ function applyWaveEvent(g: GameData, id: string) {
     return;
   }
 
-  // Gas mask drop
-  if (id.includes('gasmask')) {
-    const pu = getFromPool<PowerUp>(g.powerUps, () => ({
-      active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
-      parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
-    }), 20);
-    pu.type = 'gasmask';
-    pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
-    pu.size = 14; pu.parachuting = true; pu.fallSpeed = 30; pu.bobTimer = 0; pu.groundTimer = 0;
-    return;
-  }
+  // Gas mask drop — removed, now purchased via card only
 
   // Incendiary drones
   if (id.includes('incendiary')) {
