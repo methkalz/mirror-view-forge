@@ -6511,7 +6511,7 @@ function renderTutorialSlide2(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.textAlign = 'center';
   ctx.direction = 'rtl';
 
-  drawSlideTitle(ctx, w, h, 'بطاقات الترقية', 0.14);
+  drawSlideTitle(ctx, w, h, 'بطاقات الدعم السريع', 0.14);
   drawGoldDivider(ctx, w, h * 0.18, t);
 
   const descW = w * 0.82;
