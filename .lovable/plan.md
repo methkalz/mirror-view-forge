@@ -1,30 +1,79 @@
 
 
-# إصلاح: موسيقى القائمة تستمر أثناء اللعب
+# إصلاح نهائي: موسيقى القائمة تستمر أثناء اللعب
 
-## المشكلة الحقيقية
-دالة `startPeriodicAmbient()` تمر على **جميع** الأصوات في `audioSettings` بما فيها `menuMusic`. إذا كان لـ menuMusic قيمة `intervalSeconds > 0` في قاعدة البيانات، فسيُعاد تشغيله دورياً أثناء اللعب عبر `playCustomAudio('menuMusic')` — وهذه عقد صوتية منفصلة عن `menuMusicNode` فلا تتأثر بـ `stopMenuMusic()`.
+## التحليل
 
-**ملاحظة**: موسيقى القائمة لها نظام إدارة مستقل (`startMenuMusic` / `stopMenuMusic`) ولا يجب أن تدخل في نظام الأصوات الدورية إطلاقاً.
+بعد مراجعة الكود بالتفصيل، وجدت عدة نقاط ضعف في آلية الإيقاف الحالية:
 
-## الحل — تغيير بسيط ونظيف
+1. **`stopMenuMusic` يستخدم fade-out مع `setTimeout(200ms)`** — أثناء هذه الـ 200ms، إذا حصل أي خطأ في `node.stop()` داخل `try/catch` الصامت، لن يتم استدعاء `disconnect()` وسيبقى الصوت يعمل
+2. **لا يوجد حماية `killed` flag** — إذا كان `startMenuMusic` لا يزال في مرحلة `await ctx.resume()` عند استدعاء `stopMenuMusic`، ثم أكمل بعدها، سينشئ عقدة صوتية جديدة بعد الإيقاف
+3. **`cancelMenuMusicStart` لا يكفي وحده** — يحمي فقط أثناء الـ await، لكن بعد اجتياز الفحص على السطر 1028، لا يوجد فحص آخر قبل `.start()` في مسار الـ cached buffer
 
-**ملف واحد**: `src/game/audio.ts`
+## الحل — ملف واحد: `src/game/audio.ts`
 
-في دالة `startPeriodicAmbient()` (سطر ~831)، إضافة سطر واحد لتخطي `menuMusic`:
-
+### التغيير 1: إضافة `menuMusicKilled` flag
 ```typescript
-for (const [key, s] of audioSettings) {
-  if (key === 'menuMusic') continue;  // ← هذا السطر فقط
-  if (s.intervalSeconds && s.intervalSeconds > 0 && s.enabled) {
-    // ...
+let menuMusicKilled = false;
+```
+
+### التغيير 2: تحديث `cancelMenuMusicStart`
+```typescript
+export function cancelMenuMusicStart() {
+  menuMusicAttemptId++;
+  menuMusicStarting = false;
+  menuMusicKilled = true;  // منع أي تشغيل مستقبلي
+}
+```
+
+### التغيير 3: فحص `menuMusicKilled` في `startMenuMusic` قبل كل `.start()`
+```typescript
+export async function startMenuMusic(): Promise<boolean> {
+  if (menuMusicKilled) return false;     // ← جديد
+  if (menuMusicNode) return true;
+  if (menuMusicStarting) return false;
+  ...
+  menuMusicKilled = false;               // ← إعادة تعيين عند بدء محاولة شرعية
+  const myAttempt = ++menuMusicAttemptId;
+  ...
+  // قبل .start() في مسار الـ cached buffer:
+  if (menuMusicKilled || myAttempt !== menuMusicAttemptId) return false;
+  menuMusicNode.start();
+  
+  // وقبل .start() في مسار الـ synth:
+  if (menuMusicKilled || myAttempt !== menuMusicAttemptId) return false;
+  menuMusicNode.start();
+}
+```
+
+### التغيير 4: تحسين `stopMenuMusic` — إيقاف فوري بدون delay
+```typescript
+export function stopMenuMusic() {
+  cancelMenuMusicStart();  // يضبط menuMusicKilled = true
+
+  const node = menuMusicNode;
+  const gain = menuMusicGain;
+  menuMusicNode = null;
+  menuMusicGain = null;
+  if (node) {
+    try { node.stop(); } catch {}
+    try { node.disconnect(); } catch {}  // disconnect منفصل عن stop
+  }
+  if (gain) {
+    try { gain.disconnect(); } catch {};
+  }
+
+  // تنظيف أي مصادر menuMusic من activeSources
+  const extra = activeSources.get('menuMusic');
+  if (extra) {
+    for (const e of extra) {
+      try { e.source.stop(); } catch {}
+      try { e.source.disconnect(); } catch {}
+    }
+    activeSources.delete('menuMusic');
   }
 }
 ```
 
-هذا يضمن:
-- ✅ موسيقى القائمة تستمر بالتشغيل (loop) طالما اللاعب لم يبدأ اللعبة
-- ✅ عند بدء اللعب، `stopMenuMusic()` توقفها نهائياً
-- ✅ لا يتم إعادة تشغيلها من نظام الأصوات الدورية أثناء اللعب
-- ✅ لا تعقيد إضافي، سطر واحد فقط
+**الفرق الجوهري**: إزالة الـ fade-out (`linearRampToValueAtTime` + `setTimeout`) واستبداله بإيقاف فوري. هذا يضمن عدم وجود أي نافذة زمنية يمكن فيها للصوت الاستمرار.
 
