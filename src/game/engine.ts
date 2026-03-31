@@ -230,8 +230,11 @@ export function resetGame(g: GameData) {
   // Wave system reset
   g.waveNumber = 1;
   g.wavePhase = 'active';
-  g.waveTimer = 60;
   g.levelNumber = 1;
+  // Apply wave 1 recipe from overrides/profile instead of hardcoded 60
+  const wave1Recipe = getWaveRecipe(1, g);
+  g.waveTimer = wave1Recipe.duration || 60;
+  g.bulletLevel = wave1Recipe.bulletLevel;
   g.deliveryBike = null;
   g.upgradeCards = [];
   g.selectedUpgrade = null;
