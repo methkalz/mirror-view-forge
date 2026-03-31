@@ -137,6 +137,10 @@ const SkyfallGame: React.FC = () => {
     // Apply difficulty profile and wave overrides
     g.difficultyProfile = difficultyProfileRef.current;
     g.remoteWaveOverrides = waveOverridesRef.current;
+    // Apply wave 1 recipe duration now that overrides are set
+    if (g.difficultyProfile || g.remoteWaveOverrides.length > 0) {
+      resetGame(g);
+    }
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
