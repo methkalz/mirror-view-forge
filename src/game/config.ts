@@ -669,6 +669,7 @@ export async function createAudioEntry(entry: {
     intervalSeconds: data.interval_seconds,
     maxConcurrent: data.max_concurrent,
     allowOverlap: (data as any).allow_overlap ?? false,
+    volumeMode: ((data as any).volume_mode || 'group') as VolumeMode,
     files: [],
   };
 }
