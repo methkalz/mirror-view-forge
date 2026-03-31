@@ -510,6 +510,7 @@ export interface AudioConfigEntry {
   playMode: PlayMode;
   intervalSeconds: number | null;
   maxConcurrent: number;
+  allowOverlap: boolean;
   files: AudioFileEntry[];
 }
 
