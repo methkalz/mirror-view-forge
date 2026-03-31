@@ -1337,6 +1337,9 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
     g.firePools.length = 0;
     g.gasClouds.length = 0;
 
+    // Clearing timeout timer
+    g.clearingTimer = (g.clearingTimer || 0) + dt;
+
     // Force-clear drones that left screen
     for (const d of g.drones) {
       if (d.active && d.tier !== 'cargo') {
@@ -1346,9 +1349,20 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
       }
     }
 
+    // Force-remove all remaining drones after 5 seconds timeout
+    if (g.clearingTimer >= 5) {
+      for (const d of g.drones) {
+        if (d.active && d.tier !== 'cargo') {
+          addExplosion(g, d.pos, 15);
+          d.active = false;
+        }
+      }
+    }
+
     // Check if scene is clear
     const activeDrones = g.drones.filter(d => d.active && d.tier !== 'cargo').length;
     if (g.activeHazardCount <= 0 && activeDrones === 0) {
+      g.clearingTimer = 0;
       g.activeHazardCount = 0; // safety reset
       // Only show cards+bike at end of level (every 3 waves)
       if (g.waveNumber % 3 === 0) {
