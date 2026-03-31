@@ -2489,7 +2489,8 @@ const WaveEditor: React.FC<{
   wave: RemoteWaveConfig;
   onSave: (w: RemoteWaveConfig) => void;
   onCancel: () => void;
-}> = ({ wave, onSave, onCancel }) => {
+  audioEntries: AudioConfigEntry[];
+}> = ({ wave, onSave, onCancel, audioEntries }) => {
   const [w, setW] = useState(wave);
 
   const toggle = (arr: string[], item: string) =>
@@ -2500,6 +2501,13 @@ const WaveEditor: React.FC<{
     background: active ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.04)',
     color: active ? '#60a5fa' : 'rgba(148,163,184,0.4)',
   });
+
+  const WARNING_TYPES = [
+    { value: 'warning', label: '⚠️ تحذير', color: '#ef4444' },
+    { value: 'upgrade', label: '⬆️ ترقية', color: '#22c55e' },
+  ];
+
+  const PRESET_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#ffffff'];
 
   return (
     <div style={{
@@ -2566,11 +2574,79 @@ const WaveEditor: React.FC<{
           ))}
         </div>
 
-        {/* Warning text */}
-        <div style={{ marginBottom: 16 }}>
-          <label style={labelStyle}>نص تحذير مخصص (اختياري)</label>
-          <input type="text" value={w.warningText || ''} placeholder="مثال: تحذير: موجة صعبة!"
-            onChange={e => setW({ ...w, warningText: e.target.value || null })} style={inputStyle} />
+        {/* ─── Warning / Message Section ─── */}
+        <div style={{
+          background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.12)',
+          borderRadius: 14, padding: '16px 14px', marginBottom: 16,
+        }}>
+          <label style={{ ...labelStyle, fontSize: 13, marginBottom: 12, display: 'block' }}>📢 رسالة تحذيرية / ترقية</label>
+
+          {/* Warning text */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelStyle}>النص</label>
+            <input type="text" value={w.warningText || ''} placeholder="مثال: تحذير: موجة صعبة!"
+              onChange={e => setW({ ...w, warningText: e.target.value || null })} style={inputStyle} />
+          </div>
+
+          {/* Warning type */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelStyle}>النوع</label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {WARNING_TYPES.map(t => (
+                <button key={t.value} onClick={() => setW({ ...w, warningType: t.value })}
+                  style={{
+                    ...chipStyle(w.warningType === t.value),
+                    borderColor: w.warningType === t.value ? t.color : 'transparent',
+                    borderWidth: 1, borderStyle: 'solid',
+                  }}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Warning color */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelStyle}>اللون</label>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              {PRESET_COLORS.map(c => (
+                <button key={c} onClick={() => setW({ ...w, warningColor: c })}
+                  style={{
+                    width: 24, height: 24, borderRadius: 8, border: w.warningColor === c ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)',
+                    background: c, cursor: 'pointer', padding: 0,
+                  }} />
+              ))}
+              <input type="color" value={w.warningColor} onChange={e => setW({ ...w, warningColor: e.target.value })}
+                style={{ width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', background: 'transparent' }} />
+            </div>
+          </div>
+
+          {/* Warning sound */}
+          <div>
+            <label style={labelStyle}>🔊 الصوت المرافق</label>
+            <select value={w.warningSoundKey || ''}
+              onChange={e => setW({ ...w, warningSoundKey: e.target.value || null })}
+              style={{ ...inputStyle, cursor: 'pointer' }}>
+              <option value="">تلقائي (حسب نوع التهديد)</option>
+              {audioEntries.map(a => (
+                <option key={a.soundKey} value={a.soundKey}>
+                  {a.labelAr || a.label} ({a.soundKey})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Preview */}
+          {w.warningText && (
+            <div style={{
+              marginTop: 12, padding: '8px 14px', borderRadius: 10,
+              background: 'rgba(0,0,0,0.3)', textAlign: 'center',
+            }}>
+              <span style={{ color: w.warningColor, fontWeight: 700, fontSize: 13 }}>
+                {w.warningType === 'upgrade' ? '⬆️' : '⚠️'} {w.warningText}
+              </span>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 12 }}>
