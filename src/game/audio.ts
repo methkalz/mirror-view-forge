@@ -377,7 +377,6 @@ export function sfxWarningDrone() {
   if (!isSoundEnabled('warningDrone')) return;
   if (playCustomAudio('warningDrone')) return;
   const v = getSoundVolume('warningDrone', 1);
-  // Electronic scanning sweep
   const ctx = getCtx();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
@@ -385,7 +384,7 @@ export function sfxWarningDrone() {
   osc.frequency.setValueAtTime(400, ctx.currentTime);
   osc.frequency.exponentialRampToValueAtTime(1600, ctx.currentTime + 0.3);
   osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.6);
-  gain.gain.setValueAtTime(0.04 * v, ctx.currentTime);
+  gain.gain.setValueAtTime(0.12 * v, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
   osc.connect(gain).connect(ctx.destination);
   osc.start();
