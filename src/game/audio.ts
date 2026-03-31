@@ -273,8 +273,8 @@ export function sfxImpactLight() {
   if (!isSoundEnabled('impactLight')) return;
   if (playCustomAudio('impactLight')) return;
   const v = getSoundVolume('impactLight', 1);
-  playNoise(0.05, 0.12 * v, { type: 'lowpass', freq: 250 + Math.random() * 300 });
-  playTone(120 + Math.random() * 80, 0.04, 'sine', 0.08 * v);
+  playNoise(0.05, 0.2 * v, { type: 'lowpass', freq: 250 + Math.random() * 300 });
+  playTone(120 + Math.random() * 80, 0.04, 'sine', 0.15 * v);
 }
 
 export function sfxImpactHeavy() {
