@@ -2316,16 +2316,47 @@ export function update(g: GameData, input: InputState, dt: number) {
         d.pos.x += Math.sin(d.wobble * 1.5) * 20 * dt;
         d.pos.y += Math.cos(d.wobble * 1.2) * 8 * dt;
       } else if (d.tier === 'tracker') {
-        // TRACKER: Orbital movement with dive attacks
+        // TRACKER: Orbital movement with dive attacks + projectile fire
         d.bombTimer += dt;
         const orbitRadius = 120;
         const orbitSpeed = 2.0;
         const isDiving = d.bombTimer >= d.bombCooldown;
         
         if (isDiving) {
-          // Dive attack — straight line toward player at double speed
+          // Fire a projectile toward the player at dive start
+          if (d.bombTimer - dt < d.bombCooldown) {
+            // First frame of dive — spawn projectile
+            const projDx = p.pos.x - d.pos.x;
+            const projDy = p.pos.y - d.pos.y;
+            const projDd = Math.sqrt(projDx * projDx + projDy * projDy);
+            if (projDd > 0) {
+              const proj = getFromPool<Hazard>(g.hazards, () => ({
+                active: false, type: 'shrapnel', pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
+                speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
+                rotation: 0, trailTimer: 0
+              }));
+              proj.type = 'shrapnel';
+              proj.pos = { x: d.pos.x, y: d.pos.y + d.size * 0.5 };
+              proj.targetPos = { x: p.pos.x, y: g.height * GROUND_RATIO };
+              proj.speed = 250;
+              proj.size = 6;
+              proj.damage = 10;
+              proj.warningDuration = 0;
+              proj.warningTimer = 0;
+              proj.falling = true;
+              proj.splitDone = false;
+              proj.isClusterBomb = false;
+              proj.rotation = 0;
+              proj.trailTimer = 0;
+              g.activeHazardCount++;
+              sfxWarning();
+              addFloatingText(g, '⚡', { x: d.pos.x, y: d.pos.y + 15 }, '#fbbf24');
+            }
+          }
+
+          // Dive movement toward player
           const dx = p.pos.x - d.pos.x;
-          const dy = (p.pos.y - 20) - d.pos.y;
+          const dy = (p.pos.y - 60) - d.pos.y;
           const dd = Math.sqrt(dx * dx + dy * dy);
           if (dd > 0) {
             d.vel.x = (dx / dd) * d.speed * 2.2;
@@ -2334,17 +2365,17 @@ export function update(g: GameData, input: InputState, dt: number) {
           d.pos.x += d.vel.x * g.slowMoFactor * dt;
           d.pos.y += d.vel.y * g.slowMoFactor * dt;
           
-          // Reset after passing player level or getting close
-          if (d.pos.y > p.pos.y - 10 || Math.sqrt((d.pos.x - p.pos.x) ** 2 + (d.pos.y - p.pos.y) ** 2) < 25) {
+          // Reset after reaching safe distance above player
+          if (d.pos.y > p.pos.y - 60) {
             d.bombTimer = 0;
-            // Pull back up
-            d.vel.y = -d.speed * 0.8;
+            d.vel.y = -d.speed * 1.5;
+            d.vel.x = (d.pos.x < p.pos.x ? -1 : 1) * d.speed * 0.8;
           }
         } else {
-          // Orbit around player
+          // Orbit around player at safe altitude
           const orbitAngle = d.wobble * orbitSpeed;
           const targetX = p.pos.x + Math.cos(orbitAngle) * orbitRadius;
-          const targetY = (p.pos.y - 80 - d.altitudeOffset * 0.5) + Math.sin(orbitAngle * 0.7) * 30;
+          const targetY = (p.pos.y - 160 - d.altitudeOffset * 0.5) + Math.sin(orbitAngle * 0.7) * 20;
           const dx = targetX - d.pos.x;
           const dy = targetY - d.pos.y;
           const dd = Math.sqrt(dx * dx + dy * dy);
@@ -2362,9 +2393,9 @@ export function update(g: GameData, input: InputState, dt: number) {
           d.pos.y += d.vel.y * g.slowMoFactor * dt;
         }
 
-        // Keep in bounds
+        // Keep in bounds — higher altitude
         const minY = g.height * 0.08;
-        const maxY = g.height * 0.58;
+        const maxY = g.height * 0.42;
         d.pos.y = Math.max(minY, Math.min(maxY, d.pos.y));
         d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
       } else {
