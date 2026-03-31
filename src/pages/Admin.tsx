@@ -1042,7 +1042,7 @@ const AudioPanel: React.FC<{
             </div>
 
             {expanded && <div style={{ padding: '0 16px 10px' }}>
-              <input type="range" min={0} max={1} step={0.05} value={catAvgVol} onChange={e => onCategoryUpdate(cat, { volume: parseFloat(e.target.value) })} style={{ width: '100%', accentColor: meta.color }} />
+              <input type="range" min={0} max={1} step={0.01} value={catAvgVol} onChange={e => onCategoryUpdate(cat, { volume: parseFloat(e.target.value) })} style={{ width: '100%', accentColor: meta.color }} />
             </div>}
 
             {expanded && items.map(item => {
