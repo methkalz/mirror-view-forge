@@ -2639,18 +2639,41 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      // Laser tracking line when diving
-      if (isDiving) {
+      // Persistent laser tracking line — always visible, brighter when diving
+      {
         const laserEndX = (g.player.pos.x - d.pos.x);
         const laserEndY = (g.player.pos.y - d.pos.y);
-        ctx.strokeStyle = 'rgba(34,255,68,0.35)';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
+        const laserAlpha = isDiving ? 0.45 : 0.12 + Math.sin(g.elapsed * 3) * 0.04;
+        const laserWidth = isDiving ? 1.5 : 0.8;
+        
+        // Outer glow
+        ctx.strokeStyle = `rgba(34,255,68,${laserAlpha * 0.4})`;
+        ctx.lineWidth = laserWidth + 2;
+        ctx.setLineDash([6, 3]);
+        ctx.beginPath();
+        ctx.moveTo(dir * d.size * 1.35, 0);
+        ctx.lineTo(laserEndX, laserEndY);
+        ctx.stroke();
+        
+        // Core beam
+        ctx.strokeStyle = `rgba(34,255,68,${laserAlpha})`;
+        ctx.lineWidth = laserWidth;
         ctx.beginPath();
         ctx.moveTo(dir * d.size * 1.35, 0);
         ctx.lineTo(laserEndX, laserEndY);
         ctx.stroke();
         ctx.setLineDash([]);
+        
+        // Electric flash at muzzle when diving
+        if (isDiving && Math.sin(g.elapsed * 20) > 0.5) {
+          ctx.fillStyle = 'rgba(34,255,68,0.7)';
+          ctx.shadowColor = '#22ff44';
+          ctx.shadowBlur = 15;
+          ctx.beginPath();
+          ctx.arc(dir * d.size * 1.35, 0, 4 + Math.random() * 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
       }
 
     } else {
