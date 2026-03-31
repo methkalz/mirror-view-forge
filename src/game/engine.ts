@@ -1367,7 +1367,27 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
       }
     }
 
-    // Wave Finale — last 5 seconds
+    // Score countdown animation
+    if (g.scoreCountdown) {
+      g.scoreCountdown.tickTimer -= dt;
+      if (g.scoreCountdown.tickTimer <= 0) {
+        // Deduct in chunks for smooth countdown
+        const chunk = Math.max(1, Math.ceil(g.scoreCountdown.remaining / 10));
+        const deduct = Math.min(chunk, g.scoreCountdown.remaining);
+        g.score -= deduct;
+        g.scoreCountdown.remaining -= deduct;
+        g.scoreCountdown.tickTimer = 0.04; // Fast ticks
+        // Tick sound — use a quick pickup-like blip
+        sfxPickup();
+        if (g.scoreCountdown.remaining <= 0) {
+          g.scoreCountdown = null;
+          g.slowMoFactor = 1; // Restore normal speed
+          addFloatingText(g, 'كمامة! 🛡️', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#16a34a');
+          spawnParticles(g, g.player.pos, 10, '#16a34a', 90);
+        }
+      }
+    }
+
     if (g.waveTimer <= 5 && !g.waveFinale) {
       g.waveFinale = true;
     }

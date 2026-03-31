@@ -3185,10 +3185,22 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.save();
   ctx.translate(w - 14, 28);
   ctx.scale(scoreBounce, scoreBounce);
-  ctx.fillStyle = '#fff';
+  // Flash red during countdown
+  if (g.scoreCountdown && g.scoreCountdown.remaining > 0) {
+    const flash = Math.sin(g.elapsed * 20) > 0 ? '#ef4444' : '#fbbf24';
+    ctx.fillStyle = flash;
+  } else {
+    ctx.fillStyle = '#fff';
+  }
   ctx.font = 'bold 18px monospace';
   ctx.textAlign = 'right';
   ctx.fillText(`${g.score}`, 0, 0);
+  // Show deduction amount
+  if (g.scoreCountdown && g.scoreCountdown.remaining > 0) {
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(`-${g.scoreCountdown.remaining}`, 0, 16);
+  }
   ctx.restore();
 
   ctx.font = '10px Tajawal, sans-serif';
