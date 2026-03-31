@@ -1015,10 +1015,12 @@ export function cancelMenuMusicStart() {
 }
 
 export async function startMenuMusic(): Promise<boolean> {
-  if (menuMusicNode) return true; // already playing
-  if (menuMusicStarting) return false; // another attempt in progress
+  if (menuMusicKilled) return false;
+  if (menuMusicNode) return true;
+  if (menuMusicStarting) return false;
   if (!isSoundEnabled('menuMusic')) return false;
 
+  menuMusicKilled = false;
   const myAttempt = ++menuMusicAttemptId;
   menuMusicStarting = true;
   try {
@@ -1026,49 +1028,48 @@ export async function startMenuMusic(): Promise<boolean> {
     if (ctx.state === 'suspended') {
       await ctx.resume();
     }
-    // After await: check if cancelled or another call succeeded
-    if (myAttempt !== menuMusicAttemptId) return false;
+    if (menuMusicKilled || myAttempt !== menuMusicAttemptId) return false;
     if (menuMusicNode) return true;
 
-  // Try custom audio
-  const url = pickFileUrl('menuMusic');
-  const buf = url ? audioBufferCache.get(url) : null;
-  if (buf) {
+    const url = pickFileUrl('menuMusic');
+    const buf = url ? audioBufferCache.get(url) : null;
+    if (buf) {
+      if (menuMusicKilled || myAttempt !== menuMusicAttemptId) return false;
+      menuMusicNode = ctx.createBufferSource();
+      menuMusicNode.buffer = buf;
+      menuMusicNode.loop = true;
+      menuMusicGain = ctx.createGain();
+      menuMusicGain.gain.value = getSoundVolume('menuMusic', 0.4);
+      menuMusicNode.connect(menuMusicGain).connect(ctx.destination);
+      menuMusicNode.start();
+      return true;
+    }
+
+    // Fallback: ambient synth pad
+    const bufferSize = ctx.sampleRate * 4;
+    const buffer = ctx.createBuffer(2, bufferSize, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = buffer.getChannelData(ch);
+      let phase1 = 0, phase2 = 0, phase3 = 0;
+      const f1 = 65.41, f2 = 82.41, f3 = 98;
+      for (let i = 0; i < bufferSize; i++) {
+        phase1 += (f1 / ctx.sampleRate) * Math.PI * 2;
+        phase2 += (f2 / ctx.sampleRate) * Math.PI * 2;
+        phase3 += (f3 / ctx.sampleRate) * Math.PI * 2;
+        const env = Math.sin((i / bufferSize) * Math.PI);
+        data[i] = (Math.sin(phase1) * 0.3 + Math.sin(phase2) * 0.25 + Math.sin(phase3) * 0.2) * env * 0.15;
+        if (ch === 1) data[i] *= 0.95;
+      }
+    }
+    if (menuMusicKilled || myAttempt !== menuMusicAttemptId) return false;
     menuMusicNode = ctx.createBufferSource();
-    menuMusicNode.buffer = buf;
+    menuMusicNode.buffer = buffer;
     menuMusicNode.loop = true;
     menuMusicGain = ctx.createGain();
-    menuMusicGain.gain.value = getSoundVolume('menuMusic', 0.4);
+    menuMusicGain.gain.value = getSoundVolume('menuMusic', 0.3);
     menuMusicNode.connect(menuMusicGain).connect(ctx.destination);
     menuMusicNode.start();
     return true;
-  }
-
-  // Fallback: ambient synth pad
-  const bufferSize = ctx.sampleRate * 4;
-  const buffer = ctx.createBuffer(2, bufferSize, ctx.sampleRate);
-  for (let ch = 0; ch < 2; ch++) {
-    const data = buffer.getChannelData(ch);
-    let phase1 = 0, phase2 = 0, phase3 = 0;
-    const f1 = 65.41, f2 = 82.41, f3 = 98;
-    for (let i = 0; i < bufferSize; i++) {
-      phase1 += (f1 / ctx.sampleRate) * Math.PI * 2;
-      phase2 += (f2 / ctx.sampleRate) * Math.PI * 2;
-      phase3 += (f3 / ctx.sampleRate) * Math.PI * 2;
-      const env = Math.sin((i / bufferSize) * Math.PI);
-      data[i] = (Math.sin(phase1) * 0.3 + Math.sin(phase2) * 0.25 + Math.sin(phase3) * 0.2) * env * 0.15;
-      if (ch === 1) data[i] *= 0.95;
-    }
-  }
-  if (myAttempt !== menuMusicAttemptId) return false; // check again after heavy work
-  menuMusicNode = ctx.createBufferSource();
-  menuMusicNode.buffer = buffer;
-  menuMusicNode.loop = true;
-  menuMusicGain = ctx.createGain();
-  menuMusicGain.gain.value = getSoundVolume('menuMusic', 0.3);
-  menuMusicNode.connect(menuMusicGain).connect(ctx.destination);
-  menuMusicNode.start();
-  return true;
   } catch (e) {
     console.warn('startMenuMusic error:', e);
     return false;
