@@ -1330,6 +1330,35 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
   if (g.wavePhase === 'active') {
     g.waveTimer -= dt;
 
+    // Gas mask offer timer
+    if (g.gasMaskOffer && g.gasMaskOffer.active) {
+      g.gasMaskOffer.timer -= dt;
+      if (g.gasMaskOffer.timer <= 0) {
+        g.gasMaskOffer = null;
+      }
+      // Handle purchase via cardClick
+      if (input.cardClick) {
+        const { x, y } = input.cardClick;
+        // Card is at bottom center: 160x60
+        const cardW = 160, cardH = 60;
+        const cardX = (g.width - cardW) / 2;
+        const cardY = g.height * 0.55;
+        if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
+          input.cardClick = null;
+          if (g.score >= g.gasMaskOffer.cost) {
+            g.score -= g.gasMaskOffer.cost;
+            g.gasMaskOwned = true;
+            g.player.gasMaskTimer = 15;
+            g.gasMaskOffer = null;
+            addFloatingText(g, 'كمامة! 🛡️', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#16a34a');
+            spawnParticles(g, g.player.pos, 10, '#16a34a', 90);
+          } else {
+            addFloatingText(g, 'نقاط غير كافية!', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#ef4444');
+          }
+        }
+      }
+    }
+
     // Wave Finale — last 5 seconds
     if (g.waveTimer <= 5 && !g.waveFinale) {
       g.waveFinale = true;
