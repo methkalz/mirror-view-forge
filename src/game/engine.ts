@@ -104,6 +104,7 @@ export function createGame(w: number, h: number): GameData {
     deathPhase: 'alive',
     firstAmmoDropped: false,
     cargoTimer: 120,
+    clearingTimer: 0,
     firePools: [],
     gasClouds: [],
     incendiaryTimer: 160,
