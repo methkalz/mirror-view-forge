@@ -526,6 +526,10 @@ const WavesPanel: React.FC<{
       hasChemical: override.hasChemical,
       hasIncendiary: override.hasIncendiary,
       droneInterval: override.droneInterval,
+      warningText: override.warningText,
+      warningColor: override.warningColor,
+      warningType: override.warningType,
+      warningSoundKey: override.warningSoundKey,
     };
   });
 
