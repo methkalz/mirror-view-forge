@@ -348,6 +348,7 @@ export interface GameData {
   // Gas mask purchase system
   gasMaskOffer: { active: boolean; timer: number; cost: number } | null;
   gasMaskOwned: boolean;
+  gasMaskOfferDelay: number;
 }
 
 export interface InputState {

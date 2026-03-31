@@ -141,6 +141,7 @@ export function createGame(w: number, h: number): GameData {
     remoteWaveOverrides: [],
     gasMaskOffer: null,
     gasMaskOwned: false,
+    gasMaskOfferDelay: 0,
   };
 }
 
