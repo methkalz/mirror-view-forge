@@ -562,6 +562,7 @@ export async function fetchAudioConfig(): Promise<AudioConfigEntry[]> {
 export async function updateAudioEntry(id: string, updates: {
   volume?: number; enabled?: boolean; audioUrl?: string | null;
   playMode?: PlayMode; intervalSeconds?: number | null; maxConcurrent?: number;
+  allowOverlap?: boolean;
 }): Promise<boolean> {
   const mapped: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (updates.volume !== undefined) mapped.volume = updates.volume;
@@ -570,7 +571,13 @@ export async function updateAudioEntry(id: string, updates: {
   if (updates.playMode !== undefined) mapped.play_mode = updates.playMode;
   if (updates.intervalSeconds !== undefined) mapped.interval_seconds = updates.intervalSeconds;
   if (updates.maxConcurrent !== undefined) mapped.max_concurrent = updates.maxConcurrent;
+  if (updates.allowOverlap !== undefined) mapped.allow_overlap = updates.allowOverlap;
   const { error } = await supabase.from('audio_config').update(mapped).eq('id', id);
+  return !error;
+}
+
+export async function updateAudioFileVolume(fileId: string, volume: number): Promise<boolean> {
+  const { error } = await supabase.from('audio_files').update({ volume } as any).eq('id', fileId);
   return !error;
 }
 
