@@ -1288,6 +1288,12 @@ function startNextWave(g: GameData) {
       }
     }
   }
+
+  // Gas mask purchase offer when chemical wave starts
+  if (recipe.hasChemical && !g.gasMaskOwned && g.player.gasMaskTimer <= 0) {
+    const cost = Math.max(10, Math.ceil(g.score * 0.1));
+    g.gasMaskOffer = { active: true, timer: 6, cost };
+  }
 }
 
 function updateWaveSystem(g: GameData, input: InputState, dt: number) {
