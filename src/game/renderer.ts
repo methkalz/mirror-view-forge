@@ -7263,38 +7263,38 @@ export function renderGameOver(
     ctx.save();
     ctx.globalAlpha = lbAlpha;
 
-    const lbW = Math.min(260, w - 24);
+    const lbW = Math.min(280, w - 20);
     const lbX = (w - lbW) / 2;
-    const lbStartY = h * 0.62;
+    const lbStartY = h * 0.61;
 
     // Gold border frame
-    ctx.strokeStyle = 'rgba(251,191,36,0.25)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(251,191,36,0.3)';
+    ctx.lineWidth = 1.5;
     const top5 = leaderboard.slice(0, 5);
-    const rowH = 28;
-    const frameH = 30 + top5.length * rowH + 10;
-    roundRect(ctx, lbX - 4, lbStartY - 16, lbW + 8, frameH, 8);
+    const rowH = 32;
+    const frameH = 34 + top5.length * rowH + 10;
+    roundRect(ctx, lbX - 4, lbStartY - 16, lbW + 8, frameH, 10);
     ctx.stroke();
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    roundRect(ctx, lbX - 4, lbStartY - 16, lbW + 8, frameH, 8);
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    roundRect(ctx, lbX - 4, lbStartY - 16, lbW + 8, frameH, 10);
     ctx.fill();
 
     // Title
     ctx.fillStyle = '#fbbf24';
-    ctx.font = `bold 16px ${font}`;
+    ctx.font = `bold 17px ${font}`;
     ctx.textAlign = 'center';
     ctx.shadowColor = '#fbbf24';
-    ctx.shadowBlur = 8;
-    ctx.fillText('أقوى ناس 🏆', w / 2, lbStartY);
+    ctx.shadowBlur = 10;
+    ctx.fillText('أقوى ناس 🏆', w / 2, lbStartY + 2);
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
 
     // Separator line
-    ctx.strokeStyle = 'rgba(251,191,36,0.35)';
+    ctx.strokeStyle = 'rgba(251,191,36,0.4)';
     ctx.lineWidth = 0.5;
     ctx.beginPath();
-    ctx.moveTo(lbX, lbStartY + 8);
-    ctx.lineTo(lbX + lbW, lbStartY + 8);
+    ctx.moveTo(lbX + 8, lbStartY + 10);
+    ctx.lineTo(lbX + lbW - 8, lbStartY + 10);
     ctx.stroke();
 
     const medals = ['🥇', '🥈', '🥉'];
@@ -7303,7 +7303,7 @@ export function renderGameOver(
       const rowDelay = 2.0 + 0.1 * i;
       if (elapsed < rowDelay) return;
       const rowAlpha = Math.min(1, (elapsed - rowDelay) * 4);
-      const ry = lbStartY + 20 + i * rowH;
+      const ry = lbStartY + 22 + i * rowH;
 
       ctx.save();
       ctx.globalAlpha = lbAlpha * rowAlpha;
@@ -7311,40 +7311,40 @@ export function renderGameOver(
       // Highlight current player
       const isCurrentPlayer = playerName && entry.playerName === playerName;
       if (isCurrentPlayer) {
-        ctx.fillStyle = 'rgba(251,191,36,0.18)';
-        roundRect(ctx, lbX, ry - 6, lbW, rowH - 2, 4);
+        ctx.fillStyle = 'rgba(251,191,36,0.22)';
+        roundRect(ctx, lbX, ry - 6, lbW, rowH - 2, 5);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(251,191,36,0.4)';
-        ctx.lineWidth = 1;
-        roundRect(ctx, lbX, ry - 6, lbW, rowH - 2, 4);
+        ctx.strokeStyle = 'rgba(251,191,36,0.5)';
+        ctx.lineWidth = 1.5;
+        roundRect(ctx, lbX, ry - 6, lbW, rowH - 2, 5);
         ctx.stroke();
       }
 
       // Rank / medal
       const rankText = i < 3 ? medals[i] : `${i + 1}`;
       ctx.fillStyle = isCurrentPlayer ? '#fbbf24' : '#94a3b8';
-      ctx.font = i < 3 ? `14px ${font}` : `12px ${font}`;
+      ctx.font = i < 3 ? `16px ${font}` : `14px ${font}`;
       ctx.textAlign = 'right';
-      ctx.fillText(rankText, lbX + lbW - 6, ry + 9);
+      ctx.fillText(rankText, lbX + lbW - 8, ry + 11);
 
       // Name
       ctx.fillStyle = isCurrentPlayer ? '#fbbf24' : '#e2e8f0';
-      ctx.font = `${isCurrentPlayer ? 'bold ' : ''}13px ${font}`;
+      ctx.font = `${isCurrentPlayer ? 'bold ' : ''}15px ${font}`;
       ctx.textAlign = 'right';
-      ctx.fillText(entry.playerName, lbX + lbW - (i < 3 ? 26 : 24), ry + 9);
+      ctx.fillText(entry.playerName, lbX + lbW - (i < 3 ? 30 : 28), ry + 11);
 
       // Score on left
       ctx.fillStyle = isCurrentPlayer ? '#fbbf24' : '#94a3b8';
-      ctx.font = `bold 12px ${font}`;
+      ctx.font = `bold 14px ${font}`;
       ctx.textAlign = 'left';
-      ctx.fillText(`${entry.score}`, lbX + 8, ry + 9);
+      ctx.fillText(`${entry.score}`, lbX + 10, ry + 11);
 
       ctx.restore();
     });
 
     // If player not in top 5, show their rank separately
     if (playerRank && playerRank > 5 && playerName) {
-      const extraY = lbStartY + 20 + top5.length * rowH + 8;
+      const extraY = lbStartY + 22 + top5.length * rowH + 8;
       const extraDelay = 2.0 + 0.1 * top5.length;
       if (elapsed >= extraDelay) {
         const extraAlpha = Math.min(1, (elapsed - extraDelay) * 4);
@@ -7361,26 +7361,26 @@ export function renderGameOver(
         ctx.setLineDash([]);
 
         // Player row
-        ctx.fillStyle = 'rgba(251,191,36,0.15)';
-        roundRect(ctx, lbX, extraY, lbW, rowH - 2, 4);
+        ctx.fillStyle = 'rgba(251,191,36,0.2)';
+        roundRect(ctx, lbX, extraY, lbW, rowH - 2, 5);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(251,191,36,0.3)';
-        ctx.lineWidth = 1;
-        roundRect(ctx, lbX, extraY, lbW, rowH - 2, 4);
+        ctx.strokeStyle = 'rgba(251,191,36,0.4)';
+        ctx.lineWidth = 1.5;
+        roundRect(ctx, lbX, extraY, lbW, rowH - 2, 5);
         ctx.stroke();
 
         ctx.fillStyle = '#fbbf24';
-        ctx.font = `bold 12px ${font}`;
+        ctx.font = `bold 14px ${font}`;
         ctx.textAlign = 'right';
-        ctx.fillText(`#${playerRank}`, lbX + lbW - 6, extraY + 14);
+        ctx.fillText(`#${playerRank}`, lbX + lbW - 8, extraY + 16);
 
-        ctx.font = `bold 13px ${font}`;
+        ctx.font = `bold 15px ${font}`;
         ctx.textAlign = 'right';
-        ctx.fillText(playerName, lbX + lbW - 32, extraY + 14);
+        ctx.fillText(playerName, lbX + lbW - 36, extraY + 16);
 
-        ctx.font = `bold 12px ${font}`;
+        ctx.font = `bold 14px ${font}`;
         ctx.textAlign = 'left';
-        ctx.fillText(`${score}`, lbX + 8, extraY + 14);
+        ctx.fillText(`${score}`, lbX + 10, extraY + 16);
 
         ctx.restore();
       }
@@ -7397,32 +7397,32 @@ export function renderGameOver(
     ctx.save();
     ctx.globalAlpha = restartAlpha;
 
-    const btnW = 200, btnH = 44;
+    const btnW = 220, btnH = 50;
     const btnX = w / 2 - btnW / 2, btnY = h * 0.92 - btnH / 2;
 
     // Green gradient background
     const grad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY + btnH);
-    grad.addColorStop(0, `rgba(34, 197, 94, ${0.15 + pulse * 0.1})`);
-    grad.addColorStop(1, `rgba(16, 185, 129, ${0.15 + pulse * 0.1})`);
+    grad.addColorStop(0, `rgba(34, 197, 94, ${0.25 + pulse * 0.1})`);
+    grad.addColorStop(1, `rgba(16, 185, 129, ${0.25 + pulse * 0.1})`);
     ctx.fillStyle = grad;
-    roundRect(ctx, btnX, btnY, btnW, btnH, 10);
+    roundRect(ctx, btnX, btnY, btnW, btnH, 12);
     ctx.fill();
 
     // Border
-    ctx.strokeStyle = `rgba(34, 197, 94, ${0.4 + pulse * 0.4})`;
-    ctx.lineWidth = 1.5;
-    roundRect(ctx, btnX, btnY, btnW, btnH, 10);
+    ctx.strokeStyle = `rgba(34, 197, 94, ${0.5 + pulse * 0.4})`;
+    ctx.lineWidth = 2;
+    roundRect(ctx, btnX, btnY, btnW, btnH, 12);
     ctx.stroke();
 
     // Glow
-    ctx.shadowColor = 'rgba(34, 197, 94, 0.3)';
-    ctx.shadowBlur = 12 + pulse * 8;
+    ctx.shadowColor = 'rgba(34, 197, 94, 0.4)';
+    ctx.shadowBlur = 14 + pulse * 10;
 
-    ctx.globalAlpha = restartAlpha * (0.7 + pulse * 0.3);
+    ctx.globalAlpha = restartAlpha * (0.75 + pulse * 0.25);
     ctx.fillStyle = '#fff';
-    ctx.font = `bold 16px ${font}`;
+    ctx.font = `bold 18px ${font}`;
     ctx.textAlign = 'center';
-    ctx.fillText('عيدها يا كبير', w / 2, btnY + btnH / 2 + 6);
+    ctx.fillText('عيدها يا كبير', w / 2, btnY + btnH / 2 + 7);
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
     ctx.restore();
