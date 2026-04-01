@@ -96,7 +96,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
               display: 'flex',
               flexDirection: 'column',
               gap: compact ? 4 : 6,
-              maxHeight: 'calc(35vh)',
+              maxHeight: '132px',
               overflowY: 'auto',
               scrollbarWidth: 'thin',
               scrollbarColor: 'rgba(250,204,21,0.3) transparent',
