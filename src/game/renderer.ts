@@ -7249,9 +7249,9 @@ export function renderGameOver(
       ctx.textAlign = 'right';
       ctx.fillText(`${st.icon} ${st.label}`, cardX + cardW - 14 - slideX, cy + 5);
       ctx.fillStyle = '#fff';
-      ctx.font = `bold 14px ${font}`;
+      ctx.font = `bold 16px ${font}`;
       ctx.textAlign = 'left';
-      ctx.fillText(st.value, cardX + 12 - slideX, cy + 4);
+      ctx.fillText(st.value, cardX + 12 - slideX, cy + 5);
 
       ctx.restore();
     });
