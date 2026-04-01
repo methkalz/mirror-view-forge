@@ -116,7 +116,7 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
   return (
     <div style={{
       position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', zIndex: 50,
+      alignItems: 'center', justifyContent: 'center', zIndex: 50, paddingBottom: '22vh',
       background: 'radial-gradient(ellipse at 50% 40%, rgba(15,23,42,0.92) 0%, rgba(0,0,0,0.98) 100%)',
       opacity: fadeOut ? 0 : 1, transition: 'opacity 0.4s ease',
     }}>
