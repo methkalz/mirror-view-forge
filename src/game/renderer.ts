@@ -7091,17 +7091,33 @@ export function renderGameOver(
   const titleAlpha = Math.min(1, (elapsed - 0.2) * 3);
   ctx.save();
   ctx.globalAlpha = titleAlpha;
-  // Shake effect on entry
   const shakeX = elapsed < 0.6 ? Math.sin(elapsed * 60) * (1 - (elapsed - 0.2) / 0.4) * 6 : 0;
-  ctx.fillStyle = '#ef4444';
-  ctx.font = `bold 42px ${font}`;
-  // Double glow layers
+  const titleY = h * 0.10;
+
+  // Banner background behind title
+  const bannerW = Math.min(320, w - 20);
+  const bannerH = 56;
+  const bannerX = (w - bannerW) / 2;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  roundRect(ctx, bannerX, titleY - 38, bannerW, bannerH, 12);
+  ctx.fill();
+  // Gold side accents
+  ctx.fillStyle = 'rgba(251,191,36,0.4)';
+  ctx.fillRect(bannerX, titleY - 28, 3, 36);
+  ctx.fillRect(bannerX + bannerW - 3, titleY - 28, 3, 36);
+
+  // Title text with stroke for clarity
+  ctx.font = `bold 46px ${font}`;
   ctx.shadowColor = '#ef4444';
-  ctx.shadowBlur = 35;
-  ctx.fillText('العالم منتهاش', w / 2 + shakeX, h * 0.12);
-  ctx.shadowBlur = 18;
+  ctx.shadowBlur = 20;
+  ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+  ctx.lineWidth = 3;
+  ctx.strokeText('العالم منتهاش', w / 2 + shakeX, titleY);
+  ctx.fillStyle = '#ef4444';
+  ctx.fillText('العالم منتهاش', w / 2 + shakeX, titleY);
+  ctx.shadowBlur = 10;
   ctx.shadowColor = '#ff6b6b';
-  ctx.fillText('العالم منتهاش', w / 2 + shakeX, h * 0.12);
+  ctx.fillText('العالم منتهاش', w / 2 + shakeX, titleY);
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
   ctx.restore();
@@ -7116,23 +7132,38 @@ export function renderGameOver(
     ctx.save();
     ctx.globalAlpha = scoreAlpha;
 
-    // Show rank if available
+    // Show rank if available with rounded background
     if (playerRank) {
-      ctx.fillStyle = '#fbbf24';
+      const rankText = `انت في المركز: ${playerRank}`;
       ctx.font = `bold 22px ${font}`;
+      const rankW = ctx.measureText(rankText).width + 28;
+      const rankBgX = (w - rankW) / 2;
+      const rankBgY = h * 0.165;
+      ctx.fillStyle = 'rgba(251,191,36,0.12)';
+      roundRect(ctx, rankBgX, rankBgY, rankW, 30, 8);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(251,191,36,0.35)';
+      ctx.lineWidth = 1;
+      roundRect(ctx, rankBgX, rankBgY, rankW, 30, 8);
+      ctx.stroke();
+      ctx.fillStyle = '#fbbf24';
       ctx.shadowColor = '#fbbf24';
       ctx.shadowBlur = 10;
-      ctx.fillText(`انت في المركز: ${playerRank}`, w / 2, h * 0.19);
+      ctx.fillText(rankText, w / 2, rankBgY + 22);
       ctx.shadowBlur = 0;
       ctx.shadowColor = 'transparent';
     }
 
     // Score - big and bold
     ctx.fillStyle = '#fff';
-    ctx.font = `bold 40px ${font}`;
+    ctx.font = `bold 48px ${font}`;
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 2;
+    const scoreY = playerRank ? h * 0.26 : h * 0.22;
+    ctx.strokeText(`${displayScore}`, w / 2, scoreY);
     ctx.shadowColor = 'rgba(255,255,255,0.3)';
     ctx.shadowBlur = 15;
-    ctx.fillText(`${displayScore}`, w / 2, playerRank ? h * 0.26 : h * 0.22);
+    ctx.fillText(`${displayScore}`, w / 2, scoreY);
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
     ctx.restore();
@@ -7175,7 +7206,7 @@ export function renderGameOver(
 
   // ─── Stat cards بالعربية ───
   if (stats && elapsed > 1.2) {
-    const cardW = Math.min(240, w - 36);
+    const cardW = Math.min(260, w - 30);
     const cardX = (w - cardW) / 2;
     const statItems = [
       { icon: '⏱', label: 'مدة الصمود', value: `${Math.floor(stats.timeSurvived)} ث`, color: '#06b6d4' },
@@ -7187,7 +7218,7 @@ export function renderGameOver(
       statItems.push({ icon: '⚔', label: 'زعماء', value: `${stats.bossesDefeated}`, color: '#fbbf24' });
     }
 
-    const cardStartY = playerRank ? h * 0.38 : h * 0.35;
+    const cardStartY = playerRank ? h * 0.37 : h * 0.34;
 
     statItems.forEach((st, i) => {
       const delay = 1.2 + i * 0.15;
@@ -7200,27 +7231,27 @@ export function renderGameOver(
       const cy = cardStartY + i * 38;
 
       // Card background with border
-      ctx.fillStyle = 'rgba(255,255,255,0.05)';
-      roundRect(ctx, cardX - slideX, cy - 13, cardW, 32, 6);
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      roundRect(ctx, cardX - slideX, cy - 15, cardW, 36, 6);
       ctx.fill();
-      ctx.strokeStyle = `${st.color}33`;
+      ctx.strokeStyle = `${st.color}44`;
       ctx.lineWidth = 1;
-      roundRect(ctx, cardX - slideX, cy - 13, cardW, 32, 6);
+      roundRect(ctx, cardX - slideX, cy - 15, cardW, 36, 6);
       ctx.stroke();
       // Right accent (RTL)
       ctx.fillStyle = st.color;
-      roundRect(ctx, cardX + cardW - 4 - slideX, cy - 13, 4, 32, 2);
+      roundRect(ctx, cardX + cardW - 4 - slideX, cy - 15, 4, 36, 2);
       ctx.fill();
 
       // Value on left, label+icon on right (RTL)
       ctx.fillStyle = st.color;
-      ctx.font = `13px ${font}`;
+      ctx.font = `15px ${font}`;
       ctx.textAlign = 'right';
-      ctx.fillText(`${st.icon} ${st.label}`, cardX + cardW - 14 - slideX, cy + 4);
+      ctx.fillText(`${st.icon} ${st.label}`, cardX + cardW - 14 - slideX, cy + 5);
       ctx.fillStyle = '#fff';
-      ctx.font = `bold 14px ${font}`;
+      ctx.font = `bold 16px ${font}`;
       ctx.textAlign = 'left';
-      ctx.fillText(st.value, cardX + 12 - slideX, cy + 4);
+      ctx.fillText(st.value, cardX + 12 - slideX, cy + 5);
 
       ctx.restore();
     });
@@ -7232,38 +7263,38 @@ export function renderGameOver(
     ctx.save();
     ctx.globalAlpha = lbAlpha;
 
-    const lbW = Math.min(260, w - 24);
+    const lbW = Math.min(280, w - 20);
     const lbX = (w - lbW) / 2;
-    const lbStartY = h * 0.62;
+    const lbStartY = h * 0.61;
 
     // Gold border frame
-    ctx.strokeStyle = 'rgba(251,191,36,0.25)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(251,191,36,0.3)';
+    ctx.lineWidth = 1.5;
     const top5 = leaderboard.slice(0, 5);
-    const rowH = 28;
-    const frameH = 30 + top5.length * rowH + 10;
-    roundRect(ctx, lbX - 4, lbStartY - 16, lbW + 8, frameH, 8);
+    const rowH = 32;
+    const frameH = 34 + top5.length * rowH + 10;
+    roundRect(ctx, lbX - 4, lbStartY - 16, lbW + 8, frameH, 10);
     ctx.stroke();
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    roundRect(ctx, lbX - 4, lbStartY - 16, lbW + 8, frameH, 8);
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    roundRect(ctx, lbX - 4, lbStartY - 16, lbW + 8, frameH, 10);
     ctx.fill();
 
     // Title
     ctx.fillStyle = '#fbbf24';
-    ctx.font = `bold 16px ${font}`;
+    ctx.font = `bold 17px ${font}`;
     ctx.textAlign = 'center';
     ctx.shadowColor = '#fbbf24';
-    ctx.shadowBlur = 8;
-    ctx.fillText('أقوى ناس 🏆', w / 2, lbStartY);
+    ctx.shadowBlur = 10;
+    ctx.fillText('أقوى ناس 🏆', w / 2, lbStartY + 2);
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
 
     // Separator line
-    ctx.strokeStyle = 'rgba(251,191,36,0.35)';
+    ctx.strokeStyle = 'rgba(251,191,36,0.4)';
     ctx.lineWidth = 0.5;
     ctx.beginPath();
-    ctx.moveTo(lbX, lbStartY + 8);
-    ctx.lineTo(lbX + lbW, lbStartY + 8);
+    ctx.moveTo(lbX + 8, lbStartY + 10);
+    ctx.lineTo(lbX + lbW - 8, lbStartY + 10);
     ctx.stroke();
 
     const medals = ['🥇', '🥈', '🥉'];
@@ -7272,7 +7303,7 @@ export function renderGameOver(
       const rowDelay = 2.0 + 0.1 * i;
       if (elapsed < rowDelay) return;
       const rowAlpha = Math.min(1, (elapsed - rowDelay) * 4);
-      const ry = lbStartY + 20 + i * rowH;
+      const ry = lbStartY + 22 + i * rowH;
 
       ctx.save();
       ctx.globalAlpha = lbAlpha * rowAlpha;
@@ -7280,40 +7311,40 @@ export function renderGameOver(
       // Highlight current player
       const isCurrentPlayer = playerName && entry.playerName === playerName;
       if (isCurrentPlayer) {
-        ctx.fillStyle = 'rgba(251,191,36,0.18)';
-        roundRect(ctx, lbX, ry - 6, lbW, rowH - 2, 4);
+        ctx.fillStyle = 'rgba(251,191,36,0.22)';
+        roundRect(ctx, lbX, ry - 6, lbW, rowH - 2, 5);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(251,191,36,0.4)';
-        ctx.lineWidth = 1;
-        roundRect(ctx, lbX, ry - 6, lbW, rowH - 2, 4);
+        ctx.strokeStyle = 'rgba(251,191,36,0.5)';
+        ctx.lineWidth = 1.5;
+        roundRect(ctx, lbX, ry - 6, lbW, rowH - 2, 5);
         ctx.stroke();
       }
 
       // Rank / medal
       const rankText = i < 3 ? medals[i] : `${i + 1}`;
       ctx.fillStyle = isCurrentPlayer ? '#fbbf24' : '#94a3b8';
-      ctx.font = i < 3 ? `14px ${font}` : `12px ${font}`;
+      ctx.font = i < 3 ? `16px ${font}` : `14px ${font}`;
       ctx.textAlign = 'right';
-      ctx.fillText(rankText, lbX + lbW - 6, ry + 9);
+      ctx.fillText(rankText, lbX + lbW - 8, ry + 11);
 
       // Name
       ctx.fillStyle = isCurrentPlayer ? '#fbbf24' : '#e2e8f0';
-      ctx.font = `${isCurrentPlayer ? 'bold ' : ''}13px ${font}`;
+      ctx.font = `${isCurrentPlayer ? 'bold ' : ''}15px ${font}`;
       ctx.textAlign = 'right';
-      ctx.fillText(entry.playerName, lbX + lbW - (i < 3 ? 26 : 24), ry + 9);
+      ctx.fillText(entry.playerName, lbX + lbW - (i < 3 ? 30 : 28), ry + 11);
 
       // Score on left
       ctx.fillStyle = isCurrentPlayer ? '#fbbf24' : '#94a3b8';
-      ctx.font = `bold 12px ${font}`;
+      ctx.font = `bold 14px ${font}`;
       ctx.textAlign = 'left';
-      ctx.fillText(`${entry.score}`, lbX + 8, ry + 9);
+      ctx.fillText(`${entry.score}`, lbX + 10, ry + 11);
 
       ctx.restore();
     });
 
     // If player not in top 5, show their rank separately
     if (playerRank && playerRank > 5 && playerName) {
-      const extraY = lbStartY + 20 + top5.length * rowH + 8;
+      const extraY = lbStartY + 22 + top5.length * rowH + 8;
       const extraDelay = 2.0 + 0.1 * top5.length;
       if (elapsed >= extraDelay) {
         const extraAlpha = Math.min(1, (elapsed - extraDelay) * 4);
@@ -7330,26 +7361,26 @@ export function renderGameOver(
         ctx.setLineDash([]);
 
         // Player row
-        ctx.fillStyle = 'rgba(251,191,36,0.15)';
-        roundRect(ctx, lbX, extraY, lbW, rowH - 2, 4);
+        ctx.fillStyle = 'rgba(251,191,36,0.2)';
+        roundRect(ctx, lbX, extraY, lbW, rowH - 2, 5);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(251,191,36,0.3)';
-        ctx.lineWidth = 1;
-        roundRect(ctx, lbX, extraY, lbW, rowH - 2, 4);
+        ctx.strokeStyle = 'rgba(251,191,36,0.4)';
+        ctx.lineWidth = 1.5;
+        roundRect(ctx, lbX, extraY, lbW, rowH - 2, 5);
         ctx.stroke();
 
         ctx.fillStyle = '#fbbf24';
-        ctx.font = `bold 12px ${font}`;
+        ctx.font = `bold 14px ${font}`;
         ctx.textAlign = 'right';
-        ctx.fillText(`#${playerRank}`, lbX + lbW - 6, extraY + 14);
+        ctx.fillText(`#${playerRank}`, lbX + lbW - 8, extraY + 16);
 
-        ctx.font = `bold 13px ${font}`;
+        ctx.font = `bold 15px ${font}`;
         ctx.textAlign = 'right';
-        ctx.fillText(playerName, lbX + lbW - 32, extraY + 14);
+        ctx.fillText(playerName, lbX + lbW - 36, extraY + 16);
 
-        ctx.font = `bold 12px ${font}`;
+        ctx.font = `bold 14px ${font}`;
         ctx.textAlign = 'left';
-        ctx.fillText(`${score}`, lbX + 8, extraY + 14);
+        ctx.fillText(`${score}`, lbX + 10, extraY + 16);
 
         ctx.restore();
       }
@@ -7366,32 +7397,32 @@ export function renderGameOver(
     ctx.save();
     ctx.globalAlpha = restartAlpha;
 
-    const btnW = 200, btnH = 44;
+    const btnW = 220, btnH = 50;
     const btnX = w / 2 - btnW / 2, btnY = h * 0.92 - btnH / 2;
 
     // Green gradient background
     const grad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY + btnH);
-    grad.addColorStop(0, `rgba(34, 197, 94, ${0.15 + pulse * 0.1})`);
-    grad.addColorStop(1, `rgba(16, 185, 129, ${0.15 + pulse * 0.1})`);
+    grad.addColorStop(0, `rgba(34, 197, 94, ${0.25 + pulse * 0.1})`);
+    grad.addColorStop(1, `rgba(16, 185, 129, ${0.25 + pulse * 0.1})`);
     ctx.fillStyle = grad;
-    roundRect(ctx, btnX, btnY, btnW, btnH, 10);
+    roundRect(ctx, btnX, btnY, btnW, btnH, 12);
     ctx.fill();
 
     // Border
-    ctx.strokeStyle = `rgba(34, 197, 94, ${0.4 + pulse * 0.4})`;
-    ctx.lineWidth = 1.5;
-    roundRect(ctx, btnX, btnY, btnW, btnH, 10);
+    ctx.strokeStyle = `rgba(34, 197, 94, ${0.5 + pulse * 0.4})`;
+    ctx.lineWidth = 2;
+    roundRect(ctx, btnX, btnY, btnW, btnH, 12);
     ctx.stroke();
 
     // Glow
-    ctx.shadowColor = 'rgba(34, 197, 94, 0.3)';
-    ctx.shadowBlur = 12 + pulse * 8;
+    ctx.shadowColor = 'rgba(34, 197, 94, 0.4)';
+    ctx.shadowBlur = 14 + pulse * 10;
 
-    ctx.globalAlpha = restartAlpha * (0.7 + pulse * 0.3);
+    ctx.globalAlpha = restartAlpha * (0.75 + pulse * 0.25);
     ctx.fillStyle = '#fff';
-    ctx.font = `bold 16px ${font}`;
+    ctx.font = `bold 18px ${font}`;
     ctx.textAlign = 'center';
-    ctx.fillText('عيدها يا كبير', w / 2, btnY + btnH / 2 + 6);
+    ctx.fillText('عيدها يا كبير', w / 2, btnY + btnH / 2 + 7);
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
     ctx.restore();

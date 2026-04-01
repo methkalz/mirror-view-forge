@@ -292,6 +292,29 @@ const SkyfallGame: React.FC = () => {
           resetGame(g);
         });
       } else if (g.state === 'gameover') {
+        // Only restart if clicking the restart button
+        const cvs = canvasRef.current;
+        if (cvs) {
+          const rect = cvs.getBoundingClientRect();
+          const rawX = (inputRef.current as any)._lastClickX;
+          const rawY = (inputRef.current as any)._lastClickY;
+          if (rawX !== undefined && rawY !== undefined) {
+            const cx = rawX - rect.left;
+            const cy = rawY - rect.top;
+            const canvasW = rect.width;
+            const canvasH = rect.height;
+            const btnW = 220, btnH = 50;
+            const btnX = canvasW / 2 - btnW / 2;
+            const btnY = canvasH * 0.92 - btnH / 2;
+            if (cx < btnX || cx > btnX + btnW || cy < btnY || cy > btnY + btnH) {
+              delete (inputRef.current as any)._lastClickX;
+              delete (inputRef.current as any)._lastClickY;
+              return;
+            }
+          }
+          delete (inputRef.current as any)._lastClickX;
+          delete (inputRef.current as any)._lastClickY;
+        }
         resumeAudio();
         scoreSubmittedRef.current = false;
         setGameOverData(null);
