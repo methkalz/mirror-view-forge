@@ -483,32 +483,7 @@ const SkyfallGame: React.FC = () => {
         style={{ display: 'block', width: '100vw', height: 'var(--app-height, 100vh)', touchAction: 'none', userSelect: 'none' }}
       />
 
-      {/* Game Over overlay with leaderboard */}
-      {gameOverData && (
-        <div style={{
-          position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 20, width: 'min(340px, 85vw)',
-        }}>
-          {gameOverData.rank && gameOverData.rank <= 10 && (
-            <div style={{
-              textAlign: 'center', marginBottom: 12, padding: '10px 16px',
-              borderRadius: 12, background: 'rgba(250,204,21,0.15)',
-              border: '1px solid rgba(250,204,21,0.3)',
-              color: '#fbbf24', fontSize: 14, fontWeight: 700,
-              fontFamily: "'Tajawal', system-ui, sans-serif",
-            }}>
-              🎉 أنت ضمن العشرة الأوائل! المركز #{gameOverData.rank}
-            </div>
-          )}
-          <Leaderboard
-            entries={leaderboard}
-            currentPlayerName={playerName}
-            currentScore={gameOverData.score}
-            currentRank={gameOverData.rank}
-            compact
-          />
-        </div>
-      )}
+      {/* Game Over: leaderboard is now rendered on Canvas */}
 
       {showButtons && (
         <>
