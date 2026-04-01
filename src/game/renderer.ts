@@ -7087,20 +7087,26 @@ export function renderGameOver(
   ctx.direction = 'rtl';
   const font = "'Tajawal', sans-serif";
 
-  // ─── Title: "انتهت اللعبة" ───
+  // ─── Title: "العالم منتهاش" ───
   const titleAlpha = Math.min(1, (elapsed - 0.2) * 3);
   ctx.save();
   ctx.globalAlpha = titleAlpha;
+  // Shake effect on entry
+  const shakeX = elapsed < 0.6 ? Math.sin(elapsed * 60) * (1 - (elapsed - 0.2) / 0.4) * 6 : 0;
   ctx.fillStyle = '#ef4444';
-  ctx.font = `bold 34px ${font}`;
+  ctx.font = `bold 42px ${font}`;
+  // Double glow layers
   ctx.shadowColor = '#ef4444';
-  ctx.shadowBlur = 25;
-  ctx.fillText('انتهت اللعبة', w / 2, h * 0.13);
+  ctx.shadowBlur = 35;
+  ctx.fillText('العالم منتهاش', w / 2 + shakeX, h * 0.12);
+  ctx.shadowBlur = 18;
+  ctx.shadowColor = '#ff6b6b';
+  ctx.fillText('العالم منتهاش', w / 2 + shakeX, h * 0.12);
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
   ctx.restore();
 
-  // ─── Score with count-up ───
+  // ─── Rank + Score ───
   if (elapsed > 0.5) {
     const scoreAlpha = Math.min(1, (elapsed - 0.5) * 3);
     const countProgress = Math.min(1, (elapsed - 0.5) / 1.5);
@@ -7109,33 +7115,48 @@ export function renderGameOver(
 
     ctx.save();
     ctx.globalAlpha = scoreAlpha;
-    ctx.fillStyle = 'rgba(180,180,180,0.7)';
-    ctx.font = `600 11px ${font}`;
-    ctx.fillText('النتيجة', w / 2, h * 0.19);
+
+    // Show rank if available
+    if (playerRank) {
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = `bold 22px ${font}`;
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 10;
+      ctx.fillText(`انت في المركز: ${playerRank}`, w / 2, h * 0.19);
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = 'transparent';
+    }
+
+    // Score - big and bold
     ctx.fillStyle = '#fff';
-    ctx.font = `bold 28px ${font}`;
-    ctx.fillText(`${displayScore}`, w / 2, h * 0.24);
+    ctx.font = `bold 40px ${font}`;
+    ctx.shadowColor = 'rgba(255,255,255,0.3)';
+    ctx.shadowBlur = 15;
+    ctx.fillText(`${displayScore}`, w / 2, playerRank ? h * 0.26 : h * 0.22);
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
     ctx.restore();
   }
 
   // ─── High score ───
   if (elapsed > 0.8) {
     const hsAlpha = Math.min(1, (elapsed - 0.8) * 3);
+    const hsY = playerRank ? h * 0.30 : h * 0.27;
     ctx.save();
     ctx.globalAlpha = hsAlpha;
     if (score >= highScore && highScore > 0) {
       const sparkle = 0.7 + Math.sin(now * 6) * 0.3;
       ctx.fillStyle = `rgba(251, 191, 36, ${sparkle})`;
-      ctx.font = `bold 14px ${font}`;
+      ctx.font = `bold 16px ${font}`;
       ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 12;
-      ctx.fillText('★ رقم قياسي جديد ★', w / 2, h * 0.29);
+      ctx.shadowBlur = 14;
+      ctx.fillText('★ رقم قياسي جديد ★', w / 2, hsY);
       ctx.shadowBlur = 0;
       ctx.shadowColor = 'transparent';
     } else {
-      ctx.fillStyle = '#666';
-      ctx.font = `11px ${font}`;
-      ctx.fillText(`أعلى علامة: ${highScore}`, w / 2, h * 0.29);
+      ctx.fillStyle = '#777';
+      ctx.font = `13px ${font}`;
+      ctx.fillText(`أعلى علامة: ${highScore}`, w / 2, hsY);
     }
     ctx.restore();
   }
@@ -7143,17 +7164,18 @@ export function renderGameOver(
   // ─── Wave number ───
   if (elapsed > 1.0 && waveNumber) {
     const waveAlpha = Math.min(1, (elapsed - 1.0) * 3);
+    const waveY = playerRank ? h * 0.34 : h * 0.31;
     ctx.save();
     ctx.globalAlpha = waveAlpha;
     ctx.fillStyle = '#94a3b8';
-    ctx.font = `600 13px ${font}`;
-    ctx.fillText(`الموجة ${waveNumber}`, w / 2, h * 0.33);
+    ctx.font = `600 15px ${font}`;
+    ctx.fillText(`الموجة ${waveNumber}`, w / 2, waveY);
     ctx.restore();
   }
 
   // ─── Stat cards بالعربية ───
   if (stats && elapsed > 1.2) {
-    const cardW = Math.min(200, w - 40);
+    const cardW = Math.min(240, w - 36);
     const cardX = (w - cardW) / 2;
     const statItems = [
       { icon: '⏱', label: 'مدة الصمود', value: `${Math.floor(stats.timeSurvived)} ث`, color: '#06b6d4' },
@@ -7165,6 +7187,8 @@ export function renderGameOver(
       statItems.push({ icon: '⚔', label: 'زعماء', value: `${stats.bossesDefeated}`, color: '#fbbf24' });
     }
 
+    const cardStartY = playerRank ? h * 0.38 : h * 0.35;
+
     statItems.forEach((st, i) => {
       const delay = 1.2 + i * 0.15;
       if (elapsed < delay) return;
@@ -7173,25 +7197,30 @@ export function renderGameOver(
 
       ctx.save();
       ctx.globalAlpha = cardAlpha;
-      const cy = h * 0.37 + i * 30;
+      const cy = cardStartY + i * 38;
 
-      // Card background
-      ctx.fillStyle = 'rgba(255,255,255,0.04)';
-      roundRect(ctx, cardX - slideX, cy - 10, cardW, 24, 4);
+      // Card background with border
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      roundRect(ctx, cardX - slideX, cy - 13, cardW, 32, 6);
       ctx.fill();
+      ctx.strokeStyle = `${st.color}33`;
+      ctx.lineWidth = 1;
+      roundRect(ctx, cardX - slideX, cy - 13, cardW, 32, 6);
+      ctx.stroke();
       // Right accent (RTL)
       ctx.fillStyle = st.color;
-      ctx.fillRect(cardX + cardW - 3 - slideX, cy - 10, 3, 24);
+      roundRect(ctx, cardX + cardW - 4 - slideX, cy - 13, 4, 32, 2);
+      ctx.fill();
 
       // Value on left, label+icon on right (RTL)
       ctx.fillStyle = st.color;
-      ctx.font = `11px ${font}`;
+      ctx.font = `13px ${font}`;
       ctx.textAlign = 'right';
-      ctx.fillText(`${st.icon} ${st.label}`, cardX + cardW - 10 - slideX, cy + 4);
+      ctx.fillText(`${st.icon} ${st.label}`, cardX + cardW - 14 - slideX, cy + 4);
       ctx.fillStyle = '#fff';
-      ctx.font = `bold 12px ${font}`;
+      ctx.font = `bold 14px ${font}`;
       ctx.textAlign = 'left';
-      ctx.fillText(st.value, cardX + 10 - slideX, cy + 4);
+      ctx.fillText(st.value, cardX + 12 - slideX, cy + 4);
 
       ctx.restore();
     });
@@ -7203,33 +7232,47 @@ export function renderGameOver(
     ctx.save();
     ctx.globalAlpha = lbAlpha;
 
-    const lbW = Math.min(220, w - 30);
+    const lbW = Math.min(260, w - 24);
     const lbX = (w - lbW) / 2;
-    const lbStartY = h * 0.60;
+    const lbStartY = h * 0.62;
+
+    // Gold border frame
+    ctx.strokeStyle = 'rgba(251,191,36,0.25)';
+    ctx.lineWidth = 1;
+    const top5 = leaderboard.slice(0, 5);
+    const rowH = 28;
+    const frameH = 30 + top5.length * rowH + 10;
+    roundRect(ctx, lbX - 4, lbStartY - 16, lbW + 8, frameH, 8);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    roundRect(ctx, lbX - 4, lbStartY - 16, lbW + 8, frameH, 8);
+    ctx.fill();
 
     // Title
     ctx.fillStyle = '#fbbf24';
-    ctx.font = `bold 14px ${font}`;
+    ctx.font = `bold 16px ${font}`;
     ctx.textAlign = 'center';
+    ctx.shadowColor = '#fbbf24';
+    ctx.shadowBlur = 8;
     ctx.fillText('أقوى ناس 🏆', w / 2, lbStartY);
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
 
     // Separator line
-    ctx.strokeStyle = 'rgba(251,191,36,0.3)';
+    ctx.strokeStyle = 'rgba(251,191,36,0.35)';
     ctx.lineWidth = 0.5;
     ctx.beginPath();
-    ctx.moveTo(lbX, lbStartY + 6);
-    ctx.lineTo(lbX + lbW, lbStartY + 6);
+    ctx.moveTo(lbX, lbStartY + 8);
+    ctx.lineTo(lbX + lbW, lbStartY + 8);
     ctx.stroke();
 
     const medals = ['🥇', '🥈', '🥉'];
-    const top5 = leaderboard.slice(0, 5);
-    const rowH = 22;
 
     top5.forEach((entry, i) => {
       const rowDelay = 2.0 + 0.1 * i;
       if (elapsed < rowDelay) return;
       const rowAlpha = Math.min(1, (elapsed - rowDelay) * 4);
-      const ry = lbStartY + 16 + i * rowH;
+      const ry = lbStartY + 20 + i * rowH;
 
       ctx.save();
       ctx.globalAlpha = lbAlpha * rowAlpha;
@@ -7237,36 +7280,40 @@ export function renderGameOver(
       // Highlight current player
       const isCurrentPlayer = playerName && entry.playerName === playerName;
       if (isCurrentPlayer) {
-        ctx.fillStyle = 'rgba(251,191,36,0.12)';
-        roundRect(ctx, lbX, ry - 6, lbW, rowH - 2, 3);
+        ctx.fillStyle = 'rgba(251,191,36,0.18)';
+        roundRect(ctx, lbX, ry - 6, lbW, rowH - 2, 4);
         ctx.fill();
+        ctx.strokeStyle = 'rgba(251,191,36,0.4)';
+        ctx.lineWidth = 1;
+        roundRect(ctx, lbX, ry - 6, lbW, rowH - 2, 4);
+        ctx.stroke();
       }
 
       // Rank / medal
       const rankText = i < 3 ? medals[i] : `${i + 1}`;
       ctx.fillStyle = isCurrentPlayer ? '#fbbf24' : '#94a3b8';
-      ctx.font = i < 3 ? `12px ${font}` : `10px ${font}`;
+      ctx.font = i < 3 ? `14px ${font}` : `12px ${font}`;
       ctx.textAlign = 'right';
-      ctx.fillText(rankText, lbX + lbW - 4, ry + 7);
+      ctx.fillText(rankText, lbX + lbW - 6, ry + 9);
 
       // Name
       ctx.fillStyle = isCurrentPlayer ? '#fbbf24' : '#e2e8f0';
-      ctx.font = `${isCurrentPlayer ? 'bold ' : ''}11px ${font}`;
+      ctx.font = `${isCurrentPlayer ? 'bold ' : ''}13px ${font}`;
       ctx.textAlign = 'right';
-      ctx.fillText(entry.playerName, lbX + lbW - (i < 3 ? 22 : 20), ry + 7);
+      ctx.fillText(entry.playerName, lbX + lbW - (i < 3 ? 26 : 24), ry + 9);
 
       // Score on left
       ctx.fillStyle = isCurrentPlayer ? '#fbbf24' : '#94a3b8';
-      ctx.font = `bold 10px ${font}`;
+      ctx.font = `bold 12px ${font}`;
       ctx.textAlign = 'left';
-      ctx.fillText(`${entry.score}`, lbX + 4, ry + 7);
+      ctx.fillText(`${entry.score}`, lbX + 8, ry + 9);
 
       ctx.restore();
     });
 
     // If player not in top 5, show their rank separately
     if (playerRank && playerRank > 5 && playerName) {
-      const extraY = lbStartY + 16 + top5.length * rowH + 6;
+      const extraY = lbStartY + 20 + top5.length * rowH + 8;
       const extraDelay = 2.0 + 0.1 * top5.length;
       if (elapsed >= extraDelay) {
         const extraAlpha = Math.min(1, (elapsed - extraDelay) * 4);
@@ -7283,22 +7330,26 @@ export function renderGameOver(
         ctx.setLineDash([]);
 
         // Player row
-        ctx.fillStyle = 'rgba(251,191,36,0.1)';
-        roundRect(ctx, lbX, extraY - 2, lbW, rowH - 2, 3);
+        ctx.fillStyle = 'rgba(251,191,36,0.15)';
+        roundRect(ctx, lbX, extraY, lbW, rowH - 2, 4);
         ctx.fill();
+        ctx.strokeStyle = 'rgba(251,191,36,0.3)';
+        ctx.lineWidth = 1;
+        roundRect(ctx, lbX, extraY, lbW, rowH - 2, 4);
+        ctx.stroke();
 
         ctx.fillStyle = '#fbbf24';
-        ctx.font = `bold 10px ${font}`;
+        ctx.font = `bold 12px ${font}`;
         ctx.textAlign = 'right';
-        ctx.fillText(`#${playerRank}`, lbX + lbW - 4, extraY + 11);
+        ctx.fillText(`#${playerRank}`, lbX + lbW - 6, extraY + 14);
 
-        ctx.font = `bold 11px ${font}`;
+        ctx.font = `bold 13px ${font}`;
         ctx.textAlign = 'right';
-        ctx.fillText(playerName, lbX + lbW - 28, extraY + 11);
+        ctx.fillText(playerName, lbX + lbW - 32, extraY + 14);
 
-        ctx.font = `bold 10px ${font}`;
+        ctx.font = `bold 12px ${font}`;
         ctx.textAlign = 'left';
-        ctx.fillText(`${score}`, lbX + 4, extraY + 11);
+        ctx.fillText(`${score}`, lbX + 8, extraY + 14);
 
         ctx.restore();
       }
@@ -7307,30 +7358,42 @@ export function renderGameOver(
     ctx.restore();
   }
 
-  // ─── Restart prompt "اضغط للإعادة" ───
+  // ─── Restart button "عيدها يا كبير" ───
   if (elapsed > 2.5) {
     const restartAlpha = Math.min(1, (elapsed - 2.5) * 2);
-    const pulse = 0.5 + Math.sin(now * 3) * 0.3;
+    const pulse = 0.5 + Math.sin(now * 3) * 0.4;
 
     ctx.save();
     ctx.globalAlpha = restartAlpha;
 
-    const btnW = 160, btnH = 34;
+    const btnW = 200, btnH = 44;
     const btnX = w / 2 - btnW / 2, btnY = h * 0.92 - btnH / 2;
 
-    ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + pulse * 0.4})`;
-    ctx.lineWidth = 1.5;
-    roundRect(ctx, btnX, btnY, btnW, btnH, 6);
-    ctx.stroke();
-    ctx.fillStyle = `rgba(255, 255, 255, ${0.03 + pulse * 0.02})`;
-    roundRect(ctx, btnX, btnY, btnW, btnH, 6);
+    // Green gradient background
+    const grad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY + btnH);
+    grad.addColorStop(0, `rgba(34, 197, 94, ${0.15 + pulse * 0.1})`);
+    grad.addColorStop(1, `rgba(16, 185, 129, ${0.15 + pulse * 0.1})`);
+    ctx.fillStyle = grad;
+    roundRect(ctx, btnX, btnY, btnW, btnH, 10);
     ctx.fill();
 
-    ctx.globalAlpha = restartAlpha * (0.6 + pulse * 0.4);
+    // Border
+    ctx.strokeStyle = `rgba(34, 197, 94, ${0.4 + pulse * 0.4})`;
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, btnX, btnY, btnW, btnH, 10);
+    ctx.stroke();
+
+    // Glow
+    ctx.shadowColor = 'rgba(34, 197, 94, 0.3)';
+    ctx.shadowBlur = 12 + pulse * 8;
+
+    ctx.globalAlpha = restartAlpha * (0.7 + pulse * 0.3);
     ctx.fillStyle = '#fff';
-    ctx.font = `bold 13px ${font}`;
+    ctx.font = `bold 16px ${font}`;
     ctx.textAlign = 'center';
-    ctx.fillText('اضغط للإعادة', w / 2, btnY + btnH / 2 + 5);
+    ctx.fillText('عيدها يا كبير', w / 2, btnY + btnH / 2 + 6);
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
     ctx.restore();
   }
 
