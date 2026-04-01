@@ -7132,23 +7132,38 @@ export function renderGameOver(
     ctx.save();
     ctx.globalAlpha = scoreAlpha;
 
-    // Show rank if available
+    // Show rank if available with rounded background
     if (playerRank) {
-      ctx.fillStyle = '#fbbf24';
+      const rankText = `انت في المركز: ${playerRank}`;
       ctx.font = `bold 22px ${font}`;
+      const rankW = ctx.measureText(rankText).width + 28;
+      const rankBgX = (w - rankW) / 2;
+      const rankBgY = h * 0.165;
+      ctx.fillStyle = 'rgba(251,191,36,0.12)';
+      roundRect(ctx, rankBgX, rankBgY, rankW, 30, 8);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(251,191,36,0.35)';
+      ctx.lineWidth = 1;
+      roundRect(ctx, rankBgX, rankBgY, rankW, 30, 8);
+      ctx.stroke();
+      ctx.fillStyle = '#fbbf24';
       ctx.shadowColor = '#fbbf24';
       ctx.shadowBlur = 10;
-      ctx.fillText(`انت في المركز: ${playerRank}`, w / 2, h * 0.19);
+      ctx.fillText(rankText, w / 2, rankBgY + 22);
       ctx.shadowBlur = 0;
       ctx.shadowColor = 'transparent';
     }
 
     // Score - big and bold
     ctx.fillStyle = '#fff';
-    ctx.font = `bold 40px ${font}`;
+    ctx.font = `bold 48px ${font}`;
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 2;
+    const scoreY = playerRank ? h * 0.26 : h * 0.22;
+    ctx.strokeText(`${displayScore}`, w / 2, scoreY);
     ctx.shadowColor = 'rgba(255,255,255,0.3)';
     ctx.shadowBlur = 15;
-    ctx.fillText(`${displayScore}`, w / 2, playerRank ? h * 0.26 : h * 0.22);
+    ctx.fillText(`${displayScore}`, w / 2, scoreY);
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
     ctx.restore();
