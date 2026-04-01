@@ -26,7 +26,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
   // Auto-scroll animation: scroll down then back up to hint there's more
   useEffect(() => {
     const el = listRef.current;
-    if (!el || entries.length <= 5) return;
+    if (!el || entries.length <= 3) return;
 
     const hasOverflow = el.scrollHeight > el.clientHeight;
     setShowFade(hasOverflow);
@@ -96,7 +96,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
               display: 'flex',
               flexDirection: 'column',
               gap: compact ? 4 : 6,
-              maxHeight: 'calc(35vh)',
+              maxHeight: '132px',
               overflowY: 'auto',
               scrollbarWidth: 'thin',
               scrollbarColor: 'rgba(250,204,21,0.3) transparent',
