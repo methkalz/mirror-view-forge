@@ -7206,7 +7206,7 @@ export function renderGameOver(
 
   // ─── Stat cards بالعربية ───
   if (stats && elapsed > 1.2) {
-    const cardW = Math.min(240, w - 36);
+    const cardW = Math.min(260, w - 30);
     const cardX = (w - cardW) / 2;
     const statItems = [
       { icon: '⏱', label: 'مدة الصمود', value: `${Math.floor(stats.timeSurvived)} ث`, color: '#06b6d4' },
@@ -7218,7 +7218,7 @@ export function renderGameOver(
       statItems.push({ icon: '⚔', label: 'زعماء', value: `${stats.bossesDefeated}`, color: '#fbbf24' });
     }
 
-    const cardStartY = playerRank ? h * 0.38 : h * 0.35;
+    const cardStartY = playerRank ? h * 0.37 : h * 0.34;
 
     statItems.forEach((st, i) => {
       const delay = 1.2 + i * 0.15;
@@ -7231,23 +7231,23 @@ export function renderGameOver(
       const cy = cardStartY + i * 38;
 
       // Card background with border
-      ctx.fillStyle = 'rgba(255,255,255,0.05)';
-      roundRect(ctx, cardX - slideX, cy - 13, cardW, 32, 6);
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      roundRect(ctx, cardX - slideX, cy - 15, cardW, 36, 6);
       ctx.fill();
-      ctx.strokeStyle = `${st.color}33`;
+      ctx.strokeStyle = `${st.color}44`;
       ctx.lineWidth = 1;
-      roundRect(ctx, cardX - slideX, cy - 13, cardW, 32, 6);
+      roundRect(ctx, cardX - slideX, cy - 15, cardW, 36, 6);
       ctx.stroke();
       // Right accent (RTL)
       ctx.fillStyle = st.color;
-      roundRect(ctx, cardX + cardW - 4 - slideX, cy - 13, 4, 32, 2);
+      roundRect(ctx, cardX + cardW - 4 - slideX, cy - 15, 4, 36, 2);
       ctx.fill();
 
       // Value on left, label+icon on right (RTL)
       ctx.fillStyle = st.color;
-      ctx.font = `13px ${font}`;
+      ctx.font = `15px ${font}`;
       ctx.textAlign = 'right';
-      ctx.fillText(`${st.icon} ${st.label}`, cardX + cardW - 14 - slideX, cy + 4);
+      ctx.fillText(`${st.icon} ${st.label}`, cardX + cardW - 14 - slideX, cy + 5);
       ctx.fillStyle = '#fff';
       ctx.font = `bold 14px ${font}`;
       ctx.textAlign = 'left';
