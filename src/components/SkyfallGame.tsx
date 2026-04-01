@@ -444,7 +444,7 @@ const SkyfallGame: React.FC = () => {
   // Name entry screen
   if (showNameEntry) {
     return (
-      <div style={{ position: 'relative', width: '100vw', height: 'var(--app-height, 100vh)', overflow: 'hidden', background: '#000', paddingBottom: '35vh' }}>
+      <div style={{ position: 'relative', width: '100vw', height: 'var(--app-height, 100vh)', overflow: 'hidden', background: '#000' }}>
         <NameEntry
           onSubmit={handleNameSubmit}
           defaultName={playerName}
