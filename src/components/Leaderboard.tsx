@@ -77,7 +77,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
         letterSpacing: 1,
         direction: 'rtl',
       }}>
-        🏆 أقوى ناس
+        أقوى ناس 🏆
       </h3>
 
       {loading ? (
