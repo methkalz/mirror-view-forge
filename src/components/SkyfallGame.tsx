@@ -460,6 +460,7 @@ const SkyfallGame: React.FC = () => {
           <div style={{
             position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
             zIndex: 51, width: 'min(340px, 85vw)',
+            maxHeight: 'calc(45vh)', overflow: 'hidden',
           }}>
             <Leaderboard entries={leaderboard} compact />
           </div>
