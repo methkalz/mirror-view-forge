@@ -7044,13 +7044,38 @@ export function renderGameOver(
   const now = Date.now() / 1000;
   if (gameOverStartTime === 0 || now - gameOverStartTime > 30) gameOverStartTime = now;
   const elapsed = now - gameOverStartTime;
+  const t = now; // for animations
 
   // Dark overlay with fade-in
-  const overlayAlpha = Math.min(0.85, elapsed * 2);
+  const overlayAlpha = Math.min(0.88, elapsed * 2);
   ctx.fillStyle = `rgba(0, 0, 0, ${overlayAlpha})`;
   ctx.fillRect(0, 0, w, h);
 
-  // Cracked screen effect — white cracks from center
+  // ── Bottom glow (same as tutorial) ──
+  const bottomGlow = ctx.createRadialGradient(w / 2, h, 0, w / 2, h, h * 0.5);
+  bottomGlow.addColorStop(0, 'rgba(180, 30, 20, 0.15)');
+  bottomGlow.addColorStop(1, 'rgba(180, 30, 20, 0)');
+  ctx.fillStyle = bottomGlow;
+  ctx.fillRect(0, h * 0.5, w, h * 0.5);
+
+  // ── Ember/Spark particles (same as tutorial) ──
+  const emberColors = ['255,160,30', '255,120,20', '251,191,36', '255,80,20'];
+  for (let i = 0; i < 25; i++) {
+    const speed = 0.3 + (i % 5) * 0.15;
+    const lifeT = ((t * speed + i * 3.7) % 6) / 6;
+    const ex = w * (0.1 + ((i * 0.0731 + Math.sin(i * 2.3) * 0.1) % 0.8)) + Math.sin(t * 1.5 + i * 4.1) * 15;
+    const ey = h * (1.0 - lifeT * 0.9);
+    const eAlpha = Math.sin(lifeT * Math.PI) * 0.5;
+    const eSize = 1 + (i % 3);
+    if (eAlpha > 0.02) {
+      ctx.fillStyle = `rgba(${emberColors[i % emberColors.length]}, ${eAlpha})`;
+      ctx.beginPath();
+      ctx.arc(ex, ey, eSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Cracked screen effect
   if (elapsed > 0.1 && elapsed < 2.0) {
     const crackAlpha = Math.min(0.4, (elapsed - 0.1) * 0.8) * Math.max(0, 1 - (elapsed - 0.5) / 1.5);
     ctx.strokeStyle = `rgba(255, 255, 255, ${crackAlpha})`;
@@ -7062,12 +7087,11 @@ export function renderGameOver(
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       let px = cx, py = cy;
-      const segments = 4;
-      for (let s = 0; s < segments; s++) {
-        const t = (s + 1) / segments;
+      for (let s = 0; s < 4; s++) {
+        const st = (s + 1) / 4;
         const jitter = (Math.sin(i * 7 + s * 5.1) * 0.3);
-        const nx = cx + Math.cos(baseAngle + jitter) * len * t;
-        const ny = cy + Math.sin(baseAngle + jitter) * len * t;
+        const nx = cx + Math.cos(baseAngle + jitter) * len * st;
+        const ny = cy + Math.sin(baseAngle + jitter) * len * st;
         ctx.lineTo(nx, ny);
         px = nx; py = ny;
         if (s === 2 && i % 2 === 0) {
@@ -7087,300 +7111,272 @@ export function renderGameOver(
   ctx.direction = 'rtl';
   const font = "'Tajawal', sans-serif";
 
-  // ─── Title: "العالم منتهاش" ───
+  // ─── Title: "العالم منتهاش" using drawSlideTitle style ───
   const titleAlpha = Math.min(1, (elapsed - 0.2) * 3);
   ctx.save();
   ctx.globalAlpha = titleAlpha;
   const shakeX = elapsed < 0.6 ? Math.sin(elapsed * 60) * (1 - (elapsed - 0.2) / 0.4) * 6 : 0;
   const titleY = h * 0.10;
 
-  // Banner background behind title
-  const bannerW = Math.min(320, w - 20);
-  const bannerH = 56;
-  const bannerX = (w - bannerW) / 2;
-  ctx.fillStyle = 'rgba(0,0,0,0.55)';
-  roundRect(ctx, bannerX, titleY - 38, bannerW, bannerH, 12);
-  ctx.fill();
-  // Gold side accents
-  ctx.fillStyle = 'rgba(251,191,36,0.4)';
-  ctx.fillRect(bannerX, titleY - 28, 3, 36);
-  ctx.fillRect(bannerX + bannerW - 3, titleY - 28, 3, 36);
-
-  // Title text with stroke for clarity
-  ctx.font = `bold 46px ${font}`;
-  ctx.shadowColor = '#ef4444';
-  ctx.shadowBlur = 20;
-  ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-  ctx.lineWidth = 3;
+  // Gold gradient title (same as drawSlideTitle)
+  const titleGrad = ctx.createLinearGradient(w / 2 - 120, 0, w / 2 + 120, 0);
+  titleGrad.addColorStop(0, '#a08030');
+  titleGrad.addColorStop(0.3, '#e0c060');
+  titleGrad.addColorStop(0.5, '#ffd700');
+  titleGrad.addColorStop(0.7, '#e0c060');
+  titleGrad.addColorStop(1, '#a08030');
+  ctx.font = `bold 38px ${font}`;
+  // Black stroke for contrast
+  ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+  ctx.lineWidth = 4;
   ctx.strokeText('العالم منتهاش', w / 2 + shakeX, titleY);
-  ctx.fillStyle = '#ef4444';
+  // Outer glow
+  ctx.shadowColor = 'rgba(255,200,50,0.2)';
+  ctx.shadowBlur = 30;
+  ctx.fillStyle = titleGrad;
   ctx.fillText('العالم منتهاش', w / 2 + shakeX, titleY);
-  ctx.shadowBlur = 10;
-  ctx.shadowColor = '#ff6b6b';
+  // Inner glow
+  ctx.shadowColor = 'rgba(255,200,50,0.5)';
+  ctx.shadowBlur = 12;
   ctx.fillText('العالم منتهاش', w / 2 + shakeX, titleY);
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
   ctx.restore();
 
-  // ─── Rank + Score ───
+  // ─── Gold divider under title ───
+  if (elapsed > 0.3) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (elapsed - 0.3) * 3);
+    drawGoldDivider(ctx, w, titleY + 12, t);
+    ctx.restore();
+  }
+
+  // ─── Score inside glass card ───
   if (elapsed > 0.5) {
     const scoreAlpha = Math.min(1, (elapsed - 0.5) * 3);
     const countProgress = Math.min(1, (elapsed - 0.5) / 1.5);
     const eased = 1 - Math.pow(1 - countProgress, 3);
     const displayScore = Math.floor(score * eased);
+    const floatY = Math.sin(t * 1.5) * 2;
 
     ctx.save();
     ctx.globalAlpha = scoreAlpha;
 
-    // Show rank if available with rounded background
+    const scoreCardW = Math.min(260, w * 0.7);
+    const scoreCardH = playerRank ? 80 : 60;
+    const scoreCardX = (w - scoreCardW) / 2;
+    const scoreCardY = h * 0.14 + floatY;
+
+    drawGlassCard(ctx, scoreCardX, scoreCardY, scoreCardW, scoreCardH, 'rgba(251, 191, 36, 0.8)');
+
+    // Rank
     if (playerRank) {
-      const rankText = `انت في المركز: ${playerRank}`;
-      ctx.font = `bold 22px ${font}`;
-      const rankW = ctx.measureText(rankText).width + 28;
-      const rankBgX = (w - rankW) / 2;
-      const rankBgY = h * 0.165;
-      ctx.fillStyle = 'rgba(251,191,36,0.12)';
-      roundRect(ctx, rankBgX, rankBgY, rankW, 30, 8);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(251,191,36,0.35)';
-      ctx.lineWidth = 1;
-      roundRect(ctx, rankBgX, rankBgY, rankW, 30, 8);
-      ctx.stroke();
       ctx.fillStyle = '#fbbf24';
+      ctx.font = `bold 18px ${font}`;
+      ctx.textAlign = 'center';
       ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 10;
-      ctx.fillText(rankText, w / 2, rankBgY + 22);
+      ctx.shadowBlur = 8;
+      ctx.fillText(`انت في المركز: ${playerRank}`, w / 2, scoreCardY + 26);
       ctx.shadowBlur = 0;
       ctx.shadowColor = 'transparent';
     }
 
-    // Score - big and bold
+    // Score
     ctx.fillStyle = '#fff';
-    ctx.font = `bold 48px ${font}`;
-    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-    ctx.lineWidth = 2;
-    const scoreY = playerRank ? h * 0.26 : h * 0.22;
-    ctx.strokeText(`${displayScore}`, w / 2, scoreY);
+    ctx.font = `bold 36px ${font}`;
+    ctx.textAlign = 'center';
     ctx.shadowColor = 'rgba(255,255,255,0.3)';
     ctx.shadowBlur = 15;
-    ctx.fillText(`${displayScore}`, w / 2, scoreY);
+    const scoreTextY = playerRank ? scoreCardY + 62 : scoreCardY + 44;
+    ctx.fillText(`${displayScore}`, w / 2, scoreTextY);
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
+
     ctx.restore();
   }
 
-  // ─── High score ───
+  // ─── High score / New record ───
   if (elapsed > 0.8) {
     const hsAlpha = Math.min(1, (elapsed - 0.8) * 3);
-    const hsY = playerRank ? h * 0.30 : h * 0.27;
+    const hsY = h * 0.32;
     ctx.save();
     ctx.globalAlpha = hsAlpha;
+    ctx.textAlign = 'center';
     if (score >= highScore && highScore > 0) {
-      const sparkle = 0.7 + Math.sin(now * 6) * 0.3;
+      const sparkle = 0.7 + Math.sin(t * 6) * 0.3;
       ctx.fillStyle = `rgba(251, 191, 36, ${sparkle})`;
-      ctx.font = `bold 16px ${font}`;
+      ctx.font = `bold 15px ${font}`;
       ctx.shadowColor = '#fbbf24';
       ctx.shadowBlur = 14;
       ctx.fillText('★ رقم قياسي جديد ★', w / 2, hsY);
       ctx.shadowBlur = 0;
       ctx.shadowColor = 'transparent';
     } else {
-      ctx.fillStyle = '#777';
+      ctx.fillStyle = 'rgba(148,163,184,0.6)';
       ctx.font = `13px ${font}`;
       ctx.fillText(`أعلى علامة: ${highScore}`, w / 2, hsY);
     }
+    if (waveNumber) {
+      ctx.fillStyle = 'rgba(148,163,184,0.5)';
+      ctx.font = `13px ${font}`;
+      ctx.fillText(`الموجة ${waveNumber}`, w / 2, hsY + 18);
+    }
     ctx.restore();
   }
 
-  // ─── Wave number ───
-  if (elapsed > 1.0 && waveNumber) {
-    const waveAlpha = Math.min(1, (elapsed - 1.0) * 3);
-    const waveY = playerRank ? h * 0.34 : h * 0.31;
-    ctx.save();
-    ctx.globalAlpha = waveAlpha;
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = `600 15px ${font}`;
-    ctx.fillText(`الموجة ${waveNumber}`, w / 2, waveY);
-    ctx.restore();
-  }
-
-  // ─── Stat cards بالعربية ───
-  if (stats && elapsed > 1.2) {
+  // ─── Stat cards with glass effect ───
+  if (stats && elapsed > 1.0) {
     const cardW = Math.min(260, w - 30);
     const cardX = (w - cardW) / 2;
     const statItems = [
-      { icon: '⏱', label: 'مدة الصمود', value: `${Math.floor(stats.timeSurvived)} ث`, color: '#06b6d4' },
-      { icon: '💀', label: 'طائرات مُسقطة', value: `${stats.dronesDestroyed}`, color: '#ef4444' },
-      { icon: '📦', label: 'تعزيزات', value: `${stats.powerUpsCollected}`, color: '#22c55e' },
-      { icon: '✕', label: 'نجاة بأعجوبة', value: `${stats.closeCalls}`, color: '#f97316' },
+      { icon: '⏱', label: 'مدة الصمود', value: `${Math.floor(stats.timeSurvived)} ث`, accent: 'rgba(6, 182, 212, 0.7)' },
+      { icon: '💀', label: 'طائرات مُسقطة', value: `${stats.dronesDestroyed}`, accent: 'rgba(239, 68, 68, 0.7)' },
+      { icon: '📦', label: 'تعزيزات', value: `${stats.powerUpsCollected}`, accent: 'rgba(34, 197, 94, 0.7)' },
+      { icon: '✕', label: 'نجاة بأعجوبة', value: `${stats.closeCalls}`, accent: 'rgba(249, 115, 22, 0.7)' },
     ];
     if (stats.bossesDefeated > 0) {
-      statItems.push({ icon: '⚔', label: 'زعماء', value: `${stats.bossesDefeated}`, color: '#fbbf24' });
+      statItems.push({ icon: '⚔', label: 'زعماء', value: `${stats.bossesDefeated}`, accent: 'rgba(251, 191, 36, 0.7)' });
     }
 
-    const cardStartY = playerRank ? h * 0.37 : h * 0.34;
+    const cardStartY = h * 0.36;
+    const cardH = 34;
+    const gap = 38;
 
     statItems.forEach((st, i) => {
-      const delay = 1.2 + i * 0.15;
+      const delay = 1.0 + i * 0.12;
       if (elapsed < delay) return;
       const cardAlpha = Math.min(1, (elapsed - delay) * 3);
       const slideX = (1 - Math.min(1, (elapsed - delay) * 4)) * 30;
+      const floatY = Math.sin(t * 1.5 + i * 0.8) * 1.5;
 
       ctx.save();
       ctx.globalAlpha = cardAlpha;
-      const cy = cardStartY + i * 38;
+      const cy = cardStartY + i * gap + floatY;
 
-      // Card background with border
-      ctx.fillStyle = 'rgba(255,255,255,0.08)';
-      roundRect(ctx, cardX - slideX, cy - 15, cardW, 36, 6);
-      ctx.fill();
-      ctx.strokeStyle = `${st.color}44`;
-      ctx.lineWidth = 1;
-      roundRect(ctx, cardX - slideX, cy - 15, cardW, 36, 6);
-      ctx.stroke();
-      // Right accent (RTL)
-      ctx.fillStyle = st.color;
-      roundRect(ctx, cardX + cardW - 4 - slideX, cy - 15, 4, 36, 2);
-      ctx.fill();
+      // Glass card for each stat
+      drawGlassCard(ctx, cardX - slideX, cy, cardW, cardH, st.accent, 8);
 
       // Value on left, label+icon on right (RTL)
-      ctx.fillStyle = st.color;
-      ctx.font = `15px ${font}`;
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.font = `14px ${font}`;
       ctx.textAlign = 'right';
-      ctx.fillText(`${st.icon} ${st.label}`, cardX + cardW - 14 - slideX, cy + 5);
+      ctx.fillText(`${st.icon} ${st.label}`, cardX + cardW - 12 - slideX, cy + cardH / 2 + 5);
+
       ctx.fillStyle = '#fff';
       ctx.font = `bold 16px ${font}`;
       ctx.textAlign = 'left';
-      ctx.fillText(st.value, cardX + 12 - slideX, cy + 5);
+      ctx.fillText(st.value, cardX + 12 - slideX, cy + cardH / 2 + 5);
 
       ctx.restore();
     });
   }
 
-  // ─── Leaderboard "أقوى ناس 🏆" ───
-  if (leaderboard && leaderboard.length > 0 && elapsed > 2.0) {
-    const lbAlpha = Math.min(1, (elapsed - 2.0) * 2.5);
+  // ─── Leaderboard inside glass card ───
+  if (leaderboard && leaderboard.length > 0 && elapsed > 1.8) {
+    const lbAlpha = Math.min(1, (elapsed - 1.8) * 2.5);
     ctx.save();
     ctx.globalAlpha = lbAlpha;
 
     const lbW = Math.min(280, w - 20);
     const lbX = (w - lbW) / 2;
-    const lbStartY = h * 0.61;
+    const statCount = stats ? (4 + (stats.bossesDefeated > 0 ? 1 : 0)) : 0;
+    const lbStartY = h * 0.36 + statCount * 38 + 16;
 
-    // Gold border frame
-    ctx.strokeStyle = 'rgba(251,191,36,0.3)';
-    ctx.lineWidth = 1.5;
     const top5 = leaderboard.slice(0, 5);
-    const rowH = 32;
-    const frameH = 34 + top5.length * rowH + 10;
-    roundRect(ctx, lbX - 4, lbStartY - 16, lbW + 8, frameH, 10);
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    roundRect(ctx, lbX - 4, lbStartY - 16, lbW + 8, frameH, 10);
-    ctx.fill();
+    const rowH = 28;
+    const headerH = 30;
+    const totalH = headerH + top5.length * rowH + 14;
+
+    // Glass card wrapping entire leaderboard
+    drawGlassCard(ctx, lbX - 6, lbStartY - 4, lbW + 12, totalH, 'rgba(251, 191, 36, 0.6)', 10);
 
     // Title
     ctx.fillStyle = '#fbbf24';
-    ctx.font = `bold 17px ${font}`;
+    ctx.font = `bold 16px ${font}`;
     ctx.textAlign = 'center';
-    ctx.shadowColor = '#fbbf24';
-    ctx.shadowBlur = 10;
-    ctx.fillText('أقوى ناس 🏆', w / 2, lbStartY + 2);
+    ctx.shadowColor = 'rgba(251,191,36,0.3)';
+    ctx.shadowBlur = 8;
+    ctx.fillText('أقوى ناس 🏆', w / 2, lbStartY + 16);
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
 
-    // Separator line
-    ctx.strokeStyle = 'rgba(251,191,36,0.4)';
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(lbX + 8, lbStartY + 10);
-    ctx.lineTo(lbX + lbW - 8, lbStartY + 10);
-    ctx.stroke();
+    // Gold divider
+    drawGoldDivider(ctx, w, lbStartY + 24, t);
 
     const medals = ['🥇', '🥈', '🥉'];
 
     top5.forEach((entry, i) => {
-      const rowDelay = 2.0 + 0.1 * i;
+      const rowDelay = 1.8 + 0.1 * i;
       if (elapsed < rowDelay) return;
       const rowAlpha = Math.min(1, (elapsed - rowDelay) * 4);
-      const ry = lbStartY + 22 + i * rowH;
+      const ry = lbStartY + headerH + 4 + i * rowH;
 
       ctx.save();
       ctx.globalAlpha = lbAlpha * rowAlpha;
 
-      // Highlight current player
       const isCurrentPlayer = playerName && entry.playerName === playerName;
       if (isCurrentPlayer) {
-        ctx.fillStyle = 'rgba(251,191,36,0.22)';
-        roundRect(ctx, lbX, ry - 6, lbW, rowH - 2, 5);
+        ctx.fillStyle = 'rgba(251,191,36,0.15)';
+        roundRect(ctx, lbX, ry - 2, lbW, rowH - 4, 4);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(251,191,36,0.5)';
-        ctx.lineWidth = 1.5;
-        roundRect(ctx, lbX, ry - 6, lbW, rowH - 2, 5);
+        ctx.strokeStyle = 'rgba(251,191,36,0.3)';
+        ctx.lineWidth = 0.5;
+        roundRect(ctx, lbX, ry - 2, lbW, rowH - 4, 4);
         ctx.stroke();
       }
 
-      // Rank / medal
+      // Rank/medal
       const rankText = i < 3 ? medals[i] : `${i + 1}`;
-      ctx.fillStyle = isCurrentPlayer ? '#fbbf24' : '#94a3b8';
-      ctx.font = i < 3 ? `16px ${font}` : `14px ${font}`;
+      ctx.fillStyle = isCurrentPlayer ? '#fbbf24' : 'rgba(148,163,184,0.7)';
+      ctx.font = i < 3 ? `15px ${font}` : `13px ${font}`;
       ctx.textAlign = 'right';
-      ctx.fillText(rankText, lbX + lbW - 8, ry + 11);
+      ctx.fillText(rankText, lbX + lbW - 8, ry + 14);
 
       // Name
-      ctx.fillStyle = isCurrentPlayer ? '#fbbf24' : '#e2e8f0';
-      ctx.font = `${isCurrentPlayer ? 'bold ' : ''}15px ${font}`;
+      ctx.fillStyle = isCurrentPlayer ? '#fbbf24' : 'rgba(226,232,240,0.8)';
+      ctx.font = `${isCurrentPlayer ? 'bold ' : ''}14px ${font}`;
       ctx.textAlign = 'right';
-      ctx.fillText(entry.playerName, lbX + lbW - (i < 3 ? 30 : 28), ry + 11);
+      ctx.fillText(entry.playerName, lbX + lbW - (i < 3 ? 28 : 26), ry + 14);
 
       // Score on left
-      ctx.fillStyle = isCurrentPlayer ? '#fbbf24' : '#94a3b8';
-      ctx.font = `bold 14px ${font}`;
+      ctx.fillStyle = isCurrentPlayer ? '#fbbf24' : 'rgba(148,163,184,0.6)';
+      ctx.font = `bold 13px ${font}`;
       ctx.textAlign = 'left';
-      ctx.fillText(`${entry.score}`, lbX + 10, ry + 11);
+      ctx.fillText(`${entry.score}`, lbX + 10, ry + 14);
 
       ctx.restore();
     });
 
-    // If player not in top 5, show their rank separately
+    // If player not in top 5
     if (playerRank && playerRank > 5 && playerName) {
-      const extraY = lbStartY + 22 + top5.length * rowH + 8;
-      const extraDelay = 2.0 + 0.1 * top5.length;
+      const extraY = lbStartY + headerH + 4 + top5.length * rowH + 4;
+      const extraDelay = 1.8 + 0.1 * top5.length;
       if (elapsed >= extraDelay) {
         const extraAlpha = Math.min(1, (elapsed - extraDelay) * 4);
         ctx.save();
         ctx.globalAlpha = lbAlpha * extraAlpha;
 
-        // Dotted separator
-        ctx.strokeStyle = 'rgba(148,163,184,0.3)';
+        ctx.strokeStyle = 'rgba(148,163,184,0.2)';
         ctx.setLineDash([2, 3]);
         ctx.beginPath();
-        ctx.moveTo(lbX + 10, extraY - 4);
-        ctx.lineTo(lbX + lbW - 10, extraY - 4);
+        ctx.moveTo(lbX + 10, extraY);
+        ctx.lineTo(lbX + lbW - 10, extraY);
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Player row
-        ctx.fillStyle = 'rgba(251,191,36,0.2)';
-        roundRect(ctx, lbX, extraY, lbW, rowH - 2, 5);
+        ctx.fillStyle = 'rgba(251,191,36,0.12)';
+        roundRect(ctx, lbX, extraY + 4, lbW, rowH - 4, 4);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(251,191,36,0.4)';
-        ctx.lineWidth = 1.5;
-        roundRect(ctx, lbX, extraY, lbW, rowH - 2, 5);
-        ctx.stroke();
 
         ctx.fillStyle = '#fbbf24';
-        ctx.font = `bold 14px ${font}`;
+        ctx.font = `bold 13px ${font}`;
         ctx.textAlign = 'right';
-        ctx.fillText(`#${playerRank}`, lbX + lbW - 8, extraY + 16);
-
-        ctx.font = `bold 15px ${font}`;
-        ctx.textAlign = 'right';
-        ctx.fillText(playerName, lbX + lbW - 36, extraY + 16);
-
+        ctx.fillText(`#${playerRank}`, lbX + lbW - 8, extraY + 18);
         ctx.font = `bold 14px ${font}`;
+        ctx.fillText(playerName, lbX + lbW - 34, extraY + 18);
+        ctx.font = `bold 13px ${font}`;
         ctx.textAlign = 'left';
-        ctx.fillText(`${score}`, lbX + 10, extraY + 16);
+        ctx.fillText(`${score}`, lbX + 10, extraY + 18);
 
         ctx.restore();
       }
@@ -7389,10 +7385,10 @@ export function renderGameOver(
     ctx.restore();
   }
 
-  // ─── Restart button "عيدها يا كبير" ───
+  // ─── Restart button "عيدها يا كبير" — elegant gold style ───
   if (elapsed > 2.5) {
     const restartAlpha = Math.min(1, (elapsed - 2.5) * 2);
-    const pulse = 0.5 + Math.sin(now * 3) * 0.4;
+    const pulse = 0.2 + Math.sin(t * 2.5) * 0.1;
 
     ctx.save();
     ctx.globalAlpha = restartAlpha;
@@ -7400,28 +7396,27 @@ export function renderGameOver(
     const btnW = 220, btnH = 50;
     const btnX = w / 2 - btnW / 2, btnY = h * 0.92 - btnH / 2;
 
-    // Green gradient background
-    const grad = ctx.createLinearGradient(btnX, btnY, btnX + btnW, btnY + btnH);
-    grad.addColorStop(0, `rgba(34, 197, 94, ${0.25 + pulse * 0.1})`);
-    grad.addColorStop(1, `rgba(16, 185, 129, ${0.25 + pulse * 0.1})`);
-    ctx.fillStyle = grad;
-    roundRect(ctx, btnX, btnY, btnW, btnH, 12);
+    // Subtle glass background
+    ctx.fillStyle = `rgba(255,255,255,${0.03 + pulse * 0.02})`;
+    roundRect(ctx, btnX, btnY, btnW, btnH, 8);
     ctx.fill();
 
-    // Border
-    ctx.strokeStyle = `rgba(34, 197, 94, ${0.5 + pulse * 0.4})`;
-    ctx.lineWidth = 2;
-    roundRect(ctx, btnX, btnY, btnW, btnH, 12);
+    // Gold border (same as "يلا يلا" button)
+    ctx.strokeStyle = `rgba(251, 191, 36, ${0.5 + pulse * 0.3})`;
+    ctx.lineWidth = 0.8;
+    roundRect(ctx, btnX, btnY, btnW, btnH, 8);
     ctx.stroke();
 
-    // Glow
-    ctx.shadowColor = 'rgba(34, 197, 94, 0.4)';
-    ctx.shadowBlur = 14 + pulse * 10;
-
-    ctx.globalAlpha = restartAlpha * (0.75 + pulse * 0.25);
-    ctx.fillStyle = '#fff';
+    // Text with gold gradient
+    const btnGrad = ctx.createLinearGradient(w / 2 - 60, 0, w / 2 + 60, 0);
+    btnGrad.addColorStop(0, '#c0a040');
+    btnGrad.addColorStop(0.5, '#ffd700');
+    btnGrad.addColorStop(1, '#c0a040');
+    ctx.fillStyle = btnGrad;
     ctx.font = `bold 18px ${font}`;
     ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(255,200,50,0.3)';
+    ctx.shadowBlur = 10;
     ctx.fillText('عيدها يا كبير', w / 2, btnY + btnH / 2 + 7);
     ctx.shadowBlur = 0;
     ctx.shadowColor = 'transparent';
