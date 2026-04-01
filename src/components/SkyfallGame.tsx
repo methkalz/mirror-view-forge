@@ -200,7 +200,8 @@ const SkyfallGame: React.FC = () => {
           }
         } else if (g.state === 'gameover') {
           render(ctx, g);
-          renderGameOver(ctx, w, h, g.score, g.highScore, g.stats);
+          renderGameOver(ctx, w, h, g.score, g.highScore, g.stats,
+            leaderboard, playerName, gameOverData?.rank ?? null, g.waveNumber);
           
           // Submit score once
           if (!scoreSubmittedRef.current) {
