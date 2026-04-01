@@ -7091,17 +7091,33 @@ export function renderGameOver(
   const titleAlpha = Math.min(1, (elapsed - 0.2) * 3);
   ctx.save();
   ctx.globalAlpha = titleAlpha;
-  // Shake effect on entry
   const shakeX = elapsed < 0.6 ? Math.sin(elapsed * 60) * (1 - (elapsed - 0.2) / 0.4) * 6 : 0;
-  ctx.fillStyle = '#ef4444';
-  ctx.font = `bold 42px ${font}`;
-  // Double glow layers
+  const titleY = h * 0.10;
+
+  // Banner background behind title
+  const bannerW = Math.min(320, w - 20);
+  const bannerH = 56;
+  const bannerX = (w - bannerW) / 2;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  roundRect(ctx, bannerX, titleY - 38, bannerW, bannerH, 12);
+  ctx.fill();
+  // Gold side accents
+  ctx.fillStyle = 'rgba(251,191,36,0.4)';
+  ctx.fillRect(bannerX, titleY - 28, 3, 36);
+  ctx.fillRect(bannerX + bannerW - 3, titleY - 28, 3, 36);
+
+  // Title text with stroke for clarity
+  ctx.font = `bold 46px ${font}`;
   ctx.shadowColor = '#ef4444';
-  ctx.shadowBlur = 35;
-  ctx.fillText('العالم منتهاش', w / 2 + shakeX, h * 0.12);
-  ctx.shadowBlur = 18;
+  ctx.shadowBlur = 20;
+  ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+  ctx.lineWidth = 3;
+  ctx.strokeText('العالم منتهاش', w / 2 + shakeX, titleY);
+  ctx.fillStyle = '#ef4444';
+  ctx.fillText('العالم منتهاش', w / 2 + shakeX, titleY);
+  ctx.shadowBlur = 10;
   ctx.shadowColor = '#ff6b6b';
-  ctx.fillText('العالم منتهاش', w / 2 + shakeX, h * 0.12);
+  ctx.fillText('العالم منتهاش', w / 2 + shakeX, titleY);
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
   ctx.restore();
