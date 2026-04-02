@@ -244,6 +244,11 @@ export function resetGame(g: GameData) {
   const wave1Recipe = getWaveRecipe(1, g);
   g.waveTimer = wave1Recipe.duration || 60;
   g.bulletLevel = wave1Recipe.bulletLevel;
+  // Override timers from wave 1 recipe so admin settings apply immediately
+  g.spawnTimer = wave1Recipe.spawnInterval || g.spawnTimer;
+  g.droneTimer = wave1Recipe.droneInterval > 0 ? (wave1Recipe.droneInterval * 0.5) : 90;
+  g.incendiaryTimer = wave1Recipe.hasIncendiary ? (8 + Math.random() * 10) : 160;
+  g.chemicalTimer = wave1Recipe.hasChemical ? (10 + Math.random() * 10) : 200;
   g.deliveryBike = null;
   g.upgradeCards = [];
   g.selectedUpgrade = null;
