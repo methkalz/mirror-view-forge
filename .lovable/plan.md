@@ -1,29 +1,57 @@
 
 
-# إعادة تصميم شاشة نهاية اللعبة — بنفس جودة شرائح التعليمات
+# إصلاح: إعدادات الموجات من لوحة التحكم لا تُطبَّق فعلياً
 
-## المشكلة
-شاشة نهاية اللعبة تستخدم أشكال بسيطة (`roundRect` + ألوان مسطحة) بينما شرائح التعليمات تستخدم `drawGlassCard` + `drawSlideTitle` + `drawGoldDivider` + تأثيرات تعويم وتوهج ذهبي متعدد الطبقات. الفجوة واضحة.
+## المشاكل المكتشفة
 
-## الحل — ملف واحد: `src/game/renderer.ts` (دالة `renderGameOver` سطور 7036-7432)
+بعد فحص دقيق لقاعدة البيانات والكود، وجدت **4 أخطاء جوهرية** تمنع تطبيق إعدادات الأدمن:
 
-### 1. إعادة استخدام نفس المكونات الاحترافية من التعليمات
-- **العنوان "العالم منتهاش"**: استبدال الرسم اليدوي بـ `drawSlideTitle()` — نفس التدرج الذهبي + التوهج المزدوج المستخدم في التعليمات
-- **الفاصل**: إضافة `drawGoldDivider()` تحت العنوان
-- **بطاقات الإحصائيات**: استبدال `roundRect` البسيط بـ `drawGlassCard()` — نفس تأثير الزجاج + الخط العلوي الملون + الحدود الشفافة
-- **جدول الترتيب**: لف الجدول بـ `drawGlassCard()` بدل الإطار الذهبي اليدوي
-- **زر "عيدها يا كبير"**: تحويله لنمط زر شريحة البدء — حدود ذهبية رفيعة (0.8px) + نبض شفافية + زوايا 8px (نفس نمط "يلا يلا")
+### 1. مؤقتات الطائرات مرتفعة جداً ولا تُعاد ضبطها
+في `resetGame()`:
+- `g.droneTimer = 90` — الطائرات العادية لن تظهر إلا بعد 90 ثانية
+- `g.incendiaryTimer = 160` — الطائرات الحارقة بعد 160 ثانية  
+- `g.chemicalTimer = 200` — الطائرات الكيميائية بعد 200 ثانية
 
-### 2. إضافة تأثيرات الجو العام
-- **شرارات نارية (embers)**: نسخ نفس حلقة الشرارات من `renderTutorial` (ember particles) — 25 جسيم يطفو للأعلى
-- **توهج أحمر سفلي**: نسخ `bottomGlow` radialGradient من التعليمات
-- **تعويم خفيف**: إضافة `Math.sin(t * 1.5) * 2` لبطاقات الإحصائيات (نفس حركة بطاقات التعليمات)
+**مثال**: الأدمن وضع `has_chemical: true` للموجة 1 (مدتها 40 ثانية)، لكن الطائرات الكيميائية لن تظهر أبداً لأن المؤقت يبدأ من 200!
 
-### 3. تحسينات التوزيع
-- **المركز والنقاط**: وضعهم داخل `drawGlassCard()` مع التدرج الذهبي
-- **كل صف إحصائية**: `drawGlassCard()` فردي بلون accent مختلف (أحمر، أزرق، أخضر، برتقالي)
-- **تباعد أنظف**: مسافات متسقة بين العناصر (16px gap)
+### 2. `startNextWave()` لا تُعيد ضبط المؤقتات
+عند الانتقال لموجة جديدة، لا يتم ضبط `droneTimer`/`incendiaryTimer`/`chemicalTimer` حسب وصفة الموجة الجديدة. فالطائرات تبقى معتمدة على المؤقتات القديمة.
 
-### 4. النتيجة المتوقعة
-شاشة نهاية اللعبة ستبدو كشريحة خامسة من التعليمات — نفس اللغة البصرية: زجاج شفاف، ذهبي متوهج، شرارات، تعويم ناعم.
+### 3. `resetGame()` تكتب فوق إعدادات الـ Remote Config
+في `SkyfallGame.tsx`:
+```
+g.spawnTimer = cfg.spawnInterval;  // يُضبط من DB
+resetGame(g);  // يكتب فوقه g.spawnTimer = 3.5!
+```
+الترتيب خاطئ — `resetGame` تُعيد `spawnTimer` إلى 3.5 بعد ضبطه.
+
+### 4. `warningSoundKey` لا يُستخدم
+الأدمن يستطيع تعيين `warning_sound_key` لكل موجة، لكن الكود لا يستخدمه أبداً عند عرض التحذيرات.
+
+## الحل — ملف واحد: `src/game/engine.ts`
+
+### التغيير 1: `resetGame()` — ضبط المؤقتات من وصفة الموجة 1
+```typescript
+const wave1Recipe = getWaveRecipe(1, g);
+g.waveTimer = wave1Recipe.duration || 60;
+g.bulletLevel = wave1Recipe.bulletLevel;
+// ضبط مؤقتات الطائرات حسب الوصفة بدل القيم الثابتة
+g.droneTimer = wave1Recipe.droneInterval > 0 ? (wave1Recipe.droneInterval * 0.5) : 90;
+g.incendiaryTimer = wave1Recipe.hasIncendiary ? (8 + Math.random() * 10) : 160;
+g.chemicalTimer = wave1Recipe.hasChemical ? (10 + Math.random() * 10) : 200;
+```
+
+### التغيير 2: `startNextWave()` — إعادة ضبط المؤقتات لكل موجة
+```typescript
+// بعد g.bulletLevel:
+if (recipe.droneInterval > 0) g.droneTimer = Math.min(g.droneTimer, recipe.droneInterval * 0.3);
+if (recipe.hasIncendiary) g.incendiaryTimer = Math.min(g.incendiaryTimer, 8 + Math.random() * 8);
+if (recipe.hasChemical) g.chemicalTimer = Math.min(g.chemicalTimer, 10 + Math.random() * 8);
+```
+
+### التغيير 3: `WaveRecipe` — إضافة `warningSoundKey`
+إضافة الحقل للـ interface واستخدامه في `queueWaveEvent` لتشغيل الصوت المحدد من الأدمن.
+
+## النتيجة
+كل إعداد يضبطه الأدمن في لوحة التحكم (مدة الموجة، أنواع التهديدات، الطائرات، التحذيرات) سيُطبَّق فعلياً في اللعبة.
 
