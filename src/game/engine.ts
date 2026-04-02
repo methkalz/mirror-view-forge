@@ -518,6 +518,7 @@ interface WaveRecipe {
   warningText?: string | null;
   warningColor?: string;
   warningType?: string;
+  warningSoundKey?: string | null;
 }
 
 function generateWaveFromProfile(wave: number, profile: DifficultyProfile): WaveRecipe {
