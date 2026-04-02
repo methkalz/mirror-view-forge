@@ -230,8 +230,8 @@ export function resetGame(g: GameData) {
   g.cargoTimer = 120;
   g.firePools = [];
   g.gasClouds = [];
-  g.incendiaryTimer = 160;
-  g.chemicalTimer = 200;
+  g.incendiaryTimer = 160; // will be overridden below by wave1 recipe
+  g.chemicalTimer = 200; // will be overridden below by wave1 recipe
   g.gasMaskOffer = null;
   g.gasMaskOwned = false;
   g.gasMaskOfferDelay = 0;
