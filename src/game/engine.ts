@@ -1279,7 +1279,7 @@ function startNextWave(g: GameData) {
     if (!g.waveTriggered.has(customId)) {
       const delay = recipe.phaseInDelay || 0;
       if (delay <= 0) {
-        queueWaveEvent(g, { id: customId, text: recipe.warningText, sub: '', color: recipe.warningColor || '#ef4444', type: (recipe.warningType as 'warning' | 'upgrade') || 'warning', duration: 2.0 });
+        queueWaveEvent(g, { id: customId, text: recipe.warningText, sub: '', color: recipe.warningColor || '#ef4444', type: (recipe.warningType as 'warning' | 'upgrade') || 'warning', duration: 2.0, soundKey: recipe.warningSoundKey });
       }
     }
   }
