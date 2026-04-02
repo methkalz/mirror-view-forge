@@ -168,7 +168,7 @@ function pickFileUrl(key: string): string | null {
   return f ? f.fileUrl : null;
 }
 
-function playCustomAudio(key: string): boolean {
+export function playCustomAudio(key: string): boolean {
   const s = audioSettings.get(key);
   if (!s) return false;
 
