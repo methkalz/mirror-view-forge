@@ -195,7 +195,7 @@ export function resetGame(g: GameData) {
   g.difficulty = 1;
   g.spawnTimer = 3.5;
   g.powerUpTimer = 10 + Math.random() * 5;
-  g.droneTimer = 90;
+  g.droneTimer = 90; // will be overridden below by wave1 recipe
   g.screenShake = { x: 0, y: 0 };
   g.damageFlash = 0;
   g.camera = { x: 0, y: 0 };
