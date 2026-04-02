@@ -960,8 +960,10 @@ function queueWaveEvent(
     type: event.type,
   };
   g.slowMoFactor = 0.1;
-  // Play different sound based on event type
-  if (event.type === 'warning') {
+  // Play sound — prioritize custom soundKey from admin panel
+  if (event.soundKey && playCustomAudio(event.soundKey)) {
+    // Custom sound played successfully
+  } else if (event.type === 'warning') {
     // Play threat-specific warning sound based on event id
     const id = event.id;
     if (id.includes('shrapnel')) sfxWarningShrapnel();
