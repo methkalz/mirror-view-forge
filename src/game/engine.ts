@@ -1266,6 +1266,11 @@ function startNextWave(g: GameData) {
   g.waveTimer = recipe.duration || 60;
   g.bulletLevel = Math.max(g.bulletLevel, recipe.bulletLevel);
 
+  // Reset threat timers based on recipe so admin settings apply per-wave
+  if (recipe.droneInterval > 0) g.droneTimer = Math.min(g.droneTimer, recipe.droneInterval * 0.3);
+  if (recipe.hasIncendiary) g.incendiaryTimer = Math.min(g.incendiaryTimer, 8 + Math.random() * 8);
+  if (recipe.hasChemical) g.chemicalTimer = Math.min(g.chemicalTimer, 10 + Math.random() * 8);
+
   // Queue wave warnings — recipe custom warnings take priority over hardcoded
   if (recipe.warningText) {
     const customId = `custom_w${g.waveNumber}`;
