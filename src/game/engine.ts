@@ -936,7 +936,7 @@ function spawnChemicalDrone(g: GameData) {
 
 function queueWaveEvent(
   g: GameData,
-  event: { id: string; text: string; sub: string; color: string; duration: number; type: 'warning' | 'upgrade' }
+  event: { id: string; text: string; sub: string; color: string; duration: number; type: 'warning' | 'upgrade'; soundKey?: string | null }
 ) {
   const resolveDelay = 2 + Math.random() * 3;
   const resolveAt = g.elapsed + resolveDelay;
