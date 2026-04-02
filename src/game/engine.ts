@@ -5,7 +5,7 @@ import {
 } from './types';
 import type { DifficultyProfile, RemoteWaveConfig } from './config';
 import { getFromPool } from './pool';
-import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameStart, sfxUpgradeSelect, sfxScoreTick, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber } from './audio';
+import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameStart, sfxUpgradeSelect, sfxScoreTick, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber, playCustomAudio } from './audio';
 
 const DASH_SPEED = 500;
 const DASH_DURATION = 0.25;
@@ -195,7 +195,7 @@ export function resetGame(g: GameData) {
   g.difficulty = 1;
   g.spawnTimer = 3.5;
   g.powerUpTimer = 10 + Math.random() * 5;
-  g.droneTimer = 90;
+  g.droneTimer = 90; // will be overridden below by wave1 recipe
   g.screenShake = { x: 0, y: 0 };
   g.damageFlash = 0;
   g.camera = { x: 0, y: 0 };
@@ -230,8 +230,8 @@ export function resetGame(g: GameData) {
   g.cargoTimer = 120;
   g.firePools = [];
   g.gasClouds = [];
-  g.incendiaryTimer = 160;
-  g.chemicalTimer = 200;
+  g.incendiaryTimer = 160; // will be overridden below by wave1 recipe
+  g.chemicalTimer = 200; // will be overridden below by wave1 recipe
   g.gasMaskOffer = null;
   g.gasMaskOwned = false;
   g.gasMaskOfferDelay = 0;
@@ -244,6 +244,11 @@ export function resetGame(g: GameData) {
   const wave1Recipe = getWaveRecipe(1, g);
   g.waveTimer = wave1Recipe.duration || 60;
   g.bulletLevel = wave1Recipe.bulletLevel;
+  // Override timers from wave 1 recipe so admin settings apply immediately
+  g.spawnTimer = wave1Recipe.spawnInterval || g.spawnTimer;
+  g.droneTimer = wave1Recipe.droneInterval > 0 ? (wave1Recipe.droneInterval * 0.5) : 90;
+  g.incendiaryTimer = wave1Recipe.hasIncendiary ? (8 + Math.random() * 10) : 160;
+  g.chemicalTimer = wave1Recipe.hasChemical ? (10 + Math.random() * 10) : 200;
   g.deliveryBike = null;
   g.upgradeCards = [];
   g.selectedUpgrade = null;
@@ -513,6 +518,7 @@ interface WaveRecipe {
   warningText?: string | null;
   warningColor?: string;
   warningType?: string;
+  warningSoundKey?: string | null;
 }
 
 function generateWaveFromProfile(wave: number, profile: DifficultyProfile): WaveRecipe {
@@ -614,6 +620,7 @@ function remoteToRecipe(r: RemoteWaveConfig): WaveRecipe {
     warningText: r.warningText,
     warningColor: r.warningColor,
     warningType: r.warningType,
+    warningSoundKey: r.warningSoundKey,
   };
 }
 
@@ -929,7 +936,7 @@ function spawnChemicalDrone(g: GameData) {
 
 function queueWaveEvent(
   g: GameData,
-  event: { id: string; text: string; sub: string; color: string; duration: number; type: 'warning' | 'upgrade' }
+  event: { id: string; text: string; sub: string; color: string; duration: number; type: 'warning' | 'upgrade'; soundKey?: string | null }
 ) {
   const resolveDelay = 2 + Math.random() * 3;
   const resolveAt = g.elapsed + resolveDelay;
@@ -953,8 +960,10 @@ function queueWaveEvent(
     type: event.type,
   };
   g.slowMoFactor = 0.1;
-  // Play different sound based on event type
-  if (event.type === 'warning') {
+  // Play sound — prioritize custom soundKey from admin panel
+  if (event.soundKey && playCustomAudio(event.soundKey)) {
+    // Custom sound played successfully
+  } else if (event.type === 'warning') {
     // Play threat-specific warning sound based on event id
     const id = event.id;
     if (id.includes('shrapnel')) sfxWarningShrapnel();
@@ -1259,13 +1268,18 @@ function startNextWave(g: GameData) {
   g.waveTimer = recipe.duration || 60;
   g.bulletLevel = Math.max(g.bulletLevel, recipe.bulletLevel);
 
+  // Reset threat timers based on recipe so admin settings apply per-wave
+  if (recipe.droneInterval > 0) g.droneTimer = Math.min(g.droneTimer, recipe.droneInterval * 0.3);
+  if (recipe.hasIncendiary) g.incendiaryTimer = Math.min(g.incendiaryTimer, 8 + Math.random() * 8);
+  if (recipe.hasChemical) g.chemicalTimer = Math.min(g.chemicalTimer, 10 + Math.random() * 8);
+
   // Queue wave warnings — recipe custom warnings take priority over hardcoded
   if (recipe.warningText) {
     const customId = `custom_w${g.waveNumber}`;
     if (!g.waveTriggered.has(customId)) {
       const delay = recipe.phaseInDelay || 0;
       if (delay <= 0) {
-        queueWaveEvent(g, { id: customId, text: recipe.warningText, sub: '', color: recipe.warningColor || '#ef4444', type: (recipe.warningType as 'warning' | 'upgrade') || 'warning', duration: 2.0 });
+        queueWaveEvent(g, { id: customId, text: recipe.warningText, sub: '', color: recipe.warningColor || '#ef4444', type: (recipe.warningType as 'warning' | 'upgrade') || 'warning', duration: 2.0, soundKey: recipe.warningSoundKey });
       }
     }
   }
