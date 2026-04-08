@@ -43,6 +43,7 @@ const SkyfallGame: React.FC = () => {
   const difficultyProfileRef = useRef<DifficultyProfile | null>(null);
   const waveOverridesRef = useRef<RemoteWaveConfig[]>([]);
   const scoreSubmittedRef = useRef(false);
+  const tutorialShownRef = useRef(false);
 
   // Load leaderboard on mount + presence tracking
   useEffect(() => {
