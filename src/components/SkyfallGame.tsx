@@ -233,10 +233,10 @@ const SkyfallGame: React.FC = () => {
       }
 
       if (g.state !== prevState) {
-        const wasStart = prevState === 'start';
-        prevState = g.state;
+        const fromState = prevState;
+        const wasStart = fromState === 'start';
         setShowButtons(g.state === 'playing');
-        if (g.state === 'playing' && prevState === 'intro' && !tutorialShownRef.current) {
+        if (fromState === 'intro' && g.state === 'playing' && !tutorialShownRef.current) {
           tutorialShownRef.current = true;
           pauseRef.current = true;
           setControlTutorial(0);
@@ -248,7 +248,10 @@ const SkyfallGame: React.FC = () => {
         if (g.state === 'start') {
           setGameOverData(null);
           scoreSubmittedRef.current = false;
+          setControlTutorial(-1);
+          pauseRef.current = false;
         }
+        prevState = g.state;
       }
       if (g.state === 'playing') {
         setPlayerAmmo(g.player.ammo);
