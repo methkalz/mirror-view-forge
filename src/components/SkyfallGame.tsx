@@ -658,128 +658,284 @@ const SkyfallGame: React.FC = () => {
         </>
       )}
 
-      {/* Control Tutorial Overlay */}
-      {controlTutorial >= 0 && (
-        <div
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            const next = controlTutorial + 1;
-            if (next > 3) {
-              setControlTutorial(-1);
-              pauseRef.current = false;
-            } else {
-              setControlTutorial(next);
-            }
-          }}
-          style={{
-            position: 'absolute', inset: 0, zIndex: 20,
-            background: 'rgba(0,0,0,0.75)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            touchAction: 'none', cursor: 'pointer',
-          }}
-        >
-          {/* Step indicator */}
-          <div style={{
-            display: 'flex', gap: 8, marginBottom: 24,
-          }}>
-            {[0,1,2,3].map(i => (
-              <div key={i} style={{
-                width: i === controlTutorial ? 24 : 8, height: 8, borderRadius: 4,
-                background: i === controlTutorial
-                  ? 'linear-gradient(90deg, #ffd700, #f59e0b)'
-                  : i < controlTutorial ? 'rgba(255,215,0,0.5)' : 'rgba(255,255,255,0.2)',
-                transition: 'all 0.3s ease',
-              }} />
-            ))}
-          </div>
+      {/* Control Tutorial Overlay — Spotlight Design */}
+      {controlTutorial >= 0 && (() => {
+        // Button positions matching the actual button styles
+        const btnPositions = [
+          { left: 14, width: 72, height: 56, label: 'btn-left' },    // 0: left
+          { left: 136, width: 72, height: 56, label: 'btn-right' },  // 1: right
+          { left: 220, width: 72, height: 56, label: 'btn-fire' },   // 2: fire
+          { right: 16, width: 80, height: 56, label: 'btn-roll' },   // 3: roll
+        ];
+        const cur = btnPositions[controlTutorial];
+        const spotX = 'left' in cur ? cur.left : undefined;
+        const spotRight = 'right' in cur ? cur.right : undefined;
+        const spotW = cur.width + 20; // padding around button
+        const spotH = cur.height + 20;
+        const bottomBase = 95; // matches button bottom
 
-          {/* Glass card with description */}
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))',
-            border: '1px solid rgba(255,215,0,0.25)',
-            borderRadius: 20, padding: '28px 32px',
-            backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-            maxWidth: 320, textAlign: 'center',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
-          } as React.CSSProperties}>
-            {/* Icon */}
-            <div style={{
-              fontSize: 40, marginBottom: 12,
-              filter: 'drop-shadow(0 0 12px rgba(255,215,0,0.4))',
-            }}>
-              {controlTutorial === 0 && '◀'}
-              {controlTutorial === 1 && '▶'}
-              {controlTutorial === 2 && '🎯'}
-              {controlTutorial === 3 && '🌀'}
-            </div>
-            
-            {/* Title */}
-            <div style={{
-              fontFamily: "'Tajawal', sans-serif", fontSize: 22, fontWeight: 700,
-              color: '#ffd700', marginBottom: 8,
-              textShadow: '0 0 20px rgba(255,215,0,0.4)',
-            }}>
-              {controlTutorial === 0 && 'تحرّك لليسار'}
-              {controlTutorial === 1 && 'تحرّك لليمين'}
-              {controlTutorial === 2 && 'اطلق مضادات أرضية'}
-              {controlTutorial === 3 && 'شَقلِب'}
-            </div>
+        const tutorialSteps = [
+          {
+            title: 'تحرّك لليسار',
+            subtitle: 'اضغط مع الاستمرار للتحرك يساراً',
+            svgIcon: (
+              <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+                <defs>
+                  <linearGradient id="arrowGradL" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#ffd700" />
+                    <stop offset="100%" stopColor="#f59e0b" />
+                  </linearGradient>
+                </defs>
+                <path d="M36 28H16" stroke="url(#arrowGradL)" strokeWidth="3" strokeLinecap="round" />
+                <path d="M24 20L14 28L24 36" stroke="url(#arrowGradL)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                {/* Motion trails */}
+                <line x1="40" y1="22" x2="32" y2="22" stroke="#ffd700" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
+                <line x1="42" y1="28" x2="38" y2="28" stroke="#ffd700" strokeWidth="1.5" strokeLinecap="round" opacity="0.25" />
+                <line x1="40" y1="34" x2="32" y2="34" stroke="#ffd700" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
+              </svg>
+            ),
+          },
+          {
+            title: 'تحرّك لليمين',
+            subtitle: 'اضغط مع الاستمرار للتحرك يميناً',
+            svgIcon: (
+              <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+                <defs>
+                  <linearGradient id="arrowGradR" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#ffd700" />
+                    <stop offset="100%" stopColor="#f59e0b" />
+                  </linearGradient>
+                </defs>
+                <path d="M20 28H40" stroke="url(#arrowGradR)" strokeWidth="3" strokeLinecap="round" />
+                <path d="M32 20L42 28L32 36" stroke="url(#arrowGradR)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="16" y1="22" x2="24" y2="22" stroke="#ffd700" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
+                <line x1="14" y1="28" x2="18" y2="28" stroke="#ffd700" strokeWidth="1.5" strokeLinecap="round" opacity="0.25" />
+                <line x1="16" y1="34" x2="24" y2="34" stroke="#ffd700" strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
+              </svg>
+            ),
+          },
+          {
+            title: 'اطلق مضادات أرضية',
+            subtitle: 'يمكنك اعتراض الصواريخ والشظايا والطائرات',
+            svgIcon: (
+              <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+                <defs>
+                  <linearGradient id="crossGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#ef4444" />
+                    <stop offset="100%" stopColor="#ffd700" />
+                  </linearGradient>
+                </defs>
+                <circle cx="28" cy="28" r="14" stroke="url(#crossGrad)" strokeWidth="2" fill="none" opacity="0.7" />
+                <circle cx="28" cy="28" r="4" fill="url(#crossGrad)" opacity="0.6" />
+                <line x1="28" y1="8" x2="28" y2="18" stroke="url(#crossGrad)" strokeWidth="2" strokeLinecap="round" />
+                <line x1="28" y1="38" x2="28" y2="48" stroke="url(#crossGrad)" strokeWidth="2" strokeLinecap="round" />
+                <line x1="8" y1="28" x2="18" y2="28" stroke="url(#crossGrad)" strokeWidth="2" strokeLinecap="round" />
+                <line x1="38" y1="28" x2="48" y2="28" stroke="url(#crossGrad)" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            ),
+          },
+          {
+            title: 'شَقلِب',
+            subtitle: 'تفادى الخطر بدحرجة سريعة — مناعة مؤقتة',
+            svgIcon: (
+              <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+                <defs>
+                  <linearGradient id="rollGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#fbbf24" />
+                    <stop offset="100%" stopColor="#f59e0b" />
+                  </linearGradient>
+                </defs>
+                <circle cx="28" cy="28" r="10" stroke="url(#rollGrad)" strokeWidth="2.5" fill="none" />
+                <path d="M28 18 A10 10 0 0 1 38 28" stroke="#ffd700" strokeWidth="3" strokeLinecap="round" fill="none" />
+                {/* Arc trail */}
+                <path d="M18 22 C14 30, 18 40, 28 42" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.4" strokeDasharray="3 4" />
+                <path d="M38 34 C42 26, 38 16, 28 14" stroke="#fbbf24" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.4" strokeDasharray="3 4" />
+                {/* Direction arrow */}
+                <path d="M36 18L38 28L32 22" fill="#ffd700" opacity="0.8" />
+              </svg>
+            ),
+          },
+        ];
+        const step = tutorialSteps[controlTutorial];
 
-            {/* Subtitle */}
-            <div style={{
-              fontFamily: "'Tajawal', sans-serif", fontSize: 14, fontWeight: 400,
-              color: 'rgba(255,255,255,0.7)', lineHeight: 1.6,
-            }}>
-              {controlTutorial === 0 && 'اضغط للتحرك يساراً'}
-              {controlTutorial === 1 && 'اضغط للتحرك يميناً'}
-              {controlTutorial === 2 && 'يمكنك اعتراض الصواريخ والشظايا والطائرات'}
-              {controlTutorial === 3 && 'تفادى الخطر بدحرجة سريعة'}
-            </div>
-          </div>
-
-          {/* "فهمت" button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              const next = controlTutorial + 1;
-              if (next > 3) {
-                setControlTutorial(-1);
-                pauseRef.current = false;
-              } else {
-                setControlTutorial(next);
-              }
-            }}
+        return (
+          <div
+            onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
             style={{
-              marginTop: 24, padding: '12px 40px', borderRadius: 14,
-              background: 'linear-gradient(135deg, rgba(255,215,0,0.2), rgba(245,158,11,0.15))',
-              border: '1.5px solid rgba(255,215,0,0.4)',
-              color: '#ffd700', fontFamily: "'Tajawal', sans-serif", fontSize: 17, fontWeight: 700,
-              cursor: 'pointer', touchAction: 'none',
-              boxShadow: '0 4px 16px rgba(255,215,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1)',
-              transition: 'all 0.2s ease',
+              position: 'absolute', inset: 0, zIndex: 20,
+              touchAction: 'none', pointerEvents: 'auto',
             }}
           >
-            {controlTutorial < 3 ? 'فهمت' : 'يلّا نبدأ! 🚀'}
-          </button>
+            {/* Dark overlay with NO background — spotlight cutout handles dimming */}
 
-          {/* Arrow pointing to the highlighted button */}
-          <div style={{
-            position: 'absolute',
-            bottom: 'calc(160px + env(safe-area-inset-bottom, 0px))',
-            left: controlTutorial === 0 ? 50 : controlTutorial === 1 ? 172 : controlTutorial === 2 ? 256 : undefined,
-            right: controlTutorial === 3 ? 56 : undefined,
-            fontSize: 28, color: '#ffd700',
-            animation: 'tutorialBounce 1s ease-in-out infinite',
-            filter: 'drop-shadow(0 0 8px rgba(255,215,0,0.5))',
-          }}>▼</div>
-        </div>
-      )}
+            {/* Spotlight cutout — transparent hole with massive box-shadow */}
+            <div style={{
+              position: 'absolute',
+              ...(spotX !== undefined ? { left: spotX - 10 } : {}),
+              ...(spotRight !== undefined ? { right: spotRight - 10 } : {}),
+              bottom: `calc(${bottomBase - 10}px + env(safe-area-inset-bottom, 0px))`,
+              width: spotW,
+              height: spotH,
+              borderRadius: 20,
+              boxShadow: '0 0 0 9999px rgba(0,0,0,0.82)',
+              border: '1.5px solid rgba(255,215,0,0.5)',
+              zIndex: 21,
+              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+              pointerEvents: 'none',
+            }} />
+
+            {/* Pulse ring around spotlight */}
+            <div style={{
+              position: 'absolute',
+              ...(spotX !== undefined ? { left: spotX - 16 } : {}),
+              ...(spotRight !== undefined ? { right: spotRight - 16 } : {}),
+              bottom: `calc(${bottomBase - 16}px + env(safe-area-inset-bottom, 0px))`,
+              width: spotW + 12,
+              height: spotH + 12,
+              borderRadius: 24,
+              border: '2px solid rgba(255,215,0,0.3)',
+              zIndex: 21,
+              pointerEvents: 'none',
+              animation: 'spotlightPulse 1.8s ease-in-out infinite',
+            }} />
+
+            {/* Connecting golden line from card to button */}
+            <div style={{
+              position: 'absolute',
+              ...(spotX !== undefined ? { left: spotX + cur.width / 2 } : {}),
+              ...(spotRight !== undefined ? { right: spotRight + cur.width / 2 } : {}),
+              bottom: `calc(${bottomBase + cur.height + 14}px + env(safe-area-inset-bottom, 0px))`,
+              width: 2,
+              height: 60,
+              background: 'linear-gradient(to top, rgba(255,215,0,0.6), rgba(255,215,0,0.05))',
+              zIndex: 22,
+              pointerEvents: 'none',
+              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            }} />
+
+            {/* Glass card — positioned above the button area */}
+            <div style={{
+              position: 'absolute',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              bottom: `calc(${bottomBase + cur.height + 80}px + env(safe-area-inset-bottom, 0px))`,
+              zIndex: 23,
+              pointerEvents: 'auto',
+              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}>
+              <div style={{
+                background: 'linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
+                border: '1px solid rgba(255,215,0,0.3)',
+                borderRadius: 22, padding: '20px 28px 18px',
+                backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+                width: 300, textAlign: 'center',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12), 0 0 30px rgba(255,215,0,0.08)',
+              } as React.CSSProperties}>
+                {/* Step dots inside card */}
+                <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 16 }}>
+                  {[0,1,2,3].map(i => (
+                    <div key={i} style={{
+                      width: i === controlTutorial ? 22 : 7, height: 7, borderRadius: 4,
+                      background: i === controlTutorial
+                        ? 'linear-gradient(90deg, #ffd700, #f59e0b)'
+                        : i < controlTutorial ? 'rgba(255,215,0,0.5)' : 'rgba(255,255,255,0.15)',
+                      transition: 'all 0.35s ease',
+                      boxShadow: i === controlTutorial ? '0 0 8px rgba(255,215,0,0.4)' : 'none',
+                    }} />
+                  ))}
+                </div>
+
+                {/* SVG Icon */}
+                <div style={{
+                  marginBottom: 10,
+                  filter: 'drop-shadow(0 0 14px rgba(255,215,0,0.35))',
+                  display: 'flex', justifyContent: 'center',
+                }}>
+                  {step.svgIcon}
+                </div>
+
+                {/* Title */}
+                <div style={{
+                  fontFamily: "'Tajawal', sans-serif", fontSize: 21, fontWeight: 700,
+                  color: '#ffd700', marginBottom: 6, direction: 'rtl',
+                  textShadow: '0 0 18px rgba(255,215,0,0.35)',
+                }}>
+                  {step.title}
+                </div>
+
+                {/* Subtitle */}
+                <div style={{
+                  fontFamily: "'Tajawal', sans-serif", fontSize: 13, fontWeight: 400,
+                  color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, direction: 'rtl',
+                  marginBottom: 16,
+                }}>
+                  {step.subtitle}
+                </div>
+
+                {/* "فهمت" button inside card */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const next = controlTutorial + 1;
+                    if (next > 3) {
+                      setControlTutorial(-1);
+                      pauseRef.current = false;
+                    } else {
+                      setControlTutorial(next);
+                    }
+                  }}
+                  style={{
+                    padding: '10px 36px', borderRadius: 12,
+                    background: controlTutorial < 3
+                      ? 'linear-gradient(135deg, rgba(255,215,0,0.15), rgba(245,158,11,0.1))'
+                      : 'linear-gradient(135deg, rgba(255,215,0,0.3), rgba(245,158,11,0.2))',
+                    border: '1.5px solid rgba(255,215,0,0.4)',
+                    color: '#ffd700', fontFamily: "'Tajawal', sans-serif", fontSize: 16, fontWeight: 700,
+                    cursor: 'pointer', touchAction: 'none',
+                    boxShadow: '0 4px 16px rgba(255,215,0,0.12), inset 0 1px 0 rgba(255,255,255,0.08)',
+                    transition: 'all 0.2s ease',
+                    animation: controlTutorial === 3 ? 'spotlightPulse 2s ease-in-out infinite' : 'none',
+                  }}
+                >
+                  {controlTutorial < 3 ? 'فهمت ←' : 'يلّا نبدأ! 🚀'}
+                </button>
+              </div>
+            </div>
+
+            {/* Tap anywhere hint */}
+            <div style={{
+              position: 'absolute', top: 40, left: '50%', transform: 'translateX(-50%)',
+              fontFamily: "'Tajawal', sans-serif", fontSize: 12, color: 'rgba(255,255,255,0.3)',
+              zIndex: 23, pointerEvents: 'none',
+            }}>
+              اضغط في أي مكان للمتابعة
+            </div>
+
+            {/* Full-screen tap handler (behind the card) */}
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                const next = controlTutorial + 1;
+                if (next > 3) {
+                  setControlTutorial(-1);
+                  pauseRef.current = false;
+                } else {
+                  setControlTutorial(next);
+                }
+              }}
+              style={{
+                position: 'absolute', inset: 0, zIndex: 20,
+                cursor: 'pointer',
+              }}
+            />
+          </div>
+        );
+      })()}
 
       <style>{`
-        @keyframes tutorialBounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(8px); }
+        @keyframes spotlightPulse {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 0.9; transform: scale(1.04); }
         }
       `}</style>
     </div>
