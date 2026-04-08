@@ -854,8 +854,24 @@ const SkyfallGame: React.FC = () => {
 
       <style>{`
         @keyframes tutorialBounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(8px); }
+          0%, 100% { transform: translateY(0) rotate(180deg); }
+          50% { transform: translateY(8px) rotate(180deg); }
+        }
+        @keyframes tutorialCardPulse {
+          0%, 100% { box-shadow: 0 0 40px rgba(255,215,0,0.08), 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15); }
+          50% { box-shadow: 0 0 50px rgba(255,215,0,0.15), 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2); }
+        }
+        @keyframes tutorialIconPulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 24px rgba(255,215,0,0.2); }
+          50% { transform: scale(1.08); box-shadow: 0 0 32px rgba(255,215,0,0.35); }
+        }
+        @keyframes tutorialBtnPulse {
+          0%, 100% { box-shadow: 0 0 24px rgba(255,215,0,0.2), 0 6px 20px rgba(0,0,0,0.3); }
+          50% { box-shadow: 0 0 32px rgba(255,215,0,0.35), 0 6px 20px rgba(0,0,0,0.3); }
+        }
+        @keyframes sparkleFloat {
+          0%, 100% { opacity: 0.2; transform: translateY(0); }
+          50% { opacity: 0.5; transform: translateY(-10px); }
         }
       `}</style>
     </div>
