@@ -3,7 +3,7 @@ import { GameData, InputState } from '@/game/types';
 import { loadAudioSettings, reloadAudioSettings } from '@/game/audio';
 import { createGame, resetGame, update, updateIntro } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
-import { resumeAudio, resumeAudioContext, startPeriodicAmbient, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition } from '@/game/audio';
+import { resumeAudio, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition } from '@/game/audio';
 import { fetchGameConfig, fetchLeaderboard, fetchDifficultyProfile, fetchWaveConfigs, submitScore, type RemoteGameConfig, type LeaderboardEntry, type DifficultyProfile, type RemoteWaveConfig } from '@/game/config';
 import { fetchBackgroundConfig } from '@/game/backgroundConfig';
 import { setBackgroundConfig, setCameraMargin } from '@/game/renderer';
@@ -289,7 +289,7 @@ const SkyfallGame: React.FC = () => {
           return;
         }
         // Last slide — start game
-        resumeAudioContext();
+        resumeAudio();
         scoreSubmittedRef.current = false;
         setGameOverData(null);
         Promise.all([fetchGameConfig(), fetchDifficultyProfile(), fetchWaveConfigs()]).then(([cfg, dp, wc]) => {
@@ -664,132 +664,72 @@ const SkyfallGame: React.FC = () => {
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
-            sfxSlideTransition();
             const next = controlTutorial + 1;
             if (next > 3) {
               setControlTutorial(-1);
               pauseRef.current = false;
-              resumeAudio();
-              startPeriodicAmbient();
             } else {
               setControlTutorial(next);
             }
           }}
           style={{
             position: 'absolute', inset: 0, zIndex: 20,
-            background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.85) 70%, rgba(0,0,0,0.92) 100%)',
+            background: 'rgba(0,0,0,0.75)',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             touchAction: 'none', cursor: 'pointer',
           }}
         >
-          {/* Decorative sparkles */}
-          <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-            {[...Array(6)].map((_, i) => (
+          {/* Step indicator */}
+          <div style={{
+            display: 'flex', gap: 8, marginBottom: 24,
+          }}>
+            {[0,1,2,3].map(i => (
               <div key={i} style={{
-                position: 'absolute',
-                left: `${15 + i * 14}%`,
-                top: `${20 + (i % 3) * 25}%`,
-                width: 3, height: 3, borderRadius: '50%',
-                background: '#ffd700',
-                opacity: 0.3,
-                animation: `sparkleFloat ${2 + i * 0.3}s ease-in-out infinite`,
-                animationDelay: `${i * 0.4}s`,
+                width: i === controlTutorial ? 24 : 8, height: 8, borderRadius: 4,
+                background: i === controlTutorial
+                  ? 'linear-gradient(90deg, #ffd700, #f59e0b)'
+                  : i < controlTutorial ? 'rgba(255,215,0,0.5)' : 'rgba(255,255,255,0.2)',
+                transition: 'all 0.3s ease',
               }} />
             ))}
           </div>
 
-          {/* Step indicator with labels */}
+          {/* Glass card with description */}
           <div style={{
-            display: 'flex', gap: 16, marginBottom: 28, alignItems: 'center',
-          }}>
-            {[
-              { label: 'يسار', icon: '◂' },
-              { label: 'يمين', icon: '▸' },
-              { label: 'إطلاق', icon: '⦿' },
-              { label: 'شقلبة', icon: '↻' },
-            ].map((step, i) => (
-              <div key={i} style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                transition: 'all 0.4s ease',
-              }}>
-                <div style={{
-                  width: i === controlTutorial ? 28 : 10,
-                  height: 10,
-                  borderRadius: 5,
-                  background: i === controlTutorial
-                    ? 'linear-gradient(90deg, #ffd700, #f59e0b)'
-                    : i < controlTutorial ? 'rgba(255,215,0,0.6)' : 'rgba(255,255,255,0.15)',
-                  boxShadow: i === controlTutorial ? '0 0 12px rgba(255,215,0,0.5)' : 'none',
-                  transition: 'all 0.4s ease',
-                }} />
-                <span style={{
-                  fontFamily: "'Tajawal', sans-serif",
-                  fontSize: 10, fontWeight: 600,
-                  color: i === controlTutorial ? '#ffd700' : 'rgba(255,255,255,0.3)',
-                  transition: 'color 0.4s ease',
-                }}>{step.label}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Glass card */}
-          <div style={{
-            background: 'linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03))',
-            border: '1.5px solid rgba(255,215,0,0.3)',
-            borderRadius: 24, padding: '32px 36px',
-            backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-            maxWidth: 340, textAlign: 'center',
-            boxShadow: '0 0 40px rgba(255,215,0,0.08), 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.2)',
-            animation: 'tutorialCardPulse 3s ease-in-out infinite',
-            transition: 'all 0.4s ease',
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))',
+            border: '1px solid rgba(255,215,0,0.25)',
+            borderRadius: 20, padding: '28px 32px',
+            backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+            maxWidth: 320, textAlign: 'center',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
           } as React.CSSProperties}>
-            {/* Icon with golden glow */}
+            {/* Icon */}
             <div style={{
-              width: 64, height: 64, borderRadius: '50%', margin: '0 auto 16px',
-              background: 'linear-gradient(135deg, rgba(255,215,0,0.15), rgba(245,158,11,0.08))',
-              border: '1.5px solid rgba(255,215,0,0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 0 24px rgba(255,215,0,0.2), inset 0 0 12px rgba(255,215,0,0.1)',
-              animation: 'tutorialIconPulse 2s ease-in-out infinite',
+              fontSize: 40, marginBottom: 12,
+              filter: 'drop-shadow(0 0 12px rgba(255,215,0,0.4))',
             }}>
-              <span style={{
-                fontSize: 28,
-                filter: 'drop-shadow(0 0 8px rgba(255,215,0,0.6))',
-              }}>
-                {controlTutorial === 0 && '◂'}
-                {controlTutorial === 1 && '▸'}
-                {controlTutorial === 2 && '🎯'}
-                {controlTutorial === 3 && '↻'}
-              </span>
+              {controlTutorial === 0 && '◀'}
+              {controlTutorial === 1 && '▶'}
+              {controlTutorial === 2 && '🎯'}
+              {controlTutorial === 3 && '🌀'}
             </div>
             
-            {/* Title with gradient text */}
+            {/* Title */}
             <div style={{
-              fontFamily: "'Tajawal', sans-serif", fontSize: 26, fontWeight: 800,
-              background: 'linear-gradient(180deg, #ffd700 0%, #f59e0b 100%)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-              marginBottom: 10,
-              textShadow: 'none',
-              filter: 'drop-shadow(0 2px 8px rgba(255,215,0,0.3))',
-            } as React.CSSProperties}>
+              fontFamily: "'Tajawal', sans-serif", fontSize: 22, fontWeight: 700,
+              color: '#ffd700', marginBottom: 8,
+              textShadow: '0 0 20px rgba(255,215,0,0.4)',
+            }}>
               {controlTutorial === 0 && 'تحرّك لليسار'}
               {controlTutorial === 1 && 'تحرّك لليمين'}
               {controlTutorial === 2 && 'اطلق مضادات أرضية'}
               {controlTutorial === 3 && 'شَقلِب'}
             </div>
 
-            {/* Gold divider */}
-            <div style={{
-              width: 60, height: 2, margin: '0 auto 14px',
-              background: 'linear-gradient(90deg, transparent, #ffd700, transparent)',
-              borderRadius: 1,
-            }} />
-
             {/* Subtitle */}
             <div style={{
-              fontFamily: "'Tajawal', sans-serif", fontSize: 16, fontWeight: 400,
-              color: 'rgba(255,255,255,0.8)', lineHeight: 1.8,
-              letterSpacing: 0.3,
+              fontFamily: "'Tajawal', sans-serif", fontSize: 14, fontWeight: 400,
+              color: 'rgba(255,255,255,0.7)', lineHeight: 1.6,
             }}>
               {controlTutorial === 0 && 'اضغط للتحرك يساراً'}
               {controlTutorial === 1 && 'اضغط للتحرك يميناً'}
@@ -802,76 +742,44 @@ const SkyfallGame: React.FC = () => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              sfxSlideTransition();
               const next = controlTutorial + 1;
               if (next > 3) {
                 setControlTutorial(-1);
                 pauseRef.current = false;
-                resumeAudio();
-                startPeriodicAmbient();
               } else {
                 setControlTutorial(next);
               }
             }}
             style={{
-              marginTop: 28, padding: '14px 48px', borderRadius: 16,
-              background: 'linear-gradient(135deg, rgba(255,215,0,0.25), rgba(245,158,11,0.2))',
-              border: '2px solid rgba(255,215,0,0.5)',
-              color: '#ffd700', fontFamily: "'Tajawal', sans-serif", fontSize: 19, fontWeight: 800,
+              marginTop: 24, padding: '12px 40px', borderRadius: 14,
+              background: 'linear-gradient(135deg, rgba(255,215,0,0.2), rgba(245,158,11,0.15))',
+              border: '1.5px solid rgba(255,215,0,0.4)',
+              color: '#ffd700', fontFamily: "'Tajawal', sans-serif", fontSize: 17, fontWeight: 700,
               cursor: 'pointer', touchAction: 'none',
-              boxShadow: '0 0 24px rgba(255,215,0,0.2), 0 6px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
+              boxShadow: '0 4px 16px rgba(255,215,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1)',
               transition: 'all 0.2s ease',
-              letterSpacing: 1,
-              animation: 'tutorialBtnPulse 2s ease-in-out infinite',
             }}
           >
-            {controlTutorial < 3 ? 'فهمت ←' : '🚀 يلّا نبدأ!'}
+            {controlTutorial < 3 ? 'فهمت' : 'يلّا نبدأ! 🚀'}
           </button>
 
-          {/* Arrow pointing to highlighted button */}
+          {/* Arrow pointing to the highlighted button */}
           <div style={{
             position: 'absolute',
-            bottom: 'calc(164px + env(safe-area-inset-bottom, 0px))',
+            bottom: 'calc(160px + env(safe-area-inset-bottom, 0px))',
             left: controlTutorial === 0 ? 50 : controlTutorial === 1 ? 172 : controlTutorial === 2 ? 256 : undefined,
             right: controlTutorial === 3 ? 56 : undefined,
-            color: '#ffd700',
+            fontSize: 28, color: '#ffd700',
             animation: 'tutorialBounce 1s ease-in-out infinite',
-            filter: 'drop-shadow(0 0 12px rgba(255,215,0,0.6))',
-            transition: 'left 0.4s ease, right 0.4s ease',
-          }}>
-            <svg width="24" height="28" viewBox="0 0 24 28" fill="none">
-              <path d="M12 0 L24 20 L18 20 L18 28 L6 28 L6 20 L0 20 Z" fill="url(#arrowGrad)" />
-              <defs>
-                <linearGradient id="arrowGrad" x1="12" y1="0" x2="12" y2="28" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="#ffd700" stopOpacity="0.9" />
-                  <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.4" />
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
+            filter: 'drop-shadow(0 0 8px rgba(255,215,0,0.5))',
+          }}>▼</div>
         </div>
       )}
 
       <style>{`
         @keyframes tutorialBounce {
-          0%, 100% { transform: translateY(0) rotate(180deg); }
-          50% { transform: translateY(8px) rotate(180deg); }
-        }
-        @keyframes tutorialCardPulse {
-          0%, 100% { box-shadow: 0 0 40px rgba(255,215,0,0.08), 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15); }
-          50% { box-shadow: 0 0 50px rgba(255,215,0,0.15), 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2); }
-        }
-        @keyframes tutorialIconPulse {
-          0%, 100% { transform: scale(1); box-shadow: 0 0 24px rgba(255,215,0,0.2); }
-          50% { transform: scale(1.08); box-shadow: 0 0 32px rgba(255,215,0,0.35); }
-        }
-        @keyframes tutorialBtnPulse {
-          0%, 100% { box-shadow: 0 0 24px rgba(255,215,0,0.2), 0 6px 20px rgba(0,0,0,0.3); }
-          50% { box-shadow: 0 0 32px rgba(255,215,0,0.35), 0 6px 20px rgba(0,0,0,0.3); }
-        }
-        @keyframes sparkleFloat {
-          0%, 100% { opacity: 0.2; transform: translateY(0); }
-          50% { opacity: 0.5; transform: translateY(-10px); }
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(8px); }
         }
       `}</style>
     </div>
