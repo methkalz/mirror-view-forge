@@ -236,8 +236,8 @@ const SkyfallGame: React.FC = () => {
         const wasStart = prevState === 'start';
         prevState = g.state;
         setShowButtons(g.state === 'playing');
-        if (g.state === 'playing' && wasStart) {
-          // Start control tutorial on first play
+        if (g.state === 'playing' && wasStart && !tutorialShownRef.current) {
+          tutorialShownRef.current = true;
           pauseRef.current = true;
           setControlTutorial(0);
         }
