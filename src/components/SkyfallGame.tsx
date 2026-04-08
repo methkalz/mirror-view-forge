@@ -28,6 +28,8 @@ const SkyfallGame: React.FC = () => {
   const [showButtons, setShowButtons] = useState(false);
   const [playerAmmo, setPlayerAmmo] = useState(0);
   const [bulletLevel, setBulletLevel] = useState(1);
+  const [controlTutorial, setControlTutorial] = useState<number>(-1); // -1=inactive, 0-3=step
+  const pauseRef = useRef(false);
 
   // LiveOps state — always show name entry on mount (different player may use same device)
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('skyfall_name') || '');
@@ -41,6 +43,7 @@ const SkyfallGame: React.FC = () => {
   const difficultyProfileRef = useRef<DifficultyProfile | null>(null);
   const waveOverridesRef = useRef<RemoteWaveConfig[]>([]);
   const scoreSubmittedRef = useRef(false);
+  const tutorialShownRef = useRef(false);
 
   // Load leaderboard on mount + presence tracking
   useEffect(() => {
@@ -183,16 +186,20 @@ const SkyfallGame: React.FC = () => {
           updateIntro(g, dt);
           render(ctx, g);
         } else if (g.state === 'playing') {
-          // DDA: if health 100% for 15+ seconds, increase difficulty
-          if (remoteConfig?.ddaEnabled && g.player.health >= g.player.maxHealth) {
+          // Pause during control tutorial
+          if (pauseRef.current) {
+            render(ctx, g);
+          } else if (remoteConfig?.ddaEnabled && g.player.health >= g.player.maxHealth) {
             if (g.elapsed > 15 && g.difficulty < 5) {
-              // Gradual increase
               g.difficulty = Math.min(5, g.difficulty + 0.002 * dt);
             }
-          }
-          // Global pause check
-          if (remoteConfig?.globalPause) {
-            // Don't spawn but still allow movement
+            if (remoteConfig?.globalPause) {
+              render(ctx, g);
+            } else {
+              update(g, inputRef.current, dt);
+              render(ctx, g);
+            }
+          } else if (remoteConfig?.globalPause) {
             render(ctx, g);
           } else {
             update(g, inputRef.current, dt);
@@ -229,6 +236,11 @@ const SkyfallGame: React.FC = () => {
         const wasStart = prevState === 'start';
         prevState = g.state;
         setShowButtons(g.state === 'playing');
+        if (g.state === 'playing' && wasStart && !tutorialShownRef.current) {
+          tutorialShownRef.current = true;
+          pauseRef.current = true;
+          setControlTutorial(0);
+        }
         if (wasStart && g.state === 'intro') {
           cancelMenuMusicStart();
           stopMenuMusic();
@@ -511,7 +523,8 @@ const SkyfallGame: React.FC = () => {
       {showButtons && (
         <>
            <button
-             onPointerDown={(e) => { e.preventDefault(); if (hasAmmo) { e.stopPropagation(); handleButtonDown('shoot'); } }}
+             id="btn-fire"
+             onPointerDown={(e) => { e.preventDefault(); if (hasAmmo && controlTutorial < 0) { e.stopPropagation(); handleButtonDown('shoot'); } }}
              style={{
                position: 'absolute', left: 220, bottom: 'calc(95px + env(safe-area-inset-bottom, 0px))', width: 72, height: 56,
               borderRadius: 16,
@@ -520,6 +533,9 @@ const SkyfallGame: React.FC = () => {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', zIndex: 10,
               backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)', transition: 'all 0.15s ease',
+              opacity: controlTutorial >= 0 && controlTutorial !== 2 ? 0.15 : 1,
+              transform: controlTutorial === 2 ? 'scale(1.15)' : 'scale(1)',
+              boxShadow: controlTutorial === 2 ? '0 0 25px rgba(220,38,38,0.7), 0 0 50px rgba(220,38,38,0.3)' : 'none',
             }}
           >
             <svg width="24" height="28" viewBox="0 0 24 28" fill="none" style={{ opacity: hasAmmo ? 0.95 : 0.4 }}>
@@ -584,7 +600,8 @@ const SkyfallGame: React.FC = () => {
           </button>
 
           <button
-            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleButtonDown('left'); }}
+            id="btn-left"
+            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); if (controlTutorial < 0) handleButtonDown('left'); }}
             onPointerUp={() => handleButtonUp('left')}
             onPointerLeave={() => handleButtonUp('left')}
             style={{
@@ -593,12 +610,16 @@ const SkyfallGame: React.FC = () => {
               background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)',
               fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
               touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', zIndex: 10,
-              backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)',
+              backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)', transition: 'all 0.15s ease',
+              opacity: controlTutorial >= 0 && controlTutorial !== 0 ? 0.15 : 1,
+              transform: controlTutorial === 0 ? 'scale(1.15)' : 'scale(1)',
+              boxShadow: controlTutorial === 0 ? '0 0 25px rgba(255,255,255,0.5), 0 0 50px rgba(255,255,255,0.2)' : 'none',
             }}
           >‹</button>
 
           <button
-            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleButtonDown('right'); }}
+            id="btn-right"
+            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); if (controlTutorial < 0) handleButtonDown('right'); }}
             onPointerUp={() => handleButtonUp('right')}
             onPointerLeave={() => handleButtonUp('right')}
             style={{
@@ -607,12 +628,16 @@ const SkyfallGame: React.FC = () => {
               background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)',
               fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
               touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', zIndex: 10,
-              backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)',
+              backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)', transition: 'all 0.15s ease',
+              opacity: controlTutorial >= 0 && controlTutorial !== 1 ? 0.15 : 1,
+              transform: controlTutorial === 1 ? 'scale(1.15)' : 'scale(1)',
+              boxShadow: controlTutorial === 1 ? '0 0 25px rgba(255,255,255,0.5), 0 0 50px rgba(255,255,255,0.2)' : 'none',
             }}
           >›</button>
 
           <button
-            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleButtonDown('roll'); }}
+            id="btn-roll"
+            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); if (controlTutorial < 0) handleButtonDown('roll'); }}
             style={{
               position: 'absolute', right: 16, bottom: 'calc(95px + env(safe-area-inset-bottom, 0px))', width: 80, height: 56,
               borderRadius: 16, border: '1px solid rgba(251,191,36,0.25)',
@@ -621,11 +646,139 @@ const SkyfallGame: React.FC = () => {
               fontWeight: 600, letterSpacing: 2,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer', zIndex: 10,
-              backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)',
+              backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)', transition: 'all 0.15s ease',
+              opacity: controlTutorial >= 0 && controlTutorial !== 3 ? 0.15 : 1,
+              transform: controlTutorial === 3 ? 'scale(1.15)' : 'scale(1)',
+              boxShadow: controlTutorial === 3 ? '0 0 25px rgba(251,191,36,0.6), 0 0 50px rgba(251,191,36,0.25)' : 'none',
             }}
           >ROLL</button>
         </>
       )}
+
+      {/* Control Tutorial Overlay */}
+      {controlTutorial >= 0 && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const next = controlTutorial + 1;
+            if (next > 3) {
+              setControlTutorial(-1);
+              pauseRef.current = false;
+            } else {
+              setControlTutorial(next);
+            }
+          }}
+          style={{
+            position: 'absolute', inset: 0, zIndex: 20,
+            background: 'rgba(0,0,0,0.75)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            touchAction: 'none', cursor: 'pointer',
+          }}
+        >
+          {/* Step indicator */}
+          <div style={{
+            display: 'flex', gap: 8, marginBottom: 24,
+          }}>
+            {[0,1,2,3].map(i => (
+              <div key={i} style={{
+                width: i === controlTutorial ? 24 : 8, height: 8, borderRadius: 4,
+                background: i === controlTutorial
+                  ? 'linear-gradient(90deg, #ffd700, #f59e0b)'
+                  : i < controlTutorial ? 'rgba(255,215,0,0.5)' : 'rgba(255,255,255,0.2)',
+                transition: 'all 0.3s ease',
+              }} />
+            ))}
+          </div>
+
+          {/* Glass card with description */}
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))',
+            border: '1px solid rgba(255,215,0,0.25)',
+            borderRadius: 20, padding: '28px 32px',
+            backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+            maxWidth: 320, textAlign: 'center',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
+          } as React.CSSProperties}>
+            {/* Icon */}
+            <div style={{
+              fontSize: 40, marginBottom: 12,
+              filter: 'drop-shadow(0 0 12px rgba(255,215,0,0.4))',
+            }}>
+              {controlTutorial === 0 && '◀'}
+              {controlTutorial === 1 && '▶'}
+              {controlTutorial === 2 && '🎯'}
+              {controlTutorial === 3 && '🌀'}
+            </div>
+            
+            {/* Title */}
+            <div style={{
+              fontFamily: "'Tajawal', sans-serif", fontSize: 22, fontWeight: 700,
+              color: '#ffd700', marginBottom: 8,
+              textShadow: '0 0 20px rgba(255,215,0,0.4)',
+            }}>
+              {controlTutorial === 0 && 'تحرّك لليسار'}
+              {controlTutorial === 1 && 'تحرّك لليمين'}
+              {controlTutorial === 2 && 'اطلق مضادات أرضية'}
+              {controlTutorial === 3 && 'شَقلِب'}
+            </div>
+
+            {/* Subtitle */}
+            <div style={{
+              fontFamily: "'Tajawal', sans-serif", fontSize: 14, fontWeight: 400,
+              color: 'rgba(255,255,255,0.7)', lineHeight: 1.6,
+            }}>
+              {controlTutorial === 0 && 'اضغط للتحرك يساراً'}
+              {controlTutorial === 1 && 'اضغط للتحرك يميناً'}
+              {controlTutorial === 2 && 'يمكنك اعتراض الصواريخ والشظايا والطائرات'}
+              {controlTutorial === 3 && 'تفادى الخطر بدحرجة سريعة'}
+            </div>
+          </div>
+
+          {/* "فهمت" button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const next = controlTutorial + 1;
+              if (next > 3) {
+                setControlTutorial(-1);
+                pauseRef.current = false;
+              } else {
+                setControlTutorial(next);
+              }
+            }}
+            style={{
+              marginTop: 24, padding: '12px 40px', borderRadius: 14,
+              background: 'linear-gradient(135deg, rgba(255,215,0,0.2), rgba(245,158,11,0.15))',
+              border: '1.5px solid rgba(255,215,0,0.4)',
+              color: '#ffd700', fontFamily: "'Tajawal', sans-serif", fontSize: 17, fontWeight: 700,
+              cursor: 'pointer', touchAction: 'none',
+              boxShadow: '0 4px 16px rgba(255,215,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {controlTutorial < 3 ? 'فهمت' : 'يلّا نبدأ! 🚀'}
+          </button>
+
+          {/* Arrow pointing to the highlighted button */}
+          <div style={{
+            position: 'absolute',
+            bottom: 'calc(160px + env(safe-area-inset-bottom, 0px))',
+            left: controlTutorial === 0 ? 50 : controlTutorial === 1 ? 172 : controlTutorial === 2 ? 256 : undefined,
+            right: controlTutorial === 3 ? 56 : undefined,
+            fontSize: 28, color: '#ffd700',
+            animation: 'tutorialBounce 1s ease-in-out infinite',
+            filter: 'drop-shadow(0 0 8px rgba(255,215,0,0.5))',
+          }}>▼</div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes tutorialBounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(8px); }
+        }
+      `}</style>
     </div>
   );
 };
