@@ -438,7 +438,6 @@ export function updateIntro(g: GameData, dt: number) {
         g.cameraZoomTarget = 1.0;
         g.cameraZoom = 1.0;
         sfxGameStart();
-        startPeriodicAmbient();
         g.player.facingRight = true; // reset facing for gameplay
       }
       break;

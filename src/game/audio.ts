@@ -269,10 +269,14 @@ function getCtx(): AudioContext {
   return audioCtx;
 }
 
-export function resumeAudio() {
+export function resumeAudioContext() {
   unmuteIOS();
   if (audioCtx?.state === 'suspended') audioCtx.resume();
   if (!settingsLoaded) loadAudioSettings();
+}
+
+export function resumeAudio() {
+  resumeAudioContext();
   startAmbient();
 }
 
