@@ -185,16 +185,20 @@ const SkyfallGame: React.FC = () => {
           updateIntro(g, dt);
           render(ctx, g);
         } else if (g.state === 'playing') {
-          // DDA: if health 100% for 15+ seconds, increase difficulty
-          if (remoteConfig?.ddaEnabled && g.player.health >= g.player.maxHealth) {
+          // Pause during control tutorial
+          if (pauseRef.current) {
+            render(ctx, g);
+          } else if (remoteConfig?.ddaEnabled && g.player.health >= g.player.maxHealth) {
             if (g.elapsed > 15 && g.difficulty < 5) {
-              // Gradual increase
               g.difficulty = Math.min(5, g.difficulty + 0.002 * dt);
             }
-          }
-          // Global pause check
-          if (remoteConfig?.globalPause) {
-            // Don't spawn but still allow movement
+            if (remoteConfig?.globalPause) {
+              render(ctx, g);
+            } else {
+              update(g, inputRef.current, dt);
+              render(ctx, g);
+            }
+          } else if (remoteConfig?.globalPause) {
             render(ctx, g);
           } else {
             update(g, inputRef.current, dt);
