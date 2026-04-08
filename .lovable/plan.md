@@ -1,104 +1,63 @@
 
-المشكلة الحقيقية أوضح الآن: الإصلاح السابق لم يعالج السبب الفعلي.
 
-## ما الخطأ فعلاً
-في `src/components/SkyfallGame.tsx` داخل كتلة تغيّر الحالة:
+# تحسين شريحة تعليم الأزرار + إصلاح توقيت الموسيقى
 
-```ts
-if (g.state !== prevState) {
-  const wasStart = prevState === 'start';
-  prevState = g.state;
-  setShowButtons(g.state === 'playing');
-  if (g.state === 'playing' && prevState === 'intro' && !tutorialShownRef.current) {
+## المشاكل
+
+### 1. الموسيقى تبدأ قبل اللعب الفعلي
+- **سطر 292** في `SkyfallGame.tsx`: `resumeAudio()` يُستدعى عند الضغط على آخر شريحة تعليمات → يشغّل `startAmbient()` فوراً (الموسيقى الخلفية)
+- **سطر 441** في `engine.ts`: `startPeriodicAmbient()` يُستدعى عند انتهاء الـ intro → الأصوات الدورية تبدأ أثناء شريحة تعليم الأزرار
+- النتيجة: اللاعب يسمع الموسيقى أثناء قراءة شرح الأزرار بدل أن تبدأ عند اللعب الفعلي
+
+### 2. واجهة شريحة التعليم بسيطة
+- الشريحة الحالية HTML overlay بسيط مع `rgba` backgrounds
+- لا تتطابق مع أسلوب الـ glass cards والتوهج الذهبي المستخدم في شرائح التعليمات الأربع الأصلية
+
+## الحل
+
+### ملف 1: `src/game/engine.ts` (سطر 441)
+- **إزالة** `startPeriodicAmbient()` من نهاية الـ intro
+- إبقاء `sfxGameStart()` فقط (صوت بدء اللعبة مقبول)
+- سيتم استدعاء `startPeriodicAmbient()` من `SkyfallGame.tsx` عند انتهاء شريحة تعليم الأزرار
+
+### ملف 2: `src/components/SkyfallGame.tsx`
+
+#### إصلاح الموسيقى:
+- **سطر 292**: تغيير `resumeAudio()` إلى فقط `unmuteIOS()` + `audioCtx.resume()` بدون `startAmbient()` — أي استيراد دالة جديدة `resumeAudioContext` من audio.ts تفعل ذلك فقط
+- **عند انتهاء التعليم** (controlTutorial > 3): استدعاء `resumeAudio()` + `startPeriodicAmbient()` لبدء كل الأصوات
+
+#### تحسين UI/UX للشريحة:
+| العنصر | الحالي | الجديد |
+|--------|--------|--------|
+| الخلفية | `rgba(0,0,0,0.75)` مسطحة | تدرج radial مع vignette + جسيمات شرارية خفيفة (CSS) |
+| البطاقة | زجاج بسيط بحد ذهبي | زجاج متعدد الطبقات مع `box-shadow` ذهبي متوهج + حد مزدوج |
+| الأيقونات | إيموجي نصية (◀ ▶ 🎯 🌀) | SVG مخصصة بتأثير توهج ذهبي + حركة pulse |
+| النص | خط 22px عادي | خط 26px مع `text-shadow` متعددة الطبقات + لون ذهبي متدرج |
+| الوصف | 14px باهت | 16px مع تباين أعلى + سطور متباعدة |
+| زر "فهمت" | خلفية شبه شفافة | تدرج ذهبي واضح مع تأثير hover + pulse animation |
+| مؤشر الخطوات | نقاط بسيطة | نقاط بتوهج + اسم الزر تحت كل نقطة |
+| السهم | `▼` نصي | سهم SVG متوهج مع trail effect |
+| الانتقال | فوري | `transition` ناعم 0.4s مع fade للمحتوى |
+
+#### تأثيرات إضافية:
+- إضافة `@keyframes` للنبض الذهبي على البطاقة
+- شرارات CSS صغيرة (pseudo-elements) في الأركان
+- تأثير صوتي `sfxSlideTransition()` عند التنقل بين الخطوات
+
+### ملف 3: `src/game/audio.ts`
+- إضافة دالة `resumeAudioContext()` تفعل فقط: `unmuteIOS()` + `audioCtx.resume()` بدون `startAmbient()`
+- تصدير `startPeriodicAmbient` (موجود) + `resumeAudioContext` (جديد)
+
+## تسلسل الصوت الصحيح بعد الإصلاح
+```text
+شرائح التعليمات → resumeAudioContext() فقط (بدون موسيقى)
+                → intro سينمائي (sfxGameStart فقط)
+                → شريحة تعليم الأزرار (صمت + sfxSlideTransition بين الخطوات)
+                → "يلّا نبدأ!" → resumeAudio() + startPeriodicAmbient() → اللعب الفعلي مع كل الأصوات
 ```
-
-المشكلة أن `prevState` يتم استبداله بـ `g.state` قبل فحص الشرط.
-يعني عند وصول اللعبة إلى `playing` يصبح:
-- `prevState = 'playing'`
-- ثم يتم فحص `prevState === 'intro'`
-- النتيجة: مستحيل يتحقق الشرط
-
-إذن الخلل ليس فقط في قيمة الشرط، بل في ترتيب التنفيذ نفسه.
-
-## الحل الاحترافي
-### 1) إصلاح منطق الانتقال بشكل صحيح
-في نفس الملف:
-- حفظ الحالة القديمة في متغير ثابت مثل `fromState`
-- فحص الانتقال باستخدام `fromState === 'intro' && g.state === 'playing'`
-- بعد ذلك فقط يتم تحديث `prevState = g.state`
-
-الصيغة المطلوبة منطقياً:
-```ts
-if (g.state !== prevState) {
-  const fromState = prevState;
-  const wasStart = fromState === 'start';
-
-  if (g.state === 'playing') setShowButtons(true);
-  else setShowButtons(false);
-
-  if (fromState === 'intro' && g.state === 'playing' && !tutorialShownRef.current) {
-    tutorialShownRef.current = true;
-    pauseRef.current = true;
-    setControlTutorial(0);
-  }
-
-  prevState = g.state;
-  ...
-}
-```
-
-### 2) تقوية التفعيل حتى لا يعتمد على نقطة هشة واحدة
-سأضيف حماية ثانية:
-- إذا دخلت اللعبة `playing`
-- والأزرار ظاهرة
-- والتعليم لم يظهر بعد
-- ولم تكن اللعبة في `gameover`
-فيمكن تفعيل الشريحة مرة واحدة كـ fallback آمن
-
-هذا يمنع تكرار مشكلة “الانتقال فات بين frame و frame”.
-
-### 3) تنظيف حالة التعليم عند إعادة اللعب
-لضمان السلوك الصحيح:
-- عند الرجوع إلى `start` أو إعادة اللعبة:
-  - `setControlTutorial(-1)`
-  - `pauseRef.current = false`
-- مع الإبقاء على `tutorialShownRef.current` حسب السلوك المطلوب:
-  - إن كان المطلوب ظهورها مرة واحدة فقط لكل جلسة: تبقى `true`
-  - إن كان المطلوب ظهورها في كل لعبة جديدة: تُصفّر عند restart
-
-### 4) مراجعة التداخل مع الضغط على الشاشة
-يوجد `startOrRestart()` مربوط بضغطات الـ canvas.
-سأراجع أن طبقة التعليم:
-- تكون أعلى من الـ canvas فعلاً
-- تلتقط الضغطات بنفسها
-- لا تسمح بمرور أي click للعبة تحتها
-- وتمنع أي restart أو input أثناء الشريحة
-
-### 5) تحسين بصري بسيط مع الإصلاح
-بما أنك طلبت تصرف احترافي:
-- سأجعل ظهور الشريحة مرتبطاً مباشرة بعد نهاية `intro`
-- مع ضمان أن الأزرار السفلية تكون موجودة قبل عرض الإضاءة
-- حتى لا تظهر الشريحة بدون العنصر المضيء أو مع layout غير جاهز
 
 ## الملفات المتأثرة
-- `src/components/SkyfallGame.tsx`
+- `src/game/audio.ts` — إضافة `resumeAudioContext()`
+- `src/game/engine.ts` — إزالة `startPeriodicAmbient()` من نهاية intro
+- `src/components/SkyfallGame.tsx` — إصلاح توقيت الصوت + تحسين UI الشريحة
 
-## النتيجة المتوقعة
-- الشريحة ستظهر فعلاً بعد انتهاء المقدمة
-- لن تضيع بسبب خطأ transition logic
-- لن تمر الضغطات إلى اللعبة أسفلها
-- وسيصبح سلوكها ثابتاً وموثوقاً بدل كونه معتمداً على شرط مكسور
-
-## التفاصيل التقنية
-السبب الجذري هو:
-```text
-intro -> playing
-لكن الكود يفقد قيمة intro قبل استخدامها
-```
-
-أي أن المشكلة كانت:
-```text
-Bug in state-transition bookkeeping, not just wrong condition text
-```
-
-وهذا يفسّر لماذا “الإصلاح السابق” لم ينجح رغم أنه بدا منطقياً ظاهرياً.
