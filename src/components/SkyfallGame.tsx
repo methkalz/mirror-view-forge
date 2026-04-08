@@ -235,11 +235,12 @@ const SkyfallGame: React.FC = () => {
         const wasStart = prevState === 'start';
         prevState = g.state;
         setShowButtons(g.state === 'playing');
-        if (g.state === 'playing' && prevState !== 'playing') {
-          // Start control tutorial
+        if (g.state === 'playing' && wasStart) {
+          // Start control tutorial on first play
           pauseRef.current = true;
           setControlTutorial(0);
         }
+        if (wasStart && g.state === 'intro') {
           cancelMenuMusicStart();
           stopMenuMusic();
         }
