@@ -833,6 +833,35 @@ export function sfxGameOver() {
   setTimeout(() => playTone(100, 0.6, 'sine', 0.05 * v), 600);
 }
 
+// Game over voice — plays after gameOver sound finishes
+let gameOverVoiceTimeout: ReturnType<typeof setTimeout> | null = null;
+
+export function sfxGameOverVoice(delayMs: number = 1200) {
+  if (!isSoundEnabled('gameOverVoice')) return;
+  // Schedule voice after the main game over sound
+  gameOverVoiceTimeout = setTimeout(() => {
+    playCustomAudio('gameOverVoice');
+    gameOverVoiceTimeout = null;
+  }, delayMs);
+}
+
+export function stopGameOverVoice() {
+  if (gameOverVoiceTimeout) {
+    clearTimeout(gameOverVoiceTimeout);
+    gameOverVoiceTimeout = null;
+  }
+  // Stop any playing gameOverVoice audio
+  const ctx = audioCtx;
+  if (!ctx) return;
+  const existing = activeSources.get('gameOverVoice');
+  if (existing) {
+    for (const e of existing) {
+      try { e.gain.gain.setValueAtTime(0, ctx.currentTime); e.source.stop(); } catch {}
+    }
+    activeSources.set('gameOverVoice', []);
+  }
+}
+
 export function sfxGameStart() {
   if (!isSoundEnabled('gameStart')) return;
   if (playCustomAudio('gameStart')) return;
