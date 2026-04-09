@@ -259,6 +259,14 @@ const SkyfallGame: React.FC = () => {
       if (g.state === 'playing') {
         setPlayerAmmo(g.player.ammo);
         setBulletLevel(g.bulletLevel);
+        // Detect first ammo pickup — show arrow pointing to FIRE button
+        if (g.firstAmmoPickedUp && !ammoTutorialShownRef.current) {
+          ammoTutorialShownRef.current = true;
+          setAmmoArrowVisible(true);
+          sfxAmmoTutorial();
+          if (ammoArrowTimerRef.current) clearTimeout(ammoArrowTimerRef.current);
+          ammoArrowTimerRef.current = setTimeout(() => setAmmoArrowVisible(false), 4000);
+        }
       }
 
       rafRef.current = requestAnimationFrame(loop);
