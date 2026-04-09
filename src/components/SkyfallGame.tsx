@@ -327,6 +327,7 @@ const SkyfallGame: React.FC = () => {
           delete (inputRef.current as any)._lastClickX;
           delete (inputRef.current as any)._lastClickY;
         }
+        stopGameOverVoice();
         resumeAudio();
         scoreSubmittedRef.current = false;
         setGameOverData(null);
