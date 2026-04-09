@@ -6610,25 +6610,14 @@ export function renderStartScreen(ctx: CanvasRenderingContext2D, w: number, h: n
     }
   }
 
-  // ── "Skip All" button (pages 0-2 only) ──
+  // ── "Tap to continue" (pages 0-2 only) ──
   if (tutorialPage < 3) {
-    // Skip button — bottom left area
-    const skipX = w * 0.15;
-    const skipY = h * 0.87;
-    ctx.save();
-    ctx.font = '600 13px Tajawal, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(160, 160, 160, 0.5)';
-    ctx.fillText('تخطي ❯❯', skipX, skipY);
-    ctx.restore();
-
-    // "Tap to continue"
-    const pulse = 0.4 + Math.sin(t * 3) * 0.2;
-    ctx.fillStyle = `rgba(200, 200, 200, ${pulse})`;
-    ctx.font = '14px Tajawal, sans-serif';
+    ctx.fillStyle = 'rgba(200, 200, 200, 0.6)';
+    ctx.font = '15px Tajawal, sans-serif';
     ctx.textAlign = 'center';
     ctx.direction = 'rtl';
-    ctx.fillText('انقر للمتابعة', w / 2, h * 0.87);
+    const tapText = '☝ اكبس للمتابعة';
+    ctx.fillText(tapText, w / 2, h * 0.87);
     ctx.direction = 'ltr';
   }
 
@@ -6649,7 +6638,7 @@ function drawSlideTitle(ctx: CanvasRenderingContext2D, w: number, h: number, tex
   titleGrad.addColorStop(0.7, '#e0c060');
   titleGrad.addColorStop(1, '#a08030');
   ctx.fillStyle = titleGrad;
-  ctx.font = 'bold 30px Tajawal, sans-serif';
+  ctx.font = 'bold 34px Tajawal, sans-serif';
   // Outer glow
   ctx.shadowColor = 'rgba(255,200,50,0.15)';
   ctx.shadowBlur = 30;
@@ -6696,10 +6685,10 @@ function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: numbe
   const card1Y = h * 0.23 + Math.sin(t * 1.5) * 2;
   drawGlassCard(ctx, card1X, card1Y, card1W, card1H, 'rgba(239, 68, 68, 0.8)');
   ctx.fillStyle = 'rgba(240, 240, 240, 0.95)';
-  ctx.font = 'bold 19px Tajawal, sans-serif';
+  ctx.font = 'bold 22px Tajawal, sans-serif';
   ctx.fillText('هل تُجيد الهرب؟', w / 2, card1Y + card1H * 0.35);
   ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
-  ctx.font = '15px Tajawal, sans-serif';
+  ctx.font = '17px Tajawal, sans-serif';
   ctx.fillText('تسقط تهديدات من الأعلى', w / 2, card1Y + card1H * 0.58);
   ctx.fillText('اهرب منها أو أسقطها', w / 2, card1Y + card1H * 0.78);
 
@@ -6709,10 +6698,10 @@ function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: numbe
   const card2Y = card1Y + card1H + 16 + Math.sin(t * 1.5 + 1.5) * 2;
   drawGlassCard(ctx, card2X, card2Y, card2W, card2H, 'rgba(251, 191, 36, 0.8)');
   ctx.fillStyle = 'rgba(251, 191, 36, 0.95)';
-  ctx.font = 'bold 18px Tajawal, sans-serif';
+  ctx.font = 'bold 21px Tajawal, sans-serif';
   ctx.fillText('بعيد لكن قريب', w / 2, card2Y + card2H * 0.25);
   ctx.fillStyle = 'rgba(230, 230, 230, 0.85)';
-  ctx.font = '15px Tajawal, sans-serif';
+  ctx.font = '17px Tajawal, sans-serif';
   ctx.fillText('كلما سقط التهديد أقرب إليك', w / 2, card2Y + card2H * 0.48);
   ctx.fillText('حصلت على نقاط أكثر', w / 2, card2Y + card2H * 0.65);
 
@@ -6755,23 +6744,23 @@ function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: numbe
   const lx = w / 2 - ctrlGap / 2 - ctrlW;
   drawGlassCard(ctx, lx, ctrlY, ctrlW, ctrlH, 'rgba(100, 200, 255, 0.7)');
   ctx.fillStyle = 'rgba(100, 200, 255, 0.9)';
-  ctx.font = 'bold 15px Tajawal, sans-serif';
+  ctx.font = 'bold 17px Tajawal, sans-serif';
   ctx.fillText('الجهة اليسرى', lx + ctrlW / 2, ctrlY + ctrlH * 0.45);
   ctx.fillStyle = 'rgba(180, 180, 180, 0.6)';
-  ctx.font = '13px Tajawal, sans-serif';
+  ctx.font = '15px Tajawal, sans-serif';
   ctx.fillText('تحريك', lx + ctrlW / 2, ctrlY + ctrlH * 0.75);
 
   const rx = w / 2 + ctrlGap / 2;
   drawGlassCard(ctx, rx, ctrlY, ctrlW, ctrlH, 'rgba(239, 68, 68, 0.7)');
   ctx.fillStyle = 'rgba(239, 130, 130, 0.9)';
-  ctx.font = 'bold 15px Tajawal, sans-serif';
+  ctx.font = 'bold 17px Tajawal, sans-serif';
   ctx.fillText('الجهة اليمنى', rx + ctrlW / 2, ctrlY + ctrlH * 0.45);
   ctx.fillStyle = 'rgba(180, 180, 180, 0.6)';
-  ctx.font = '13px Tajawal, sans-serif';
+  ctx.font = '15px Tajawal, sans-serif';
   ctx.fillText('دحرجة', rx + ctrlW / 2, ctrlY + ctrlH * 0.75);
 
   ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
-  ctx.font = '16px Tajawal, sans-serif';
+  ctx.font = '18px Tajawal, sans-serif';
   ctx.fillText('التقط الصناديق للحصول على', w / 2, ctrlY + ctrlH + 30);
 
   const items: { name: string; color: string }[] = [
@@ -6797,7 +6786,7 @@ function renderTutorialSlide1(ctx: CanvasRenderingContext2D, w: number, h: numbe
     drawGlassCard(ctx, ix, iy, itemW, itemH, item.color + 'aa', 8);
     // Measure text to position dot with consistent spacing
     ctx.fillStyle = 'rgba(220, 220, 220, 0.8)';
-    ctx.font = '13px Tajawal, sans-serif';
+    ctx.font = '15px Tajawal, sans-serif';
     const textW = ctx.measureText(item.name).width;
     const centerX = ix + itemW / 2;
     const dotGap = 8;
