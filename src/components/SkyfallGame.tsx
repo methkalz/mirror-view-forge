@@ -3,7 +3,7 @@ import { GameData, InputState } from '@/game/types';
 import { loadAudioSettings, reloadAudioSettings } from '@/game/audio';
 import { createGame, resetGame, update, updateIntro } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
-import { resumeAudio, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition } from '@/game/audio';
+import { resumeAudio, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition, sfxAmmoTutorial } from '@/game/audio';
 import { fetchGameConfig, fetchLeaderboard, fetchDifficultyProfile, fetchWaveConfigs, submitScore, type RemoteGameConfig, type LeaderboardEntry, type DifficultyProfile, type RemoteWaveConfig } from '@/game/config';
 import { fetchBackgroundConfig } from '@/game/backgroundConfig';
 import { setBackgroundConfig, setCameraMargin } from '@/game/renderer';
@@ -44,6 +44,9 @@ const SkyfallGame: React.FC = () => {
   const waveOverridesRef = useRef<RemoteWaveConfig[]>([]);
   const scoreSubmittedRef = useRef(false);
   const tutorialShownRef = useRef(false);
+  const [ammoArrowVisible, setAmmoArrowVisible] = useState(false);
+  const ammoTutorialShownRef = useRef(false);
+  const ammoArrowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load leaderboard on mount + presence tracking
   useEffect(() => {
@@ -250,12 +253,23 @@ const SkyfallGame: React.FC = () => {
           scoreSubmittedRef.current = false;
           setControlTutorial(-1);
           pauseRef.current = false;
+          setAmmoArrowVisible(false);
+          ammoTutorialShownRef.current = false;
+          if (ammoArrowTimerRef.current) clearTimeout(ammoArrowTimerRef.current);
         }
         prevState = g.state;
       }
       if (g.state === 'playing') {
         setPlayerAmmo(g.player.ammo);
         setBulletLevel(g.bulletLevel);
+        // Detect first ammo pickup — show arrow pointing to FIRE button
+        if (g.firstAmmoPickedUp && !ammoTutorialShownRef.current) {
+          ammoTutorialShownRef.current = true;
+          setAmmoArrowVisible(true);
+          sfxAmmoTutorial();
+          if (ammoArrowTimerRef.current) clearTimeout(ammoArrowTimerRef.current);
+          ammoArrowTimerRef.current = setTimeout(() => setAmmoArrowVisible(false), 4000);
+        }
       }
 
       rafRef.current = requestAnimationFrame(loop);
@@ -640,6 +654,46 @@ const SkyfallGame: React.FC = () => {
           >شَقلِب</button>
         </>
       )}
+
+      {/* Ammo Tutorial Arrow — bouncing arrow pointing to FIRE button */}
+      {ammoArrowVisible && showButtons && (
+        <div style={{
+          position: 'absolute',
+          left: 220 + 36, // center of FIRE button (left + width/2)
+          bottom: 'calc(95px + env(safe-area-inset-bottom, 0px) + 60px)', // above FIRE button
+          transform: 'translateX(-50%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+          zIndex: 50,
+          pointerEvents: 'none',
+          animation: 'ammoArrowBounce 0.8s ease-in-out infinite',
+        }}>
+          <div style={{
+            background: 'rgba(168, 85, 247, 0.9)',
+            color: '#fff',
+            padding: '6px 14px',
+            borderRadius: 12,
+            fontSize: 14,
+            fontWeight: 700,
+            fontFamily: "'SF Pro', system-ui, -apple-system, sans-serif",
+            textAlign: 'center',
+            boxShadow: '0 0 20px rgba(168, 85, 247, 0.5)',
+            whiteSpace: 'nowrap',
+          }}>
+            اضرب من هون! 🔫
+          </div>
+          <svg width="28" height="24" viewBox="0 0 28 24" fill="none">
+            <path d="M14 24L2 8h24L14 24z" fill="rgba(168, 85, 247, 0.9)" />
+            <path d="M14 20L5 8h18L14 20z" fill="rgba(168, 85, 247, 0.6)" />
+          </svg>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes ammoArrowBounce {
+          0%, 100% { transform: translateX(-50%) translateY(0); }
+          50% { transform: translateX(-50%) translateY(-10px); }
+        }
+      `}</style>
 
       {/* Control Tutorial Overlay — Spotlight Design */}
       {controlTutorial >= 0 && (() => {
