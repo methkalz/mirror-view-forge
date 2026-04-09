@@ -861,6 +861,8 @@ export function stopGameOverVoice() {
     activeSources.set('gameOverVoice', []);
   }
 }
+
+export function sfxGameStart() {
   if (!isSoundEnabled('gameStart')) return;
   if (playCustomAudio('gameStart')) return;
   const v = getSoundVolume('gameStart', 1);
