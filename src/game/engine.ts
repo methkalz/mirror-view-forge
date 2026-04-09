@@ -103,6 +103,7 @@ export function createGame(w: number, h: number): GameData {
     deathTimer: 0,
     deathPhase: 'alive',
     firstAmmoDropped: false,
+    firstAmmoPickedUp: false,
     cargoTimer: 120,
     clearingTimer: 0,
     firePools: [],
@@ -227,6 +228,7 @@ export function resetGame(g: GameData) {
   g.deathTimer = 0;
   g.deathPhase = 'alive';
   g.firstAmmoDropped = false;
+  g.firstAmmoPickedUp = false;
   g.cargoTimer = 120;
   g.firePools = [];
   g.gasClouds = [];
@@ -1985,7 +1987,7 @@ export function update(g: GameData, input: InputState, dt: number) {
               g.stats.closeCalls++;
               g.microSlowTimer = 0.15;
               sfxCloseCall();
-              addFloatingText(g, `Close Call! +${bonus}`, { x: p.pos.x, y: p.pos.y - 40 }, '#fbbf24');
+              addFloatingText(g, `مَزَطنا! +${bonus}`, { x: p.pos.x, y: p.pos.y - 40 }, '#fbbf24');
             } else {
               addFloatingText(g, `+${bonus}`, { x: h.targetPos.x, y: h.targetPos.y - 20 }, '#aaa');
             }
@@ -2068,6 +2070,9 @@ export function update(g: GameData, input: InputState, dt: number) {
           p.ammo = Math.min(p.maxAmmo, p.ammo + 8);
           p.dashCooldown = 0; // instant dash recharge
           addFloatingText(g, '+8 Ammo', { x: p.pos.x, y: p.pos.y - 40 }, '#a855f7');
+          if (!g.firstAmmoPickedUp) {
+            g.firstAmmoPickedUp = true;
+          }
           spawnParticles(g, p.pos, 8, '#a855f7', 80);
           break;
         case 'slowmo':
