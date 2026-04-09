@@ -205,24 +205,6 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
               }}
             />
           </div>
-          {false ? (
-            <div />
-          ) : (
-            <h1 style={{
-              fontFamily: "'Tajawal', system-ui, sans-serif",
-              fontSize: 'clamp(32px, 8vw, 56px)',
-              fontWeight: 900,
-              color: 'transparent',
-              backgroundImage: 'linear-gradient(180deg, #f8fafc 0%, #94a3b8 100%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              marginBottom: 4,
-              letterSpacing: -1,
-              filter: 'drop-shadow(0 0 30px rgba(220,38,38,0.25))',
-            }}>
-              ☄️ {title}
-            </h1>
-          )}
 
           {/* Subtitle */}
           <p style={{
