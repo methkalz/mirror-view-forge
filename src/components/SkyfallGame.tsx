@@ -654,7 +654,7 @@ const SkyfallGame: React.FC = () => {
               transform: controlTutorial === 3 ? 'scale(1.15)' : 'scale(1)',
               boxShadow: controlTutorial === 3 ? '0 0 25px rgba(251,191,36,0.6), 0 0 50px rgba(251,191,36,0.25)' : 'none',
             }}
-          >ROLL</button>
+          >شَقلِب</button>
         </>
       )}
 
@@ -736,7 +736,7 @@ const SkyfallGame: React.FC = () => {
           },
           {
             title: 'شَقلِب',
-            subtitle: 'تفادى الخطر بدحرجة سريعة — مناعة مؤقتة',
+            subtitle: 'تفادى الخطر بدحرجة سريعة',
             svgIcon: (
               <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
                 <defs>
@@ -897,7 +897,7 @@ const SkyfallGame: React.FC = () => {
                     animation: controlTutorial === 3 ? 'spotlightPulse 2s ease-in-out infinite' : 'none',
                   }}
                 >
-                  {controlTutorial < 3 ? 'فهمت ←' : 'يلّا نبدأ! 🚀'}
+                  {controlTutorial < 3 ? 'فهمت ←' : 'يلا يلا'}
                 </button>
               </div>
             </div>
