@@ -44,6 +44,9 @@ const SkyfallGame: React.FC = () => {
   const waveOverridesRef = useRef<RemoteWaveConfig[]>([]);
   const scoreSubmittedRef = useRef(false);
   const tutorialShownRef = useRef(false);
+  const [ammoArrowVisible, setAmmoArrowVisible] = useState(false);
+  const ammoTutorialShownRef = useRef(false);
+  const ammoArrowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load leaderboard on mount + presence tracking
   useEffect(() => {
