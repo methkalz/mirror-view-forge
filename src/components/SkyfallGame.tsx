@@ -3,7 +3,7 @@ import { GameData, InputState } from '@/game/types';
 import { loadAudioSettings, reloadAudioSettings } from '@/game/audio';
 import { createGame, resetGame, update, updateIntro } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
-import { resumeAudio, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition, sfxAmmoTutorial } from '@/game/audio';
+import { resumeAudio, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition, sfxAmmoTutorial, stopGameOverVoice } from '@/game/audio';
 import { fetchGameConfig, fetchLeaderboard, fetchDifficultyProfile, fetchWaveConfigs, submitScore, type RemoteGameConfig, type LeaderboardEntry, type DifficultyProfile, type RemoteWaveConfig } from '@/game/config';
 import { fetchBackgroundConfig } from '@/game/backgroundConfig';
 import { setBackgroundConfig, setCameraMargin } from '@/game/renderer';
