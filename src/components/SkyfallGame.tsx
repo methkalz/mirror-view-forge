@@ -253,6 +253,9 @@ const SkyfallGame: React.FC = () => {
           scoreSubmittedRef.current = false;
           setControlTutorial(-1);
           pauseRef.current = false;
+          setAmmoArrowVisible(false);
+          ammoTutorialShownRef.current = false;
+          if (ammoArrowTimerRef.current) clearTimeout(ammoArrowTimerRef.current);
         }
         prevState = g.state;
       }
