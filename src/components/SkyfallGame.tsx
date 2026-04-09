@@ -266,23 +266,6 @@ const SkyfallGame: React.FC = () => {
       if (g.state === 'start') {
         // Tutorial slide navigation
         if (g.tutorialPage < 3) {
-          // Check if skip button was clicked
-          const clickX = (inputRef.current as any)._lastClickX;
-          const clickY = (inputRef.current as any)._lastClickY;
-          if (clickX !== undefined && clickY !== undefined) {
-            const skipBtnX = window.innerWidth * 0.15;
-            const skipBtnY = window.innerHeight * 0.87;
-            if (Math.abs(clickX - skipBtnX) < 50 && Math.abs(clickY - skipBtnY) < 20) {
-              g.tutorialPage = 3;
-              g.tutorialFade = 0;
-              sfxSlideTransition();
-              delete (inputRef.current as any)._lastClickX;
-              delete (inputRef.current as any)._lastClickY;
-              return;
-            }
-            delete (inputRef.current as any)._lastClickX;
-            delete (inputRef.current as any)._lastClickY;
-          }
           g.tutorialPage++;
           g.tutorialFade = 0;
           sfxSlideTransition();
