@@ -686,6 +686,11 @@ export function sfxCloseCall() {
   setTimeout(() => playTone(1200, 0.03, 'sine', 0.03 * v), 30);
 }
 
+export function sfxAmmoTutorial() {
+  if (!isSoundEnabled('ammoTutorial')) return;
+  playCustomAudio('ammoTutorial');
+}
+
 // ─── Motorcycle Sounds ───
 
 export function sfxBikeEngine() {
