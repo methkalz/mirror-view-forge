@@ -6686,7 +6686,7 @@ function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: numbe
   drawGlassCard(ctx, card1X, card1Y, card1W, card1H, 'rgba(239, 68, 68, 0.8)');
   ctx.fillStyle = 'rgba(240, 240, 240, 0.95)';
   ctx.font = 'bold 22px Tajawal, sans-serif';
-  ctx.fillText('هل تُجيد الهرب؟', w / 2, card1Y + card1H * 0.35);
+  ctx.fillText('بتعرف تهِج؟', w / 2, card1Y + card1H * 0.35);
   ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
   ctx.font = '17px Tajawal, sans-serif';
   ctx.fillText('تسقط تهديدات من الأعلى', w / 2, card1Y + card1H * 0.58);
@@ -6699,7 +6699,7 @@ function renderTutorialSlide0(ctx: CanvasRenderingContext2D, w: number, h: numbe
   drawGlassCard(ctx, card2X, card2Y, card2W, card2H, 'rgba(251, 191, 36, 0.8)');
   ctx.fillStyle = 'rgba(251, 191, 36, 0.95)';
   ctx.font = 'bold 21px Tajawal, sans-serif';
-  ctx.fillText('بعيد لكن قريب', w / 2, card2Y + card2H * 0.25);
+  ctx.fillText('بعيد بس قريب', w / 2, card2Y + card2H * 0.25);
   ctx.fillStyle = 'rgba(230, 230, 230, 0.85)';
   ctx.font = '17px Tajawal, sans-serif';
   ctx.fillText('كلما سقط التهديد أقرب إليك', w / 2, card2Y + card2H * 0.48);
