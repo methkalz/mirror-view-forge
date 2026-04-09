@@ -192,11 +192,19 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           {/* Logo or Title */}
           {logoUrl ? (
             <div style={{ textAlign: 'center', marginBottom: 12 }}>
-              <img src={logoUrl} alt={title} style={{
-                width: 'clamp(80px, 25vw, 140px)', height: 'auto',
-                filter: 'drop-shadow(0 0 30px rgba(220,38,38,0.4))',
-                margin: '0 auto',
-              }} />
+              <video
+                src="/logo-video.webm"
+                autoPlay
+                loop
+                muted
+                playsInline
+                style={{
+                  width: 'clamp(120px, 40vw, 220px)', height: 'auto',
+                  filter: 'drop-shadow(0 0 30px rgba(220,38,38,0.4))',
+                  margin: '0 auto',
+                  borderRadius: 12,
+                }}
+              />
               {showTitle && (
                 <h1 style={{
                   fontFamily: "'Tajawal', system-ui, sans-serif",
