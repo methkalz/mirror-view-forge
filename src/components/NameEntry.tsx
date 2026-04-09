@@ -189,54 +189,22 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           alignItems: 'center', width: '100%',
           animation: 'nameEntryFadeIn 0.5s ease-out',
         }}>
-          {/* Logo or Title */}
-          {logoUrl ? (
-            <div style={{ textAlign: 'center', marginBottom: 12 }}>
-              <video
-                src="/logo-video.webm"
-                autoPlay
-                loop
-                muted
-                playsInline
-                style={{
-                  width: 'clamp(120px, 40vw, 220px)', height: 'auto',
-                  filter: 'drop-shadow(0 0 30px rgba(220,38,38,0.4))',
-                  margin: '0 auto',
-                  borderRadius: 12,
-                }}
-              />
-              {showTitle && (
-                <h1 style={{
-                  fontFamily: "'Tajawal', system-ui, sans-serif",
-                  fontSize: 'clamp(20px, 5vw, 32px)',
-                  fontWeight: 900,
-                  color: 'transparent',
-                  backgroundImage: 'linear-gradient(180deg, #f8fafc 0%, #94a3b8 100%)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  marginTop: 8,
-                  letterSpacing: -0.5,
-                }}>
-                  {title}
-                </h1>
-              )}
-            </div>
-          ) : (
-            <h1 style={{
-              fontFamily: "'Tajawal', system-ui, sans-serif",
-              fontSize: 'clamp(32px, 8vw, 56px)',
-              fontWeight: 900,
-              color: 'transparent',
-              backgroundImage: 'linear-gradient(180deg, #f8fafc 0%, #94a3b8 100%)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              marginBottom: 4,
-              letterSpacing: -1,
-              filter: 'drop-shadow(0 0 30px rgba(220,38,38,0.25))',
-            }}>
-              ☄️ {title}
-            </h1>
-          )}
+          {/* Logo Video */}
+          <div style={{ textAlign: 'center', marginBottom: 12 }}>
+            <video
+              src="/logo-video.webm"
+              autoPlay
+              loop
+              muted
+              playsInline
+              style={{
+                width: 'clamp(120px, 40vw, 220px)', height: 'auto',
+                filter: 'drop-shadow(0 0 30px rgba(220,38,38,0.4))',
+                margin: '0 auto',
+                borderRadius: 12,
+              }}
+            />
+          </div>
 
           {/* Subtitle */}
           <p style={{
