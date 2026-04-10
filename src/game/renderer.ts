@@ -15,6 +15,12 @@ let fallbackLoaded = false;
 fallbackImg.onload = () => { fallbackLoaded = true; };
 fallbackImg.src = bgFallbackUrl;
 
+// Game logo
+const gameLogoImg = new Image();
+let gameLogoLoaded = false;
+gameLogoImg.onload = () => { gameLogoLoaded = true; };
+gameLogoImg.src = '/logo-game.png';
+
 // Dynamic layers loaded from DB config
 let bgLayers: BgLayer[] = [];
 let bgPhases: BackgroundPhase[] = [];
