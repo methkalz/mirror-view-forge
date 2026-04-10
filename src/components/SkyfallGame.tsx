@@ -260,6 +260,9 @@ const SkyfallGame: React.FC = () => {
         }
         prevState = g.state;
       }
+      if (g.state === 'start') {
+        setCurrentTutorialPage(g.tutorialPage);
+      }
       if (g.state === 'playing') {
         setPlayerAmmo(g.player.ammo);
         setBulletLevel(g.bulletLevel);
