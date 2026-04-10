@@ -29,6 +29,7 @@ const SkyfallGame: React.FC = () => {
   const [playerAmmo, setPlayerAmmo] = useState(0);
   const [bulletLevel, setBulletLevel] = useState(1);
   const [controlTutorial, setControlTutorial] = useState<number>(-1); // -1=inactive, 0-3=step
+  const [currentTutorialPage, setCurrentTutorialPage] = useState(0);
   const pauseRef = useRef(false);
 
   // LiveOps state — always show name entry on mount (different player may use same device)
@@ -258,6 +259,9 @@ const SkyfallGame: React.FC = () => {
           if (ammoArrowTimerRef.current) clearTimeout(ammoArrowTimerRef.current);
         }
         prevState = g.state;
+      }
+      if (g.state === 'start') {
+        setCurrentTutorialPage(g.tutorialPage);
       }
       if (g.state === 'playing') {
         setPlayerAmmo(g.player.ammo);
@@ -519,8 +523,28 @@ const SkyfallGame: React.FC = () => {
         style={{ display: 'block', width: '100vw', height: 'var(--app-height, 100vh)', touchAction: 'none', userSelect: 'none' }}
       />
 
-      {/* Game Over: leaderboard is now rendered on Canvas */}
+      {/* Tutorial slide 1: help video overlay */}
+      {currentTutorialPage === 1 && !showButtons && (
+        <video
+          src="/help-1.webm"
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{
+            position: 'absolute',
+            bottom: '12%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 'clamp(160px, 55vw, 280px)',
+            height: 'auto',
+            pointerEvents: 'none',
+            zIndex: 5,
+          }}
+        />
+      )}
 
+      {/* Game Over: leaderboard is now rendered on Canvas */}
       {showButtons && (
         <>
            <button
