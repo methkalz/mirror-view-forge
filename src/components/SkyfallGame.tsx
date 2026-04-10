@@ -530,7 +530,7 @@ const SkyfallGame: React.FC = () => {
           alt=""
           style={{
             position: 'absolute',
-            bottom: '16%',
+            bottom: '22%',
             left: '50%',
             transform: 'translateX(-50%)',
             width: 'clamp(180px, 60vw, 300px)',
