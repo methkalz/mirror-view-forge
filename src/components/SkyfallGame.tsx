@@ -540,6 +540,7 @@ const SkyfallGame: React.FC = () => {
             height: 'auto',
             pointerEvents: 'none',
             zIndex: 5,
+            mixBlendMode: 'screen' as any,
           }}
         />
       )}
@@ -561,6 +562,7 @@ const SkyfallGame: React.FC = () => {
             height: 'auto',
             pointerEvents: 'none',
             zIndex: 5,
+            mixBlendMode: 'screen' as any,
           }}
         />
       )}
