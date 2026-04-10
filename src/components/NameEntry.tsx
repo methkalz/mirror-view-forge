@@ -189,18 +189,16 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           alignItems: 'center', width: '100%',
           animation: 'nameEntryFadeIn 0.5s ease-out',
         }}>
-          {/* Logo Video */}
+          {/* Logo Image */}
           <div style={{ textAlign: 'center', marginBottom: 12 }}>
-            <video
-              src="/logo-video.webm"
-              autoPlay
-              loop
-              muted
-              playsInline
+            <img
+              src="/logo-main.png"
+              alt="OHROB"
               style={{
-                width: 'clamp(220px, 80vw, 440px)', height: 'auto',
+                width: 'clamp(180px, 65vw, 360px)', height: 'auto',
                 filter: 'drop-shadow(0 0 30px rgba(220,38,38,0.4))',
                 margin: '0 auto',
+                animation: 'logoFloat 4s ease-in-out infinite',
               }}
             />
           </div>
