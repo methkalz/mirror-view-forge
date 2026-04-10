@@ -546,18 +546,15 @@ const SkyfallGame: React.FC = () => {
 
       {/* Tutorial slide 2: upgrade cards help video overlay */}
       {currentTutorialPage === 2 && !showButtons && (
-        <video
-          src="/help-2.webm"
-          autoPlay
-          loop
-          muted
-          playsInline
+        <img
+          src="/help-3.gif"
+          alt=""
           style={{
             position: 'absolute',
             bottom: '16%',
             left: '50%',
             transform: 'translateX(-50%)',
-            width: 'clamp(220px, 75vw, 360px)',
+            width: 'clamp(180px, 60vw, 300px)',
             height: 'auto',
             pointerEvents: 'none',
             zIndex: 5,
