@@ -29,6 +29,7 @@ const SkyfallGame: React.FC = () => {
   const [playerAmmo, setPlayerAmmo] = useState(0);
   const [bulletLevel, setBulletLevel] = useState(1);
   const [controlTutorial, setControlTutorial] = useState<number>(-1); // -1=inactive, 0-3=step
+  const [currentTutorialPage, setCurrentTutorialPage] = useState(0);
   const pauseRef = useRef(false);
 
   // LiveOps state — always show name entry on mount (different player may use same device)
