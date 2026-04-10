@@ -557,7 +557,7 @@ const SkyfallGame: React.FC = () => {
             bottom: '22%',
             left: '50%',
             transform: 'translateX(-50%)',
-            width: 'clamp(200px, 65vw, 320px)',
+            width: 'clamp(220px, 75vw, 360px)',
             height: 'auto',
             pointerEvents: 'none',
             zIndex: 5,
