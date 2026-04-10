@@ -6910,20 +6910,25 @@ function renderTutorialSlide3(ctx: CanvasRenderingContext2D, w: number, h: numbe
   // ── 3. Button "يلا يلا" — larger, elegant ──
   const btnW = 200, btnH = 48;
   const btnX = w / 2 - btnW / 2, btnY = h * 0.53;
-  const borderAlpha = 0.2 + Math.sin(t * 1.5) * 0.1;
+  const borderAlpha = 0.5 + Math.sin(t * 1.5) * 0.3;
 
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+  // Glowing background
+  ctx.fillStyle = `rgba(212, 175, 55, ${0.08 + Math.sin(t * 1.5) * 0.04})`;
   roundRect(ctx, btnX, btnY, btnW, btnH, 8);
   ctx.fill();
 
-  ctx.strokeStyle = `rgba(212, 175, 55, ${borderAlpha})`;
-  ctx.lineWidth = 0.8;
+  // Outer glow
+  ctx.shadowColor = 'rgba(251, 191, 36, 0.4)';
+  ctx.shadowBlur = 12;
+  ctx.strokeStyle = `rgba(251, 191, 36, ${borderAlpha})`;
+  ctx.lineWidth = 1.2;
   roundRect(ctx, btnX, btnY, btnW, btnH, 8);
   ctx.stroke();
+  ctx.shadowBlur = 0;
 
   ctx.direction = 'rtl';
-  ctx.fillStyle = 'rgba(235, 210, 150, 0.85)';
-  ctx.font = '20px Tajawal, sans-serif';
+  ctx.fillStyle = 'rgba(251, 210, 120, 1)';
+  ctx.font = 'bold 20px Tajawal, sans-serif';
   ctx.fillText('يلا يلا', w / 2, btnY + btnH / 2 + 7);
   ctx.direction = 'ltr';
 
