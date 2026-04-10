@@ -544,6 +544,27 @@ const SkyfallGame: React.FC = () => {
         />
       )}
 
+      {/* Tutorial slide 2: upgrade cards help video overlay */}
+      {currentTutorialPage === 2 && !showButtons && (
+        <video
+          src="/help-2.webm"
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{
+            position: 'absolute',
+            bottom: '22%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 'clamp(200px, 65vw, 320px)',
+            height: 'auto',
+            pointerEvents: 'none',
+            zIndex: 5,
+          }}
+        />
+      )}
+
       {/* Game Over: leaderboard is now rendered on Canvas */}
       {showButtons && (
         <>
