@@ -70,12 +70,7 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
       s.y = Math.random() * canvas.height;
       s.life = Math.random() * s.maxLife;
       sparksRef.current.push(s);
-        }
-        @keyframes logoFloat {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          25% { transform: translateY(-6px) rotate(0.5deg); }
-          75% { transform: translateY(4px) rotate(-0.5deg); }
-        }
+    }
 
     const animate = () => {
       const ctx = canvas.getContext('2d');
