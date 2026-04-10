@@ -523,8 +523,28 @@ const SkyfallGame: React.FC = () => {
         style={{ display: 'block', width: '100vw', height: 'var(--app-height, 100vh)', touchAction: 'none', userSelect: 'none' }}
       />
 
-      {/* Game Over: leaderboard is now rendered on Canvas */}
+      {/* Tutorial slide 1: help video overlay */}
+      {currentTutorialPage === 1 && !showButtons && (
+        <video
+          src="/help-1.webm"
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{
+            position: 'absolute',
+            bottom: '12%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 'clamp(160px, 55vw, 280px)',
+            height: 'auto',
+            pointerEvents: 'none',
+            zIndex: 5,
+          }}
+        />
+      )}
 
+      {/* Game Over: leaderboard is now rendered on Canvas */}
       {showButtons && (
         <>
            <button
