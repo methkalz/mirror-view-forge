@@ -198,7 +198,7 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
               muted
               playsInline
               style={{
-                width: 'clamp(160px, 55vw, 300px)', height: 'auto',
+                width: 'clamp(200px, 70vw, 400px)', height: 'auto',
                 filter: 'drop-shadow(0 0 30px rgba(220,38,38,0.4))',
                 margin: '0 auto',
               }}
