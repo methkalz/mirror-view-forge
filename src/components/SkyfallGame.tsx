@@ -530,7 +530,7 @@ const SkyfallGame: React.FC = () => {
           alt=""
           style={{
             position: 'absolute',
-            bottom: '16%',
+            bottom: '22%',
             left: '50%',
             transform: 'translateX(-50%)',
             width: 'clamp(180px, 60vw, 300px)',
@@ -544,11 +544,11 @@ const SkyfallGame: React.FC = () => {
       {/* Tutorial slide 2: upgrade cards help video overlay */}
       {currentTutorialPage === 2 && !showButtons && (
         <img
-          src="/help-3.gif"
+          src="/help-2.gif"
           alt=""
           style={{
             position: 'absolute',
-            bottom: '16%',
+            bottom: '22%',
             left: '50%',
             transform: 'translateX(-50%)',
             width: 'clamp(180px, 60vw, 300px)',
