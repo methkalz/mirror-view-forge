@@ -163,13 +163,16 @@ const GameLoader: React.FC<GameLoaderProps> = ({ onLoaded, progress }) => {
             background: 'radial-gradient(circle, rgba(220,38,38,0.12) 0%, transparent 70%)',
             animation: 'ringPulse 2.5s ease-in-out infinite',
           }} />
-          <div style={{
-            fontSize: 52,
-            animation: 'loaderFloat 3s ease-in-out infinite',
-            filter: 'drop-shadow(0 0 24px rgba(220,38,38,0.5)) drop-shadow(0 0 60px rgba(220,38,38,0.15))',
-          }}>
-            ☄️
-          </div>
+          <img
+            src="/loader-logo.png"
+            alt="Logo"
+            style={{
+              width: 120,
+              height: 'auto',
+              animation: 'loaderFloat 3s ease-in-out infinite',
+              filter: 'drop-shadow(0 0 24px rgba(220,38,38,0.5)) drop-shadow(0 0 60px rgba(220,38,38,0.15))',
+            }}
+          />
         </div>
 
         {/* Progress section */}
