@@ -15,6 +15,12 @@ let fallbackLoaded = false;
 fallbackImg.onload = () => { fallbackLoaded = true; };
 fallbackImg.src = bgFallbackUrl;
 
+// Game logo
+const gameLogoImg = new Image();
+let gameLogoLoaded = false;
+gameLogoImg.onload = () => { gameLogoLoaded = true; };
+gameLogoImg.src = '/logo-game.png';
+
 // Dynamic layers loaded from DB config
 let bgLayers: BgLayer[] = [];
 let bgPhases: BackgroundPhase[] = [];
@@ -6887,18 +6893,14 @@ function renderTutorialSlide3(ctx: CanvasRenderingContext2D, w: number, h: numbe
   ctx.save();
   ctx.textAlign = 'center';
 
-  // ── 1. Logo placeholder area (h*0.15 → h*0.38) ──
+  // ── 1. Game Logo ──
   const logoY = h * 0.265;
-  const logoW = 160, logoH = h * 0.18;
-  ctx.strokeStyle = 'rgba(212, 175, 55, 0.15)';
-  ctx.lineWidth = 0.5;
-  ctx.setLineDash([4, 4]);
-  roundRect(ctx, w / 2 - logoW / 2, logoY - logoH / 2, logoW, logoH, 8);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = 'rgba(212, 175, 55, 0.12)';
-  ctx.font = '11px monospace';
-  ctx.fillText('LOGO', w / 2, logoY + 4);
+  if (gameLogoImg && gameLogoLoaded) {
+    const aspect = gameLogoImg.naturalWidth / gameLogoImg.naturalHeight;
+    const logoDrawW = Math.min(w * 0.75, 300);
+    const logoDrawH = logoDrawW / aspect;
+    ctx.drawImage(gameLogoImg, w / 2 - logoDrawW / 2, logoY - logoDrawH / 2, logoDrawW, logoDrawH);
+  }
 
   // ── 2. "هل أنت مستعد؟" ──
   ctx.direction = 'rtl';
