@@ -533,10 +533,10 @@ const SkyfallGame: React.FC = () => {
           playsInline
           style={{
             position: 'absolute',
-            bottom: '12%',
+            bottom: '22%',
             left: '50%',
             transform: 'translateX(-50%)',
-            width: 'clamp(160px, 55vw, 280px)',
+            width: 'clamp(200px, 65vw, 320px)',
             height: 'auto',
             pointerEvents: 'none',
             zIndex: 5,
