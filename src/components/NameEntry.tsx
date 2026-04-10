@@ -436,6 +436,11 @@ const NameEntry: React.FC<NameEntryProps> = ({ onSubmit, defaultName = '', brand
           0%, 100% { opacity: 0.2; transform: scaleX(0.5); }
           50% { opacity: 0.7; transform: scaleX(1); }
         }
+        @keyframes logoFloat {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          25% { transform: translateY(-6px) rotate(0.5deg); }
+          75% { transform: translateY(4px) rotate(-0.5deg); }
+        }
       `}</style>
     </div>
   );
