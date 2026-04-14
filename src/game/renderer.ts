@@ -4462,18 +4462,43 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
 }
 
 
-function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: number; y: number }; facingRight: boolean; wheelAnim: number; shakeOffset: { x: number; y: number }; phase: string; speed: number }, g: GameData, showPassenger: boolean = false, passengerDismounting: boolean = false, dismountProgress: number = 0) {
+function renderMotorcycle(
+  ctx: CanvasRenderingContext2D,
+  bike: {
+    pos: { x: number; y: number };
+    facingRight: boolean;
+    wheelAnim: number;
+    shakeOffset: { x: number; y: number };
+    phase: string;
+    speed: number;
+    suspCompress?: number;
+    leanAngle?: number;
+    rpmPhase?: number;
+  },
+  g: GameData,
+  showPassenger: boolean = false,
+  passengerDismounting: boolean = false,
+  dismountProgress: number = 0
+) {
   ctx.save();
   ctx.translate(bike.pos.x, bike.pos.y);
   const dir = bike.facingRight ? 1 : -1;
   ctx.scale(dir, 1);
   ctx.scale(2.4, 2.4);
 
-  // Suspension physics: front fork compresses on braking
+  // ── Spring-driven suspension (front fork compresses on braking) ──
+  const suspFromEngine = bike.suspCompress ?? 0;
   const isBrakingNow = bike.phase === 'idle' || bike.speed < 50;
-  const suspTarget = isBrakingNow ? -1.5 : 0;
-  const suspCompress = suspTarget; // simplified spring
-  const rearSuspCompress = suspTarget * 0.4; // rear reacts less
+  // The engine already runs a critically-damped spring; fall back to a
+  // static value if the bike somehow isn't physics-enabled.
+  const suspCompress = suspFromEngine !== 0 ? suspFromEngine : (isBrakingNow ? -1.5 : 0);
+  const rearSuspCompress = suspCompress * 0.4; // rear reacts less
+
+  // Apply visual body lean (pitch) — front lifts on squat, drops on dive
+  const lean = bike.leanAngle ?? 0;
+  if (Math.abs(lean) > 0.001) {
+    ctx.rotate(lean);
+  }
 
   ctx.translate(bike.shakeOffset.x, bike.shakeOffset.y + suspCompress * 0.3);
 
@@ -5314,6 +5339,93 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.bezierCurveTo(-5, -21, 5, -20, 14, -16);
   ctx.stroke();
 
+  // ── Fresnel rim on fuel tank (edge bloom that sells reflective paint) ──
+  {
+    const rimGradTank = ctx.createLinearGradient(-8, -22, -8, -13);
+    rimGradTank.addColorStop(0, 'rgba(140,200,255,0.22)');
+    rimGradTank.addColorStop(0.5, 'rgba(140,200,255,0.06)');
+    rimGradTank.addColorStop(1, 'rgba(140,200,255,0)');
+    ctx.strokeStyle = rimGradTank as unknown as string;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(-8, -15);
+    ctx.bezierCurveTo(-8, -20, -4, -21, 0, -20.5);
+    ctx.bezierCurveTo(4, -20, 8, -19, 8, -16);
+    ctx.strokeStyle = 'rgba(170,220,255,0.18)';
+    ctx.stroke();
+  }
+
+  // ── Dynamic paint sparkle (occasional micro-highlight on tank) ──
+  {
+    const sparkT = (g.elapsed * 0.8) % 3;
+    if (sparkT < 0.4) {
+      const sparkAlpha = (1 - sparkT / 0.4) * 0.6;
+      const sparkX = -4 + Math.sin(g.elapsed * 2.3) * 4;
+      ctx.fillStyle = `rgba(255,255,255,${sparkAlpha})`;
+      ctx.beginPath();
+      ctx.arc(sparkX, -19, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      // Micro-ray
+      ctx.strokeStyle = `rgba(255,255,255,${sparkAlpha * 0.5})`;
+      ctx.lineWidth = 0.2;
+      ctx.beginPath();
+      ctx.moveTo(sparkX - 1.5, -19);
+      ctx.lineTo(sparkX + 1.5, -19);
+      ctx.moveTo(sparkX, -20.5);
+      ctx.lineTo(sparkX, -17.5);
+      ctx.stroke();
+    }
+  }
+
+  // ── Under-body LED accent strip (modern styling, animated breathing) ──
+  {
+    const breathe = 0.55 + Math.sin(g.elapsed * 1.8) * 0.25;
+    const ledGrad = ctx.createLinearGradient(-18, -1, 14, -1);
+    ledGrad.addColorStop(0, `rgba(80,160,255,0)`);
+    ledGrad.addColorStop(0.2, `rgba(120,180,255,${0.22 * breathe})`);
+    ledGrad.addColorStop(0.5, `rgba(150,200,255,${0.38 * breathe})`);
+    ledGrad.addColorStop(0.8, `rgba(120,180,255,${0.22 * breathe})`);
+    ledGrad.addColorStop(1, `rgba(80,160,255,0)`);
+    ctx.fillStyle = ledGrad;
+    ctx.beginPath();
+    ctx.roundRect(-18, -1.2, 32, 0.9, 0.4);
+    ctx.fill();
+    // Core hotline
+    ctx.strokeStyle = `rgba(220,240,255,${0.5 * breathe})`;
+    ctx.lineWidth = 0.4;
+    ctx.beginPath();
+    ctx.moveTo(-15, -0.8);
+    ctx.lineTo(10, -0.8);
+    ctx.stroke();
+    // Glow wash on ground beneath the strip
+    const ledGlow = ctx.createRadialGradient(-4, 3, 0, -4, 3, 22);
+    ledGlow.addColorStop(0, `rgba(120,180,255,${0.12 * breathe})`);
+    ledGlow.addColorStop(1, 'rgba(120,180,255,0)');
+    ctx.fillStyle = ledGlow;
+    ctx.beginPath();
+    ctx.ellipse(-4, 3, 22, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ── Front running lights (twin amber LEDs flanking the headlight) ──
+  {
+    const amberPulse = 0.7 + Math.sin(g.elapsed * 3) * 0.3;
+    for (const dy of [-1.5, 1.5]) {
+      ctx.fillStyle = `rgba(255,180,60,${0.9 * amberPulse})`;
+      ctx.beginPath();
+      ctx.arc(frontWX + 2, -10 + dy * 1.3, 0.55, 0, Math.PI * 2);
+      ctx.fill();
+      // Halo
+      const amberGrad = ctx.createRadialGradient(frontWX + 2, -10 + dy * 1.3, 0, frontWX + 2, -10 + dy * 1.3, 2);
+      amberGrad.addColorStop(0, `rgba(255,180,60,${0.4 * amberPulse})`);
+      amberGrad.addColorStop(1, 'rgba(255,180,60,0)');
+      ctx.fillStyle = amberGrad;
+      ctx.beginPath();
+      ctx.arc(frontWX + 2, -10 + dy * 1.3, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   // ── Orange delivery box (OTLOP) ──
   ctx.fillStyle = '#e8760a';
   const boxX = -24, boxY = -32, boxW = 16, boxH = 14;
@@ -5352,40 +5464,67 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.restore();
 
   // ── Volumetric Headlight System ──
-  const flickerIntensity = 0.85 + Math.sin(g.elapsed * 8) * 0.1 + Math.sin(g.elapsed * 13) * 0.05;
+  // Deterministic micro-flicker (faster + jitter) sells a working halogen lamp
+  const flickerIntensity =
+    0.88 +
+    Math.sin(g.elapsed * 11) * 0.07 +
+    Math.sin(g.elapsed * 23) * 0.04 +
+    Math.sin(g.elapsed * 47) * 0.02;
   const showLight = bike.phase === 'idle' ? flickerIntensity > 0.82 : true;
   if (showLight) {
     const hlX = frontWX + 5;
     const hlY = -10;
-    
-    // ── Volumetric Light Cone (triangle from headlight forward) ──
+
+    // ── Multi-layer volumetric cone with falloff + god-ray slices ──
     ctx.save();
-    const coneLen = 50;
-    const coneAngle = 0.22; // ~25° half-angle
-    const coneGrad = ctx.createLinearGradient(hlX, hlY, hlX + coneLen, hlY);
-    coneGrad.addColorStop(0, `rgba(255,255,200,${0.12 * flickerIntensity})`);
-    coneGrad.addColorStop(0.4, `rgba(255,255,180,${0.06 * flickerIntensity})`);
-    coneGrad.addColorStop(1, 'rgba(255,255,150,0)');
-    ctx.fillStyle = coneGrad;
+    const coneLen = 60;
+    const coneHalfAngle = 0.26; // ~30° half-angle — wider, more modern look
+
+    // Layer A: wide ambient haze (low alpha, soft edges)
+    const hazeGrad = ctx.createLinearGradient(hlX, hlY, hlX + coneLen, hlY);
+    hazeGrad.addColorStop(0, `rgba(255,250,210,${0.16 * flickerIntensity})`);
+    hazeGrad.addColorStop(0.35, `rgba(255,245,190,${0.08 * flickerIntensity})`);
+    hazeGrad.addColorStop(0.75, `rgba(255,240,170,${0.03 * flickerIntensity})`);
+    hazeGrad.addColorStop(1, 'rgba(255,230,150,0)');
+    ctx.fillStyle = hazeGrad;
     ctx.beginPath();
     ctx.moveTo(hlX + 3, hlY);
-    ctx.lineTo(hlX + coneLen, hlY - Math.sin(coneAngle) * coneLen);
-    ctx.lineTo(hlX + coneLen, hlY + Math.sin(coneAngle) * coneLen + 8);
+    ctx.lineTo(hlX + coneLen, hlY - Math.sin(coneHalfAngle) * coneLen);
+    ctx.lineTo(hlX + coneLen, hlY + Math.sin(coneHalfAngle) * coneLen + 10);
     ctx.closePath();
     ctx.fill();
-    
-    // ── Light Rays (oscillating thin lines inside cone) ──
-    for (let r = 0; r < 4; r++) {
-      const rayAngle = (r - 1.5) * 0.08 + Math.sin(g.elapsed * 1.5 + r * 2) * 0.03;
-      const rayLen = 35 + r * 8;
-      const rayAlpha = (0.06 + Math.sin(g.elapsed * 2 + r * 1.7) * 0.03) * flickerIntensity;
-      ctx.strokeStyle = `rgba(255,255,220,${rayAlpha})`;
-      ctx.lineWidth = 0.5;
+
+    // Layer B: tighter core beam
+    const coreGrad = ctx.createLinearGradient(hlX, hlY, hlX + coneLen * 0.7, hlY);
+    coreGrad.addColorStop(0, `rgba(255,255,230,${0.28 * flickerIntensity})`);
+    coreGrad.addColorStop(0.5, `rgba(255,250,200,${0.12 * flickerIntensity})`);
+    coreGrad.addColorStop(1, 'rgba(255,240,180,0)');
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath();
+    ctx.moveTo(hlX + 3, hlY);
+    ctx.lineTo(hlX + coneLen * 0.8, hlY - Math.sin(coneHalfAngle * 0.55) * coneLen);
+    ctx.lineTo(hlX + coneLen * 0.8, hlY + Math.sin(coneHalfAngle * 0.55) * coneLen + 6);
+    ctx.closePath();
+    ctx.fill();
+
+    // Layer C: noisy god-rays that drift with time
+    ctx.globalCompositeOperation = 'lighter';
+    for (let r = 0; r < 6; r++) {
+      const seed = r * 1.73 + g.elapsed * 0.4;
+      const rayAngle = (r - 2.5) * 0.07 + Math.sin(seed * 1.3) * 0.02;
+      const rayLen = 38 + r * 5 + Math.sin(seed * 0.9) * 4;
+      const rayAlpha = (0.06 + Math.sin(seed * 1.7) * 0.035) * flickerIntensity;
+      const rayGrad = ctx.createLinearGradient(hlX + 3, hlY, hlX + Math.cos(rayAngle) * rayLen, hlY + Math.sin(rayAngle) * rayLen);
+      rayGrad.addColorStop(0, `rgba(255,255,220,${Math.max(0, rayAlpha)})`);
+      rayGrad.addColorStop(1, 'rgba(255,255,220,0)');
+      ctx.strokeStyle = rayGrad as unknown as string;
+      ctx.lineWidth = 0.55 + (r % 2) * 0.2;
       ctx.beginPath();
       ctx.moveTo(hlX + 3, hlY);
       ctx.lineTo(hlX + Math.cos(rayAngle) * rayLen, hlY + Math.sin(rayAngle) * rayLen);
       ctx.stroke();
     }
+    ctx.globalCompositeOperation = 'source-over';
     ctx.restore();
     
     // ── Multi-Layer Ground Pool ──
@@ -5529,16 +5668,30 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   ctx.globalAlpha = 1;
   ctx.restore();
 
-  // ── Dynamic Shadow (from overhead street light) ──
+  // ── Dynamic soft shadow (layered contact + cast) ──
   ctx.save();
-  ctx.globalAlpha = 0.08;
-  ctx.fillStyle = '#000';
+  // Soft contact shadow directly under the tyres (short and darkest)
+  const contactGrad = ctx.createRadialGradient(0, 6, 0, 0, 6, 22);
+  contactGrad.addColorStop(0, 'rgba(0,0,0,0.28)');
+  contactGrad.addColorStop(0.6, 'rgba(0,0,0,0.08)');
+  contactGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = contactGrad;
   ctx.beginPath();
-  // Long shadow stretching to the right-back
-  ctx.moveTo(-25, 5);
-  ctx.lineTo(-40, 12);
-  ctx.lineTo(10, 12);
-  ctx.lineTo(25, 5);
+  ctx.ellipse(0, 6, 22, 2.6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cast shadow stretched away from the headlight (diagonal)
+  ctx.globalAlpha = 0.12;
+  const castGrad = ctx.createLinearGradient(-40, 10, 20, 5);
+  castGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  castGrad.addColorStop(0.3, 'rgba(0,0,0,0.55)');
+  castGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = castGrad;
+  ctx.beginPath();
+  ctx.moveTo(-30, 5);
+  ctx.lineTo(-42, 12);
+  ctx.lineTo(14, 12);
+  ctx.lineTo(24, 5);
   ctx.closePath();
   ctx.fill();
   ctx.globalAlpha = 1;
@@ -5608,6 +5761,87 @@ function renderMotorcycle(ctx: CanvasRenderingContext2D, bike: { pos: { x: numbe
   // so this block is now empty — the character is drawn in renderIntroBike before renderMotorcycle
 
   ctx.restore();
+
+  // ── Emit world-space point lights so the scene picks the bike up as a light source ──
+  // Done AFTER ctx.restore() so we can compute coordinates in world space directly.
+  emitBikeLights(bike);
+}
+
+/**
+ * Dispatches point lights for the bike into the global lighting buffer.
+ * Coordinates are world-space; the renderer composites lights in the same
+ * camera transform so the bike will softly illuminate nearby pixels.
+ */
+function emitBikeLights(bike: {
+  pos: { x: number; y: number };
+  facingRight: boolean;
+  phase: string;
+  speed: number;
+}) {
+  const dir = bike.facingRight ? 1 : -1;
+  // Scale factor used inside renderMotorcycle = 2.4
+  const S = 2.4;
+  const baseY = bike.pos.y;
+
+  // ── Headlight: warm pool cast forward onto the ground ──
+  const hlLocalX = (22 + 5) * dir; // frontWX + 5
+  const hlLocalY = -10;
+  const isLeaving = bike.phase === 'leaving';
+  const hlActive = bike.phase === 'idle' || bike.phase === 'leaving' || bike.phase === 'entering';
+  if (hlActive) {
+    emitLight({
+      x: bike.pos.x + hlLocalX * S,
+      y: baseY + hlLocalY * S,
+      radius: 140,
+      color: 'rgba(255,220,150,',
+      intensity: isLeaving ? 0.85 : 0.65,
+      flicker: 0.12,
+    });
+    // Ground pool — warmer, tighter
+    emitLight({
+      x: bike.pos.x + (40 * dir) * 0.9,
+      y: baseY + 4 * S,
+      radius: 90,
+      color: 'rgba(255,210,140,',
+      intensity: 0.55,
+      flicker: 0.06,
+    });
+  }
+
+  // ── Taillight: small red glow, brighter when braking ──
+  const tailLocalX = (-20 - 2) * dir;
+  const tailLocalY = -10;
+  const isBraking = bike.phase === 'idle' || bike.speed < 30;
+  emitLight({
+    x: bike.pos.x + tailLocalX * S,
+    y: baseY + tailLocalY * S,
+    radius: isBraking ? 70 : 40,
+    color: 'rgba(255,40,40,',
+    intensity: isBraking ? 0.7 : 0.35,
+    flicker: 0.08,
+  });
+
+  // ── Engine heat glow: subtle orange smoulder underneath ──
+  if (bike.phase === 'idle' || Math.abs(bike.speed) > 20) {
+    emitLight({
+      x: bike.pos.x,
+      y: baseY + -3 * S,
+      radius: 55,
+      color: 'rgba(255,150,60,',
+      intensity: 0.28,
+      flicker: 0.25,
+    });
+  }
+
+  // ── Underbody accent LED: cool cyan strip (modern styling) ──
+  emitLight({
+    x: bike.pos.x - 8 * dir,
+    y: baseY + 2 * S,
+    radius: 45,
+    color: 'rgba(120,180,255,',
+    intensity: 0.3,
+    flicker: 0.04,
+  });
 }
 
 function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {

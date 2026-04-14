@@ -237,6 +237,15 @@ export interface DeliveryBike {
   wheelAnim: number;
   idleTimer: number;
   shakeOffset: Vec2;
+  /** Spring-based suspension compression (negative = compressed). */
+  suspCompress?: number;
+  suspVelocity?: number;
+  /** Body lean angle in radians (positive = wheelie, negative = nose-dive). */
+  leanAngle?: number;
+  /** Previous frame's speed — used to derive acceleration for lean & squat. */
+  prevSpeed?: number;
+  /** Engine RPM oscillator phase (drives vibration). */
+  rpmPhase?: number;
 }
 
 export interface UpgradeCard {

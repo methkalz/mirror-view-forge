@@ -8,14 +8,19 @@ import { getFromPool, releaseAll } from './pool';
 import { addTrauma, updateCameraShake, resetTrauma } from './cameraShake';
 import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameOverVoice, sfxGameStart, sfxUpgradeSelect, sfxScoreTick, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber, playCustomAudio } from './audio';
 
-const DASH_SPEED = 500;
+const DASH_SPEED = 520;
 const DASH_DURATION = 0.25;
 const DASH_COOLDOWN = 0.8;
 const CLOSE_CALL_DIST = 45;
 const PLAYER_RADIUS = 22;
 const GROUND_RATIO = 0.78; // Ground plane at 78% of screen height
-const PLAYER_ACCEL = 1200;
+// Movement feel tuning.
+// Terminal velocity = ACCEL / FRICTION = 1600 / 8 = 200 px/s base,
+// scaled by player.speedMultiplier (up to 1.6x via upgrade).
+// Previous values (1200/8 = 150) felt sluggish on larger viewports.
+const PLAYER_ACCEL = 1600;
 const PLAYER_FRICTION = 8;
+const PLAYER_MAX_SPEED = 340; // hard cap to prevent dash chaining exploits
 
 export function createGame(w: number, h: number): GameData {
   const groundY = h * GROUND_RATIO;
@@ -300,6 +305,9 @@ export function updateIntro(g: GameData, dt: number) {
 
   // Update wheel animation
   bike.wheelAnim += bike.speed * dt * 0.05;
+
+  // Suspension + lean physics for intro bike too
+  updateBikePhysics(bike, dt);
 
   const centerX = g.width / 2;
 
@@ -1265,6 +1273,58 @@ function updateDeliveryBike(g: GameData, dt: number) {
     bike.shakeOffset.x = Math.sin(t) * 0.1;
     bike.shakeOffset.y = Math.sin(t * 1.5) * 0.08;
   }
+
+  // ── Spring-based suspension + body lean (realistic weight transfer) ──
+  updateBikePhysics(bike, dt);
+}
+
+/**
+ * Integrates a critically-damped spring for the bike's suspension and
+ * derives a visual lean angle from the rate of speed change.
+ * This lives in engine (not renderer) because it is gameplay state that
+ * other systems — and the renderer — read.
+ */
+function updateBikePhysics(bike: DeliveryBike, dt: number) {
+  // Initialise transient fields on first use
+  if (bike.suspCompress === undefined) bike.suspCompress = 0;
+  if (bike.suspVelocity === undefined) bike.suspVelocity = 0;
+  if (bike.leanAngle === undefined) bike.leanAngle = 0;
+  if (bike.prevSpeed === undefined) bike.prevSpeed = bike.speed;
+  if (bike.rpmPhase === undefined) bike.rpmPhase = 0;
+
+  // Instantaneous acceleration from speed delta
+  const dv = bike.speed - bike.prevSpeed;
+  const accelX = dv / Math.max(dt, 1e-4);
+  bike.prevSpeed = bike.speed;
+
+  // Target suspension compression: nose-dive on braking, squat on acceleration
+  // Positive accelX (toward positive X) pushes weight rearward → front lifts.
+  // Braking (accelX opposite to speed) pushes weight forward → front dips.
+  const isBraking = bike.phase === 'slowing' || (bike.phase === 'idle' && Math.abs(bike.speed) < 50);
+  const targetCompress = isBraking
+    ? -2.4 // nose dives
+    : bike.phase === 'leaving'
+      ? 0.6 // rear squats slightly on launch
+      : 0;
+
+  // Critically damped spring: F = -k*x - c*v
+  const stiffness = 90;
+  const damping = 14;
+  const displacement = bike.suspCompress - targetCompress;
+  const springForce = -stiffness * displacement - damping * bike.suspVelocity;
+  bike.suspVelocity += springForce * dt;
+  bike.suspCompress += bike.suspVelocity * dt;
+
+  // Body lean: derive from horizontal acceleration relative to speed direction
+  // Clamp so it's purely visual and never feels floaty.
+  const signedAccel = accelX * (bike.facingRight ? 1 : -1);
+  const targetLean = Math.max(-0.08, Math.min(0.06, -signedAccel * 0.00018));
+  // Smooth toward target so lean animates naturally
+  bike.leanAngle += (targetLean - bike.leanAngle) * Math.min(1, dt * 8);
+
+  // Engine RPM phase advances faster as the bike moves harder
+  const rpmRate = 18 + Math.min(28, Math.abs(bike.speed) * 0.15);
+  bike.rpmPhase += rpmRate * dt;
 }
 
 function startNextWave(g: GameData) {
@@ -1713,9 +1773,14 @@ export function update(g: GameData, input: InputState, dt: number) {
       p.anim = 'idle';
     }
   } else if (p.anim !== 'hit') {
-    // Apply acceleration with friction
-    p.velocity.x += moveX * PLAYER_ACCEL * dt;
+    // Apply acceleration with friction. speedMultiplier comes from upgrades.
+    const accel = PLAYER_ACCEL * p.speedMultiplier;
+    p.velocity.x += moveX * accel * dt;
     p.velocity.x -= p.velocity.x * PLAYER_FRICTION * dt;
+    // Enforce terminal velocity cap (scaled by upgrades)
+    const maxV = PLAYER_MAX_SPEED * p.speedMultiplier;
+    if (p.velocity.x > maxV) p.velocity.x = maxV;
+    else if (p.velocity.x < -maxV) p.velocity.x = -maxV;
 
     // Walking animation
     if (Math.abs(moveX) > 0.1) {
