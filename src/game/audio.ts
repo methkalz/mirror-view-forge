@@ -1,4 +1,5 @@
 import { fetchAudioConfig, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type VolumeMode } from './config';
+import { getMasterGain, getSfxGain, getMusicGain } from './settings';
 
 let audioCtx: AudioContext | null = null;
 let ambientNode: AudioBufferSourceNode | null = null;
@@ -215,13 +216,23 @@ export function playCustomAudio(key: string): boolean {
   return true;
 }
 
+/** Categorise a sound key into sfx vs music for user volume scaling. */
+function categoryGain(key: string): number {
+  // Music-like categories
+  if (key === 'ambient' || key === 'menuMusic' || key.includes('music')) {
+    return getMusicGain();
+  }
+  return getSfxGain();
+}
+
 function getSoundVolume(key: string, baseVol: number): number {
   const s = audioSettings.get(key);
-  if (!s) return baseVol;
+  if (!s) return baseVol * getMasterGain();
   if (!s.enabled) return 0;
   // Exponential scaling for perceptible slider response
   const v = s.volume;
-  return baseVol * (v * v);
+  const userGain = categoryGain(key);
+  return baseVol * (v * v) * userGain;
 }
 
 function isSoundEnabled(key: string): boolean {

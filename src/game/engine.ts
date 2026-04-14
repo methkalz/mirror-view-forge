@@ -4,7 +4,8 @@ import {
   FirePool, GasCloud, UpgradeCard, DeliveryBike, IntroPhase
 } from './types';
 import type { DifficultyProfile, RemoteWaveConfig } from './config';
-import { getFromPool } from './pool';
+import { getFromPool, releaseAll } from './pool';
+import { addTrauma, updateCameraShake, resetTrauma } from './cameraShake';
 import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameOverVoice, sfxGameStart, sfxUpgradeSelect, sfxScoreTick, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber, playCustomAudio } from './audio';
 
 const DASH_SPEED = 500;
@@ -198,6 +199,7 @@ export function resetGame(g: GameData) {
   g.powerUpTimer = 10 + Math.random() * 5;
   g.droneTimer = 90; // will be overridden below by wave1 recipe
   g.screenShake = { x: 0, y: 0 };
+  resetTrauma();
   g.damageFlash = 0;
   g.camera = { x: 0, y: 0 };
   g.stats = { closeCalls: 0, powerUpsCollected: 0, dronesDestroyed: 0, timeSurvived: 0, bossesDefeated: 0 };
@@ -698,14 +700,31 @@ export const WAVE_WARNINGS: Record<number, { id: string; text: string; sub: stri
   ],
 };
 
+/** Factory for default Hazard pool entries. */
+function createHazardDefault(): Hazard {
+  return {
+    active: false, type: 'shrapnel',
+    pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
+    speed: 0, size: 0, damage: 0,
+    warningTimer: 0, warningDuration: 0,
+    falling: false, rotation: 0, trailTimer: 0,
+  };
+}
+
+/** Factory for default PowerUp pool entries. */
+function createPowerUpDefault(): PowerUp {
+  return {
+    active: false, type: 'medkit',
+    pos: { x: 0, y: 0 }, size: 0,
+    parachuting: false, fallSpeed: 0,
+    bobTimer: 0, groundTimer: 0,
+  };
+}
+
 function spawnHazard(g: GameData, type: HazardType) {
   const recipe = getWaveRecipe(g.waveNumber, g);
 
-  const h = getFromPool<Hazard>(g.hazards, () => ({
-    active: false, type: 'shrapnel', pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
-    speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
-    rotation: 0, trailTimer: 0
-  }));
+  const h = getFromPool<Hazard>(g.hazards, createHazardDefault);
   const groundY = g.height * GROUND_RATIO;
   const tx = 30 + Math.random() * (g.width - 60);
   const ty = groundY - 5 + Math.random() * 10;
@@ -765,10 +784,7 @@ function spawnPowerUp(g: GameData) {
   let r = Math.random() * totalW;
   let type: PowerUpType = 'medkit';
   for (const e of weighted) { r -= e.w; if (r <= 0) { type = e.type; break; } }
-  const pu = getFromPool<PowerUp>(g.powerUps, () => ({
-    active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
-    parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
-  }), 20);
+  const pu = getFromPool<PowerUp>(g.powerUps, createPowerUpDefault, 20);
   pu.type = type;
   pu.pos = { x: 40 + Math.random() * (g.width - 80), y: -20 };
   pu.size = 14;
@@ -814,13 +830,23 @@ function configureDroneByTier(d: Drone, tier: DroneTier, elapsed: number) {
   d.bombCooldown = 4 + Math.random() * 2;
 }
 
-function spawnDrone(g: GameData, forcedTier?: DroneTier) {
-  const d = getFromPool<Drone>(g.drones, () => ({
+/**
+ * Factory for a default Drone object used by every spawn function.
+ * Kept near its consumers so refactors stay local and type-checked.
+ */
+function createDroneDefault(): Drone {
+  return {
     active: false, pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
-    speed: 0, size: 0, health: 0, maxHealth: 0, state: 'entering' as const, entryTarget: { x: 0, y: 0 },
-    tier: 'scout' as const, bombTimer: 0, bombCooldown: 0, hoverTimer: 0,
-    aggroDelay: 0, trackingAccuracy: 0, wobble: 0, altitudeOffset: 0, colorHue: 0
-  }), 10);
+    speed: 0, size: 0, health: 0, maxHealth: 0,
+    state: 'entering', entryTarget: { x: 0, y: 0 },
+    tier: 'scout', bombTimer: 0, bombCooldown: 0, hoverTimer: 0,
+    aggroDelay: 0, trackingAccuracy: 0, wobble: 0,
+    altitudeOffset: 0, colorHue: 0,
+  };
+}
+
+function spawnDrone(g: GameData, forcedTier?: DroneTier) {
+  const d = getFromPool<Drone>(g.drones, createDroneDefault, 10);
   const side = Math.random() < 0.5 ? 0 : 1;
   const w = g.width, h = g.height;
 
@@ -849,12 +875,7 @@ function spawnDrone(g: GameData, forcedTier?: DroneTier) {
 }
 
 function spawnCargoDrone(g: GameData) {
-  const d = getFromPool<Drone>(g.drones, () => ({
-    active: false, pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
-    speed: 0, size: 0, health: 0, maxHealth: 0, state: 'entering' as const, entryTarget: { x: 0, y: 0 },
-    tier: 'scout' as const, bombTimer: 0, bombCooldown: 0, hoverTimer: 0,
-    aggroDelay: 0, trackingAccuracy: 0, wobble: 0, altitudeOffset: 0, colorHue: 0
-  }), 10);
+  const d = getFromPool<Drone>(g.drones, createDroneDefault, 10);
   const fromRight = Math.random() > 0.5;
   const startX = fromRight ? g.width + 40 : -40;
   const flyY = g.height * (0.08 + Math.random() * 0.04);
@@ -881,12 +902,7 @@ function spawnCargoDrone(g: GameData) {
 }
 
 function spawnIncendiaryDrone(g: GameData) {
-  const d = getFromPool<Drone>(g.drones, () => ({
-    active: false, pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
-    speed: 0, size: 0, health: 0, maxHealth: 0, state: 'entering' as const, entryTarget: { x: 0, y: 0 },
-    tier: 'scout' as const, bombTimer: 0, bombCooldown: 0, hoverTimer: 0,
-    aggroDelay: 0, trackingAccuracy: 0, wobble: 0, altitudeOffset: 0, colorHue: 0
-  }), 10);
+  const d = getFromPool<Drone>(g.drones, createDroneDefault, 10);
   const side = Math.random() < 0.5 ? 0 : 1;
   d.pos = { x: side === 0 ? -20 : g.width + 20, y: g.height * 0.15 + Math.random() * g.height * 0.15 };
   d.entryTarget = { x: g.width * 0.2 + Math.random() * g.width * 0.6, y: g.height * 0.2 + Math.random() * g.height * 0.1 };
@@ -909,12 +925,7 @@ function spawnIncendiaryDrone(g: GameData) {
 }
 
 function spawnChemicalDrone(g: GameData) {
-  const d = getFromPool<Drone>(g.drones, () => ({
-    active: false, pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
-    speed: 0, size: 0, health: 0, maxHealth: 0, state: 'entering' as const, entryTarget: { x: 0, y: 0 },
-    tier: 'scout' as const, bombTimer: 0, bombCooldown: 0, hoverTimer: 0,
-    aggroDelay: 0, trackingAccuracy: 0, wobble: 0, altitudeOffset: 0, colorHue: 0
-  }), 10);
+  const d = getFromPool<Drone>(g.drones, createDroneDefault, 10);
   const side = Math.random() < 0.5 ? 0 : 1;
   d.pos = { x: side === 0 ? -20 : g.width + 20, y: g.height * 0.12 + Math.random() * g.height * 0.15 };
   d.entryTarget = { x: g.width * 0.2 + Math.random() * g.width * 0.6, y: g.height * 0.18 + Math.random() * g.height * 0.1 };
@@ -1008,10 +1019,7 @@ function applyWaveEvent(g: GameData, id: string) {
 
   // Extinguisher drop
   if (id.includes('extinguisher')) {
-    const pu = getFromPool<PowerUp>(g.powerUps, () => ({
-      active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
-      parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
-    }), 20);
+    const pu = getFromPool<PowerUp>(g.powerUps, createPowerUpDefault, 20);
     pu.type = 'extinguisher';
     pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
     pu.size = 14; pu.parachuting = true; pu.fallSpeed = 30; pu.bobTimer = 0; pu.groundTimer = 0;
@@ -1056,6 +1064,7 @@ function damagePlayer(g: GameData, dmg: number, sourcePos: Vec2) {
     p.shieldTimer = 0;
     spawnParticles(g, p.pos, 10, '#60a5fa', 120);
     addFloatingText(g, 'Shield!', p.pos, '#60a5fa');
+    addTrauma(0.2); // light shake when shield absorbs
     return;
   }
   p.health = Math.max(0, p.health - dmg);
@@ -1063,6 +1072,8 @@ function damagePlayer(g: GameData, dmg: number, sourcePos: Vec2) {
   p.anim = 'hit';
   g.damageFlash = 0.35;
   g.hitStopTimer = Math.max(g.hitStopTimer, 0.06);
+  // Trauma scaled by damage taken — bigger hits = bigger shake
+  addTrauma(Math.min(0.75, 0.3 + dmg / 40));
   // Knockback
   const kdir = sourcePos.x < p.pos.x ? 1 : -1;
   p.velocity.x += kdir * 200;
@@ -1073,6 +1084,7 @@ function damagePlayer(g: GameData, dmg: number, sourcePos: Vec2) {
     g.deathTimer = 1.5;
     g.slowMoFactor = 0.15;
     g.hitStopTimer = Math.max(g.hitStopTimer, 0.15);
+    addTrauma(1.0); // critical shake on death
   }
 }
 
@@ -1212,10 +1224,7 @@ function updateDeliveryBike(g: GameData, dt: number) {
     if (!bike.dropped) {
       bike.dropped = true;
       // Drop water bottle
-      const pu = getFromPool<PowerUp>(g.powerUps, () => ({
-        active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
-        parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
-      }), 20);
+      const pu = getFromPool<PowerUp>(g.powerUps, createPowerUpDefault, 20);
       pu.type = 'water';
       pu.pos = { x: bike.pos.x, y: groundY - 12 };
       pu.size = 12;
@@ -1875,15 +1884,11 @@ export function update(g: GameData, input: InputState, dt: number) {
 
         // Release glowing bombs downward — use recipe cluster splits
         const recipe = getWaveRecipe(g.waveNumber, g);
-        let splitCount = Math.max(2, recipe.clusterSplits);
+        const splitCount = Math.max(2, recipe.clusterSplits);
 
         for (let i = 0; i < splitCount; i++) {
           const spreadX = (i - (splitCount - 1) / 2) * 35 + (Math.random() - 0.5) * 20;
-          const sh = getFromPool<Hazard>(g.hazards, () => ({
-            active: false, type: 'shrapnel', pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
-            speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
-            rotation: 0, trailTimer: 0
-          }));
+          const sh = getFromPool<Hazard>(g.hazards, createHazardDefault);
           sh.type = 'shrapnel';
           sh.isClusterBomb = true;
           sh.pos = { x: h.pos.x + spreadX, y: h.pos.y + 10 };
@@ -1968,12 +1973,8 @@ export function update(g: GameData, input: InputState, dt: number) {
         
         g.craters.push({ pos: { ...h.targetPos }, size: h.size * 2.5, life: 8, maxLife: 8 });
         
-        const shakeStr = h.type === 'missile' ? 12 : 5;
-        const shakeDirX = h.targetPos.x < g.width / 2 ? 1 : -1;
-        g.screenShake = {
-          x: shakeDirX * shakeStr * (0.5 + Math.random() * 0.5),
-          y: -(shakeStr * 0.7 + Math.random() * shakeStr * 0.3)
-        };
+        // Trauma-based screen shake — missiles feel heavier than shrapnel
+        addTrauma(h.type === 'missile' ? 0.55 : 0.3);
 
         const distToPlayer = dist(h.targetPos, p.pos);
         if (distToPlayer < h.size * 1.5 + p.size) {
@@ -2008,10 +2009,7 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (!g.firstAmmoDropped && g.elapsed >= 10) {
       // Force first drop to be ammo
       g.firstAmmoDropped = true;
-      const pu = getFromPool<PowerUp>(g.powerUps, () => ({
-        active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
-        parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
-      }), 20);
+      const pu = getFromPool<PowerUp>(g.powerUps, createPowerUpDefault, 20);
       pu.type = 'ammo';
       pu.pos = { x: 40 + Math.random() * (g.width - 80), y: -20 };
       pu.size = 14;
@@ -2424,11 +2422,7 @@ export function update(g: GameData, input: InputState, dt: number) {
             const projDy = p.pos.y - d.pos.y;
             const projDd = Math.sqrt(projDx * projDx + projDy * projDy);
             if (projDd > 0) {
-              const proj = getFromPool<Hazard>(g.hazards, () => ({
-                active: false, type: 'shrapnel', pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
-                speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
-                rotation: 0, trailTimer: 0
-              }));
+              const proj = getFromPool<Hazard>(g.hazards, createHazardDefault);
               proj.type = 'shrapnel';
               proj.pos = { x: d.pos.x, y: d.pos.y + d.size * 0.5 };
               proj.targetPos = { x: p.pos.x, y: g.height * GROUND_RATIO };
@@ -2559,11 +2553,7 @@ export function update(g: GameData, input: InputState, dt: number) {
           if (d.bombTimer >= d.bombCooldown && Math.abs(d.pos.x - p.pos.x) < 40) {
             d.bombTimer = 0;
             // Spawn a hazard directly below drone
-            const bomb = getFromPool<Hazard>(g.hazards, () => ({
-              active: false, type: 'shrapnel', pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
-              speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
-              rotation: 0, trailTimer: 0
-            }));
+            const bomb = getFromPool<Hazard>(g.hazards, createHazardDefault);
             bomb.type = 'shrapnel';
             bomb.pos = { x: d.pos.x, y: d.pos.y + d.size };
             bomb.targetPos = { x: d.pos.x + (Math.random() - 0.5) * 30, y: g.height * GROUND_RATIO };
@@ -2692,10 +2682,7 @@ export function update(g: GameData, input: InputState, dt: number) {
           incrementCombo(g);
           // Cargo drone drops its payload
           if (d.tier === 'cargo' && d.cargoType) {
-            const pu = getFromPool<PowerUp>(g.powerUps, () => ({
-              active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
-              parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
-            }), 20);
+            const pu = getFromPool<PowerUp>(g.powerUps, createPowerUpDefault, 20);
             pu.type = d.cargoType;
             pu.pos = { x: d.pos.x, y: d.pos.y };
             pu.size = 14;
@@ -2760,11 +2747,8 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (g.floatingTexts[i].life <= 0) g.floatingTexts.splice(i, 1);
   }
 
-  // === Screen shake decay ===
-  g.screenShake.x *= 0.82;
-  g.screenShake.y *= 0.82;
-  if (Math.abs(g.screenShake.x) < 0.3) g.screenShake.x = 0;
-  if (Math.abs(g.screenShake.y) < 0.3) g.screenShake.y = 0;
+  // === Screen shake (trauma-based) ===
+  updateCameraShake(g, dt);
 
   if (g.damageFlash > 0) g.damageFlash -= dt * 2;
 
@@ -2883,10 +2867,7 @@ function updateBoss(g: GameData, dt: number) {
     g.slowMoFactor = 0.1;
     // Drop a random power-up as mid-fight reward
     const rewardTypes: PowerUpType[] = ['medkit', 'ammo', 'shield'];
-    const pu = getFromPool<PowerUp>(g.powerUps, () => ({
-      active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
-      parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
-    }), 20);
+    const pu = getFromPool<PowerUp>(g.powerUps, createPowerUpDefault, 20);
     pu.type = rewardTypes[Math.floor(Math.random() * rewardTypes.length)];
     pu.pos = { x: g.width * 0.3 + Math.random() * g.width * 0.4, y: -20 };
     pu.size = 14;
@@ -2911,11 +2892,7 @@ function updateBoss(g: GameData, dt: number) {
       for (let i = 0; i < 3; i++) {
         setTimeout(() => {
           if (!g.boss || g.boss.defeated) return;
-          const h = getFromPool<Hazard>(g.hazards, () => ({
-            active: false, type: 'missile' as const, pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
-            speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
-            rotation: 0, trailTimer: 0
-          }));
+          const h = getFromPool<Hazard>(g.hazards, createHazardDefault);
           h.type = 'missile';
           h.pos = { x: g.boss!.pos.x + (Math.random() - 0.5) * 30, y: g.boss!.pos.y + 20 };
           h.targetPos = { x: p.pos.x + (Math.random() - 0.5) * 60, y: groundY };
@@ -2937,11 +2914,7 @@ function updateBoss(g: GameData, dt: number) {
         setTimeout(() => {
           if (!g.boss || g.boss.defeated) return;
           const bx = (g.width / (bombCount + 1)) * (i + 1);
-          const h = getFromPool<Hazard>(g.hazards, () => ({
-            active: false, type: 'shrapnel' as const, pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
-            speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
-            rotation: 0, trailTimer: 0
-          }));
+          const h = getFromPool<Hazard>(g.hazards, createHazardDefault);
           h.type = 'cluster';
           h.pos = { x: bx, y: g.boss!.pos.y + 20 };
           h.targetPos = { x: bx, y: groundY };
@@ -2964,11 +2937,7 @@ function updateBoss(g: GameData, dt: number) {
       }
       // Also fire 2 missiles
       for (let i = 0; i < 2; i++) {
-        const h = getFromPool<Hazard>(g.hazards, () => ({
-          active: false, type: 'missile' as const, pos: { x: 0, y: 0 }, targetPos: { x: 0, y: 0 },
-          speed: 0, size: 0, damage: 0, warningTimer: 0, warningDuration: 0, falling: false,
-          rotation: 0, trailTimer: 0
-        }));
+        const h = getFromPool<Hazard>(g.hazards, createHazardDefault);
         h.type = 'missile';
         h.pos = { x: boss.pos.x + (i === 0 ? -20 : 20), y: boss.pos.y + 15 };
         h.targetPos = { x: p.pos.x + (Math.random() - 0.5) * 80, y: groundY };
@@ -3030,7 +2999,7 @@ function defeatBoss(g: GameData) {
   setTimeout(() => {
     addExplosion(g, boss.pos, 60);
     spawnParticles(g, boss.pos, 25, '#fbbf24', 300);
-    g.screenShake = { x: 20, y: -20 };
+    addTrauma(1.0); // Critical shake on boss kill
     g.boss = null;
   }, 1300);
 
@@ -3039,10 +3008,7 @@ function defeatBoss(g: GameData) {
   addFloatingText(g, `BOSS DOWN! +500`, boss.pos, '#fbbf24');
 
   // Guaranteed power-up drop
-  const pu = getFromPool<PowerUp>(g.powerUps, () => ({
-    active: false, type: 'medkit', pos: { x: 0, y: 0 }, size: 0,
-    parachuting: false, fallSpeed: 0, bobTimer: 0, groundTimer: 0
-  }), 20);
+  const pu = getFromPool<PowerUp>(g.powerUps, createPowerUpDefault, 20);
   const types: PowerUpType[] = ['medkit', 'shield', 'ammo', 'slowmo'];
   pu.type = types[Math.floor(Math.random() * types.length)];
   pu.pos = { x: boss.pos.x, y: boss.pos.y };
