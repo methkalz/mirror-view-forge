@@ -1,6 +1,8 @@
 import { GameData, Player, FirePool, GasCloud } from './types';
 import bgFallbackUrl from '../assets/bg-skyfall.jpeg';
 import type { BackgroundPhase, DisplayMode } from './backgroundConfig';
+import { applyBloom, renderVignette, renderDamageFlash } from './render/postFx';
+import { beginFrameLights, emitLight, renderLights } from './render/lighting';
 
 // ─── Multi-Image Background System ───────────────────
 interface BgLayer {
@@ -5901,6 +5903,9 @@ function renderWaveIndicator(ctx: CanvasRenderingContext2D, g: GameData) {
 
 // ─── Main Render ──────────────────────────────────────
 export function render(ctx: CanvasRenderingContext2D, g: GameData) {
+  // Clear per-frame lighting accumulator
+  beginFrameLights();
+
   ctx.save();
 
   // Camera zoom effect (bike entrance)
@@ -6044,6 +6049,61 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.restore();
   }
 
+  // ── Emit dynamic point lights from key entities (world space) ──
+  // Explosions → bright orange flash that fades
+  for (const ex of g.explosions) {
+    const progress = 1 - ex.life / ex.maxLife;
+    const fade = 1 - progress;
+    if (fade > 0.05) {
+      emitLight({
+        x: ex.pos.x,
+        y: ex.pos.y,
+        radius: ex.size * 4,
+        color: 'rgba(255,170,60,',
+        intensity: fade * 0.9,
+        flicker: 0.1,
+      });
+    }
+  }
+  // Fire pools → pulsing red/orange glow
+  for (const fp of g.firePools) {
+    const life = Math.max(0, Math.min(1, fp.life / fp.maxLife));
+    if (life > 0.05) {
+      emitLight({
+        x: fp.pos.x,
+        y: fp.pos.y - 6,
+        radius: fp.size * 1.8,
+        color: 'rgba(255,120,30,',
+        intensity: life * 0.55,
+        flicker: 0.35,
+      });
+    }
+  }
+  // Boss engines → warm glow behind the plane
+  if (g.boss && !g.boss.defeated) {
+    emitLight({
+      x: g.boss.pos.x - g.boss.size * 0.3,
+      y: g.boss.pos.y,
+      radius: g.boss.size * 1.2,
+      color: 'rgba(255,140,50,',
+      intensity: 0.4,
+      flicker: 0.2,
+    });
+  }
+  // Player glow (subtle cyan) — lets player "see" themselves in low light
+  if (!isIntro && g.deathPhase === 'alive') {
+    emitLight({
+      x: g.player.pos.x,
+      y: g.player.pos.y - 18,
+      radius: 70,
+      color: 'rgba(120,180,255,',
+      intensity: 0.25,
+    });
+  }
+
+  // Composite all lights in world space (before we restore camera transform)
+  renderLights(ctx);
+
   ctx.restore();
 
   // ── Letterbox Bars during intro ──
@@ -6058,46 +6118,17 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
     }
   }
 
+  // Post-processing: bloom over bright hazards/explosions before overlays
+  applyBloom(ctx, g);
+
   // Lightning flash
   renderLightning(ctx, g);
 
   // Dynamic vignette — intensifies with low health (red)
-  {
-    const { width: vw, height: vh } = g;
-    const cx = vw / 2, cy = vh / 2;
-    const r = Math.max(vw, vh) * 0.7;
-    const hpRatio = g.player.health / g.player.maxHealth;
-    const dangerIntensity = Math.max(0, 1 - hpRatio * 2); // 0 above 50%, up to 1 at 0%
-    const baseAlpha = 0.45 + dangerIntensity * 0.25;
-    const redTint = dangerIntensity * 0.3;
-
-    const vigGrad = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r);
-    vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
-    vigGrad.addColorStop(0.6, `rgba(${Math.round(redTint * 200)},0,0,0.08)`);
-    vigGrad.addColorStop(1, `rgba(${Math.round(redTint * 200)},0,0,${baseAlpha})`);
-    ctx.fillStyle = vigGrad;
-    ctx.fillRect(0, 0, vw, vh);
-  }
+  renderVignette(ctx, g);
 
   // Damage flash with chromatic aberration
-  if (g.damageFlash > 0) {
-    ctx.fillStyle = `rgba(200, 30, 30, ${g.damageFlash * 0.4})`;
-    ctx.fillRect(0, 0, g.width, g.height);
-    // Chromatic aberration effect — shift edges
-    const abStr = Math.min(3, g.damageFlash * 6);
-    if (abStr > 0.5) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = abStr * 0.06;
-      // Red channel shift right
-      ctx.fillStyle = 'rgba(255,0,0,1)';
-      ctx.fillRect(abStr, 0, g.width, g.height);
-      // Blue channel shift left
-      ctx.fillStyle = 'rgba(0,0,255,1)';
-      ctx.fillRect(-abStr, 0, g.width, g.height);
-      ctx.restore();
-    }
-  }
+  renderDamageFlash(ctx, g);
 
   // Death transition vignette
   if (g.deathPhase === 'dying') {

@@ -11,6 +11,10 @@ import { supabase } from '@/integrations/supabase/client';
 import NameEntry from './NameEntry';
 import Leaderboard from './Leaderboard';
 import GameLoader from './GameLoader';
+import PauseMenu from './PauseMenu';
+import SettingsDrawer from './SettingsDrawer';
+import { setBloomQuality } from '@/game/render/postFx';
+import { getSettings, subscribeSettings, hapticsEnabled } from '@/game/settings';
 
 const SkyfallGame: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -22,6 +26,7 @@ const SkyfallGame: React.FC = () => {
     keys: new Set(),
     touchJoystick: { active: false, origin: { x: 0, y: 0 }, current: { x: 0, y: 0 } },
     touchDash: false,
+    pointer: {},
   });
   const rafRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
@@ -48,6 +53,28 @@ const SkyfallGame: React.FC = () => {
   const [ammoArrowVisible, setAmmoArrowVisible] = useState(false);
   const ammoTutorialShownRef = useRef(false);
   const ammoArrowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Pause + settings state
+  const [paused, setPaused] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const pausedRef = useRef(false);
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
+
+  // Sync user settings → graphics quality
+  useEffect(() => {
+    const applyQuality = (s: ReturnType<typeof getSettings>) => {
+      if (s.quality === 'low') {
+        setBloomQuality({ enabled: false });
+      } else if (s.quality === 'medium') {
+        setBloomQuality({ enabled: true, intensity: 0.3 });
+      } else {
+        setBloomQuality({ enabled: true, intensity: 0.45 });
+      }
+    };
+    applyQuality(getSettings());
+    const unsub = subscribeSettings(applyQuality);
+    return () => { unsub(); };
+  }, []);
 
   // Load leaderboard on mount + presence tracking
   useEffect(() => {
@@ -190,20 +217,15 @@ const SkyfallGame: React.FC = () => {
           updateIntro(g, dt);
           render(ctx, g);
         } else if (g.state === 'playing') {
-          // Pause during control tutorial
-          if (pauseRef.current) {
+          // Pause gates: user pause, control tutorial, admin global pause
+          const isPaused = pausedRef.current || pauseRef.current || remoteConfig?.globalPause;
+          if (isPaused) {
             render(ctx, g);
           } else if (remoteConfig?.ddaEnabled && g.player.health >= g.player.maxHealth) {
             if (g.elapsed > 15 && g.difficulty < 5) {
               g.difficulty = Math.min(5, g.difficulty + 0.002 * dt);
             }
-            if (remoteConfig?.globalPause) {
-              render(ctx, g);
-            } else {
-              update(g, inputRef.current, dt);
-              render(ctx, g);
-            }
-          } else if (remoteConfig?.globalPause) {
+            update(g, inputRef.current, dt);
             render(ctx, g);
           } else {
             update(g, inputRef.current, dt);
@@ -312,8 +334,9 @@ const SkyfallGame: React.FC = () => {
         const cvs = canvasRef.current;
         if (cvs) {
           const rect = cvs.getBoundingClientRect();
-          const rawX = (inputRef.current as any)._lastClickX;
-          const rawY = (inputRef.current as any)._lastClickY;
+          const pointer = inputRef.current.pointer;
+          const rawX = pointer?.lastClickX;
+          const rawY = pointer?.lastClickY;
           if (rawX !== undefined && rawY !== undefined) {
             const cx = rawX - rect.left;
             const cy = rawY - rect.top;
@@ -323,13 +346,17 @@ const SkyfallGame: React.FC = () => {
             const btnX = canvasW / 2 - btnW / 2;
             const btnY = canvasH * 0.92 - btnH / 2;
             if (cx < btnX || cx > btnX + btnW || cy < btnY || cy > btnY + btnH) {
-              delete (inputRef.current as any)._lastClickX;
-              delete (inputRef.current as any)._lastClickY;
+              if (inputRef.current.pointer) {
+                inputRef.current.pointer.lastClickX = undefined;
+                inputRef.current.pointer.lastClickY = undefined;
+              }
               return;
             }
           }
-          delete (inputRef.current as any)._lastClickX;
-          delete (inputRef.current as any)._lastClickY;
+          if (inputRef.current.pointer) {
+            inputRef.current.pointer.lastClickX = undefined;
+            inputRef.current.pointer.lastClickY = undefined;
+          }
         }
         stopGameOverVoice();
         resumeAudio();
@@ -359,8 +386,18 @@ const SkyfallGame: React.FC = () => {
       if (key === ' ' || key === 'space') { e.preventDefault(); inputRef.current.dash = true; }
       if (key === 'f') inputRef.current.shoot = true;
       if (key === 'enter') startOrRestart();
+      // ESC toggles pause during gameplay
+      if (key === 'escape' && g.state === 'playing') {
+        e.preventDefault();
+        setPaused((p) => !p);
+      }
     };
     const onKeyUp = (e: KeyboardEvent) => { inputRef.current.keys.delete(e.key.toLowerCase()); };
+
+    const ensurePointer = () => {
+      if (!inputRef.current.pointer) inputRef.current.pointer = {};
+      return inputRef.current.pointer;
+    };
 
     const onPointerDown = (e: PointerEvent) => {
       if ((e.target as HTMLElement) !== canvas) return;
@@ -372,10 +409,11 @@ const SkyfallGame: React.FC = () => {
         return;
       }
       // Store swipe start + click position
-      (inputRef.current as any)._swipeStartX = e.clientX;
-      (inputRef.current as any)._swipeStartY = e.clientY;
-      (inputRef.current as any)._lastClickX = e.clientX;
-      (inputRef.current as any)._lastClickY = e.clientY;
+      const pointer = ensurePointer();
+      pointer.swipeStartX = e.clientX;
+      pointer.swipeStartY = e.clientY;
+      pointer.lastClickX = e.clientX;
+      pointer.lastClickY = e.clientY;
       // Don't call startOrRestart here — wait for pointerup to detect swipe vs tap
       if (g.state !== 'start' || g.tutorialPage >= 3) {
         startOrRestart();
@@ -385,12 +423,15 @@ const SkyfallGame: React.FC = () => {
     const onPointerUp = (e: PointerEvent) => {
       if ((e.target as HTMLElement) !== canvas) return;
       if (g.state !== 'start') return;
-      const startX = (inputRef.current as any)._swipeStartX;
+      const pointer = inputRef.current.pointer;
+      const startX = pointer?.swipeStartX;
       if (startX === undefined) return;
       const deltaX = e.clientX - startX;
-      const deltaY = Math.abs(e.clientY - ((inputRef.current as any)._swipeStartY || 0));
-      delete (inputRef.current as any)._swipeStartX;
-      delete (inputRef.current as any)._swipeStartY;
+      const deltaY = Math.abs(e.clientY - (pointer?.swipeStartY ?? 0));
+      if (pointer) {
+        pointer.swipeStartX = undefined;
+        pointer.swipeStartY = undefined;
+      }
 
       // Horizontal swipe detected
       if (Math.abs(deltaX) > 50 && deltaY < 100) {
@@ -408,8 +449,9 @@ const SkyfallGame: React.FC = () => {
 
       // Small movement = tap
       if (Math.abs(deltaX) < 15) {
-        (inputRef.current as any)._lastClickX = e.clientX;
-        (inputRef.current as any)._lastClickY = e.clientY;
+        const p2 = ensurePointer();
+        p2.lastClickX = e.clientX;
+        p2.lastClickY = e.clientY;
         startOrRestart();
       }
     };
@@ -455,6 +497,7 @@ const SkyfallGame: React.FC = () => {
   }, []);
 
   const vibrate = (ms: number = 15) => {
+    if (!hapticsEnabled()) return;
     if (navigator.vibrate) { navigator.vibrate(ms); return; }
     if (hapticRef.current) { hapticRef.current.label.click(); }
   };
@@ -558,6 +601,65 @@ const SkyfallGame: React.FC = () => {
           }}
         />
       )}
+
+      {/* Pause button — visible during gameplay */}
+      {showButtons && !paused && (
+        <button
+          id="btn-pause"
+          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setPaused(true); }}
+          aria-label="pause"
+          style={{
+            position: 'absolute',
+            top: 'calc(14px + env(safe-area-inset-top, 0px))',
+            right: 14,
+            width: 40,
+            height: 40,
+            borderRadius: 12,
+            border: '1px solid rgba(255,255,255,0.15)',
+            background: 'rgba(0,0,0,0.45)',
+            color: 'rgba(255,255,255,0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            touchAction: 'none',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            cursor: 'pointer',
+            zIndex: 15,
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+          }}
+        >
+          <svg width="14" height="16" viewBox="0 0 14 16" fill="currentColor">
+            <rect x="1" y="1" width="4" height="14" rx="1" />
+            <rect x="9" y="1" width="4" height="14" rx="1" />
+          </svg>
+        </button>
+      )}
+
+      {/* Pause menu overlay */}
+      <PauseMenu
+        open={paused}
+        onResume={() => setPaused(false)}
+        onRestart={() => {
+          setPaused(false);
+          const g = gameRef.current;
+          if (g) {
+            g.state = 'start';
+            g.tutorialPage = 3;
+          }
+        }}
+        onOpenSettings={() => setSettingsOpen(true)}
+        onQuit={() => {
+          setPaused(false);
+          const g = gameRef.current;
+          if (g) g.state = 'start';
+          setShowButtons(false);
+        }}
+      />
+
+      {/* Settings drawer */}
+      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       {/* Game Over: leaderboard is now rendered on Canvas */}
       {showButtons && (

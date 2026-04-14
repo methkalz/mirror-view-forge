@@ -1,5 +1,10 @@
 import SkyfallGame from '@/components/SkyfallGame';
+import GameErrorBoundary from '@/components/GameErrorBoundary';
 
-const Index = () => <SkyfallGame />;
+const Index = () => (
+  <GameErrorBoundary>
+    <SkyfallGame />
+  </GameErrorBoundary>
+);
 
 export default Index;

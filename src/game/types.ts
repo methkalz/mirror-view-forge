@@ -362,4 +362,15 @@ export interface InputState {
   touchJoystick: { active: boolean; origin: Vec2; current: Vec2 };
   touchDash: boolean;
   cardClick?: { x: number; y: number } | null;
+  /**
+   * Internal pointer tracking for swipe/tap disambiguation and
+   * game-over button hit testing. Kept under a nested object so
+   * no stray fields leak onto InputState's top level.
+   */
+  pointer?: {
+    lastClickX?: number;
+    lastClickY?: number;
+    swipeStartX?: number;
+    swipeStartY?: number;
+  };
 }
