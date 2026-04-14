@@ -625,66 +625,222 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
     if (hz.type === 'missile') {
       const angle = Math.atan2(hz.targetPos.y - hz.pos.y, hz.targetPos.x - hz.pos.x);
       ctx.rotate(angle);
-      // Body with metallic gradient
-      const bodyGrad = ctx.createLinearGradient(-hz.size, -hz.size * 0.35, -hz.size, hz.size * 0.35);
-      bodyGrad.addColorStop(0, '#7a8088');
-      bodyGrad.addColorStop(0.4, '#5a5f65');
-      bodyGrad.addColorStop(1, '#3a3f45');
-      ctx.fillStyle = bodyGrad;
+
+      // ═══ Cylindrical Warhead Missile (redesigned) ═══
+      const bodyLen = hz.size * 2.4;   // length forward of tail
+      const bodyR = hz.size * 0.42;    // radius
+      const noseLen = hz.size * 0.9;
+      const tailX = -hz.size * 0.9;
+      const t = performance.now() * 0.001 + hz.pos.x * 0.01; // stable per-missile phase
+
+      // ── Exhaust (drawn first so body overlaps it) ──
+      // Outer diffuse heat
+      const heatGrad = ctx.createRadialGradient(tailX - 3, 0, 0, tailX - 24, 0, 26);
+      heatGrad.addColorStop(0, 'rgba(255,120,40,0.35)');
+      heatGrad.addColorStop(0.4, 'rgba(255,80,20,0.18)');
+      heatGrad.addColorStop(1, 'rgba(120,30,0,0)');
+      ctx.fillStyle = heatGrad;
       ctx.beginPath();
-      ctx.moveTo(hz.size * 1.2, 0);
-      ctx.lineTo(-hz.size, -hz.size * 0.35);
-      ctx.lineTo(-hz.size, hz.size * 0.35);
+      ctx.ellipse(tailX - 12, 0, 22, 5 + bodyR * 0.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Main plume (multi-layered flame)
+      // Flicker based on deterministic noise
+      const flicker = Math.sin(t * 60) * 0.5 + Math.sin(t * 97) * 0.3;
+      const plumeLen = 22 + flicker * 3;
+
+      // Outer orange cone
+      ctx.fillStyle = '#ea580c';
+      ctx.beginPath();
+      ctx.moveTo(tailX, -bodyR * 0.75);
+      ctx.quadraticCurveTo(tailX - plumeLen * 0.4, -bodyR * 0.95, tailX - plumeLen, 0);
+      ctx.quadraticCurveTo(tailX - plumeLen * 0.4, bodyR * 0.95, tailX, bodyR * 0.75);
       ctx.closePath();
       ctx.fill();
-      // Outline
-      ctx.strokeStyle = '#9a9fa8';
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-      // Nose cone (red)
-      ctx.fillStyle = '#dc2626';
-      ctx.beginPath();
-      ctx.moveTo(hz.size * 1.2, 0);
-      ctx.lineTo(hz.size * 0.7, -hz.size * 0.2);
-      ctx.lineTo(hz.size * 0.7, hz.size * 0.2);
-      ctx.closePath();
-      ctx.fill();
-      // Stripes
-      ctx.fillStyle = 'rgba(255,255,255,0.15)';
-      ctx.fillRect(-hz.size * 0.2, -hz.size * 0.3, 3, hz.size * 0.6);
-      // Fins
-      ctx.fillStyle = '#4b5563';
-      ctx.beginPath();
-      ctx.moveTo(-hz.size * 0.8, -hz.size * 0.35);
-      ctx.lineTo(-hz.size * 1.1, -hz.size * 0.7);
-      ctx.lineTo(-hz.size * 0.5, -hz.size * 0.35);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(-hz.size * 0.8, hz.size * 0.35);
-      ctx.lineTo(-hz.size * 1.1, hz.size * 0.7);
-      ctx.lineTo(-hz.size * 0.5, hz.size * 0.35);
-      ctx.fill();
-      // Exhaust flame (multi-layered)
-      ctx.fillStyle = '#f97316';
-      ctx.beginPath();
-      ctx.moveTo(-hz.size, 0);
-      ctx.lineTo(-hz.size - 14 - Math.random() * 10, -4 - Math.random() * 3);
-      ctx.lineTo(-hz.size - 14 - Math.random() * 10, 4 + Math.random() * 3);
-      ctx.closePath();
-      ctx.fill();
+
+      // Inner yellow cone
       ctx.fillStyle = '#fbbf24';
       ctx.beginPath();
-      ctx.moveTo(-hz.size, 0);
-      ctx.lineTo(-hz.size - 8 - Math.random() * 5, -2);
-      ctx.lineTo(-hz.size - 8 - Math.random() * 5, 2);
+      ctx.moveTo(tailX, -bodyR * 0.5);
+      ctx.quadraticCurveTo(tailX - plumeLen * 0.35, -bodyR * 0.6, tailX - plumeLen * 0.75, 0);
+      ctx.quadraticCurveTo(tailX - plumeLen * 0.35, bodyR * 0.6, tailX, bodyR * 0.5);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = '#fff8';
+
+      // Hot white core
+      ctx.fillStyle = 'rgba(255,255,240,0.92)';
       ctx.beginPath();
-      ctx.moveTo(-hz.size, 0);
-      ctx.lineTo(-hz.size - 3 - Math.random() * 3, -1);
-      ctx.lineTo(-hz.size - 3 - Math.random() * 3, 1);
+      ctx.moveTo(tailX, -bodyR * 0.3);
+      ctx.quadraticCurveTo(tailX - plumeLen * 0.25, -bodyR * 0.35, tailX - plumeLen * 0.5, 0);
+      ctx.quadraticCurveTo(tailX - plumeLen * 0.25, bodyR * 0.35, tailX, bodyR * 0.3);
       ctx.closePath();
+      ctx.fill();
+
+      // Shock diamonds (three ovals along the plume — the classic "mach disk" look)
+      for (let d = 0; d < 3; d++) {
+        const dx = tailX - 5 - d * 6;
+        const alpha = 0.35 - d * 0.08 + Math.sin(t * 40 + d) * 0.08;
+        ctx.fillStyle = `rgba(255,255,220,${Math.max(0, alpha)})`;
+        ctx.beginPath();
+        ctx.ellipse(dx, 0, 1.2, bodyR * 0.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // ── Cylindrical body with proper cross-section shading ──
+      const bodyGrad = ctx.createLinearGradient(0, -bodyR, 0, bodyR);
+      bodyGrad.addColorStop(0, '#e8e8ec');      // top highlight
+      bodyGrad.addColorStop(0.15, '#b8bcc4');
+      bodyGrad.addColorStop(0.4, '#888c94');    // base mid
+      bodyGrad.addColorStop(0.65, '#5a5f68');
+      bodyGrad.addColorStop(0.85, '#3a3f48');
+      bodyGrad.addColorStop(1, '#24272e');      // bottom shadow
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.moveTo(tailX, -bodyR);
+      ctx.lineTo(bodyLen * 0.75, -bodyR);
+      // Rounded nose shoulder
+      ctx.quadraticCurveTo(bodyLen * 0.85, -bodyR, bodyLen * 0.85, -bodyR * 0.75);
+      ctx.lineTo(bodyLen * 0.85, bodyR * 0.75);
+      ctx.quadraticCurveTo(bodyLen * 0.85, bodyR, bodyLen * 0.75, bodyR);
+      ctx.lineTo(tailX, bodyR);
+      ctx.closePath();
+      ctx.fill();
+
+      // Upper specular stripe (fake chrome)
+      const specGrad = ctx.createLinearGradient(0, -bodyR * 0.95, 0, -bodyR * 0.35);
+      specGrad.addColorStop(0, 'rgba(255,255,255,0)');
+      specGrad.addColorStop(0.6, 'rgba(255,255,255,0.3)');
+      specGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = specGrad;
+      ctx.fillRect(tailX, -bodyR * 0.95, bodyLen * 0.85 - tailX, bodyR * 0.6);
+
+      // Panel lines across the body
+      ctx.strokeStyle = 'rgba(20,25,30,0.45)';
+      ctx.lineWidth = 0.4;
+      for (let p = 0; p < 4; p++) {
+        const px = tailX + (p + 1) * (bodyLen * 0.17);
+        ctx.beginPath();
+        ctx.moveTo(px, -bodyR * 0.85);
+        ctx.lineTo(px, bodyR * 0.85);
+        ctx.stroke();
+      }
+
+      // Rivet row along the spine
+      ctx.fillStyle = 'rgba(40,45,50,0.55)';
+      for (let r = 0; r < 5; r++) {
+        const rx = tailX + (r + 0.5) * (bodyLen * 0.17);
+        ctx.beginPath();
+        ctx.arc(rx, -bodyR * 0.55, 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(rx, bodyR * 0.55, 0.35, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Warning stripes (red bands)
+      ctx.fillStyle = 'rgba(220,38,38,0.9)';
+      ctx.fillRect(bodyLen * 0.2, -bodyR * 0.85, 2.2, bodyR * 1.7);
+      ctx.fillRect(bodyLen * 0.5, -bodyR * 0.85, 2.2, bodyR * 1.7);
+      // Yellow caution hazard bar
+      ctx.fillStyle = 'rgba(251,191,36,0.85)';
+      ctx.fillRect(bodyLen * 0.1, -bodyR * 0.9, 1.2, bodyR * 1.8);
+
+      // ── Nose cone (ogive, chromed tip, red warhead band) ──
+      const noseStartX = bodyLen * 0.85;
+      const noseTipX = noseStartX + noseLen;
+      const noseGrad = ctx.createLinearGradient(0, -bodyR, 0, bodyR);
+      noseGrad.addColorStop(0, '#fecaca');
+      noseGrad.addColorStop(0.2, '#ef4444');
+      noseGrad.addColorStop(0.5, '#b91c1c');
+      noseGrad.addColorStop(0.8, '#7f1d1d');
+      noseGrad.addColorStop(1, '#450a0a');
+      ctx.fillStyle = noseGrad;
+      ctx.beginPath();
+      ctx.moveTo(noseStartX, -bodyR * 0.75);
+      ctx.bezierCurveTo(
+        noseStartX + noseLen * 0.45, -bodyR * 0.8,
+        noseStartX + noseLen * 0.8, -bodyR * 0.35,
+        noseTipX, 0
+      );
+      ctx.bezierCurveTo(
+        noseStartX + noseLen * 0.8, bodyR * 0.35,
+        noseStartX + noseLen * 0.45, bodyR * 0.8,
+        noseStartX, bodyR * 0.75
+      );
+      ctx.closePath();
+      ctx.fill();
+      // Nose spec highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.28)';
+      ctx.beginPath();
+      ctx.ellipse(noseStartX + noseLen * 0.45, -bodyR * 0.35, noseLen * 0.35, bodyR * 0.18, -0.1, 0, Math.PI * 2);
+      ctx.fill();
+      // Nose seeker dot
+      ctx.fillStyle = 'rgba(10,10,10,0.8)';
+      ctx.beginPath();
+      ctx.arc(noseTipX - 0.5, 0, 0.55, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Body outline
+      ctx.strokeStyle = 'rgba(220,230,240,0.3)';
+      ctx.lineWidth = 0.35;
+      ctx.beginPath();
+      ctx.moveTo(tailX, -bodyR);
+      ctx.lineTo(bodyLen * 0.75, -bodyR);
+      ctx.quadraticCurveTo(bodyLen * 0.85, -bodyR, bodyLen * 0.85, -bodyR * 0.75);
+      ctx.bezierCurveTo(
+        noseStartX + noseLen * 0.45, -bodyR * 0.8,
+        noseStartX + noseLen * 0.8, -bodyR * 0.35,
+        noseTipX, 0
+      );
+      ctx.stroke();
+
+      // ── Rear fin assembly (4 fins: 2 visible, 2 implied) ──
+      ctx.fillStyle = '#374151';
+      // Upper fin
+      ctx.beginPath();
+      ctx.moveTo(tailX + 1, -bodyR);
+      ctx.lineTo(tailX - bodyR * 0.9, -bodyR * 2.2);
+      ctx.lineTo(tailX - bodyR * 0.2, -bodyR * 1.05);
+      ctx.lineTo(tailX + bodyR * 0.6, -bodyR);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#1f2937';
+      ctx.lineWidth = 0.4;
+      ctx.stroke();
+
+      // Lower fin
+      ctx.fillStyle = '#374151';
+      ctx.beginPath();
+      ctx.moveTo(tailX + 1, bodyR);
+      ctx.lineTo(tailX - bodyR * 0.9, bodyR * 2.2);
+      ctx.lineTo(tailX - bodyR * 0.2, bodyR * 1.05);
+      ctx.lineTo(tailX + bodyR * 0.6, bodyR);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Small central stabilizer
+      ctx.fillStyle = '#4b5563';
+      ctx.beginPath();
+      ctx.moveTo(tailX + 1, 0);
+      ctx.lineTo(tailX - bodyR * 1.1, -bodyR * 0.25);
+      ctx.lineTo(tailX - bodyR * 1.3, 0);
+      ctx.lineTo(tailX - bodyR * 1.1, bodyR * 0.25);
+      ctx.closePath();
+      ctx.fill();
+
+      // Exhaust nozzle ring
+      ctx.fillStyle = '#1a1c22';
+      ctx.beginPath();
+      ctx.ellipse(tailX + 0.5, 0, 0.8, bodyR * 0.82, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#6b7280';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+      // Hot nozzle interior
+      ctx.fillStyle = 'rgba(255,140,40,0.85)';
+      ctx.beginPath();
+      ctx.ellipse(tailX + 0.2, 0, 0.55, bodyR * 0.7, 0, 0, Math.PI * 2);
       ctx.fill();
     } else if (hz.type === 'cluster') {
       // ═══ CRUISE MISSILE — HIGH FIDELITY ═══
@@ -1052,37 +1208,107 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.fill();
 
     } else {
-      // Shrapnel — angular metal chunk with better detail
+      // ═══ Shrapnel — tumbling metal shard with motion blur ═══
       ctx.rotate(hz.rotation);
-      const shrapGrad = ctx.createLinearGradient(-hz.size, -hz.size, hz.size, hz.size);
-      shrapGrad.addColorStop(0, '#9a9590');
-      shrapGrad.addColorStop(0.5, '#78716c');
-      shrapGrad.addColorStop(1, '#57534e');
-      ctx.fillStyle = shrapGrad;
-      ctx.beginPath();
+
+      // Subtle motion trail — two ghost copies offset backward
+      ctx.save();
+      ctx.globalAlpha = 0.18;
+      ctx.fillStyle = '#9a9590';
+      for (let g2 = 1; g2 <= 2; g2++) {
+        const off = -g2 * hz.size * 0.35;
+        ctx.beginPath();
+        ctx.ellipse(off, off * 0.4, hz.size * 0.85, hz.size * 0.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // ── Main jagged shard with proper 3D shading ──
+      // Build an irregular hex that looks like torn metal
       const pts = [
-        { x: -hz.size, y: -hz.size * 0.4 },
-        { x: -hz.size * 0.3, y: -hz.size },
-        { x: hz.size * 0.5, y: -hz.size * 0.6 },
-        { x: hz.size, y: hz.size * 0.2 },
-        { x: hz.size * 0.3, y: hz.size * 0.8 },
-        { x: -hz.size * 0.6, y: hz.size * 0.4 },
+        { x: -hz.size * 1.05, y: -hz.size * 0.35 },
+        { x: -hz.size * 0.35, y: -hz.size * 1.05 },
+        { x: hz.size * 0.55, y: -hz.size * 0.7 },
+        { x: hz.size * 1.1, y: hz.size * 0.15 },
+        { x: hz.size * 0.25, y: hz.size * 0.95 },
+        { x: -hz.size * 0.7, y: hz.size * 0.45 },
       ];
+
+      // Shadow underneath (adds volume)
+      ctx.save();
+      ctx.translate(1.5, 1.8);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath();
       ctx.moveTo(pts[0].x, pts[0].y);
       for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
       ctx.closePath();
       ctx.fill();
-      // Edge highlight
-      ctx.strokeStyle = '#b8b2aa';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      // Scratch marks
-      ctx.strokeStyle = 'rgba(200,195,185,0.3)';
-      ctx.lineWidth = 0.5;
+      ctx.restore();
+
+      // Body gradient — steel with warm rust tint on lower half
+      const shrapGrad = ctx.createLinearGradient(-hz.size, -hz.size, hz.size * 0.8, hz.size * 0.8);
+      shrapGrad.addColorStop(0, '#d6d1c8');
+      shrapGrad.addColorStop(0.35, '#8f8a82');
+      shrapGrad.addColorStop(0.6, '#57534e');
+      shrapGrad.addColorStop(0.85, '#3d362f');
+      shrapGrad.addColorStop(1, '#2a2320');
+      ctx.fillStyle = shrapGrad;
       ctx.beginPath();
-      ctx.moveTo(-hz.size * 0.5, -hz.size * 0.2);
-      ctx.lineTo(hz.size * 0.3, hz.size * 0.1);
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Bevel edge highlight — bright 2-segment line along upper edge
+      ctx.strokeStyle = 'rgba(230,225,215,0.9)';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      ctx.lineTo(pts[1].x, pts[1].y);
+      ctx.lineTo(pts[2].x, pts[2].y);
       ctx.stroke();
+      // Darker shadow side
+      ctx.strokeStyle = 'rgba(25,20,15,0.85)';
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(pts[3].x, pts[3].y);
+      ctx.lineTo(pts[4].x, pts[4].y);
+      ctx.lineTo(pts[5].x, pts[5].y);
+      ctx.stroke();
+
+      // Scorch / oxidation patch
+      const scorchGrad = ctx.createRadialGradient(
+        hz.size * 0.2, hz.size * 0.35, 0,
+        hz.size * 0.2, hz.size * 0.35, hz.size * 0.75
+      );
+      scorchGrad.addColorStop(0, 'rgba(80,35,15,0.55)');
+      scorchGrad.addColorStop(0.6, 'rgba(40,20,10,0.25)');
+      scorchGrad.addColorStop(1, 'rgba(20,10,5,0)');
+      ctx.fillStyle = scorchGrad;
+      ctx.beginPath();
+      ctx.ellipse(hz.size * 0.2, hz.size * 0.35, hz.size * 0.75, hz.size * 0.55, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Scratch marks (two short gashes) — random but stable per shrapnel via hz.rotation
+      const sc = Math.sin(hz.rotation * 3.7);
+      ctx.strokeStyle = 'rgba(240,235,225,0.5)';
+      ctx.lineWidth = 0.45;
+      ctx.beginPath();
+      ctx.moveTo(-hz.size * 0.55, -hz.size * 0.25 + sc * 0.15);
+      ctx.lineTo(hz.size * 0.4, hz.size * 0.05 + sc * 0.15);
+      ctx.moveTo(-hz.size * 0.25, -hz.size * 0.55);
+      ctx.lineTo(hz.size * 0.1, -hz.size * 0.15);
+      ctx.stroke();
+
+      // Tiny red-hot ember edge on one corner (cooling)
+      ctx.fillStyle = 'rgba(255,80,20,0.7)';
+      ctx.beginPath();
+      ctx.arc(pts[1].x, pts[1].y, 0.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,180,60,0.9)';
+      ctx.beginPath();
+      ctx.arc(pts[1].x, pts[1].y, 0.3, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.restore();
   }
@@ -1546,72 +1772,106 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
 
     const cols = puColors[pu.type] || puColors.medkit;
 
-    // ── Ultra-Realistic 3D Parachute ──
+    // ── Cinematic 3D Parachute (redesigned) ──
     if (pu.parachuting) {
-      const cW = 34, cH = 22;
-      const cY = -34;
-      const panels = 10;
-      const sway = Math.sin(pu.bobTimer * 1.8) * 0.05 + Math.cos(pu.bobTimer * 1.1) * 0.02; // Lissajous sway
-      const breathe = Math.sin(pu.bobTimer * 2.2) * 1.2; // breathing expansion
-      const baseBillow = Math.sin(pu.bobTimer * 3.5) * 1.5 + breathe;
+      const cW = 38, cH = 26;
+      const cY = -38;
+      const panels = 12; // more panels = smoother dome
+      // Multi-harmonic sway driven by wind — feels alive rather than sinusoidal
+      const t = pu.bobTimer;
+      const wind = Math.sin(g.elapsed * 0.7 + pu.pos.x * 0.002) * 0.04;
+      const sway = Math.sin(t * 1.8) * 0.07 + Math.cos(t * 1.1) * 0.03 + wind;
+      const tilt = Math.sin(t * 0.9) * 0.05; // secondary X-tilt
+      const breathe = Math.sin(t * 2.2) * 1.4;
+      const baseBillow = Math.sin(t * 3.5) * 1.6 + breathe;
+
+      // Drop shadow on ground aligned with parachute (world space)
+      // (Already handled by the shadow block above; nothing to do here.)
+
       ctx.save();
       ctx.rotate(sway);
 
-      // Canopy colors
-      const camoColors = ['#4a5c2a', '#6b7d3a', '#8b7d5a', '#5c4a2a', '#3d4a2a', '#7a6b3a', '#5a6b3a', '#6b5a2a', '#4d5a30', '#5e6b38'];
+      // ── Back-lit halo — one wide soft pool behind the canopy ──
+      const haloGrad = ctx.createRadialGradient(0, cY + 2, 0, 0, cY + 2, cW * 1.25);
+      haloGrad.addColorStop(0, 'rgba(255,245,220,0.14)');
+      haloGrad.addColorStop(0.55, 'rgba(255,220,180,0.05)');
+      haloGrad.addColorStop(1, 'rgba(255,200,150,0)');
+      ctx.fillStyle = haloGrad;
+      ctx.beginPath();
+      ctx.ellipse(0, cY + 2, cW * 1.2, cH * 0.9, 0, 0, Math.PI * 2);
+      ctx.fill();
 
-      // ── Draw billowed panels with individual inflation ──
+      // Pick dominant RGB once
+      let baseR: number, baseG: number, baseB: number;
+      if (pu.type === 'ammo') {
+        baseR = 74; baseG = 92; baseB = 42; // olive drab
+      } else {
+        baseR = parseInt(cols.base.slice(1, 3), 16);
+        baseG = parseInt(cols.base.slice(3, 5), 16);
+        baseB = parseInt(cols.base.slice(5, 7), 16);
+      }
+      // Camo palette built once for ammo parachutes
+      const camoPalette = [
+        [74, 92, 42], [107, 125, 58], [139, 125, 90],
+        [92, 74, 42], [61, 74, 42], [122, 107, 58],
+        [90, 107, 58], [107, 90, 42], [77, 90, 48], [94, 107, 56],
+      ];
+
+      // ── Panels with proper 3D shading using view-space light direction ──
       for (let i = 0; i < panels; i++) {
         const startA = Math.PI + (i / panels) * Math.PI;
         const endA = Math.PI + ((i + 1) / panels) * Math.PI;
         const midA = (startA + endA) / 2;
-        const lightFactor = 0.5 + Math.cos(midA - Math.PI * 1.5) * 0.5;
-        // Individual billow per panel with phase offset
-        const panelBillow = baseBillow + Math.sin(pu.bobTimer * 4.2 + i * 0.7) * 0.8;
+
+        // Lambert-ish lighting: light comes from upper-left, dot with panel normal
+        const nx = Math.cos(midA);
+        const ny = Math.sin(midA);
+        const lightX = -0.45, lightY = -0.9;
+        const lambert = Math.max(0, nx * lightX + ny * lightY); // 0..1
+        // Add a subtle fake ambient occlusion near the seam centres
+        const ao = Math.pow(Math.abs(Math.sin(midA)), 1.4) * 0.2;
+        const lightFactor = Math.max(0, lambert - ao);
+
+        // Per-panel billow makes the canopy feel inflated
+        const panelBillow = baseBillow + Math.sin(t * 4.2 + i * 0.7) * 0.85;
         const effH = cH + panelBillow;
 
-        // Panel edge points
         const x1 = Math.cos(startA) * cW;
         const y1 = Math.sin(startA) * effH + cY + panelBillow * 0.3;
         const x2 = Math.cos(endA) * cW;
         const y2 = Math.sin(endA) * effH + cY + panelBillow * 0.3;
-        // Billow outward control point
-        const bulgeX = Math.cos(midA) * (cW + 3 + panelBillow * 0.5);
-        const bulgeY = Math.sin(midA) * (effH + 4 + panelBillow * 0.4) + cY + panelBillow * 0.3;
+        const bulgeX = Math.cos(midA) * (cW + 4 + panelBillow * 0.6);
+        const bulgeY = Math.sin(midA) * (effH + 5 + panelBillow * 0.5) + cY + panelBillow * 0.3;
 
-        // Determine panel color
-        let baseR: number, baseG: number, baseB: number;
+        // Panel base colour
+        let pR = baseR, pG = baseG, pB = baseB;
         if (pu.type === 'ammo') {
-          const cc = camoColors[i % camoColors.length];
-          baseR = parseInt(cc.slice(1, 3), 16);
-          baseG = parseInt(cc.slice(3, 5), 16);
-          baseB = parseInt(cc.slice(5, 7), 16);
-        } else {
-          baseR = parseInt(cols.base.slice(1, 3), 16);
-          baseG = parseInt(cols.base.slice(3, 5), 16);
-          baseB = parseInt(cols.base.slice(5, 7), 16);
+          const cc = camoPalette[i % camoPalette.length];
+          pR = cc[0]; pG = cc[1]; pB = cc[2];
         }
 
-        // 3-layer shading: highlight top, base mid, shadow bottom
-        const highlightR = Math.min(255, baseR + lightFactor * 70);
-        const highlightG = Math.min(255, baseG + lightFactor * 70);
-        const highlightB = Math.min(255, baseB + lightFactor * 70);
-        const shadowR = Math.max(0, baseR - 40);
-        const shadowG = Math.max(0, baseG - 40);
-        const shadowB = Math.max(0, baseB - 40);
+        // 3-stop gradient from highlight through base to shadow
+        const hiR = Math.min(255, pR + lightFactor * 95);
+        const hiG = Math.min(255, pG + lightFactor * 95);
+        const hiB = Math.min(255, pB + lightFactor * 95);
+        const midR = Math.min(255, pR + lightFactor * 45);
+        const midG = Math.min(255, pG + lightFactor * 45);
+        const midB = Math.min(255, pB + lightFactor * 45);
+        const shR = Math.max(0, pR - 55);
+        const shG = Math.max(0, pG - 55);
+        const shB = Math.max(0, pB - 55);
 
-        // Panel gradient (top-to-bottom within panel)
-        const panelGrad = ctx.createLinearGradient(bulgeX, bulgeY - 6, bulgeX, y1 > y2 ? y1 : y2);
-        panelGrad.addColorStop(0, `rgb(${highlightR},${highlightG},${highlightB})`);
-        panelGrad.addColorStop(0.4, `rgb(${Math.min(255, baseR + lightFactor * 35)},${Math.min(255, baseG + lightFactor * 35)},${Math.min(255, baseB + lightFactor * 35)})`);
-        panelGrad.addColorStop(1, `rgb(${shadowR},${shadowG},${shadowB})`);
+        const panelGrad = ctx.createLinearGradient(bulgeX, bulgeY - 8, bulgeX, Math.max(y1, y2));
+        panelGrad.addColorStop(0, `rgb(${Math.round(hiR)},${Math.round(hiG)},${Math.round(hiB)})`);
+        panelGrad.addColorStop(0.5, `rgb(${Math.round(midR)},${Math.round(midG)},${Math.round(midB)})`);
+        panelGrad.addColorStop(1, `rgb(${shR},${shG},${shB})`);
 
-        // Fresnel: edges slightly more transparent
+        // Fresnel — edges fade slightly so the dome looks rounded
         const edgeDist = Math.abs(i - panels / 2) / (panels / 2);
-        const fresnelAlpha = 0.85 - edgeDist * 0.15; // 0.7 at edges, 0.85 at center
-
+        const fresnelAlpha = 0.92 - edgeDist * 0.18;
         ctx.globalAlpha = fadeAlpha * fresnelAlpha;
         ctx.fillStyle = panelGrad;
+
         ctx.beginPath();
         ctx.moveTo(0, cY); // apex
         ctx.lineTo(x1, y1);
@@ -1619,187 +1879,172 @@ function renderPowerUps(ctx: CanvasRenderingContext2D, g: GameData) {
         ctx.closePath();
         ctx.fill();
 
-        // Fabric wrinkle lines on each panel
-        ctx.globalAlpha = fadeAlpha * 0.08;
+        // Stitched seam along panel edges (darker)
+        ctx.globalAlpha = fadeAlpha * 0.18;
         ctx.strokeStyle = '#000';
-        ctx.lineWidth = 0.4;
-        for (let w = 0; w < 2; w++) {
-          const wt = 0.3 + w * 0.35;
-          const wx1 = x1 * (1 - wt) + 0 * wt; // lerp toward apex
-          const wy1 = y1 * (1 - wt) + cY * wt;
-          const wx2 = x2 * (1 - wt) + 0 * wt;
-          const wy2 = y2 * (1 - wt) + cY * wt;
-          const wcx = bulgeX * (1 - wt * 0.6);
-          const wcy = bulgeY * (1 - wt * 0.5) + cY * wt * 0.5;
-          ctx.beginPath();
-          ctx.moveTo(wx1, wy1);
-          ctx.quadraticCurveTo(wcx, wcy, wx2, wy2);
-          ctx.stroke();
-        }
+        ctx.lineWidth = 0.35;
+        ctx.beginPath();
+        ctx.moveTo(0, cY);
+        ctx.quadraticCurveTo(bulgeX * 0.5, (cY + bulgeY) * 0.5, x2, y2);
+        ctx.stroke();
       }
 
       ctx.globalAlpha = fadeAlpha;
 
-      // ── Vent hole at apex ──
-      const ventR = 3;
-      ctx.fillStyle = 'rgba(10,10,20,0.5)';
+      // ── Apex reinforcement patch + vent ──
+      const apexGrad = ctx.createRadialGradient(0, cY, 0, 0, cY, 6);
+      apexGrad.addColorStop(0, 'rgba(20,20,20,0.55)');
+      apexGrad.addColorStop(0.7, 'rgba(20,20,20,0.2)');
+      apexGrad.addColorStop(1, 'rgba(20,20,20,0)');
+      ctx.fillStyle = apexGrad;
       ctx.beginPath();
-      ctx.arc(0, cY - 1, ventR, 0, Math.PI * 2);
+      ctx.arc(0, cY, 6, 0, Math.PI * 2);
       ctx.fill();
-      // Vent rim
-      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-      ctx.lineWidth = 0.8;
+      // Vent hole
+      ctx.fillStyle = 'rgba(5,8,15,0.75)';
       ctx.beginPath();
-      ctx.arc(0, cY - 1, ventR, 0, Math.PI * 2);
+      ctx.arc(0, cY - 1, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+      // Rim of vent
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 0.6;
       ctx.stroke();
 
-      // ── Panel seam lines (between panels) ──
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-      ctx.lineWidth = 0.5;
-      for (let i = 1; i < panels; i++) {
-        const a = Math.PI + (i / panels) * Math.PI;
-        const pBillow = baseBillow + Math.sin(pu.bobTimer * 4.2 + i * 0.7) * 0.8;
-        const effH = cH + pBillow;
-        const rx = Math.cos(a) * cW;
-        const ry = Math.sin(a) * effH + cY + pBillow * 0.3;
-        ctx.beginPath();
-        ctx.moveTo(rx, ry);
-        ctx.lineTo(0, cY);
-        ctx.stroke();
-      }
-
-      // ── Wavy bottom edge ──
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-      ctx.lineWidth = 1.0;
+      // ── Wavy bottom hem with per-panel billow ──
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
-      for (let i = 0; i <= panels * 4; i++) {
-        const t = i / (panels * 4);
-        const a = Math.PI + t * Math.PI;
-        const pIdx = Math.floor(t * panels);
-        const pBillow = baseBillow + Math.sin(pu.bobTimer * 4.2 + pIdx * 0.7) * 0.8;
+      for (let i = 0; i <= panels * 5; i++) {
+        const tt = i / (panels * 5);
+        const a = Math.PI + tt * Math.PI;
+        const pIdx = Math.floor(tt * panels);
+        const pBillow = baseBillow + Math.sin(t * 4.2 + pIdx * 0.7) * 0.85;
         const effH = cH + pBillow;
         const ex = Math.cos(a) * cW;
         const ey = Math.sin(a) * effH + cY + pBillow * 0.3;
-        // Add small wave to bottom edge
-        const wave = Math.sin(i * 1.8 + pu.bobTimer * 5) * 0.6;
+        const wave = Math.sin(i * 2 + t * 5) * 0.7;
         if (i === 0) ctx.moveTo(ex, ey + wave);
         else ctx.lineTo(ex, ey + wave);
       }
       ctx.stroke();
 
-      // ── Specular highlight (moves with sway) ──
-      const specOffX = -cW * 0.2 + sway * cW * 2;
-      const specGrad = ctx.createRadialGradient(specOffX, cY - cH * 0.3, 0, specOffX, cY - cH * 0.3, cW * 0.5);
-      specGrad.addColorStop(0, 'rgba(255,255,255,0.4)');
-      specGrad.addColorStop(0.5, 'rgba(255,255,255,0.12)');
+      // Inner dark line just above the hem for depth
+      ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      for (let i = 0; i <= panels * 5; i++) {
+        const tt = i / (panels * 5);
+        const a = Math.PI + tt * Math.PI;
+        const pIdx = Math.floor(tt * panels);
+        const pBillow = baseBillow + Math.sin(t * 4.2 + pIdx * 0.7) * 0.85;
+        const effH = cH * 0.95 + pBillow;
+        const ex = Math.cos(a) * cW * 0.97;
+        const ey = Math.sin(a) * effH + cY + pBillow * 0.3;
+        if (i === 0) ctx.moveTo(ex, ey);
+        else ctx.lineTo(ex, ey);
+      }
+      ctx.stroke();
+
+      // ── Moving specular highlight (two swept beams) ──
+      const specOffX = -cW * 0.25 + sway * cW * 3;
+      const specGrad = ctx.createRadialGradient(
+        specOffX, cY - cH * 0.35, 0,
+        specOffX, cY - cH * 0.35, cW * 0.55
+      );
+      specGrad.addColorStop(0, 'rgba(255,255,255,0.5)');
+      specGrad.addColorStop(0.5, 'rgba(255,255,255,0.15)');
       specGrad.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = specGrad;
       ctx.beginPath();
-      ctx.ellipse(specOffX, cY - cH * 0.1, cW * 0.4, cH * 0.35, -0.15 + sway, 0, Math.PI * 2);
+      ctx.ellipse(specOffX, cY - cH * 0.12, cW * 0.45, cH * 0.4, -0.18 + sway, 0, Math.PI * 2);
       ctx.fill();
 
-      // Secondary smaller specular
-      const spec2X = cW * 0.25 + sway * cW;
-      const spec2Grad = ctx.createRadialGradient(spec2X, cY - cH * 0.15, 0, spec2X, cY - cH * 0.15, cW * 0.2);
-      spec2Grad.addColorStop(0, 'rgba(255,255,255,0.2)');
+      const spec2X = cW * 0.28 + sway * cW;
+      const spec2Grad = ctx.createRadialGradient(spec2X, cY - cH * 0.18, 0, spec2X, cY - cH * 0.18, cW * 0.22);
+      spec2Grad.addColorStop(0, 'rgba(255,255,255,0.26)');
       spec2Grad.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = spec2Grad;
       ctx.beginPath();
-      ctx.ellipse(spec2X, cY - cH * 0.05, cW * 0.18, cH * 0.15, 0.1, 0, Math.PI * 2);
+      ctx.ellipse(spec2X, cY - cH * 0.08, cW * 0.2, cH * 0.18, 0.1, 0, Math.PI * 2);
       ctx.fill();
 
-      // ── Inner shadow under canopy ──
-      const shadowGrad = ctx.createLinearGradient(0, cY, 0, cY + cH * 0.8);
-      shadowGrad.addColorStop(0, 'rgba(0,0,0,0.3)');
-      shadowGrad.addColorStop(0.6, 'rgba(0,0,0,0.1)');
+      // ── Inner shadow under canopy (deeper) ──
+      const shadowGrad = ctx.createLinearGradient(0, cY, 0, cY + cH * 0.9);
+      shadowGrad.addColorStop(0, 'rgba(0,0,0,0.4)');
+      shadowGrad.addColorStop(0.5, 'rgba(0,0,0,0.15)');
       shadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = shadowGrad;
       ctx.beginPath();
-      ctx.ellipse(0, cY + 4, cW * 0.8, cH * 0.35, 0, 0, Math.PI);
+      ctx.ellipse(0, cY + 5, cW * 0.85, cH * 0.4, 0, 0, Math.PI);
       ctx.fill();
 
-      // ── Military star on ammo ──
-      if (pu.type === 'ammo') {
-        ctx.globalAlpha = fadeAlpha * 0.55;
-        ctx.fillStyle = '#e5e5d0';
-        ctx.beginPath();
-        const starX = 0, starY = cY - cH * 0.12, starR = 5.5;
-        for (let si = 0; si < 5; si++) {
-          const a = -Math.PI / 2 + (si * Math.PI * 2) / 5;
-          const a2 = a + Math.PI / 5;
-          ctx.lineTo(starX + Math.cos(a) * starR, starY + Math.sin(a) * starR);
-          ctx.lineTo(starX + Math.cos(a2) * starR * 0.4, starY + Math.sin(a2) * starR * 0.4);
-        }
-        ctx.closePath();
-        ctx.fill();
-        // Serial number
-        ctx.font = '3px monospace';
-        ctx.fillStyle = 'rgba(229,229,208,0.35)';
-        ctx.fillText('عسكري', -cW * 0.55, cY - cH * 0.55);
-        ctx.globalAlpha = fadeAlpha;
-      }
-
-      // ── Medical cross on medkit (spans multiple panels) ──
-      if (pu.type === 'medkit') {
-        ctx.globalAlpha = fadeAlpha * 0.6;
-        ctx.fillStyle = '#cc2222';
-        const crossW = 4, crossH = 8;
-        ctx.fillRect(-crossW / 2, cY - cH * 0.4, crossW, crossH);
-        ctx.fillRect(-crossH / 2, cY - cH * 0.4 + (crossH - crossW) / 2, crossH, crossW);
-        ctx.globalAlpha = fadeAlpha;
-      }
-
-      // ── Racing stripe on other types ──
-      if (pu.type !== 'ammo' && pu.type !== 'medkit') {
-        ctx.globalAlpha = fadeAlpha * 0.2;
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.ellipse(0, cY + baseBillow * 0.3 - 2, cW * 0.92, cH * 0.25 + baseBillow * 0.15, 0, Math.PI, 0);
-        ctx.stroke();
-        ctx.globalAlpha = fadeAlpha;
-      }
-
-      // ── 8 Suspension lines with variable thickness & wind sway ──
-      const linePoints = [-0.95, -0.7, -0.42, -0.15, 0.15, 0.42, 0.7, 0.95];
-      for (let li = 0; li < linePoints.length; li++) {
-        const frac = linePoints[li];
+      // ── 10 Suspension lines with realistic catenary curve + wind sway ──
+      const numLines = 10;
+      for (let li = 0; li < numLines; li++) {
+        const frac = -0.95 + (li / (numLines - 1)) * 1.9; // -0.95 .. 0.95
         const a = Math.PI + (frac + 1) * 0.5 * Math.PI;
         const pIdx = Math.floor((frac + 1) * 0.5 * panels);
-        const pBillow = baseBillow + Math.sin(pu.bobTimer * 4.2 + pIdx * 0.7) * 0.8;
+        const pBillow = baseBillow + Math.sin(t * 4.2 + pIdx * 0.7) * 0.85;
         const effH = cH + pBillow;
         const sx = Math.cos(a) * cW;
         const sy = Math.sin(a) * effH + cY + pBillow * 0.3;
-        const drape = 4 + Math.abs(frac) * 3;
-        // Independent wind sway per line
-        const lineWind = Math.sin(pu.bobTimer * 3.5 + li * 1.2) * 0.8;
+        // Independent wind per line
+        const lineWind = Math.sin(t * 3.5 + li * 1.2) * 0.9 + tilt * 4;
+        // Attach slightly inside on top of the crate
+        const atX = frac * 3 + lineWind * 0.3;
+        const atY = -4;
 
-        // Thicker at canopy, thinner at box
-        ctx.strokeStyle = 'rgba(200,195,185,0.55)';
-        ctx.lineWidth = 0.9 - Math.abs(frac) * 0.15; // 0.75-0.9
+        // Bezier with belly sag for a natural catenary look
+        const bellyY = (sy + atY) * 0.5 + 6 + Math.abs(frac) * 2;
+
+        // Dark core
+        ctx.strokeStyle = 'rgba(40,38,32,0.55)';
+        ctx.lineWidth = 1.0 - Math.abs(frac) * 0.15;
         ctx.beginPath();
         ctx.moveTo(sx, sy);
         ctx.bezierCurveTo(
-          sx * 0.55 + lineWind, sy + drape,
-          (frac > 0 ? 2 : -2) + lineWind * 0.5, -12,
-          0, -4
+          sx * 0.75 + lineWind, bellyY - 2,
+          atX * 1.6 + lineWind * 0.5, bellyY + 2,
+          atX, atY
         );
         ctx.stroke();
 
-        // Attachment point dot at canopy
-        ctx.fillStyle = 'rgba(180,175,165,0.5)';
+        // Highlight strand
+        ctx.strokeStyle = 'rgba(220,215,200,0.55)';
+        ctx.lineWidth = 0.45;
         ctx.beginPath();
-        ctx.arc(sx, sy, 0.8, 0, Math.PI * 2);
+        ctx.moveTo(sx - 0.2, sy - 0.1);
+        ctx.bezierCurveTo(
+          sx * 0.75 + lineWind - 0.2, bellyY - 2,
+          atX * 1.6 + lineWind * 0.5 - 0.2, bellyY + 2,
+          atX - 0.2, atY - 0.1
+        );
+        ctx.stroke();
+
+        // Attachment point (dark dot)
+        ctx.fillStyle = 'rgba(80,75,65,0.9)';
+        ctx.beginPath();
+        ctx.arc(sx, sy, 0.9, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // ── Shadow on the crate from canopy ──
-      const crateShadowGrad = ctx.createRadialGradient(sway * 8, -6, 1, sway * 8, -6, 14);
-      crateShadowGrad.addColorStop(0, 'rgba(0,0,0,0.12)');
+      // ── Risers merging above the crate (two thick lines) ──
+      ctx.strokeStyle = 'rgba(40,38,32,0.8)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(-3, -4);
+      ctx.lineTo(-1.2, -1);
+      ctx.moveTo(3, -4);
+      ctx.lineTo(1.2, -1);
+      ctx.stroke();
+
+      // ── Shadow cast on the crate by the canopy ──
+      const crateShadowGrad = ctx.createRadialGradient(sway * 10, -6, 1, sway * 10, -6, 16);
+      crateShadowGrad.addColorStop(0, 'rgba(0,0,0,0.18)');
       crateShadowGrad.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = crateShadowGrad;
       ctx.beginPath();
-      ctx.ellipse(sway * 8, -5, 13, 5, 0, 0, Math.PI * 2);
+      ctx.ellipse(sway * 10, -5, 14, 5.5, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.restore();
@@ -2333,71 +2578,215 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
       continue;
     }
 
-    // === INCENDIARY DRONE ===
+    // ═══ INCENDIARY DRONE — Napalm Attack VTOL ═══
     if (d.tier === 'incendiary') {
       const dir = facingRight ? 1 : -1;
       const sz = d.size;
-      // Red-orange fuselage
-      const bodyGrad = ctx.createLinearGradient(0, -sz * 0.3, 0, sz * 0.3);
-      bodyGrad.addColorStop(0, '#dc2626');
-      bodyGrad.addColorStop(0.5, '#ea580c');
-      bodyGrad.addColorStop(1, '#b91c1c');
+      const tt = g.elapsed;
+
+      // ── Under-shadow ──
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.beginPath();
+      ctx.ellipse(0, sz * 0.55, sz * 0.85, sz * 0.18, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // ── Main armoured fuselage: wide + low, like a gunship ──
+      const fuseLen = sz * 1.7;
+      const fuseH = sz * 0.42;
+
+      const bodyGrad = ctx.createLinearGradient(0, -fuseH, 0, fuseH);
+      bodyGrad.addColorStop(0, '#fecaca');   // highlight
+      bodyGrad.addColorStop(0.15, '#ef4444');
+      bodyGrad.addColorStop(0.4, '#b91c1c');
+      bodyGrad.addColorStop(0.75, '#7f1d1d');
+      bodyGrad.addColorStop(1, '#450a0a');
       ctx.fillStyle = bodyGrad;
       ctx.beginPath();
-      ctx.moveTo(dir * sz * 1.1, 0);
-      ctx.lineTo(dir * sz * 0.4, -sz * 0.3);
-      ctx.lineTo(-dir * sz * 0.7, -sz * 0.25);
-      ctx.lineTo(-dir * sz * 0.9, 0);
-      ctx.lineTo(-dir * sz * 0.7, sz * 0.3);
-      ctx.lineTo(dir * sz * 0.4, sz * 0.35);
+      ctx.moveTo(dir * fuseLen, 0);                            // sharp nose
+      ctx.bezierCurveTo(
+        dir * fuseLen * 0.85, -fuseH * 0.9,
+        dir * fuseLen * 0.4, -fuseH * 1.1,
+        0, -fuseH * 1.05
+      );
+      ctx.lineTo(-dir * fuseLen * 0.7, -fuseH * 0.9);
+      ctx.lineTo(-dir * fuseLen * 0.95, -fuseH * 0.3);         // tail
+      ctx.lineTo(-dir * fuseLen * 0.95, fuseH * 0.3);
+      ctx.lineTo(-dir * fuseLen * 0.7, fuseH * 0.95);
+      ctx.lineTo(0, fuseH * 1.05);
+      ctx.bezierCurveTo(
+        dir * fuseLen * 0.4, fuseH * 1.1,
+        dir * fuseLen * 0.85, fuseH * 0.9,
+        dir * fuseLen, 0
+      );
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#7f1d1d';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(30,5,5,0.8)';
+      ctx.lineWidth = 0.6;
       ctx.stroke();
-      // Fuel tank underneath — glowing
-      const tankPulse = 0.5 + Math.sin(g.elapsed * 4) * 0.3;
-      ctx.fillStyle = `rgba(249, 115, 22, ${tankPulse})`;
-      ctx.shadowColor = '#f97316';
-      ctx.shadowBlur = 8;
+
+      // Top specular stripe
+      const specGrad = ctx.createLinearGradient(0, -fuseH * 1.05, 0, -fuseH * 0.2);
+      specGrad.addColorStop(0, 'rgba(255,255,255,0)');
+      specGrad.addColorStop(0.6, 'rgba(255,255,255,0.18)');
+      specGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = specGrad;
+      ctx.fillRect(-fuseLen * 0.75, -fuseH * 1.05, fuseLen * 1.5, fuseH * 0.55);
+
+      // Painted flame decals along the side
+      ctx.fillStyle = 'rgba(251,191,36,0.85)';
       ctx.beginPath();
-      ctx.ellipse(0, sz * 0.35, sz * 0.35, sz * 0.15, 0, 0, Math.PI * 2);
+      ctx.moveTo(dir * fuseLen * 0.6, -fuseH * 0.15);
+      ctx.quadraticCurveTo(dir * fuseLen * 0.3, -fuseH * 0.55, 0, -fuseH * 0.2);
+      ctx.quadraticCurveTo(-dir * fuseLen * 0.3, -fuseH * 0.55, -dir * fuseLen * 0.6, -fuseH * 0.15);
+      ctx.quadraticCurveTo(-dir * fuseLen * 0.25, -fuseH * 0.1, 0, -fuseH * 0.25);
+      ctx.quadraticCurveTo(dir * fuseLen * 0.25, -fuseH * 0.1, dir * fuseLen * 0.6, -fuseH * 0.15);
+      ctx.closePath();
       ctx.fill();
-      ctx.shadowBlur = 0;
-      // Wings
-      ctx.fillStyle = '#991b1b';
+      // Dark flame outline
+      ctx.strokeStyle = 'rgba(127,29,29,0.7)';
+      ctx.lineWidth = 0.4;
+      ctx.stroke();
+
+      // Nose rocket launcher ring
+      ctx.fillStyle = '#1f0808';
       ctx.beginPath();
-      ctx.moveTo(dir * sz * 0.1, -sz * 0.25);
-      ctx.lineTo(-dir * sz * 0.3, -sz * 0.9);
-      ctx.lineTo(-dir * sz * 0.6, -sz * 0.25);
+      ctx.ellipse(dir * fuseLen * 0.85, 0, 1.2, fuseH * 0.35, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = '#3a1010';
+      ctx.lineWidth = 0.4;
+      ctx.stroke();
+      // Glowing muzzle interior
+      ctx.fillStyle = `rgba(255,140,40,${0.7 + Math.sin(tt * 4) * 0.2})`;
       ctx.beginPath();
-      ctx.moveTo(dir * sz * 0.1, sz * 0.3);
-      ctx.lineTo(-dir * sz * 0.3, sz * 0.9);
-      ctx.lineTo(-dir * sz * 0.6, sz * 0.3);
+      ctx.ellipse(dir * fuseLen * 0.85, 0, 0.7, fuseH * 0.22, 0, 0, Math.PI * 2);
       ctx.fill();
-      // Engine exhaust
-      ctx.fillStyle = '#f97316';
-      ctx.shadowColor = '#f97316';
-      ctx.shadowBlur = 6;
-      ctx.beginPath();
-      ctx.ellipse(-dir * sz * 0.85, 0, 3, 2, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      // Dripping fire particles
-      for (let fi = 0; fi < 3; fi++) {
-        const fx = (Math.random() - 0.5) * sz * 0.5;
-        const fy = sz * 0.4 + Math.random() * sz * 0.3;
-        const fs = 1 + Math.random() * 2;
-        const fa = 0.3 + Math.random() * 0.4;
-        ctx.fillStyle = `rgba(255, ${80 + Math.random() * 100 | 0}, 0, ${fa})`;
+
+      // ── Twin napalm drop canisters slung under the belly ──
+      const canisterY = fuseH * 0.7;
+      for (const cdx of [-1, 1]) {
+        const cx = dir * cdx * fuseLen * 0.25;
+        ctx.save();
+        ctx.translate(cx, canisterY);
+        // Canister body
+        const canGrad = ctx.createLinearGradient(0, -fuseH * 0.25, 0, fuseH * 0.25);
+        canGrad.addColorStop(0, '#fed7aa');
+        canGrad.addColorStop(0.5, '#f97316');
+        canGrad.addColorStop(1, '#9a3412');
+        ctx.fillStyle = canGrad;
         ctx.beginPath();
-        ctx.arc(fx, fy, fs, 0, Math.PI * 2);
+        ctx.roundRect(-fuseLen * 0.18, -fuseH * 0.25, fuseLen * 0.36, fuseH * 0.55, 3);
+        ctx.fill();
+        ctx.strokeStyle = '#7c2d12';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+        // Warning hatch
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fillRect(-fuseLen * 0.05, -fuseH * 0.1, fuseLen * 0.1, fuseH * 0.2);
+        // Fuel level window — glowing hot
+        const fuelPulse = 0.55 + Math.sin(tt * 5 + cdx) * 0.25;
+        ctx.fillStyle = `rgba(255,180,60,${fuelPulse})`;
+        ctx.shadowColor = '#f97316';
+        ctx.shadowBlur = 5;
+        ctx.fillRect(-fuseLen * 0.14, -fuseH * 0.05, fuseLen * 0.06, fuseH * 0.1);
+        ctx.shadowBlur = 0;
+        ctx.restore();
+        // Drip/flame particles
+        for (let fi = 0; fi < 2; fi++) {
+          const fx = cx + (Math.random() - 0.5) * fuseLen * 0.15;
+          const fy = canisterY + fuseH * 0.3 + Math.random() * fuseH * 0.4;
+          ctx.fillStyle = `rgba(255,${90 + Math.floor(Math.random() * 100)},20,${0.4 + Math.random() * 0.4})`;
+          ctx.beginPath();
+          ctx.arc(fx, fy, 1.2 + Math.random(), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // ── Short stub wings with missile rails ──
+      ctx.fillStyle = '#7f1d1d';
+      // Top wing
+      ctx.beginPath();
+      ctx.moveTo(dir * fuseLen * 0.15, -fuseH * 0.9);
+      ctx.lineTo(-dir * fuseLen * 0.1, -fuseH * 1.6);
+      ctx.lineTo(-dir * fuseLen * 0.4, -fuseH * 1.45);
+      ctx.lineTo(-dir * fuseLen * 0.3, -fuseH * 0.85);
+      ctx.closePath();
+      ctx.fill();
+      // Bottom wing
+      ctx.beginPath();
+      ctx.moveTo(dir * fuseLen * 0.15, fuseH * 0.95);
+      ctx.lineTo(-dir * fuseLen * 0.1, fuseH * 1.6);
+      ctx.lineTo(-dir * fuseLen * 0.4, fuseH * 1.45);
+      ctx.lineTo(-dir * fuseLen * 0.3, fuseH * 0.85);
+      ctx.closePath();
+      ctx.fill();
+
+      // Tiny rockets under each wing
+      for (const wdy of [-1, 1]) {
+        ctx.fillStyle = '#4b5563';
+        ctx.fillRect(-dir * fuseLen * 0.22, wdy * fuseH * 1.4, 4, 1.5);
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath();
+        ctx.moveTo(-dir * fuseLen * 0.22, wdy * fuseH * 1.4 + 0.75);
+        ctx.lineTo(-dir * fuseLen * 0.22 + dir * 2, wdy * fuseH * 1.4 - 0.2);
+        ctx.lineTo(-dir * fuseLen * 0.22 + dir * 2, wdy * fuseH * 1.4 + 1.7);
+        ctx.closePath();
         ctx.fill();
       }
+
+      // ── Rear thruster (glowing plume) ──
+      const thrusterGlow = 0.7 + Math.sin(tt * 15) * 0.25;
+      const plumeGrad = ctx.createRadialGradient(-dir * fuseLen * 0.95, 0, 0, -dir * fuseLen * 1.15, 0, 12);
+      plumeGrad.addColorStop(0, `rgba(255,200,80,${thrusterGlow})`);
+      plumeGrad.addColorStop(0.4, `rgba(255,120,40,${thrusterGlow * 0.6})`);
+      plumeGrad.addColorStop(1, 'rgba(200,50,10,0)');
+      ctx.fillStyle = plumeGrad;
+      ctx.beginPath();
+      ctx.ellipse(-dir * fuseLen * 1.05, 0, 13, fuseH * 0.35, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Hot core
+      ctx.fillStyle = 'rgba(255,255,230,0.85)';
+      ctx.beginPath();
+      ctx.ellipse(-dir * fuseLen * 0.96, 0, 2.2, fuseH * 0.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // ── Cockpit with red tinted canopy ──
+      const cockpitGrad = ctx.createRadialGradient(dir * fuseLen * 0.55, -fuseH * 0.35, 0, dir * fuseLen * 0.55, -fuseH * 0.35, fuseH * 0.5);
+      cockpitGrad.addColorStop(0, 'rgba(255,100,100,0.85)');
+      cockpitGrad.addColorStop(0.55, 'rgba(180,30,30,0.55)');
+      cockpitGrad.addColorStop(1, 'rgba(80,10,10,0)');
+      ctx.fillStyle = cockpitGrad;
+      ctx.beginPath();
+      ctx.ellipse(dir * fuseLen * 0.55, -fuseH * 0.35, fuseH * 0.5, fuseH * 0.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // ── Wingtip navigation strobe (red, flashing) ──
+      const strobeOn = Math.sin(tt * 6) > 0.2;
+      if (strobeOn) {
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#ff3030';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(-dir * fuseLen * 0.25, -fuseH * 1.55, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(-dir * fuseLen * 0.25, fuseH * 1.55, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      // ── Heat shimmer distortion hint above body ──
+      for (let s = 0; s < 3; s++) {
+        const sx = (Math.random() - 0.5) * fuseLen * 1.2;
+        const sy = -fuseH * 1.2 - Math.random() * 4;
+        ctx.fillStyle = `rgba(255,180,80,${0.08 + Math.random() * 0.08})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 1 + Math.random(), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       // Health bar
       if (damaged) {
-        const barW = sz * 2; const barH = 3; const barY = -sz * 0.5;
+        const barW = sz * 2; const barH = 3; const barY = -sz * 1.9;
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(-barW / 2 - 1, barY - 1, barW + 2, barH + 2);
         const hpRatio = d.health / d.maxHealth;
@@ -2408,77 +2797,233 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
       continue;
     }
 
-    // === CHEMICAL DRONE ===
+    // ═══ CHEMICAL DRONE — Biohazard Dispersal VTOL ═══
     if (d.tier === 'chemical') {
       const dir = facingRight ? 1 : -1;
       const sz = d.size;
-      // Dark green fuselage
-      const bodyGrad = ctx.createLinearGradient(0, -sz * 0.3, 0, sz * 0.3);
-      bodyGrad.addColorStop(0, '#14532d');
-      bodyGrad.addColorStop(0.5, '#166534');
-      bodyGrad.addColorStop(1, '#14532d');
+      const tt = g.elapsed;
+
+      // Under-shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.beginPath();
+      ctx.ellipse(0, sz * 0.55, sz * 0.85, sz * 0.18, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // ── Main fuselage (dark olive armour) ──
+      const fuseLen = sz * 1.7;
+      const fuseH = sz * 0.42;
+
+      const bodyGrad = ctx.createLinearGradient(0, -fuseH, 0, fuseH);
+      bodyGrad.addColorStop(0, '#4ade80');
+      bodyGrad.addColorStop(0.15, '#22c55e');
+      bodyGrad.addColorStop(0.4, '#166534');
+      bodyGrad.addColorStop(0.75, '#14532d');
+      bodyGrad.addColorStop(1, '#052e16');
       ctx.fillStyle = bodyGrad;
       ctx.beginPath();
-      ctx.moveTo(dir * sz * 1.1, 0);
-      ctx.lineTo(dir * sz * 0.4, -sz * 0.3);
-      ctx.lineTo(-dir * sz * 0.7, -sz * 0.25);
-      ctx.lineTo(-dir * sz * 0.9, 0);
-      ctx.lineTo(-dir * sz * 0.7, sz * 0.3);
-      ctx.lineTo(dir * sz * 0.4, sz * 0.35);
+      ctx.moveTo(dir * fuseLen, 0);
+      ctx.bezierCurveTo(
+        dir * fuseLen * 0.85, -fuseH * 0.9,
+        dir * fuseLen * 0.4, -fuseH * 1.1,
+        0, -fuseH * 1.05
+      );
+      ctx.lineTo(-dir * fuseLen * 0.7, -fuseH * 0.9);
+      ctx.lineTo(-dir * fuseLen * 0.95, -fuseH * 0.3);
+      ctx.lineTo(-dir * fuseLen * 0.95, fuseH * 0.3);
+      ctx.lineTo(-dir * fuseLen * 0.7, fuseH * 0.95);
+      ctx.lineTo(0, fuseH * 1.05);
+      ctx.bezierCurveTo(
+        dir * fuseLen * 0.4, fuseH * 1.1,
+        dir * fuseLen * 0.85, fuseH * 0.9,
+        dir * fuseLen, 0
+      );
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#052e16';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(5,46,22,0.9)';
+      ctx.lineWidth = 0.6;
       ctx.stroke();
-      // Gas canister underneath — green glow
-      const gasPulse = 0.4 + Math.sin(g.elapsed * 3) * 0.2;
-      ctx.fillStyle = `rgba(74, 222, 128, ${gasPulse})`;
-      ctx.shadowColor = '#4ade80';
-      ctx.shadowBlur = 8;
-      ctx.beginPath();
-      ctx.ellipse(0, sz * 0.35, sz * 0.3, sz * 0.12, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      // ☣ symbol on body
-      ctx.fillStyle = 'rgba(74, 222, 128, 0.6)';
-      ctx.font = `${sz * 0.4}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('☣', 0, 0);
-      // Wings
-      ctx.fillStyle = '#052e16';
-      ctx.beginPath();
-      ctx.moveTo(dir * sz * 0.1, -sz * 0.25);
-      ctx.lineTo(-dir * sz * 0.3, -sz * 0.9);
-      ctx.lineTo(-dir * sz * 0.6, -sz * 0.25);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(dir * sz * 0.1, sz * 0.3);
-      ctx.lineTo(-dir * sz * 0.3, sz * 0.9);
-      ctx.lineTo(-dir * sz * 0.6, sz * 0.3);
-      ctx.fill();
-      // Engine
-      ctx.fillStyle = '#16a34a';
-      ctx.shadowColor = '#16a34a';
-      ctx.shadowBlur = 6;
-      ctx.beginPath();
-      ctx.ellipse(-dir * sz * 0.85, 0, 3, 2, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      // Green gas puffs emanating from below
-      for (let gi = 0; gi < 2; gi++) {
-        const gx = (Math.random() - 0.5) * sz * 0.4;
-        const gy = sz * 0.35 + Math.random() * sz * 0.4;
-        const gs = 2 + Math.random() * 3;
-        const ga = 0.1 + Math.random() * 0.15;
-        ctx.fillStyle = `rgba(74, 222, 128, ${ga})`;
+
+      // Panel lines
+      ctx.strokeStyle = 'rgba(5,30,15,0.5)';
+      ctx.lineWidth = 0.35;
+      for (const plx of [-0.35, 0, 0.3]) {
         ctx.beginPath();
-        ctx.arc(gx, gy, gs, 0, Math.PI * 2);
+        ctx.moveTo(dir * fuseLen * plx, -fuseH * 0.95);
+        ctx.lineTo(dir * fuseLen * plx, fuseH * 0.95);
+        ctx.stroke();
+      }
+
+      // Top specular
+      const specGrad = ctx.createLinearGradient(0, -fuseH * 1.05, 0, -fuseH * 0.2);
+      specGrad.addColorStop(0, 'rgba(255,255,255,0)');
+      specGrad.addColorStop(0.6, 'rgba(255,255,255,0.15)');
+      specGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = specGrad;
+      ctx.fillRect(-fuseLen * 0.75, -fuseH * 1.05, fuseLen * 1.5, fuseH * 0.55);
+
+      // ── Yellow biohazard warning stripes ──
+      ctx.fillStyle = 'rgba(250,204,21,0.95)';
+      const stripeW = fuseLen * 0.05;
+      for (let s = 0; s < 4; s++) {
+        const sx = dir * (-fuseLen * 0.35 + s * fuseLen * 0.17);
+        ctx.save();
+        ctx.translate(sx, 0);
+        ctx.rotate(-0.6);
+        ctx.fillRect(-stripeW, -fuseH * 0.45, stripeW * 2, fuseH * 0.9);
+        ctx.restore();
+      }
+
+      // ── Biohazard symbol painted on the hood ──
+      ctx.save();
+      ctx.globalAlpha = 0.8;
+      ctx.fillStyle = '#fef08a';
+      const bioR = fuseH * 0.45;
+      // 3 petals forming the biohazard symbol
+      for (let i = 0; i < 3; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI * 2) / 3;
+        const px = Math.cos(a) * bioR * 0.6;
+        const py = Math.sin(a) * bioR * 0.6;
+        ctx.beginPath();
+        ctx.arc(px, py, bioR * 0.5, 0, Math.PI * 2);
         ctx.fill();
       }
+      // Dark center ring
+      ctx.fillStyle = 'rgba(5,46,22,1)';
+      ctx.beginPath();
+      ctx.arc(0, 0, bioR * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath();
+      ctx.arc(0, 0, bioR * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // ── Twin gas canisters underneath (glass cylinders with swirling vapor) ──
+      const canY = fuseH * 0.75;
+      for (const cdx of [-1, 1]) {
+        const cx = dir * cdx * fuseLen * 0.28;
+        ctx.save();
+        ctx.translate(cx, canY);
+        // Metal endcaps
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.roundRect(-fuseLen * 0.17, -fuseH * 0.33, fuseLen * 0.34, fuseH * 0.1, 1);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.roundRect(-fuseLen * 0.17, fuseH * 0.23, fuseLen * 0.34, fuseH * 0.1, 1);
+        ctx.fill();
+        // Glass cylinder
+        const glassGrad = ctx.createLinearGradient(0, -fuseH * 0.25, 0, fuseH * 0.25);
+        glassGrad.addColorStop(0, 'rgba(134,239,172,0.75)');
+        glassGrad.addColorStop(0.5, 'rgba(34,197,94,0.65)');
+        glassGrad.addColorStop(1, 'rgba(20,83,45,0.75)');
+        ctx.fillStyle = glassGrad;
+        ctx.fillRect(-fuseLen * 0.15, -fuseH * 0.25, fuseLen * 0.3, fuseH * 0.5);
+        // Swirling vapor inside (two layered ellipses)
+        ctx.globalCompositeOperation = 'lighter';
+        for (let v = 0; v < 3; v++) {
+          const vy = -fuseH * 0.2 + ((tt * 20 + v * 40) % fuseH * 0.5);
+          ctx.fillStyle = `rgba(190,245,190,${0.2 - v * 0.05})`;
+          ctx.beginPath();
+          ctx.ellipse(0, vy, fuseLen * 0.11, fuseH * 0.05, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        // Highlight strip on the glass
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.fillRect(-fuseLen * 0.12, -fuseH * 0.22, fuseLen * 0.02, fuseH * 0.44);
+        // Outer glow
+        ctx.shadowColor = '#22c55e';
+        ctx.shadowBlur = 6;
+        ctx.strokeStyle = 'rgba(74,222,128,0.5)';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(-fuseLen * 0.15, -fuseH * 0.25, fuseLen * 0.3, fuseH * 0.5);
+        ctx.shadowBlur = 0;
+        ctx.restore();
+
+        // Gas leak drifting downward (toxic mist)
+        for (let p = 0; p < 3; p++) {
+          const px = cx + (Math.random() - 0.5) * fuseLen * 0.18;
+          const py = canY + fuseH * 0.35 + Math.random() * fuseH * 0.5;
+          ctx.fillStyle = `rgba(134,239,172,${0.15 + Math.random() * 0.15})`;
+          ctx.beginPath();
+          ctx.arc(px, py, 2 + Math.random() * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // ── Short stub wings with sprayer nozzles ──
+      ctx.fillStyle = '#166534';
+      ctx.beginPath();
+      ctx.moveTo(dir * fuseLen * 0.15, -fuseH * 0.9);
+      ctx.lineTo(-dir * fuseLen * 0.1, -fuseH * 1.55);
+      ctx.lineTo(-dir * fuseLen * 0.4, -fuseH * 1.4);
+      ctx.lineTo(-dir * fuseLen * 0.3, -fuseH * 0.85);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(dir * fuseLen * 0.15, fuseH * 0.95);
+      ctx.lineTo(-dir * fuseLen * 0.1, fuseH * 1.55);
+      ctx.lineTo(-dir * fuseLen * 0.4, fuseH * 1.4);
+      ctx.lineTo(-dir * fuseLen * 0.3, fuseH * 0.85);
+      ctx.closePath();
+      ctx.fill();
+
+      // Sprayer nozzles with greenish mist
+      for (const wdy of [-1, 1]) {
+        ctx.fillStyle = '#4b5563';
+        ctx.fillRect(-dir * fuseLen * 0.2, wdy * fuseH * 1.35, 3, 1.2);
+        // Mist
+        const mx = -dir * fuseLen * 0.24;
+        const my = wdy * fuseH * 1.42;
+        const mistGrad = ctx.createRadialGradient(mx, my, 0, mx, my, 5);
+        mistGrad.addColorStop(0, 'rgba(134,239,172,0.4)');
+        mistGrad.addColorStop(1, 'rgba(134,239,172,0)');
+        ctx.fillStyle = mistGrad;
+        ctx.beginPath();
+        ctx.arc(mx, my, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Rear thruster (green plume)
+      const thrusterGlow = 0.55 + Math.sin(tt * 10) * 0.2;
+      const plumeGrad = ctx.createRadialGradient(-dir * fuseLen * 0.95, 0, 0, -dir * fuseLen * 1.15, 0, 12);
+      plumeGrad.addColorStop(0, `rgba(134,239,172,${thrusterGlow})`);
+      plumeGrad.addColorStop(0.5, `rgba(34,197,94,${thrusterGlow * 0.55})`);
+      plumeGrad.addColorStop(1, 'rgba(6,46,22,0)');
+      ctx.fillStyle = plumeGrad;
+      ctx.beginPath();
+      ctx.ellipse(-dir * fuseLen * 1.05, 0, 13, fuseH * 0.35, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Cockpit with green tinted canopy
+      const cockpitGrad = ctx.createRadialGradient(dir * fuseLen * 0.55, -fuseH * 0.35, 0, dir * fuseLen * 0.55, -fuseH * 0.35, fuseH * 0.5);
+      cockpitGrad.addColorStop(0, 'rgba(134,239,172,0.85)');
+      cockpitGrad.addColorStop(0.55, 'rgba(34,197,94,0.55)');
+      cockpitGrad.addColorStop(1, 'rgba(6,46,22,0)');
+      ctx.fillStyle = cockpitGrad;
+      ctx.beginPath();
+      ctx.ellipse(dir * fuseLen * 0.55, -fuseH * 0.35, fuseH * 0.5, fuseH * 0.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Wingtip strobes
+      const strobeOn = Math.sin(tt * 6) > 0.2;
+      if (strobeOn) {
+        ctx.fillStyle = '#fef08a';
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 9;
+        ctx.beginPath();
+        ctx.arc(-dir * fuseLen * 0.25, -fuseH * 1.5, 1.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(-dir * fuseLen * 0.25, fuseH * 1.5, 1.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
       // Health bar
       if (damaged) {
-        const barW = sz * 2; const barH = 3; const barY = -sz * 0.5;
+        const barW = sz * 2; const barH = 3; const barY = -sz * 1.9;
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(-barW / 2 - 1, barY - 1, barW + 2, barH + 2);
         const hpRatio = d.health / d.maxHealth;
@@ -6333,6 +6878,66 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
       color: 'rgba(120,180,255,',
       intensity: 0.25,
     });
+  }
+
+  // ── Missile exhaust glow — adds warm flicker to the trail ──
+  for (const hz of g.hazards) {
+    if (!hz.active || !hz.falling) continue;
+    if (hz.type === 'missile') {
+      const angle = Math.atan2(hz.targetPos.y - hz.pos.y, hz.targetPos.x - hz.pos.x);
+      const tailX = hz.pos.x - Math.cos(angle) * hz.size * 1.4;
+      const tailY = hz.pos.y - Math.sin(angle) * hz.size * 1.4;
+      emitLight({
+        x: tailX,
+        y: tailY,
+        radius: 40,
+        color: 'rgba(255,160,60,',
+        intensity: 0.55,
+        flicker: 0.25,
+      });
+    } else if (hz.type === 'cluster' && hz.clusterPhase === 'flying') {
+      emitLight({
+        x: hz.pos.x - (hz.clusterVelX && hz.clusterVelX < 0 ? -18 : 18),
+        y: hz.pos.y,
+        radius: 38,
+        color: 'rgba(255,150,80,',
+        intensity: 0.45,
+        flicker: 0.2,
+      });
+    }
+  }
+
+  // ── Drone engine glows (subtle tint per tier) ──
+  for (const d of g.drones) {
+    if (!d.active) continue;
+    if (d.tier === 'incendiary') {
+      emitLight({
+        x: d.pos.x,
+        y: d.pos.y + d.size * 0.35,
+        radius: 55,
+        color: 'rgba(255,130,40,',
+        intensity: 0.4,
+        flicker: 0.25,
+      });
+    } else if (d.tier === 'chemical') {
+      emitLight({
+        x: d.pos.x,
+        y: d.pos.y + d.size * 0.35,
+        radius: 55,
+        color: 'rgba(74,222,128,',
+        intensity: 0.35,
+        flicker: 0.18,
+      });
+    } else if (d.tier === 'cargo') {
+      emitLight({
+        x: d.pos.x,
+        y: d.pos.y,
+        radius: 40,
+        color: 'rgba(100,180,255,',
+        intensity: 0.22,
+        flicker: 0.08,
+      });
+    }
   }
 
   // Composite all lights in world space (before we restore camera transform)
