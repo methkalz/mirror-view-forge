@@ -849,17 +849,46 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
       const dir = flyingRight ? 1 : -1;
 
       if (phase === 'done') {
+        // Post-detonation dissipating smoke + heat haze cloud
         const alpha = Math.min(1, (hz.clusterTimer || 0) / 0.4);
-        ctx.fillStyle = `rgba(100,90,80,${alpha * 0.4})`;
+        const expand = 1 - alpha * 0.25;
+        // Outer smoke shell
+        const smokeGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, hz.size * 3.2 * expand);
+        smokeGrad.addColorStop(0, `rgba(160,140,115,${alpha * 0.4})`);
+        smokeGrad.addColorStop(0.55, `rgba(100,85,70,${alpha * 0.28})`);
+        smokeGrad.addColorStop(1, 'rgba(40,30,25,0)');
+        ctx.fillStyle = smokeGrad;
         ctx.beginPath();
-        ctx.arc(0, 0, hz.size * 2.5 * (1 - alpha * 0.3), 0, Math.PI * 2);
+        ctx.arc(0, 0, hz.size * 3.2 * expand, 0, Math.PI * 2);
         ctx.fill();
+        // Warm afterglow core (residual heat)
+        ctx.fillStyle = `rgba(255,160,60,${alpha * 0.25})`;
+        ctx.beginPath();
+        ctx.arc(0, 0, hz.size * 1.4 * expand, 0, Math.PI * 2);
+        ctx.fill();
+        // A few rising embers
+        for (let e = 0; e < 4; e++) {
+          const ex = Math.sin(e * 1.9) * hz.size * 1.5;
+          const ey = -(1 - alpha) * hz.size * 3 - e * 1.5;
+          ctx.fillStyle = `rgba(255,${150 + e * 20},40,${alpha * 0.6})`;
+          ctx.beginPath();
+          ctx.arc(ex, ey, 1 + Math.sin(e * 2) * 0.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
       } else {
         ctx.save();
         ctx.scale(dir, 1);
         const velY = hz.clusterVelY || 0;
         const arcAngle = Math.atan2(velY, Math.abs(hz.clusterVelX || 300));
-        ctx.rotate(arcAngle);
+        // Unguided rockets wobble slightly around their thrust axis.
+        // Use a stable per-missile phase so the wobble is deterministic
+        // per instance but varies between instances.
+        const wobblePhase = hz.pos.x * 0.013 + hz.pos.y * 0.009;
+        const flightWobble = phase === 'flying'
+          ? Math.sin(performance.now() * 0.01 + wobblePhase) * 0.018
+            + Math.sin(performance.now() * 0.023 + wobblePhase) * 0.009
+          : 0;
+        ctx.rotate(arcAngle + flightWobble);
 
         const bodyLen = hz.size * 3.8;
         const bodyH = hz.size * 0.55;
@@ -1098,23 +1127,101 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
           }
         }
 
-        // ── Opening phase — realistic split ──
-        if (phase === 'opening') {
-          const openT = 1 - Math.max(0, (hz.clusterTimer || 0) / 1.0);
+        // ── Opening phase — dramatic cinematic split ──
+        if (phase === 'opening' || phase === 'releasing') {
+          const isReleasing = phase === 'releasing';
+          // Normalised 0..1 progress: builds up during opening, pins at 1 while releasing
+          const openT = isReleasing
+            ? 1
+            : 1 - Math.max(0, (hz.clusterTimer || 0) / 1.0);
+
+          // ── 1) Growing shockwave ring (explosion at release point) ──
+          const shockR = openT * bodyLen * 1.8;
+          const shockAlpha = (1 - openT) * 0.55 + (isReleasing ? 0.25 : 0);
+          if (shockR > 1) {
+            ctx.strokeStyle = `rgba(255,240,180,${shockAlpha})`;
+            ctx.lineWidth = 2.5 + openT * 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, shockR, 0, Math.PI * 2);
+            ctx.stroke();
+            // Secondary ring slightly behind
+            ctx.strokeStyle = `rgba(255,180,80,${shockAlpha * 0.5})`;
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.arc(0, 0, shockR * 0.85, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          // ── 2) Massive white flash core (scales fast then fades) ──
+          const flashFade = isReleasing
+            ? 0.3
+            : Math.max(0, 1 - Math.abs(openT - 0.4) * 2.5); // peaks at openT ~ 0.4
+          if (flashFade > 0.05) {
+            const flashR = bodyLen * (0.3 + openT * 0.6);
+            const flashGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, flashR);
+            flashGrad.addColorStop(0, `rgba(255,255,240,${0.95 * flashFade})`);
+            flashGrad.addColorStop(0.4, `rgba(255,220,140,${0.7 * flashFade})`);
+            flashGrad.addColorStop(0.8, `rgba(255,120,40,${0.35 * flashFade})`);
+            flashGrad.addColorStop(1, 'rgba(200,40,0,0)');
+            ctx.fillStyle = flashGrad;
+            ctx.beginPath();
+            ctx.arc(0, 0, flashR, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // ── 3) Radiating god-rays from the centre ──
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          for (let r = 0; r < 8; r++) {
+            const rayAngle = (r / 8) * Math.PI * 2 + openT * 0.3;
+            const rayLen = bodyLen * (0.6 + openT * 0.6);
+            const rayAlpha = (0.22 - openT * 0.08) * (isReleasing ? 0.6 : 1);
+            const rayGrad = ctx.createLinearGradient(
+              0, 0,
+              Math.cos(rayAngle) * rayLen, Math.sin(rayAngle) * rayLen
+            );
+            rayGrad.addColorStop(0, `rgba(255,240,180,${Math.max(0, rayAlpha)})`);
+            rayGrad.addColorStop(1, 'rgba(255,240,180,0)');
+            ctx.strokeStyle = rayGrad as unknown as string;
+            ctx.lineWidth = 1 + openT * 2;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(Math.cos(rayAngle) * rayLen, Math.sin(rayAngle) * rayLen);
+            ctx.stroke();
+          }
+          ctx.restore();
+
+          // ── 4) Visible split: top and bottom halves hinge outward ──
           const gap = openT * bodyH * 2.8;
+          const hingeAngle = openT * 0.45; // radians — peels outward
 
-          // Internal glow — intense orange/red
-          const glowGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, bodyLen * 0.4);
-          glowGrad.addColorStop(0, `rgba(255,200,50,${0.5 + openT * 0.5})`);
-          glowGrad.addColorStop(0.5, `rgba(239,68,68,${0.3 + openT * 0.5})`);
-          glowGrad.addColorStop(1, 'rgba(239,68,68,0)');
-          ctx.fillStyle = glowGrad;
-          ctx.beginPath();
-          ctx.ellipse(0, 0, bodyLen * 0.35, Math.max(0.1, bodyH * (1.2 + openT * 2)), 0, 0, Math.PI * 2);
-          ctx.fill();
+          // Dark "interior" revealed between the two halves
+          if (gap > 0.5) {
+            const interiorGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, bodyLen * 0.4);
+            interiorGrad.addColorStop(0, `rgba(255,180,50,${0.65 * openT})`);
+            interiorGrad.addColorStop(0.5, `rgba(180,30,10,${0.4 * openT})`);
+            interiorGrad.addColorStop(1, 'rgba(40,10,0,0)');
+            ctx.fillStyle = interiorGrad;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, bodyLen * 0.4, Math.max(0.1, gap * 0.9), 0, 0, Math.PI * 2);
+            ctx.fill();
 
-          // Crack lines — jagged
-          ctx.strokeStyle = `rgba(251,191,36,${0.5 + openT * 0.5})`;
+            // Stringy debris threads spanning the gap (ripped internal cables)
+            ctx.strokeStyle = `rgba(80,60,40,${0.55 * (1 - openT * 0.5)})`;
+            ctx.lineWidth = 0.4;
+            for (let c = 0; c < 5; c++) {
+              const cx = -bodyLen * 0.3 + c * (bodyLen * 0.15);
+              const cyTop = -gap * (0.5 + Math.sin(c * 2.1) * 0.3);
+              const cyBot = gap * (0.5 + Math.sin(c * 1.7) * 0.3);
+              ctx.beginPath();
+              ctx.moveTo(cx, cyTop);
+              ctx.quadraticCurveTo(cx + 2, 0, cx, cyBot);
+              ctx.stroke();
+            }
+          }
+
+          // Jagged crack lines along the split seams
+          ctx.strokeStyle = `rgba(251,191,36,${0.6 + openT * 0.4})`;
           ctx.lineWidth = 1.5 + openT * 3;
           ctx.beginPath();
           ctx.moveTo(-bodyLen * 0.4, -gap);
@@ -1127,28 +1234,39 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
           ctx.lineTo(bodyLen * 0.35, gap * 0.75);
           ctx.stroke();
 
-          // Metal shrapnel fragments flying out
-          for (let fi = 0; fi < 5; fi++) {
-            const fx = (Math.random() - 0.5) * bodyLen * 0.7;
-            const fy = (Math.random() > 0.5 ? 1 : -1) * (gap * 0.5 + Math.random() * gap * 0.8);
-            const fs = 1.5 + Math.random() * 2;
-            ctx.fillStyle = `rgba(120,110,100,${0.4 + openT * 0.4})`;
+          // ── 5) Metal shell fragments blown outward ──
+          for (let fi = 0; fi < 7; fi++) {
+            const fragSeed = fi * 1.37;
+            const fx = (fragSeed % 1 - 0.5) * bodyLen * 0.8;
+            const sign = fi % 2 ? 1 : -1;
+            const fy = sign * (gap * 0.6 + ((fragSeed * 13) % 1) * gap * 0.9);
+            const fs = 1.5 + ((fragSeed * 7) % 1) * 2.5;
+            ctx.fillStyle = `rgba(110,100,88,${0.55 + openT * 0.35})`;
             ctx.save();
             ctx.translate(fx, fy);
-            ctx.rotate(Math.random() * Math.PI);
-            ctx.fillRect(-fs, -fs * 0.4, fs * 2, fs * 0.8);
+            ctx.rotate(fragSeed * 3);
+            ctx.fillRect(-fs, -fs * 0.35, fs * 2, fs * 0.7);
+            // Dark edge
+            ctx.strokeStyle = 'rgba(20,15,10,0.7)';
+            ctx.lineWidth = 0.4;
+            ctx.strokeRect(-fs, -fs * 0.35, fs * 2, fs * 0.7);
             ctx.restore();
           }
 
-          // Sparks — brighter, more
-          for (let i = 0; i < 6; i++) {
-            const sparkX = (Math.random() - 0.5) * bodyLen * 0.8;
-            const sparkY = (Math.random() - 0.5) * gap * 2.5;
-            ctx.fillStyle = Math.random() > 0.5 ? '#fbbf24' : '#fef3c7';
+          // ── 6) Sparks — dense + bright, decorate the interior glow ──
+          for (let i = 0; i < 10; i++) {
+            const sparkSeed = (i * 2.731 + openT * 13) % 1;
+            const sparkX = (sparkSeed - 0.5) * bodyLen * 0.9;
+            const sparkY = Math.sin(i * 1.7) * gap * 1.3;
+            const sparkSize = 0.6 + (sparkSeed * 1.4);
+            ctx.fillStyle = i % 2 === 0 ? '#fff7cc' : '#fbbf24';
+            ctx.shadowColor = '#fbbf24';
+            ctx.shadowBlur = 4;
             ctx.beginPath();
-            ctx.arc(sparkX, sparkY, 0.8 + Math.random() * 1.2, 0, Math.PI * 2);
+            ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2);
             ctx.fill();
           }
+          ctx.shadowBlur = 0;
         }
 
         ctx.restore();
