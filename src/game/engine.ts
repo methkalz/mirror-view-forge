@@ -726,6 +726,7 @@ function createHazardDefault(): Hazard {
     speed: 0, size: 0, damage: 0,
     warningTimer: 0, warningDuration: 0,
     falling: false, rotation: 0, trailTimer: 0,
+    isFireBomb: false, isGasBomb: false, isClusterBomb: false,
   };
 }
 
@@ -751,6 +752,9 @@ function spawnHazard(g: GameData, type: HazardType) {
   h.pos = { x: tx + (Math.random() - 0.5) * 80, y: -40 };
   h.falling = false;
   h.splitDone = false;
+  h.isFireBomb = false;
+  h.isGasBomb = false;
+  h.isClusterBomb = false;
   h.rotation = Math.random() * Math.PI * 2;
   h.trailTimer = 0;
 
@@ -1803,7 +1807,15 @@ export function update(g: GameData, input: InputState, dt: number) {
   resolvePendingWaveEvents(g);
 
   // === Slow-mo & Magnet timers ===
-  if (!g.cinematicWarning && g.waveEndSlowMo <= 0 && g.slowMoTimer > 0) {
+  // NOTE: when a protection-item purchase card is on screen (gas mask or
+  // fire suit), the player is vulnerable to hazards while reading the
+  // offer. Force extreme slow-mo so nothing hits them mid-purchase.
+  const offerOpen =
+    (!!g.gasMaskOffer && g.gasMaskOffer.active) ||
+    (!!g.fireSuitOffer && g.fireSuitOffer.active);
+  if (offerOpen) {
+    g.slowMoFactor = 0.05; // near-freeze during purchase window
+  } else if (!g.cinematicWarning && g.waveEndSlowMo <= 0 && g.slowMoTimer > 0) {
     g.slowMoTimer -= dt;
     g.slowMoFactor = 0.3;
     if (g.slowMoTimer <= 0) { g.slowMoFactor = 1; g.slowMoTimer = 0; }
@@ -2095,6 +2107,8 @@ export function update(g: GameData, input: InputState, dt: number) {
           const sh = getFromPool<Hazard>(g.hazards, createHazardDefault);
           sh.type = 'shrapnel';
           sh.isClusterBomb = true;
+          sh.isFireBomb = false;
+          sh.isGasBomb = false;
           sh.pos = { x: h.pos.x + spreadX, y: h.pos.y + 10 };
           // Bombs fall vertically — no horizontal drift
           sh.targetPos = { x: h.pos.x + spreadX, y: groundY - 5 + Math.random() * 10 };
@@ -2164,19 +2178,61 @@ export function update(g: GameData, input: InputState, dt: number) {
         // Impact
         h.active = false;
         g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
-        if (h.type === 'shrapnel') sfxImpactLight();
+        if (h.isFireBomb) {
+          sfxExplosion();
+        } else if (h.isGasBomb) {
+          sfxImpactLight();
+        } else if (h.type === 'shrapnel') sfxImpactLight();
         else if (h.type === 'missile') sfxImpactHeavy();
         else sfxExplosion();
-        
+
+        // Firebombs spawn a fire pool + hot explosion instead of a crater
+        if (h.isFireBomb) {
+          addExplosion(g, h.targetPos, h.size * 2.2);
+          spawnParticles(g, h.targetPos, 14, '#fbbf24', 180);
+          spawnParticles(g, h.targetPos, 10, '#f97316', 140);
+          g.firePools.push({
+            pos: { x: h.targetPos.x, y: h.targetPos.y },
+            size: 42 + Math.random() * 18,
+            life: 4 + Math.random() * 2,
+            maxLife: 6,
+            damagePerSec: 3,
+          });
+          addTrauma(0.35);
+          const distToPlayer = dist(h.targetPos, p.pos);
+          if (distToPlayer < h.size * 1.6 + p.size && p.fireSuitTimer <= 0 && p.extinguisherTimer <= 0) {
+            damagePlayer(g, h.damage, h.targetPos);
+          }
+          continue;
+        }
+        // Gas bombs spawn a gas cloud instead
+        if (h.isGasBomb) {
+          addExplosion(g, h.targetPos, h.size * 1.4);
+          spawnParticles(g, h.targetPos, 12, '#16a34a', 120);
+          g.gasClouds.push({
+            pos: { x: h.targetPos.x, y: h.targetPos.y },
+            size: 52 + Math.random() * 16,
+            life: 5 + Math.random() * 3,
+            maxLife: 8,
+            damagePerSec: 2,
+          });
+          addTrauma(0.2);
+          const distToPlayer = dist(h.targetPos, p.pos);
+          if (distToPlayer < h.size * 1.4 + p.size && p.gasMaskTimer <= 0) {
+            damagePlayer(g, h.damage, h.targetPos);
+          }
+          continue;
+        }
+
         addExplosion(g, h.targetPos, h.type === 'missile' ? h.size * 3 : h.size * 2);
-        
+
         const colors = ['#ef4444', '#f97316', '#fbbf24', '#6b7280', '#4b5563'];
         for (const c of colors.slice(0, 3)) {
           spawnParticles(g, h.targetPos, h.type === 'missile' ? 6 : 3, c, h.type === 'missile' ? 250 : 150);
         }
-        
+
         g.craters.push({ pos: { ...h.targetPos }, size: h.size * 2.5, life: 8, maxLife: 8 });
-        
+
         // Trauma-based screen shake — missiles feel heavier than shrapnel
         addTrauma(h.type === 'missile' ? 0.55 : 0.3);
 
@@ -2479,10 +2535,20 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (!d.active) continue;
     d.wobble += dt;
 
-    // Smooth facing (prevents instant-flip when velocity changes sign)
-    const targetFacing = d.vel.x >= 0 ? 1 : -1;
+    // Smooth facing (prevents instant-flip when velocity changes sign).
+    // Each drone uses its own turn rate derived from its initial wobble
+    // phase so they don't all rotate in lock-step. Additionally, a tiny
+    // direction-hysteresis window prevents jittering near velocity=0.
+    const wobbleHash = Math.abs(Math.sin(d.wobble * 17.3));
+    const personalRate = 1.6 + wobbleHash * 2.4; // 1.6..4.0
+    const currentFacing = d.facingLerp ?? (d.vel.x >= 0 ? 1 : -1);
+    // Hysteresis: only flip the target once vel.x crosses a threshold
+    const HYST = 18;
+    let targetFacing = currentFacing > 0 ? 1 : -1;
+    if (d.vel.x > HYST) targetFacing = 1;
+    else if (d.vel.x < -HYST) targetFacing = -1;
     if (d.facingLerp === undefined) d.facingLerp = targetFacing;
-    d.facingLerp += (targetFacing - d.facingLerp) * Math.min(1, dt * 3.5);
+    d.facingLerp += (targetFacing - d.facingLerp) * Math.min(1, dt * personalRate);
 
     // === Cargo drone: passive fly-through ===
     if (d.tier === 'cargo') {
@@ -2530,22 +2596,30 @@ export function update(g: GameData, input: InputState, dt: number) {
           d.pos.y = Math.max(g.height * 0.08, Math.min(g.height * 0.45, d.pos.y));
           d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
 
-          // Drop firebomb when above player
+          // Drop a visible falling fireball that leaves a fire pool on impact
           d.bombTimer += dt;
           if (d.bombTimer >= d.bombCooldown && Math.abs(d.pos.x - p.pos.x) < 50) {
             d.bombTimer = 0;
             const groundY = g.height * GROUND_RATIO;
             const fireX = d.pos.x + (Math.random() - 0.5) * 20;
-            g.firePools.push({
-              pos: { x: fireX, y: groundY - 2 },
-              size: 40 + Math.random() * 20,
-              life: 4 + Math.random() * 2,
-              maxLife: 6,
-              damagePerSec: 3,
-            });
+            const bomb = getFromPool<Hazard>(g.hazards, createHazardDefault);
+            bomb.type = 'shrapnel';
+            bomb.isFireBomb = true;
+            bomb.isGasBomb = false;
+            bomb.pos = { x: d.pos.x, y: d.pos.y + d.size * 0.5 };
+            bomb.targetPos = { x: fireX, y: groundY - 5 };
+            bomb.speed = 190 + Math.random() * 50;
+            bomb.size = 9;
+            bomb.damage = 8;
+            bomb.warningDuration = 0;
+            bomb.warningTimer = 0;
+            bomb.falling = true;
+            bomb.splitDone = false;
+            bomb.isClusterBomb = false;
+            bomb.rotation = Math.random() * Math.PI * 2;
+            bomb.trailTimer = 0;
+            g.activeHazardCount++;
             addFloatingText(g, '🔥', { x: d.pos.x, y: d.pos.y + 15 }, '#f97316');
-            spawnParticles(g, { x: fireX, y: groundY }, 8, '#f97316', 100);
-            addExplosion(g, { x: fireX, y: groundY }, 15);
           }
         }
         // Collision with player (kamikaze)
@@ -2594,21 +2668,30 @@ export function update(g: GameData, input: InputState, dt: number) {
           d.pos.y = Math.max(g.height * 0.08, Math.min(g.height * 0.48, d.pos.y));
           d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
 
-          // Drop gas canister
+          // Drop a visible falling gas canister
           d.bombTimer += dt;
           if (d.bombTimer >= d.bombCooldown && Math.abs(d.pos.x - p.pos.x) < 60) {
             d.bombTimer = 0;
             const groundY = g.height * GROUND_RATIO;
             const gasX = d.pos.x + (Math.random() - 0.5) * 30;
-            g.gasClouds.push({
-              pos: { x: gasX, y: groundY - 2 },
-              size: 50 + Math.random() * 20,
-              life: 5 + Math.random() * 3,
-              maxLife: 8,
-              damagePerSec: 2,
-            });
+            const bomb = getFromPool<Hazard>(g.hazards, createHazardDefault);
+            bomb.type = 'shrapnel';
+            bomb.isFireBomb = false;
+            bomb.isGasBomb = true;
+            bomb.pos = { x: d.pos.x, y: d.pos.y + d.size * 0.5 };
+            bomb.targetPos = { x: gasX, y: groundY - 5 };
+            bomb.speed = 160 + Math.random() * 40;
+            bomb.size = 9;
+            bomb.damage = 6;
+            bomb.warningDuration = 0;
+            bomb.warningTimer = 0;
+            bomb.falling = true;
+            bomb.splitDone = false;
+            bomb.isClusterBomb = false;
+            bomb.rotation = 0;
+            bomb.trailTimer = 0;
+            g.activeHazardCount++;
             addFloatingText(g, '☣', { x: d.pos.x, y: d.pos.y + 15 }, '#16a34a');
-            spawnParticles(g, { x: gasX, y: groundY }, 6, '#16a34a', 80);
           }
         }
         if (dist(d.pos, p.pos) < d.size + p.size) {
@@ -2677,6 +2760,9 @@ export function update(g: GameData, input: InputState, dt: number) {
               proj.warningTimer = 0;
               proj.falling = true;
               proj.splitDone = false;
+              proj.isFireBomb = false;
+              proj.isGasBomb = false;
+              proj.isClusterBomb = false;
               proj.isClusterBomb = false;
               proj.rotation = 0;
               proj.trailTimer = 0;
@@ -2812,6 +2898,9 @@ export function update(g: GameData, input: InputState, dt: number) {
             bomb.warningDuration = 0;
             bomb.warningTimer = 0;
             bomb.falling = true;
+            bomb.isFireBomb = false;
+            bomb.isGasBomb = false;
+            bomb.isClusterBomb = false;
             bomb.splitDone = false;
             bomb.isClusterBomb = false;
             bomb.rotation = 0;
@@ -3153,6 +3242,9 @@ function updateBoss(g: GameData, dt: number) {
           h.falling = false;
           h.rotation = 0;
           h.trailTimer = 0;
+          h.isFireBomb = false;
+          h.isGasBomb = false;
+          h.isClusterBomb = false;
           sfxWarning();
         }, i * 300);
       }
@@ -3175,6 +3267,9 @@ function updateBoss(g: GameData, dt: number) {
           h.falling = false;
           h.rotation = 0;
           h.trailTimer = 0;
+          h.isFireBomb = false;
+          h.isGasBomb = false;
+          h.isClusterBomb = false;
           sfxWarning();
         }, i * 200);
       }
@@ -3198,6 +3293,9 @@ function updateBoss(g: GameData, dt: number) {
         h.falling = false;
         h.rotation = 0;
         h.trailTimer = 0;
+        h.isFireBomb = false;
+        h.isGasBomb = false;
+        h.isClusterBomb = false;
         sfxWarning();
       }
     }

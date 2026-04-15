@@ -62,6 +62,12 @@ export interface Hazard {
   falling: boolean;
   splitDone?: boolean;
   isClusterBomb?: boolean;
+  /** Marks a projectile as an incendiary payload — on landing it spawns
+   *  a fire pool instead of a crater. Rendered as a glowing fireball. */
+  isFireBomb?: boolean;
+  /** Marks a projectile as a chemical payload — on landing it spawns
+   *  a gas cloud. Rendered as a green bioluminescent canister. */
+  isGasBomb?: boolean;
   rotation: number;
   trailTimer: number;
   clusterPhase?: 'flying' | 'opening' | 'releasing' | 'done';

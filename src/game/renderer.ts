@@ -1223,6 +1223,130 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.ellipse(0, -bLen * 0.15, bW * 0.35, bLen * 0.15, 0, 0, Math.PI * 2);
       ctx.fill();
 
+    } else if (hz.isFireBomb) {
+      // ═══ Falling Fireball — napalm bomblet with a flame tail ═══
+      const pulse = 0.85 + Math.sin(performance.now() * 0.02 + hz.pos.x) * 0.15;
+      const r = hz.size * 1.1;
+
+      // Smoke trail trailing upward
+      for (let s = 0; s < 5; s++) {
+        const sy = -s * 4 - 2;
+        const sa = (0.35 - s * 0.06) * pulse;
+        const sr = 3 + s * 1.2;
+        ctx.fillStyle = `rgba(80,60,50,${Math.max(0.02, sa)})`;
+        ctx.beginPath();
+        ctx.arc(Math.sin(s * 0.7) * 1.2, sy, sr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Outer orange halo (bloom)
+      const haloGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.6);
+      haloGrad.addColorStop(0, `rgba(255,180,60,${0.45 * pulse})`);
+      haloGrad.addColorStop(0.5, `rgba(255,100,30,${0.25 * pulse})`);
+      haloGrad.addColorStop(1, 'rgba(180,40,0,0)');
+      ctx.fillStyle = haloGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 2.6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Fireball core with 3-stop radial gradient
+      const coreGrad = ctx.createRadialGradient(-r * 0.2, -r * 0.2, 0, 0, 0, r);
+      coreGrad.addColorStop(0, 'rgba(255,255,220,0.98)');
+      coreGrad.addColorStop(0.35, `rgba(255,210,80,${pulse})`);
+      coreGrad.addColorStop(0.75, `rgba(255,110,20,${pulse})`);
+      coreGrad.addColorStop(1, 'rgba(150,30,0,0.8)');
+      ctx.fillStyle = coreGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Dark scorch ring around the core (metallic casing hint)
+      ctx.strokeStyle = 'rgba(40,15,5,0.8)';
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.9, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Flickering flame tongues licking out
+      for (let f = 0; f < 4; f++) {
+        const ang = (f / 4) * Math.PI * 2 + performance.now() * 0.003;
+        const flame = r * (0.6 + Math.sin(performance.now() * 0.02 + f * 3) * 0.4);
+        const fx = Math.cos(ang) * r * 0.6;
+        const fy = Math.sin(ang) * r * 0.6;
+        ctx.fillStyle = `rgba(255,${150 + Math.floor(Math.random() * 70)},20,${0.7 * pulse})`;
+        ctx.beginPath();
+        ctx.arc(fx, fy, flame * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Bright specular dot
+      ctx.fillStyle = 'rgba(255,255,240,0.9)';
+      ctx.beginPath();
+      ctx.arc(-r * 0.3, -r * 0.35, r * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (hz.isGasBomb) {
+      // ═══ Falling Gas Canister — green glowing cylinder ═══
+      const r = hz.size * 1.1;
+      const pulse = 0.8 + Math.sin(performance.now() * 0.008) * 0.2;
+
+      // Outer green halo
+      const haloGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.3);
+      haloGrad.addColorStop(0, `rgba(74,222,128,${0.35 * pulse})`);
+      haloGrad.addColorStop(0.55, `rgba(34,197,94,${0.18 * pulse})`);
+      haloGrad.addColorStop(1, 'rgba(5,46,22,0)');
+      ctx.fillStyle = haloGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 2.3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Vapor trail above (mist rising from the falling canister)
+      for (let s = 0; s < 4; s++) {
+        const sy = -s * 5 - 3;
+        const sa = (0.3 - s * 0.06) * pulse;
+        ctx.fillStyle = `rgba(134,239,172,${Math.max(0.02, sa)})`;
+        ctx.beginPath();
+        ctx.arc(Math.sin(s * 0.8) * 1.5, sy, 3 + s * 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Canister body (metallic cylinder + glass window)
+      ctx.save();
+      ctx.rotate(hz.rotation * 0.15);
+      // Metal shell
+      const shellGrad = ctx.createLinearGradient(-r * 0.6, 0, r * 0.6, 0);
+      shellGrad.addColorStop(0, '#4b5563');
+      shellGrad.addColorStop(0.5, '#64748b');
+      shellGrad.addColorStop(1, '#334155');
+      ctx.fillStyle = shellGrad;
+      ctx.beginPath();
+      ctx.roundRect(-r * 0.6, -r * 1.05, r * 1.2, r * 2.1, r * 0.2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(20,30,45,0.9)';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+
+      // Green glass window showing the contents
+      const glassGrad = ctx.createLinearGradient(0, -r * 0.8, 0, r * 0.8);
+      glassGrad.addColorStop(0, `rgba(190,245,190,${pulse})`);
+      glassGrad.addColorStop(0.5, `rgba(34,197,94,${pulse})`);
+      glassGrad.addColorStop(1, `rgba(5,46,22,${pulse})`);
+      ctx.fillStyle = glassGrad;
+      ctx.fillRect(-r * 0.4, -r * 0.8, r * 0.8, r * 1.6);
+      // Inner highlight strip
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillRect(-r * 0.3, -r * 0.75, r * 0.12, r * 1.5);
+      // Outline
+      ctx.strokeStyle = 'rgba(5,46,22,0.8)';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(-r * 0.4, -r * 0.8, r * 0.8, r * 1.6);
+
+      // Biohazard mark on top
+      ctx.fillStyle = 'rgba(250,204,21,0.9)';
+      ctx.font = `bold ${r * 0.8}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('☣', 0, 0);
+      ctx.restore();
     } else {
       // ═══ Shrapnel — tumbling metal shard with motion blur ═══
       ctx.rotate(hz.rotation);
@@ -5625,51 +5749,104 @@ function renderMotorcycle(
 
   ctx.translate(bike.shakeOffset.x, bike.shakeOffset.y + suspCompress * 0.3);
 
-  // ── Advanced Exhaust with Vortex Turbulence ──
+  // ── Realistic Exhaust Smoke ──
+  // Uses a larger puff count, buoyancy-rising particles, curl noise for
+  // organic drift, and a 4-layer coloured disc per puff so the trail
+  // reads as real turbulent smoke instead of marching ellipses.
   if (bike.phase === 'idle' || bike.phase === 'leaving' || bike.phase === 'entering') {
     const isLeaving = bike.phase === 'leaving';
-    const puffCount = isLeaving ? 10 : (bike.phase === 'idle' ? 5 : 7);
+    const isIdle = bike.phase === 'idle';
+    const puffCount = isLeaving ? 16 : isIdle ? 11 : 13;
+    const lifeSpan = isLeaving ? 3.2 : 2.8; // seconds per puff
+    // Emission rate (puffs per second)
+    const emitRate = isLeaving ? 6 : 4.5;
+
+    // Deterministic noise helper (cheap 2-freq hash)
+    const curl = (t: number, seed: number) =>
+      Math.sin(t * 2.4 + seed * 1.3) * 0.7 +
+      Math.sin(t * 5.1 + seed * 2.7) * 0.4 +
+      Math.sin(t * 11.3 + seed * 0.7) * 0.2;
+
     for (let i = 0; i < puffCount; i++) {
-      const age = (g.elapsed * (isLeaving ? 2.5 : 1.5) + i * 0.6) % 2.5;
-      const friction = Math.pow(0.92, age * 10);
-      const baseVx = isLeaving ? -20 : -8;
-      const baseVy = isLeaving ? -6 : -8;
-      // Vortex turbulence: local swirl offset
-      const seedAngle = i * 2.3 + g.elapsed * 0.5;
-      const vortex = Math.sin(age * 5 + seedAngle) * 2;
-      const vortexY = Math.cos(age * 4 + seedAngle) * 1.5;
-      const windDrift = Math.sin(g.elapsed * 2 + i * 1.3) * 2 + vortex;
-      const sx = -28 + baseVx * age * friction + windDrift;
-      const sy = -5 + baseVy * age * friction + Math.sin(g.elapsed * 3 + i) * 1.5 + vortexY;
-      const scaleX = 1 + age * 1.0;
-      const baseR = 2 + age * (isLeaving ? 5.5 : 3.5);
-      const lifeAlpha = Math.max(0, 1 - age / 2.5);
-      // 4-stage color: bright white → white-grey → grey-brown → transparent
-      const ageRatio = age / 2.5;
+      // Age wraps per-puff with a phase offset so they don't all emit at once
+      const phase = i / puffCount;
+      const rawAge = (g.elapsed * emitRate + phase * lifeSpan) % lifeSpan;
+      if (rawAge < 0.02) continue; // just emitted, skip first frame
+      const ageRatio = rawAge / lifeSpan; // 0..1
+
+      // Drift from the exhaust tip (-28, -5). Backward velocity + rise.
+      const seed = i * 1.71;
+      const frict = 1 - Math.pow(1 - ageRatio, 2); // decelerates over time
+      const backwardSpeed = isLeaving ? 18 : 7;
+      // Smoke rises (buoyancy) — accelerates upward over age
+      const rise = ageRatio * ageRatio * 14 + ageRatio * 4;
+      // Curl-noise horizontal drift
+      const curlX = curl(g.elapsed + seed, seed) * 3.5;
+      const curlY = curl(g.elapsed + seed + 100, seed * 1.5) * 2.2;
+      // Wind (slow constant drift)
+      const windX = (isLeaving ? -2 : -0.6);
+
+      const sx = -28 - (backwardSpeed * rawAge * frict) + curlX + windX * rawAge;
+      const sy = -5 - rise + curlY;
+
+      // Growing radius with age
+      const baseR = 2 + ageRatio * (isLeaving ? 9 : 6.5);
+      const lifeAlpha = Math.pow(1 - ageRatio, 1.4);
+
+      // Colour ramp — hot white → warm grey → cool grey → dark dissipating
       let r: number, gr: number, b: number;
-      if (ageRatio < 0.2) {
-        r = 220; gr = 220; b = 225; // bright white
-      } else if (ageRatio < 0.5) {
-        r = 200 - (ageRatio - 0.2) * 130; gr = 200 - (ageRatio - 0.2) * 140; b = 210 - (ageRatio - 0.2) * 160;
-      } else if (ageRatio < 0.8) {
-        r = 160 - (ageRatio - 0.5) * 100; gr = 155 - (ageRatio - 0.5) * 120; b = 160 - (ageRatio - 0.5) * 140;
+      if (ageRatio < 0.12) {
+        // Hot exhaust gases (warm amber)
+        const t = ageRatio / 0.12;
+        r = 255; gr = Math.round(220 - t * 30); b = Math.round(190 - t * 40);
+      } else if (ageRatio < 0.35) {
+        const t = (ageRatio - 0.12) / 0.23;
+        r = Math.round(240 - t * 40); gr = Math.round(230 - t * 50); b = Math.round(225 - t * 55);
+      } else if (ageRatio < 0.7) {
+        const t = (ageRatio - 0.35) / 0.35;
+        r = Math.round(200 - t * 70); gr = Math.round(195 - t * 75); b = Math.round(190 - t * 75);
       } else {
-        r = 130; gr = 119; b = 118;
+        const t = (ageRatio - 0.7) / 0.3;
+        r = Math.round(130 - t * 40); gr = Math.round(120 - t * 40); b = Math.round(115 - t * 35);
       }
-      const alpha = lifeAlpha * (isLeaving ? 0.38 : 0.28);
-      // Each puff = 4 overlapping circles for organic turbulent shape
+
+      const alphaBase = lifeAlpha * (isLeaving ? 0.42 : 0.32);
+
       ctx.save();
       ctx.translate(sx, sy);
-      ctx.scale(scaleX, 1);
+      // Organic rotation — slow tumble
+      ctx.rotate((seed + g.elapsed * 0.3) % (Math.PI * 2));
+
+      // Multi-disc compound puff (4 slightly offset circles with falloff)
       for (let c = 0; c < 4; c++) {
-        const cx2 = Math.cos(c * 1.6 + i + age * 2) * baseR * 0.35;
-        const cy2 = Math.sin(c * 1.6 + i + age * 1.5) * baseR * 0.3;
-        const cr = baseR * (0.55 + c * 0.12);
-        ctx.fillStyle = `rgba(${Math.round(r)},${Math.round(gr)},${Math.round(b)},${alpha * (1 - c * 0.12)})`;
+        const discAngle = (c / 4) * Math.PI * 2 + seed;
+        const distC = baseR * 0.28;
+        const cx2 = Math.cos(discAngle) * distC;
+        const cy2 = Math.sin(discAngle) * distC * 0.7;
+        const cr = baseR * (0.7 - c * 0.1);
+        // Soft radial gradient per disc for smoke wisps
+        const grad = ctx.createRadialGradient(cx2, cy2, 0, cx2, cy2, cr);
+        const a = alphaBase * (1 - c * 0.15);
+        grad.addColorStop(0, `rgba(${r},${gr},${b},${a})`);
+        grad.addColorStop(1, `rgba(${r},${gr},${b},0)`);
+        ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.arc(cx2, cy2, cr, 0, Math.PI * 2);
         ctx.fill();
       }
+
+      // Hot core highlight for young puffs
+      if (ageRatio < 0.15) {
+        const hotA = (1 - ageRatio / 0.15) * 0.6;
+        const hotGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, baseR * 0.5);
+        hotGrad.addColorStop(0, `rgba(255,210,130,${hotA})`);
+        hotGrad.addColorStop(1, 'rgba(255,120,30,0)');
+        ctx.fillStyle = hotGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, baseR * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       ctx.restore();
     }
   }
