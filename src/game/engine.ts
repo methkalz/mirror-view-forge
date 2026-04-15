@@ -6,7 +6,7 @@ import {
 import type { DifficultyProfile, RemoteWaveConfig } from './config';
 import { getFromPool, releaseAll } from './pool';
 import { addTrauma, updateCameraShake, resetTrauma } from './cameraShake';
-import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameOverVoice, sfxGameStart, sfxUpgradeSelect, sfxScoreTick, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber, playCustomAudio } from './audio';
+import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameOverVoice, sfxGameStart, sfxUpgradeSelect, sfxScoreTick, sfxSlideTransition, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber, playCustomAudio } from './audio';
 
 const DASH_SPEED = 520;
 const DASH_DURATION = 0.25;
@@ -48,8 +48,12 @@ export function createGame(w: number, h: number): GameData {
       ammo: 0,
       shootTimer: 0,
       gasMaskTimer: 0,
+      gasMaskDonTimer: 0,
+      gasMaskDoffTimer: 0,
       extinguisherTimer: 0,
       fireSuitTimer: 0,
+      fireSuitDonTimer: 0,
+      fireSuitDoffTimer: 0,
       maxAmmo: 30,
       speedMultiplier: 1,
       slowMoDuration: 5,
@@ -157,6 +161,7 @@ export function createGame(w: number, h: number): GameData {
     fireSuitOfferDelay: 0,
     fireSuitDropScheduled: false,
     fireSuitDropTime: 0,
+    fireSuitOfferPending: false,
     scoreCountdown: null,
   };
 }
@@ -186,8 +191,12 @@ export function resetGame(g: GameData) {
   g.player.ammo = 0;
   g.player.shootTimer = 0;
   g.player.gasMaskTimer = 0;
+  g.player.gasMaskDonTimer = 0;
+  g.player.gasMaskDoffTimer = 0;
   g.player.extinguisherTimer = 0;
   g.player.fireSuitTimer = 0;
+  g.player.fireSuitDonTimer = 0;
+  g.player.fireSuitDoffTimer = 0;
   g.player.maxAmmo = 30;
   g.player.speedMultiplier = 1;
   g.player.slowMoDuration = 5;
@@ -260,6 +269,7 @@ export function resetGame(g: GameData) {
   g.fireSuitOfferDelay = 0;
   g.fireSuitDropScheduled = false;
   g.fireSuitDropTime = 0;
+  g.fireSuitOfferPending = false;
   g.scoreCountdown = null;
   // Wave system reset
   g.waveNumber = 1;
@@ -759,12 +769,24 @@ function spawnHazard(g: GameData, type: HazardType) {
   h.trailTimer = 0;
 
   switch (type) {
-    case 'shrapnel':
-      h.speed = Math.min(280 + g.difficulty * 20 + Math.random() * 140, MAX_MISSILE_SPEED * 0.8);
-      h.size = 8;
-      h.damage = 10;
+    case 'shrapnel': {
+      // Pick one of 4 shapes — heavier pieces fall faster and tumble slower.
+      //   0: rebar (long rectangle) — heaviest, fastest fall, slow spin
+      //   1: jagged chunk          — medium, standard spin
+      //   2: bent sheet metal      — light, slower fall, wobbly
+      //   3: twisted wire          — lightest, slowest fall, fastest spin
+      const variant = Math.floor(Math.random() * 4);
+      h.shrapnelVariant = variant;
+      const baseSpeed = 280 + g.difficulty * 20 + Math.random() * 140;
+      const weightMul = [1.15, 1.0, 0.8, 0.65][variant];
+      h.speed = Math.min(baseSpeed * weightMul, MAX_MISSILE_SPEED * 0.85);
+      // Spin rate varies inversely with weight
+      h.spinSpeed = [2.5, 6, 4.5, 9][variant] + Math.random() * 2;
+      h.size = [10, 8, 9, 7][variant];
+      h.damage = [12, 10, 9, 7][variant];
       h.warningDuration = 0.7;
       break;
+    }
     case 'missile':
       h.speed = Math.min(160 + g.difficulty * 15 + Math.random() * 100, MAX_MISSILE_SPEED);
       h.size = 12;
@@ -1382,33 +1404,30 @@ function startNextWave(g: GameData) {
     }
   }
 
-  // ── Gas mask: purchase offer + scheduled parachute drop ──
-  if (recipe.hasChemical) {
-    if (g.player.gasMaskTimer <= 0) {
-      // Purchase offer at the start of the wave
-      g.gasMaskOfferDelay = 2.5;
-      // Schedule one parachute drop at a random time during the wave so the
-      // player has a reliable way to stay protected even if they refuse.
-      // Sit between 25% and 60% of the wave to give a real buying window.
-      g.gasMaskDropScheduled = true;
-      g.gasMaskDropTime = g.elapsed + g.waveTimer * (0.25 + Math.random() * 0.35);
-    } else {
-      g.gasMaskDropScheduled = false;
-    }
+  // ── Gas mask + fire suit offers: at most one card on screen at a time ──
+  // If both threats are present in the wave, the gas mask offer is shown
+  // first and the fire suit offer waits in a pending state until the
+  // previous card closes (purchased, refused or timed out).
+  const needsGas = !!recipe.hasChemical && g.player.gasMaskTimer <= 0;
+  const needsFire = !!recipe.hasIncendiary && g.player.fireSuitTimer <= 0;
+
+  if (needsGas) {
+    g.gasMaskOfferDelay = 2.5;
+    g.gasMaskDropScheduled = true;
+    g.gasMaskDropTime = g.elapsed + g.waveTimer * (0.25 + Math.random() * 0.35);
   } else {
     g.gasMaskDropScheduled = false;
   }
 
-  // ── Fire suit: purchase offer + scheduled parachute drop ──
-  if (recipe.hasIncendiary) {
-    if (g.player.fireSuitTimer <= 0) {
-      g.fireSuitOfferDelay = 2.5;
-      g.fireSuitDropScheduled = true;
-      g.fireSuitDropTime = g.elapsed + g.waveTimer * (0.25 + Math.random() * 0.35);
-    } else {
-      g.fireSuitDropScheduled = false;
-    }
+  if (needsFire) {
+    // Mark the fire suit as "pending" so updateWaveSystem can start its
+    // delay once the gas mask card is resolved.
+    g.fireSuitOfferPending = needsGas;
+    g.fireSuitOfferDelay = needsGas ? 0 : 2.5;
+    g.fireSuitDropScheduled = true;
+    g.fireSuitDropTime = g.elapsed + g.waveTimer * (0.25 + Math.random() * 0.35);
   } else {
+    g.fireSuitOfferPending = false;
     g.fireSuitDropScheduled = false;
   }
 }
@@ -1466,27 +1485,44 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         g.gasMaskOffer = null;
         g.slowMoFactor = 1; // Restore normal speed
       }
-      // Handle purchase via cardClick — responsive card (clamped to viewport)
-      if (input.cardClick) {
+      // Handle purchase via cardClick. Click detection must mirror the
+      // renderer exactly — same responsive size AND same slide-in offset —
+      // otherwise taps during the animation land outside the hit zone.
+      if (input.cardClick && g.gasMaskOffer) {
         const { x, y } = input.cardClick;
+        const offerDuration = 8;
+        const slideIn = Math.min(1, (offerDuration - g.gasMaskOffer.timer) * 4);
+        const slideY = (1 - slideIn) * 80;
         const cardW = Math.min(200, g.width - 40);
         const cardH = Math.min(270, g.height * 0.55);
         const cardX = (g.width - cardW) / 2;
-        const cardY = g.height * 0.5 - cardH / 2;
-        if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
+        const cardY = g.height * 0.5 - cardH / 2 + slideY;
+        // Refuse pill sits right under the card
+        const refuseW = Math.min(150, cardW);
+        const refuseH = 34;
+        const refuseX = (g.width - refuseW) / 2;
+        const refuseY = cardY + cardH + 12;
+
+        // 1) Refuse pill first (it's outside the card)
+        if (x >= refuseX && x <= refuseX + refuseW && y >= refuseY && y <= refuseY + refuseH) {
+          input.cardClick = null;
+          g.gasMaskOffer = null;
+          g.slowMoFactor = 1;
+          sfxSlideTransition();
+        }
+        // 2) Otherwise: any click on the card itself = buy
+        else if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
           input.cardClick = null;
           if (g.score >= g.gasMaskOffer.cost) {
-            // Start score countdown animation instead of instant deduction
             const cost = g.gasMaskOffer.cost;
             g.scoreCountdown = { remaining: cost, tickTimer: 0, totalCost: cost };
             g.gasMaskOwned = true;
-            // Duration: remaining wave time + 5s buffer so the player is never
-            // exposed mid-fight because the timer ran out early.
             g.player.gasMaskTimer = Math.max(15, g.waveTimer + 5);
-            // Player already bought it — cancel the pity parachute drop.
+            // Trigger the donning animation
+            g.player.gasMaskDonTimer = 0.6;
             g.gasMaskDropScheduled = false;
             g.gasMaskOffer = null;
-            g.slowMoFactor = 0.5; // Partial slow-mo during countdown
+            g.slowMoFactor = 0.5;
             sfxUpgradeSelect();
             addFloatingText(g, 'كمامة! 🛡️', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#16a34a');
             spawnParticles(g, g.player.pos, 10, '#16a34a', 90);
@@ -1498,6 +1534,12 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
     }
 
     // ── Fire suit offer delay + purchase logic (mirror of gas mask) ──
+    // If the offer was pending waiting for the gas mask card to close, kick
+    // off its real delay countdown now that the gas mask card is resolved.
+    if (g.fireSuitOfferPending && !g.gasMaskOffer && g.gasMaskOfferDelay <= 0) {
+      g.fireSuitOfferPending = false;
+      g.fireSuitOfferDelay = 1.2; // short gap so cards don't overlap visually
+    }
     if (g.fireSuitOfferDelay > 0) {
       g.fireSuitOfferDelay -= dt;
       if (g.fireSuitOfferDelay <= 0) {
@@ -1515,19 +1557,36 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         g.fireSuitOffer = null;
         g.slowMoFactor = 1;
       }
-      if (input.cardClick) {
+      if (input.cardClick && g.fireSuitOffer) {
         const { x, y } = input.cardClick;
+        const offerDuration = 8;
+        const slideIn = Math.min(1, (offerDuration - g.fireSuitOffer.timer) * 4);
+        const slideY = (1 - slideIn) * 80;
         const cardW = Math.min(200, g.width - 40);
         const cardH = Math.min(270, g.height * 0.55);
         const cardX = (g.width - cardW) / 2;
-        const cardY = g.height * 0.5 - cardH / 2;
-        if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
+        const cardY = g.height * 0.5 - cardH / 2 + slideY;
+        const refuseW = Math.min(150, cardW);
+        const refuseH = 34;
+        const refuseX = (g.width - refuseW) / 2;
+        const refuseY = cardY + cardH + 12;
+
+        // 1) Refuse pill
+        if (x >= refuseX && x <= refuseX + refuseW && y >= refuseY && y <= refuseY + refuseH) {
+          input.cardClick = null;
+          g.fireSuitOffer = null;
+          g.slowMoFactor = 1;
+          sfxSlideTransition();
+        }
+        // 2) Whole card = buy
+        else if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
           input.cardClick = null;
           if (g.score >= g.fireSuitOffer.cost) {
             const cost = g.fireSuitOffer.cost;
             g.scoreCountdown = { remaining: cost, tickTimer: 0, totalCost: cost };
             g.fireSuitOwned = true;
             g.player.fireSuitTimer = Math.max(15, g.waveTimer + 5);
+            g.player.fireSuitDonTimer = 0.6;
             g.fireSuitDropScheduled = false;
             g.fireSuitOffer = null;
             g.slowMoFactor = 0.5;
@@ -2042,7 +2101,13 @@ export function update(g: GameData, input: InputState, dt: number) {
   // === Update hazards ===
   for (const h of g.hazards) {
     if (!h.active) continue;
-    h.rotation += dt * (h.type === 'shrapnel' ? 8 : 2);
+    // Each shrapnel piece tumbles at its own variant-specific rate.
+    // Missiles and clusters use the legacy constant.
+    if (h.type === 'shrapnel') {
+      h.rotation += dt * (h.spinSpeed ?? 8);
+    } else {
+      h.rotation += dt * 2;
+    }
 
     // === Cluster missile: horizontal flying phases ===
     if (h.type === 'cluster' && h.clusterPhase) {
@@ -2395,6 +2460,7 @@ export function update(g: GameData, input: InputState, dt: number) {
           addFloatingText(g, 'كمامة! 🛡️', { x: p.pos.x, y: p.pos.y - 40 }, '#16a34a');
           spawnParticles(g, p.pos, 10, '#16a34a', 90);
           p.gasMaskTimer = Math.max(15, g.waveTimer + 5);
+          p.gasMaskDonTimer = 0.6;
           g.gasMaskOwned = true;
           g.gasMaskOffer = null;
           g.gasMaskDropScheduled = false;
@@ -2404,6 +2470,7 @@ export function update(g: GameData, input: InputState, dt: number) {
           addFloatingText(g, 'بدلة نار! 🔥', { x: p.pos.x, y: p.pos.y - 40 }, '#f97316');
           spawnParticles(g, p.pos, 10, '#f97316', 90);
           p.fireSuitTimer = Math.max(15, g.waveTimer + 5);
+          p.fireSuitDonTimer = 0.6;
           g.fireSuitOwned = true;
           g.fireSuitOffer = null;
           g.fireSuitDropScheduled = false;
@@ -2458,6 +2525,8 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (p.gasMaskTimer <= 0) {
       p.gasMaskTimer = 0;
       g.gasMaskOwned = false;
+      // Kick off the doffing animation so the mask lifts away visually
+      p.gasMaskDoffTimer = 0.45;
     }
   }
   if (p.fireSuitTimer > 0) {
@@ -2465,8 +2534,14 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (p.fireSuitTimer <= 0) {
       p.fireSuitTimer = 0;
       g.fireSuitOwned = false;
+      p.fireSuitDoffTimer = 0.5;
     }
   }
+  // Decay the don/doff animation timers
+  if (p.gasMaskDonTimer > 0) p.gasMaskDonTimer = Math.max(0, p.gasMaskDonTimer - dt);
+  if (p.gasMaskDoffTimer > 0) p.gasMaskDoffTimer = Math.max(0, p.gasMaskDoffTimer - dt);
+  if (p.fireSuitDonTimer > 0) p.fireSuitDonTimer = Math.max(0, p.fireSuitDonTimer - dt);
+  if (p.fireSuitDoffTimer > 0) p.fireSuitDoffTimer = Math.max(0, p.fireSuitDoffTimer - dt);
   if (p.extinguisherTimer > 0) p.extinguisherTimer -= dt;
 
   // === Update Fire Pools ===
