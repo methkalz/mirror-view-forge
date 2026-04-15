@@ -2746,48 +2746,53 @@ export function update(g: GameData, input: InputState, dt: number) {
         d.pos.y = Math.max(minY, Math.min(maxY, d.pos.y));
         d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
       } else {
-        // Active tracking for scout/bomber
+        // Active tracking for scout/bomber — each tier gets its own altitude
+        // and steering feel so they look physically distinct.
+        const isBomber = d.tier === 'bomber';
         const dx = p.pos.x - d.pos.x;
-        const targetY = d.tier === 'bomber' ? p.pos.y - 150 - d.altitudeOffset * 0.5 : p.pos.y - 120 - d.altitudeOffset * 0.5;
+        // Bomber floats much higher and lazily; scout hovers medium and jitters.
+        const baseAlt = isBomber ? 190 : 120;
+        const bandJitter = d.altitudeOffset * 0.35;
+        const targetY = p.pos.y - baseAlt - bandJitter;
         const dy = targetY - d.pos.y;
         const dd = Math.sqrt(dx * dx + dy * dy);
-        
+
         if (dd > 0) {
-          const steerForce = 100 * d.trackingAccuracy;
+          // Bomber has HEAVY inertia — small steer force and no jitter.
+          const steerForce = (isBomber ? 45 : 100) * d.trackingAccuracy;
           d.vel.x += (dx / dd) * steerForce * dt;
           d.vel.y += (dy / dd) * steerForce * dt;
-          
+
           if (d.tier === 'scout') {
             d.vel.x += (Math.random() - 0.5) * 60 * dt;
             d.vel.y += (Math.random() - 0.5) * 30 * dt;
           }
 
-          // === Separation force: push away from other active drones ===
-          for (const other of g.drones) {
-            if (!other.active || other === d) continue;
-            const sx = d.pos.x - other.pos.x;
-            const sy = d.pos.y - other.pos.y;
-            const sd = Math.sqrt(sx * sx + sy * sy);
-            const minSep = d.size + other.size + 30;
-            if (sd < minSep && sd > 0) {
-              const force = (minSep - sd) * 3;
-              d.vel.x += (sx / sd) * force * dt;
-              d.vel.y += (sy / sd) * force * dt;
-            }
+          // Per-tier separation distance. The bomber is huge — give it a lot
+          // of breathing room so no two bombers can ever stick together.
+          const sepDist = isBomber ? 95 : 30;
+          applyDroneSeparation(d, g.drones, dt, sepDist);
+
+          // Extra damping for bomber so it doesn't accelerate like a fighter
+          if (isBomber) {
+            d.vel.x *= 1 - 0.9 * dt;
+            d.vel.y *= 1 - 0.9 * dt;
           }
-          
+
           const vLen = Math.sqrt(d.vel.x * d.vel.x + d.vel.y * d.vel.y);
-          if (vLen > d.speed) {
-            d.vel.x = (d.vel.x / vLen) * d.speed;
-            d.vel.y = (d.vel.y / vLen) * d.speed;
+          // Cap bomber speed significantly below the rest
+          const cap = isBomber ? d.speed * 0.65 : d.speed;
+          if (vLen > cap) {
+            d.vel.x = (d.vel.x / vLen) * cap;
+            d.vel.y = (d.vel.y / vLen) * cap;
           }
         }
         d.pos.x += d.vel.x * g.slowMoFactor * dt;
         d.pos.y += d.vel.y * g.slowMoFactor * dt;
 
-        // Keep drones in upper portion of screen
-        const minY = g.height * 0.08;
-        const maxY = g.height * 0.42;
+        // Keep drones in upper portion — bomber gets its own (higher) band
+        const minY = g.height * (isBomber ? 0.05 : 0.08);
+        const maxY = g.height * (isBomber ? 0.30 : 0.42);
         d.pos.y = Math.max(minY, Math.min(maxY, d.pos.y));
         d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
 

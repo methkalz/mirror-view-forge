@@ -3146,93 +3146,197 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fill();
 
     if (d.tier === 'scout') {
-      // SCOUT: Professional quadcopter with camera sensor
-      const armLen = d.size * 1.3;
-      // Central body — darker, more defined
-      const bodyGrad = ctx.createRadialGradient(-1, -1, 0, 0, 0, d.size * 0.65);
-      bodyGrad.addColorStop(0, '#4a4a4a');
-      bodyGrad.addColorStop(0.6, '#2a2a2a');
-      bodyGrad.addColorStop(1, '#1a1a1a');
-      ctx.fillStyle = bodyGrad;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, d.size * 0.55, d.size * 0.4, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#555';
-      ctx.lineWidth = 0.8;
-      ctx.stroke();
+      // ═══ SCOUT — Carbon-fiber surveillance quadcopter ═══
+      const sz = d.size;
+      const armLen = sz * 1.35;
+      const tt = g.elapsed;
+      const propAngle = tt * 45;
 
-      // Camera/sensor pod underneath
-      ctx.fillStyle = '#222';
+      // ── Soft under-shadow ──
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
       ctx.beginPath();
-      ctx.ellipse(0, d.size * 0.25, d.size * 0.2, d.size * 0.15, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, sz * 0.5, sz * 0.9, sz * 0.18, 0, 0, Math.PI * 2);
       ctx.fill();
-      // Camera lens
-      ctx.fillStyle = '#0ea5e9';
-      ctx.shadowColor = '#0ea5e9';
-      ctx.shadowBlur = 4;
-      ctx.beginPath();
-      ctx.arc(0, d.size * 0.25, d.size * 0.08, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
 
-      // 4 arms — thicker with joint details
-      const propAngle = g.elapsed * 30;
+      // ── Carbon-fiber arms (drawn under the body) ──
       for (let i = 0; i < 4; i++) {
         const armA = (Math.PI / 2) * i + Math.PI / 4;
         const ax = Math.cos(armA) * armLen;
-        const ay = Math.sin(armA) * armLen * 0.5;
-        // Arm with gradient
-        ctx.strokeStyle = '#444';
-        ctx.lineWidth = 2.5;
+        const ay = Math.sin(armA) * armLen * 0.45;
+        const bx = Math.cos(armA) * sz * 0.35;
+        const by = Math.sin(armA) * sz * 0.2;
+        // Dark core
+        ctx.strokeStyle = '#0f1115';
+        ctx.lineWidth = 3.4;
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(Math.cos(armA) * d.size * 0.35, Math.sin(armA) * d.size * 0.25);
+        ctx.moveTo(bx, by);
         ctx.lineTo(ax, ay);
         ctx.stroke();
-        // Joint circle
-        ctx.fillStyle = '#333';
+        // Carbon-weave highlight (bright grey thin line)
+        ctx.strokeStyle = 'rgba(180,190,210,0.5)';
+        ctx.lineWidth = 0.6;
         ctx.beginPath();
-        ctx.arc(ax, ay, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-        // Rotor disc — motion blur effect
-        const rotAlpha = 0.25 + Math.sin(propAngle + i * 2) * 0.1;
-        ctx.strokeStyle = `rgba(200,200,200,${rotAlpha})`;
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.ellipse(ax, ay, d.size * 0.45, d.size * 0.18, propAngle + i, 0, Math.PI * 2);
+        ctx.moveTo(bx, by - 0.5);
+        ctx.lineTo(ax, ay - 0.5);
         ctx.stroke();
-        // Rotor fill for blur
-        ctx.fillStyle = `rgba(180,180,180,${rotAlpha * 0.3})`;
+        ctx.lineCap = 'butt';
+
+        // Motor housing at the arm tip (dark cylinder with chrome rim)
+        const motorGrad = ctx.createRadialGradient(ax - 0.5, ay - 0.5, 0, ax, ay, sz * 0.14);
+        motorGrad.addColorStop(0, '#5b6270');
+        motorGrad.addColorStop(0.6, '#2a2f38');
+        motorGrad.addColorStop(1, '#0a0b10');
+        ctx.fillStyle = motorGrad;
         ctx.beginPath();
-        ctx.ellipse(ax, ay, d.size * 0.42, d.size * 0.16, propAngle + i, 0, Math.PI * 2);
+        ctx.arc(ax, ay, sz * 0.13, 0, Math.PI * 2);
         ctx.fill();
+        ctx.strokeStyle = 'rgba(180,200,220,0.55)';
+        ctx.lineWidth = 0.4;
+        ctx.stroke();
+        // Hot motor top dot
+        ctx.fillStyle = 'rgba(255,120,60,0.75)';
+        ctx.beginPath();
+        ctx.arc(ax, ay, sz * 0.04, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Propeller — translucent disc with 3 visible blade sweeps
+        ctx.save();
+        ctx.translate(ax, ay);
+        ctx.rotate(propAngle + i * 1.3);
+        // Fill disc
+        ctx.fillStyle = 'rgba(170,185,205,0.18)';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, sz * 0.5, sz * 0.12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Blade streaks
+        ctx.strokeStyle = 'rgba(210,220,235,0.55)';
+        ctx.lineWidth = 0.7;
+        for (let b = 0; b < 3; b++) {
+          const a = (b * Math.PI * 2) / 3;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * sz * 0.1, Math.sin(a) * sz * 0.02);
+          ctx.lineTo(Math.cos(a) * sz * 0.48, Math.sin(a) * sz * 0.1);
+          ctx.stroke();
+        }
+        ctx.restore();
       }
 
-      // LED indicators — red (front) and green (rear)
-      const ledBlink = Math.sin(g.elapsed * 4) > 0;
-      // Front LED (red)
-      ctx.fillStyle = ledBlink ? '#ef4444' : '#4a1010';
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = ledBlink ? 6 : 0;
+      // ── Central hull (lozenge-shaped with 3-stop metal gradient) ──
+      const bodyGrad = ctx.createLinearGradient(0, -sz * 0.35, 0, sz * 0.35);
+      bodyGrad.addColorStop(0, '#6a6d76');
+      bodyGrad.addColorStop(0.35, '#2e3138');
+      bodyGrad.addColorStop(0.7, '#16181c');
+      bodyGrad.addColorStop(1, '#0a0b10');
+      ctx.fillStyle = bodyGrad;
       ctx.beginPath();
-      ctx.arc(d.size * 0.3, -d.size * 0.15, 1.8, 0, Math.PI * 2);
+      // Smooth rounded rectangle body
+      ctx.ellipse(0, 0, sz * 0.6, sz * 0.38, 0, 0, Math.PI * 2);
       ctx.fill();
-      // Rear LED (green)
-      ctx.fillStyle = ledBlink ? '#22c55e' : '#0a3a10';
-      ctx.shadowColor = '#22c55e';
-      ctx.shadowBlur = ledBlink ? 6 : 0;
+      ctx.strokeStyle = 'rgba(120,130,145,0.6)';
+      ctx.lineWidth = 0.7;
+      ctx.stroke();
+
+      // Top chrome gloss stripe
+      const glossGrad = ctx.createLinearGradient(0, -sz * 0.35, 0, 0);
+      glossGrad.addColorStop(0, 'rgba(255,255,255,0)');
+      glossGrad.addColorStop(0.7, 'rgba(255,255,255,0.22)');
+      glossGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = glossGrad;
       ctx.beginPath();
-      ctx.arc(-d.size * 0.3, -d.size * 0.15, 1.8, 0, Math.PI * 2);
+      ctx.ellipse(0, -sz * 0.14, sz * 0.42, sz * 0.14, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Antenna on top
+      ctx.strokeStyle = '#2a2a2a';
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(-sz * 0.15, -sz * 0.3);
+      ctx.lineTo(-sz * 0.2, -sz * 0.55);
+      ctx.stroke();
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath();
+      ctx.arc(-sz * 0.2, -sz * 0.56, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+
+      // ── Gimbal camera pod under the body ──
+      // Gimbal arm
+      ctx.strokeStyle = '#3a3a3a';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(0, sz * 0.18);
+      ctx.lineTo(0, sz * 0.28);
+      ctx.stroke();
+      // Spherical gimbal body
+      const gimGrad = ctx.createRadialGradient(-sz * 0.05, sz * 0.33, 0, 0, sz * 0.33, sz * 0.2);
+      gimGrad.addColorStop(0, '#4a4a4a');
+      gimGrad.addColorStop(0.6, '#1a1a1a');
+      gimGrad.addColorStop(1, '#0a0a0a');
+      ctx.fillStyle = gimGrad;
+      ctx.beginPath();
+      ctx.arc(0, sz * 0.33, sz * 0.19, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(180,200,220,0.5)';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+      // Camera lens — glowing cyan
+      const lensGrad = ctx.createRadialGradient(0, sz * 0.33, 0, 0, sz * 0.33, sz * 0.12);
+      lensGrad.addColorStop(0, 'rgba(200,250,255,0.95)');
+      lensGrad.addColorStop(0.4, 'rgba(14,165,233,0.8)');
+      lensGrad.addColorStop(1, 'rgba(3,80,130,0.3)');
+      ctx.fillStyle = lensGrad;
+      ctx.beginPath();
+      ctx.arc(0, sz * 0.33, sz * 0.1, 0, Math.PI * 2);
+      ctx.fill();
+      // Lens ring
+      ctx.strokeStyle = 'rgba(230,240,255,0.7)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.arc(0, sz * 0.33, sz * 0.1, 0, Math.PI * 2);
+      ctx.stroke();
+      // Inner aperture dot
+      ctx.fillStyle = 'rgba(10,15,25,0.9)';
+      ctx.beginPath();
+      ctx.arc(0, sz * 0.33, sz * 0.04, 0, Math.PI * 2);
+      ctx.fill();
+      // Specular highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.beginPath();
+      ctx.arc(-sz * 0.035, sz * 0.305, sz * 0.02, 0, Math.PI * 2);
+      ctx.fill();
+
+      // LED cluster — front red + rear green + blinking status
+      const ledBlink = Math.sin(tt * 4) > 0;
+      ctx.shadowBlur = ledBlink ? 7 : 2;
+      // Front red (in facing direction)
+      ctx.shadowColor = '#ef4444';
+      ctx.fillStyle = ledBlink ? '#ff5555' : '#4a1010';
+      ctx.beginPath();
+      ctx.arc(sz * 0.42, -sz * 0.12, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+      // Rear green
+      ctx.shadowColor = '#22c55e';
+      ctx.fillStyle = ledBlink ? '#44ff66' : '#0a3a10';
+      ctx.beginPath();
+      ctx.arc(-sz * 0.42, -sz * 0.12, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+      // Amber side blinkers
+      ctx.shadowColor = '#fbbf24';
+      ctx.fillStyle = ledBlink ? '#fcd34d' : '#3a2a05';
+      ctx.beginPath();
+      ctx.arc(0, sz * 0.05, 1.2, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      // Camera flash — periodic white burst
-      const flashCycle = Math.sin(g.elapsed * 2.5);
+      // Camera flash — occasional bright burst (photographs the player)
+      const flashCycle = Math.sin(tt * 2.5);
       if (flashCycle > 0.95) {
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        const flashR = 5 + (flashCycle - 0.95) * 40;
+        ctx.fillStyle = `rgba(255,255,255,${(flashCycle - 0.95) * 12})`;
         ctx.shadowColor = '#ffffff';
-        ctx.shadowBlur = 20;
+        ctx.shadowBlur = 22;
         ctx.beginPath();
-        ctx.arc(0, d.size * 0.2, 4, 0, Math.PI * 2);
+        ctx.arc(0, sz * 0.33, flashR, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
       }
@@ -3363,118 +3467,331 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
       }
 
     } else {
-      // BOMBER: Massive heavy military drone — wide body with bomb bay
+      // ═══ BOMBER — Twin-rotor tiltwing heavy bomber ═══
+      // Unique silhouette: wide fuselage, dorsal engine pod, visible bomb
+      // bay, blue tinted cockpit — distinct from every other drone.
       const dir = facingRight ? 1 : -1;
-      // Heavy fuselage — dark brown military
-      const bodyGrad = ctx.createLinearGradient(0, -d.size * 0.45, 0, d.size * 0.45);
-      bodyGrad.addColorStop(0, '#4a3d30');
-      bodyGrad.addColorStop(0.3, '#3a2f25');
-      bodyGrad.addColorStop(0.7, '#2a2018');
-      bodyGrad.addColorStop(1, '#1a1510');
-      ctx.fillStyle = bodyGrad;
+      const sz = d.size;
+      const tt = g.elapsed;
+      const bombReady = d.bombTimer >= d.bombCooldown * 0.8;
+
+      // ── Ground shadow ──
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
       ctx.beginPath();
-      ctx.moveTo(dir * d.size * 1.3, 0);
-      ctx.lineTo(dir * d.size * 0.6, -d.size * 0.45);
-      ctx.lineTo(-dir * d.size * 0.9, -d.size * 0.4);
-      ctx.lineTo(-dir * d.size * 1.1, 0);
-      ctx.lineTo(-dir * d.size * 0.9, d.size * 0.45);
-      ctx.lineTo(dir * d.size * 0.6, d.size * 0.5);
+      ctx.ellipse(0, sz * 0.6, sz * 1.1, sz * 0.22, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // ── Wide wings (drawn first, behind fuselage) ──
+      const wingGrad = ctx.createLinearGradient(0, -sz * 1.5, 0, sz * 1.5);
+      wingGrad.addColorStop(0, '#2a3545');
+      wingGrad.addColorStop(0.5, '#1a2230');
+      wingGrad.addColorStop(1, '#0a1220');
+      ctx.fillStyle = wingGrad;
+      // Top wing (swept back)
+      ctx.beginPath();
+      ctx.moveTo(dir * sz * 0.4, -sz * 0.5);
+      ctx.bezierCurveTo(
+        dir * sz * 0.1, -sz * 0.9,
+        -dir * sz * 0.3, -sz * 1.5,
+        -dir * sz * 0.55, -sz * 1.55
+      );
+      ctx.lineTo(-dir * sz * 0.95, -sz * 1.35);
+      ctx.bezierCurveTo(
+        -dir * sz * 0.5, -sz * 1.1,
+        -dir * sz * 0.2, -sz * 0.65,
+        -dir * sz * 0.55, -sz * 0.5
+      );
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#5a4a35';
-      ctx.lineWidth = 1.2;
+      // Wing top edge highlight
+      ctx.strokeStyle = 'rgba(120,140,165,0.35)';
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+      // Bottom wing (mirror)
+      ctx.fillStyle = wingGrad;
+      ctx.beginPath();
+      ctx.moveTo(dir * sz * 0.4, sz * 0.55);
+      ctx.bezierCurveTo(
+        dir * sz * 0.1, sz * 0.95,
+        -dir * sz * 0.3, sz * 1.5,
+        -dir * sz * 0.55, sz * 1.55
+      );
+      ctx.lineTo(-dir * sz * 0.95, sz * 1.35);
+      ctx.bezierCurveTo(
+        -dir * sz * 0.5, sz * 1.1,
+        -dir * sz * 0.2, sz * 0.7,
+        -dir * sz * 0.55, sz * 0.55
+      );
+      ctx.closePath();
+      ctx.fill();
       ctx.stroke();
 
-      // Very wide wings
-      ctx.fillStyle = '#2a2018';
-      ctx.beginPath();
-      ctx.moveTo(dir * d.size * 0.3, -d.size * 0.4);
-      ctx.lineTo(-dir * d.size * 0.2, -d.size * 1.5);
-      ctx.lineTo(-dir * d.size * 0.8, -d.size * 1.3);
-      ctx.lineTo(-dir * d.size * 0.6, -d.size * 0.4);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(dir * d.size * 0.3, d.size * 0.45);
-      ctx.lineTo(-dir * d.size * 0.2, d.size * 1.5);
-      ctx.lineTo(-dir * d.size * 0.8, d.size * 1.3);
-      ctx.lineTo(-dir * d.size * 0.6, d.size * 0.45);
-      ctx.fill();
+      // Wing panel lines
+      ctx.strokeStyle = 'rgba(8,12,20,0.5)';
+      ctx.lineWidth = 0.4;
+      for (const wy of [-0.95, -0.72, 0.72, 0.95]) {
+        ctx.beginPath();
+        ctx.moveTo(dir * sz * 0.3, sz * wy * 1.1);
+        ctx.lineTo(-dir * sz * 0.45, sz * wy * 1.3);
+        ctx.stroke();
+      }
 
-      // Bomb bay indicator — glowing underside
-      const bombReady = d.bombTimer >= d.bombCooldown * 0.8;
-      if (bombReady) {
-        // Pulsing fire ring
-        const ringPulse = 0.5 + Math.sin(g.elapsed * 8) * 0.3;
-        ctx.fillStyle = `rgba(255, 80, 0, ${ringPulse})`;
-        ctx.shadowColor = '#ff5000';
-        ctx.shadowBlur = 15;
+      // Wingtip rotor pods (the "twin rotor" design gives it a unique signature)
+      for (const wtipSign of [-1, 1]) {
+        const tipX = -dir * sz * 0.75;
+        const tipY = wtipSign * sz * 1.48;
+        // Pod
+        const podGrad = ctx.createRadialGradient(tipX - 0.5, tipY - 0.5, 0, tipX, tipY, sz * 0.25);
+        podGrad.addColorStop(0, '#4a5261');
+        podGrad.addColorStop(0.7, '#18202d');
+        podGrad.addColorStop(1, '#0a1018');
+        ctx.fillStyle = podGrad;
         ctx.beginPath();
-        ctx.ellipse(0, d.size * 0.35, d.size * 0.5, d.size * 0.2, 0, 0, Math.PI * 2);
+        ctx.ellipse(tipX, tipY, sz * 0.18, sz * 0.28, 0, 0, Math.PI * 2);
         ctx.fill();
-        // Inner white-hot core
-        ctx.fillStyle = `rgba(255, 200, 50, ${ringPulse * 0.6})`;
+        ctx.strokeStyle = 'rgba(120,140,165,0.5)';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+        // Spinning rotor disc
+        const rotorAlpha = 0.25 + Math.sin(tt * 35 + wtipSign) * 0.1;
+        ctx.fillStyle = `rgba(200,210,225,${rotorAlpha})`;
         ctx.beginPath();
-        ctx.ellipse(0, d.size * 0.35, d.size * 0.25, d.size * 0.1, 0, 0, Math.PI * 2);
+        ctx.ellipse(tipX, tipY - wtipSign * sz * 0.1, sz * 0.55, sz * 0.13, 0, 0, Math.PI * 2);
         ctx.fill();
-        // Sparks
-        for (let si = 0; si < 3; si++) {
-          const sx = (Math.random() - 0.5) * d.size * 0.8;
-          const sy = d.size * 0.35 + (Math.random() - 0.5) * d.size * 0.3;
-          ctx.fillStyle = Math.random() > 0.5 ? '#fbbf24' : '#ffffff';
+        // Blur streaks
+        ctx.strokeStyle = `rgba(220,230,245,${rotorAlpha * 1.5})`;
+        ctx.lineWidth = 0.6;
+        for (let b = 0; b < 4; b++) {
+          const a = tt * 40 + b * (Math.PI / 2) + wtipSign;
           ctx.beginPath();
-          ctx.arc(sx, sy, 0.8 + Math.random(), 0, Math.PI * 2);
+          ctx.moveTo(tipX, tipY - wtipSign * sz * 0.1);
+          ctx.lineTo(
+            tipX + Math.cos(a) * sz * 0.5,
+            tipY - wtipSign * sz * 0.1 + Math.sin(a) * sz * 0.1
+          );
+          ctx.stroke();
+        }
+      }
+
+      // ── Main heavy fuselage (slate armour) ──
+      const bodyLen = sz * 1.4;
+      const bodyH = sz * 0.5;
+      const bodyGrad = ctx.createLinearGradient(0, -bodyH, 0, bodyH);
+      bodyGrad.addColorStop(0, '#5a6878');    // highlight
+      bodyGrad.addColorStop(0.2, '#3a4452');
+      bodyGrad.addColorStop(0.5, '#222c38');
+      bodyGrad.addColorStop(0.8, '#111822');
+      bodyGrad.addColorStop(1, '#060a10');
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.moveTo(dir * bodyLen, 0);                               // nose
+      ctx.bezierCurveTo(
+        dir * bodyLen * 0.9, -bodyH * 0.7,
+        dir * bodyLen * 0.55, -bodyH * 1.05,
+        dir * bodyLen * 0.1, -bodyH * 1.05
+      );
+      ctx.lineTo(-dir * bodyLen * 0.8, -bodyH * 0.9);             // top edge
+      ctx.lineTo(-dir * bodyLen * 1.0, -bodyH * 0.25);            // tail shoulder
+      ctx.lineTo(-dir * bodyLen * 1.0, bodyH * 0.25);
+      ctx.lineTo(-dir * bodyLen * 0.8, bodyH * 0.9);
+      ctx.lineTo(dir * bodyLen * 0.1, bodyH * 1.05);
+      ctx.bezierCurveTo(
+        dir * bodyLen * 0.55, bodyH * 1.05,
+        dir * bodyLen * 0.9, bodyH * 0.7,
+        dir * bodyLen, 0
+      );
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(80,100,130,0.55)';
+      ctx.lineWidth = 0.7;
+      ctx.stroke();
+
+      // Top specular stripe
+      const specBodyGrad = ctx.createLinearGradient(0, -bodyH, 0, -bodyH * 0.3);
+      specBodyGrad.addColorStop(0, 'rgba(255,255,255,0)');
+      specBodyGrad.addColorStop(0.6, 'rgba(255,255,255,0.22)');
+      specBodyGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = specBodyGrad;
+      ctx.fillRect(-bodyLen * 0.8, -bodyH, bodyLen * 1.7, bodyH * 0.55);
+
+      // Panel lines
+      ctx.strokeStyle = 'rgba(8,12,20,0.45)';
+      ctx.lineWidth = 0.35;
+      for (const plx of [-0.55, -0.2, 0.15, 0.5]) {
+        ctx.beginPath();
+        ctx.moveTo(dir * bodyLen * plx, -bodyH * 0.95);
+        ctx.lineTo(dir * bodyLen * plx, bodyH * 0.95);
+        ctx.stroke();
+      }
+
+      // Rivet dots along the spine
+      ctx.fillStyle = 'rgba(100,120,145,0.45)';
+      for (let r = 0; r < 6; r++) {
+        const rx = dir * bodyLen * (-0.7 + r * 0.27);
+        ctx.beginPath();
+        ctx.arc(rx, -bodyH * 0.55, 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(rx, bodyH * 0.55, 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // ── Blue-tinted cockpit canopy up front ──
+      const cockpitGrad = ctx.createLinearGradient(0, -bodyH * 0.8, 0, -bodyH * 0.1);
+      cockpitGrad.addColorStop(0, 'rgba(180,220,255,0.9)');
+      cockpitGrad.addColorStop(0.5, 'rgba(80,140,220,0.7)');
+      cockpitGrad.addColorStop(1, 'rgba(20,40,80,0.3)');
+      ctx.fillStyle = cockpitGrad;
+      ctx.beginPath();
+      ctx.moveTo(dir * bodyLen * 0.88, -bodyH * 0.1);
+      ctx.bezierCurveTo(
+        dir * bodyLen * 0.7, -bodyH * 0.8,
+        dir * bodyLen * 0.45, -bodyH * 0.85,
+        dir * bodyLen * 0.35, -bodyH * 0.2
+      );
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(230,245,255,0.5)';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+      // Cockpit frame divider
+      ctx.strokeStyle = 'rgba(20,30,50,0.8)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(dir * bodyLen * 0.58, -bodyH * 0.82);
+      ctx.lineTo(dir * bodyLen * 0.62, -bodyH * 0.15);
+      ctx.stroke();
+
+      // ── Dorsal engine pod (distinctive intake on top) ──
+      const intakeGrad = ctx.createLinearGradient(0, -bodyH * 1.55, 0, -bodyH * 1.0);
+      intakeGrad.addColorStop(0, '#1a2028');
+      intakeGrad.addColorStop(1, '#0a0d12');
+      ctx.fillStyle = intakeGrad;
+      ctx.beginPath();
+      ctx.moveTo(dir * bodyLen * 0.25, -bodyH * 1.02);
+      ctx.lineTo(-dir * bodyLen * 0.3, -bodyH * 1.05);
+      ctx.lineTo(-dir * bodyLen * 0.15, -bodyH * 1.45);
+      ctx.lineTo(dir * bodyLen * 0.15, -bodyH * 1.45);
+      ctx.closePath();
+      ctx.fill();
+      // Intake grill
+      ctx.strokeStyle = 'rgba(60,80,100,0.7)';
+      ctx.lineWidth = 0.5;
+      for (let g2 = 0; g2 < 5; g2++) {
+        const gx = dir * bodyLen * (0.1 - g2 * 0.1);
+        ctx.beginPath();
+        ctx.moveTo(gx, -bodyH * 1.4);
+        ctx.lineTo(gx + dir * 0.6, -bodyH * 1.1);
+        ctx.stroke();
+      }
+
+      // ── Bomb bay (visible when bomb ready, hatch open) ──
+      const bayY = bodyH * 0.7;
+      if (bombReady) {
+        // Dark cavity
+        const cavGrad = ctx.createRadialGradient(0, bayY, 0, 0, bayY, sz * 0.55);
+        cavGrad.addColorStop(0, 'rgba(0,0,0,0.85)');
+        cavGrad.addColorStop(0.6, 'rgba(10,5,0,0.6)');
+        cavGrad.addColorStop(1, 'rgba(20,10,0,0)');
+        ctx.fillStyle = cavGrad;
+        ctx.beginPath();
+        ctx.ellipse(0, bayY, sz * 0.55, sz * 0.18, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Glowing hot core — primed bomb
+        const primePulse = 0.55 + Math.sin(tt * 10) * 0.25;
+        ctx.shadowColor = '#ff4d00';
+        ctx.shadowBlur = 16;
+        const coreGrad = ctx.createRadialGradient(0, bayY, 0, 0, bayY, sz * 0.3);
+        coreGrad.addColorStop(0, `rgba(255,220,100,${primePulse})`);
+        coreGrad.addColorStop(0.5, `rgba(255,120,30,${primePulse * 0.8})`);
+        coreGrad.addColorStop(1, 'rgba(180,40,0,0)');
+        ctx.fillStyle = coreGrad;
+        ctx.beginPath();
+        ctx.ellipse(0, bayY, sz * 0.3, sz * 0.12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Sparks dripping out
+        for (let si = 0; si < 4; si++) {
+          const sx = (Math.random() - 0.5) * sz * 0.6;
+          const sy = bayY + Math.random() * sz * 0.3;
+          ctx.fillStyle = Math.random() > 0.5 ? '#fff7d9' : '#fbbf24';
+          ctx.beginPath();
+          ctx.arc(sx, sy, 0.7 + Math.random() * 0.8, 0, Math.PI * 2);
           ctx.fill();
         }
-        ctx.shadowBlur = 0;
+      } else {
+        // Closed hatch with outline
+        ctx.fillStyle = 'rgba(10,14,22,0.6)';
+        ctx.beginPath();
+        ctx.ellipse(0, bayY, sz * 0.45, sz * 0.12, 0, 0, Math.PI * 2);
+        ctx.fill();
       }
-      // Bomb bay hatch lines
-      ctx.strokeStyle = 'rgba(255, 150, 50, 0.3)';
-      ctx.lineWidth = 0.8;
-      ctx.setLineDash([2, 2]);
+      // Hatch seam line
+      ctx.strokeStyle = 'rgba(200,210,225,0.3)';
+      ctx.lineWidth = 0.6;
+      ctx.setLineDash([3, 2]);
       ctx.beginPath();
-      ctx.ellipse(0, d.size * 0.3, d.size * 0.4, d.size * 0.12, 0, 0, Math.PI * 2);
+      ctx.moveTo(-sz * 0.45, bayY);
+      ctx.lineTo(sz * 0.45, bayY);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Dual engines — larger with exhaust
-      for (const ey of [-d.size * 0.2, d.size * 0.2]) {
-        ctx.fillStyle = '#f97316';
-        ctx.shadowColor = '#f97316';
-        ctx.shadowBlur = 8;
+      // ── Rear dual thrusters ──
+      for (const ey of [-bodyH * 0.35, bodyH * 0.35]) {
+        // Nozzle housing
+        ctx.fillStyle = '#1a2028';
         ctx.beginPath();
-        ctx.ellipse(-dir * d.size * 1.05, ey, 3.5, 2.5, 0, 0, Math.PI * 2);
+        ctx.ellipse(-dir * bodyLen * 0.95, ey, sz * 0.12, sz * 0.12, 0, 0, Math.PI * 2);
         ctx.fill();
-        // Exhaust flame
-        const exLen = 10 + Math.random() * 8;
-        ctx.fillStyle = `rgba(249, 115, 22, ${0.5 + Math.random() * 0.3})`;
+        ctx.strokeStyle = 'rgba(120,140,170,0.55)';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+
+        // Hot plume
+        const plumeGrad = ctx.createRadialGradient(
+          -dir * bodyLen * 0.95, ey, 0,
+          -dir * bodyLen * 1.25, ey, sz * 0.35
+        );
+        plumeGrad.addColorStop(0, 'rgba(255,200,120,0.9)');
+        plumeGrad.addColorStop(0.4, 'rgba(249,115,22,0.65)');
+        plumeGrad.addColorStop(1, 'rgba(130,40,5,0)');
+        ctx.fillStyle = plumeGrad;
         ctx.beginPath();
-        ctx.moveTo(-dir * d.size * 1.05, ey - 2);
-        ctx.lineTo(-dir * (d.size * 1.05 + exLen), ey);
-        ctx.lineTo(-dir * d.size * 1.05, ey + 2);
+        ctx.ellipse(-dir * bodyLen * 1.1, ey, sz * 0.28, sz * 0.12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Hot core
+        ctx.fillStyle = 'rgba(255,255,230,0.88)';
+        ctx.beginPath();
+        ctx.ellipse(-dir * bodyLen * 0.98, ey, sz * 0.06, sz * 0.05, 0, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.shadowBlur = 0;
 
-      // Warning stripes — more prominent
-      ctx.strokeStyle = '#f97316';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([4, 3]);
-      ctx.beginPath();
-      ctx.moveTo(dir * d.size * 0.15, -d.size * 0.4);
-      ctx.lineTo(dir * d.size * 0.15, d.size * 0.45);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(-dir * d.size * 0.3, -d.size * 0.38);
-      ctx.lineTo(-dir * d.size * 0.3, d.size * 0.43);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      // Painted warning "B-01" insignia
+      ctx.save();
+      ctx.scale(dir, 1);
+      ctx.fillStyle = 'rgba(251,191,36,0.75)';
+      ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+      ctx.lineWidth = 1;
+      ctx.font = `bold ${sz * 0.3}px 'Tajawal', monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeText('B-01', sz * 0.05, -bodyH * 0.45);
+      ctx.fillText('B-01', sz * 0.05, -bodyH * 0.45);
+      ctx.restore();
 
-      // Red eye — large and menacing
-      ctx.fillStyle = '#ef4444';
+      // ── Menacing red targeting eye ──
+      const eyeGlow = 0.7 + Math.sin(tt * 3) * 0.25;
       ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 16;
+      ctx.shadowBlur = 18;
+      const eyeGrad = ctx.createRadialGradient(dir * bodyLen * 0.95, 0, 0, dir * bodyLen * 0.95, 0, 5);
+      eyeGrad.addColorStop(0, `rgba(255,220,220,${eyeGlow})`);
+      eyeGrad.addColorStop(0.4, `rgba(255,60,60,${eyeGlow})`);
+      eyeGrad.addColorStop(1, 'rgba(130,10,10,0.2)');
+      ctx.fillStyle = eyeGrad;
       ctx.beginPath();
-      ctx.arc(dir * d.size * 1.0, 0, 4, 0, Math.PI * 2);
+      ctx.arc(dir * bodyLen * 0.95, 0, 4.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
     }
