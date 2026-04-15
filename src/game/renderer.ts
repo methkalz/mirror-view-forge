@@ -4267,6 +4267,37 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.textAlign = 'left';
   ctx.fillText(`${Math.ceil(p.health)}`, barX + 8, barY + barH - 3);
 
+  // ─ Protection indicators (gas mask / fire suit) ─
+  // Small pills under the health bar with remaining seconds.
+  {
+    let indY = barY + barH + 6;
+    const indH = 11;
+    const indPad = 5;
+    const drawPill = (label: string, secs: number, bgCol: string, textCol: string) => {
+      if (secs <= 0) return;
+      const labelText = `${label} ${Math.ceil(secs)}s`;
+      ctx.font = 'bold 9px Tajawal, monospace';
+      const textW = ctx.measureText(labelText).width;
+      const pillW = textW + indPad * 2;
+      // Background pill
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      roundRect(ctx, barX - 2, indY - 1, pillW + 4, indH + 2, indH / 2 + 1);
+      ctx.fill();
+      ctx.fillStyle = bgCol;
+      roundRect(ctx, barX, indY, pillW, indH, indH / 2);
+      ctx.fill();
+      // Label text
+      ctx.fillStyle = textCol;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(labelText, barX + indPad, indY + indH / 2);
+      indY += indH + 4;
+    };
+    drawPill('🛡 GAS', p.gasMaskTimer, 'rgba(22,163,74,0.55)', '#ecfccb');
+    drawPill('🔥 FIRE', p.fireSuitTimer, 'rgba(234,88,12,0.55)', '#ffedd5');
+    ctx.textBaseline = 'alphabetic';
+  }
+
   // ─ Score with bounce ─
   if (g.score !== lastDisplayScore) {
     scoreBounceTimer = 0.3;
