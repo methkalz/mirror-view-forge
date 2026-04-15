@@ -49,6 +49,7 @@ export function createGame(w: number, h: number): GameData {
       shootTimer: 0,
       gasMaskTimer: 0,
       extinguisherTimer: 0,
+      fireSuitTimer: 0,
       maxAmmo: 30,
       speedMultiplier: 1,
       slowMoDuration: 5,
@@ -149,6 +150,13 @@ export function createGame(w: number, h: number): GameData {
     gasMaskOffer: null,
     gasMaskOwned: false,
     gasMaskOfferDelay: 0,
+    gasMaskDropScheduled: false,
+    gasMaskDropTime: 0,
+    fireSuitOffer: null,
+    fireSuitOwned: false,
+    fireSuitOfferDelay: 0,
+    fireSuitDropScheduled: false,
+    fireSuitDropTime: 0,
     scoreCountdown: null,
   };
 }
@@ -179,6 +187,7 @@ export function resetGame(g: GameData) {
   g.player.shootTimer = 0;
   g.player.gasMaskTimer = 0;
   g.player.extinguisherTimer = 0;
+  g.player.fireSuitTimer = 0;
   g.player.maxAmmo = 30;
   g.player.speedMultiplier = 1;
   g.player.slowMoDuration = 5;
@@ -244,6 +253,13 @@ export function resetGame(g: GameData) {
   g.gasMaskOffer = null;
   g.gasMaskOwned = false;
   g.gasMaskOfferDelay = 0;
+  g.gasMaskDropScheduled = false;
+  g.gasMaskDropTime = 0;
+  g.fireSuitOffer = null;
+  g.fireSuitOwned = false;
+  g.fireSuitOfferDelay = 0;
+  g.fireSuitDropScheduled = false;
+  g.fireSuitDropTime = 0;
   g.scoreCountdown = null;
   // Wave system reset
   g.waveNumber = 1;
@@ -373,37 +389,31 @@ export function updateIntro(g: GameData, dt: number) {
       const vibeXD = Math.sin(tD * 12) * 0.2 + Math.sin(tD * 19) * 0.1;
       const vibeYD = Math.sin(tD * 14) * 0.1;
       bike.shakeOffset = { x: vibeXD, y: vibeYD };
-      
-      // 4-phase professional dismount with BACKWARD jump arc
+
+      // Phase timings must match the renderer (see renderIntroBike).
       const dismountDuration = 1.8;
       const dp = Math.min(1, g.introTimer / dismountDuration);
-      
-      // Phase 0: Anticipation [0→0.15] — still on bike
-      // Phase 1: Arc Leg Swing [0.15→0.40] — leg swings over seat
-      // Phase 2: Gravity Drop [0.40→0.70] — parabolic jump BEHIND bike
-      // Phase 3: Landing [0.70→1.0] — squat absorb + settle
-      if (dp < 0.15) {
-        // Still on bike, subtle weight shift
-        g.player.pos.x = bike.pos.x;
+
+      if (dp < 0.12) {
+        g.introPlayerOffset = -6 - (dp / 0.12) * 2;
         g.introPlayerJumpY = 0;
-      } else if (dp < 0.70) {
-        // Parabolic jump arc: up then down, moving BEHIND (left of) bike
-        const jumpT = (dp - 0.15) / 0.55; // 0→1 over phases 1+2
-        const horizontalEase = jumpT * jumpT * (3 - 2 * jumpT); // smoothstep
-        g.introPlayerOffset = -horizontalEase * 40; // negative = behind bike
-        g.player.pos.x = bike.pos.x + g.introPlayerOffset;
-        // Parabolic arc: initialVelocity * t - 0.5 * g * t²
-        const initialVelocity = 3.5;
-        const gravity = 5.0;
-        g.introPlayerJumpY = -(initialVelocity * jumpT - 0.5 * gravity * jumpT * jumpT) * 12;
+      } else if (dp < 0.38) {
+        const t = (dp - 0.12) / 0.26;
+        const swing = t * t * (3 - 2 * t);
+        g.introPlayerOffset = -8 - swing * 10;
+        g.introPlayerJumpY = -swing * 4 - Math.sin(t * Math.PI) * 2;
+      } else if (dp < 0.72) {
+        const t = (dp - 0.38) / 0.34;
+        const hEase = t * t * (3 - 2 * t);
+        g.introPlayerOffset = -18 - hEase * 14;
+        const v0 = 4.5, gAcc = 11;
+        g.introPlayerJumpY = -(v0 * t - 0.5 * gAcc * t * t) * 3.2;
       } else {
-        // Landing phase: ease to final position
-        const landT = (dp - 0.70) / 0.30;
-        const easeOut = 1 - (1 - landT) * (1 - landT);
-        g.introPlayerOffset = -40 + easeOut * 5; // settle slightly
-        g.player.pos.x = bike.pos.x + g.introPlayerOffset;
-        g.introPlayerJumpY = 0; // on the ground
+        const t = (dp - 0.72) / 0.28;
+        g.introPlayerOffset = -32 - (t * t * (3 - 2 * t)) * 3;
+        g.introPlayerJumpY = 0;
       }
+      g.player.pos.x = bike.pos.x + g.introPlayerOffset;
       g.player.facingRight = true;
 
       // Camera tracks midpoint
@@ -1368,9 +1378,34 @@ function startNextWave(g: GameData) {
     }
   }
 
-  // Gas mask purchase offer — delayed after chemical warning
-  if (recipe.hasChemical && !g.gasMaskOwned && g.player.gasMaskTimer <= 0) {
-    g.gasMaskOfferDelay = 2.5;
+  // ── Gas mask: purchase offer + scheduled parachute drop ──
+  if (recipe.hasChemical) {
+    if (g.player.gasMaskTimer <= 0) {
+      // Purchase offer at the start of the wave
+      g.gasMaskOfferDelay = 2.5;
+      // Schedule one parachute drop at a random time during the wave so the
+      // player has a reliable way to stay protected even if they refuse.
+      // Sit between 25% and 60% of the wave to give a real buying window.
+      g.gasMaskDropScheduled = true;
+      g.gasMaskDropTime = g.elapsed + g.waveTimer * (0.25 + Math.random() * 0.35);
+    } else {
+      g.gasMaskDropScheduled = false;
+    }
+  } else {
+    g.gasMaskDropScheduled = false;
+  }
+
+  // ── Fire suit: purchase offer + scheduled parachute drop ──
+  if (recipe.hasIncendiary) {
+    if (g.player.fireSuitTimer <= 0) {
+      g.fireSuitOfferDelay = 2.5;
+      g.fireSuitDropScheduled = true;
+      g.fireSuitDropTime = g.elapsed + g.waveTimer * (0.25 + Math.random() * 0.35);
+    } else {
+      g.fireSuitDropScheduled = false;
+    }
+  } else {
+    g.fireSuitDropScheduled = false;
   }
 }
 
@@ -1427,11 +1462,11 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         g.gasMaskOffer = null;
         g.slowMoFactor = 1; // Restore normal speed
       }
-      // Handle purchase via cardClick
+      // Handle purchase via cardClick — responsive card (clamped to viewport)
       if (input.cardClick) {
         const { x, y } = input.cardClick;
-        // Card is centered: 200x270
-        const cardW = 200, cardH = 270;
+        const cardW = Math.min(200, g.width - 40);
+        const cardH = Math.min(270, g.height * 0.55);
         const cardX = (g.width - cardW) / 2;
         const cardY = g.height * 0.5 - cardH / 2;
         if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
@@ -1441,6 +1476,11 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
             const cost = g.gasMaskOffer.cost;
             g.scoreCountdown = { remaining: cost, tickTimer: 0, totalCost: cost };
             g.gasMaskOwned = true;
+            // Duration: remaining wave time + 5s buffer so the player is never
+            // exposed mid-fight because the timer ran out early.
+            g.player.gasMaskTimer = Math.max(15, g.waveTimer + 5);
+            // Player already bought it — cancel the pity parachute drop.
+            g.gasMaskDropScheduled = false;
             g.gasMaskOffer = null;
             g.slowMoFactor = 0.5; // Partial slow-mo during countdown
             sfxUpgradeSelect();
@@ -1451,6 +1491,75 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
           }
         }
       }
+    }
+
+    // ── Fire suit offer delay + purchase logic (mirror of gas mask) ──
+    if (g.fireSuitOfferDelay > 0) {
+      g.fireSuitOfferDelay -= dt;
+      if (g.fireSuitOfferDelay <= 0) {
+        g.fireSuitOfferDelay = 0;
+        const cost = Math.max(10, Math.ceil(g.score * 0.1));
+        g.fireSuitOffer = { active: true, timer: 8, cost };
+        g.slowMoFactor = 0.1;
+        sfxUpgradeAlert();
+      }
+    }
+
+    if (g.fireSuitOffer && g.fireSuitOffer.active) {
+      g.fireSuitOffer.timer -= dt;
+      if (g.fireSuitOffer.timer <= 0) {
+        g.fireSuitOffer = null;
+        g.slowMoFactor = 1;
+      }
+      if (input.cardClick) {
+        const { x, y } = input.cardClick;
+        const cardW = Math.min(200, g.width - 40);
+        const cardH = Math.min(270, g.height * 0.55);
+        const cardX = (g.width - cardW) / 2;
+        const cardY = g.height * 0.5 - cardH / 2;
+        if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
+          input.cardClick = null;
+          if (g.score >= g.fireSuitOffer.cost) {
+            const cost = g.fireSuitOffer.cost;
+            g.scoreCountdown = { remaining: cost, tickTimer: 0, totalCost: cost };
+            g.fireSuitOwned = true;
+            g.player.fireSuitTimer = Math.max(15, g.waveTimer + 5);
+            g.fireSuitDropScheduled = false;
+            g.fireSuitOffer = null;
+            g.slowMoFactor = 0.5;
+            sfxUpgradeSelect();
+            addFloatingText(g, 'بدلة نار! 🔥', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#f97316');
+            spawnParticles(g, g.player.pos, 10, '#f97316', 90);
+          } else {
+            addFloatingText(g, 'نقاط غير كافية!', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#ef4444');
+          }
+        }
+      }
+    }
+
+    // ── Pity parachute drops: if the offer was refused, the player still
+    //    gets one chance to grab the item at a random moment during the wave. ──
+    if (g.gasMaskDropScheduled && g.elapsed >= g.gasMaskDropTime && !g.gasMaskOffer) {
+      g.gasMaskDropScheduled = false;
+      const pu = getFromPool<PowerUp>(g.powerUps, createPowerUpDefault, 20);
+      pu.type = 'gasmask';
+      pu.pos = { x: 60 + Math.random() * (g.width - 120), y: -20 };
+      pu.size = 14;
+      pu.parachuting = true;
+      pu.fallSpeed = 30 + Math.random() * 10;
+      pu.bobTimer = 0;
+      pu.groundTimer = 0;
+    }
+    if (g.fireSuitDropScheduled && g.elapsed >= g.fireSuitDropTime && !g.fireSuitOffer) {
+      g.fireSuitDropScheduled = false;
+      const pu = getFromPool<PowerUp>(g.powerUps, createPowerUpDefault, 20);
+      pu.type = 'firesuit';
+      pu.pos = { x: 60 + Math.random() * (g.width - 120), y: -20 };
+      pu.size = 14;
+      pu.parachuting = true;
+      pu.fallSpeed = 30 + Math.random() * 10;
+      pu.bobTimer = 0;
+      pu.groundTimer = 0;
     }
 
     // Score countdown animation
@@ -1539,15 +1648,24 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
   } else if (g.wavePhase === 'cards') {
     g.cardsShownTimer += dt;
 
-    // Handle card selection via input
+    // Handle card selection via input — must mirror the renderer's responsive
+    // sizing so hit tests line up with what the player actually sees.
     if (input.cardClick && g.upgradeCards.length > 0) {
       const { x, y } = input.cardClick;
       input.cardClick = null;
-      const cardW = 130, cardH = 185, gap = 12;
-      const totalW = g.upgradeCards.length * cardW + (g.upgradeCards.length - 1) * gap;
+      const cardCount = g.upgradeCards.length;
+      const gap = Math.max(8, Math.min(14, g.width * 0.02));
+      const horizMargin = Math.max(16, g.width * 0.05);
+      const maxTotalW = g.width - horizMargin * 2;
+      const idealCardW = 130;
+      const totalIdeal = cardCount * idealCardW + (cardCount - 1) * gap;
+      const scale = totalIdeal > maxTotalW ? maxTotalW / totalIdeal : 1;
+      const cardW = Math.floor(idealCardW * scale);
+      const cardH = Math.floor(185 * scale);
+      const totalW = cardCount * cardW + (cardCount - 1) * gap;
       const startX = (g.width - totalW) / 2;
       const cardY = g.height * 0.30;
-      for (let i = 0; i < g.upgradeCards.length; i++) {
+      for (let i = 0; i < cardCount; i++) {
         const cx = startX + i * (cardW + gap);
         if (x >= cx && x <= cx + cardW && y >= cardY && y <= cardY + cardH) {
           applyUpgrade(g, g.upgradeCards[i].id);
@@ -1589,6 +1707,27 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
   }
 }
 
+
+/**
+ * Classic boids separation force: pushes a drone away from any other active
+ * drone that is closer than `minDist`. Writes directly into d.vel.
+ * Used by incendiary/chemical/etc. tiers so they no longer clump around the player.
+ */
+function applyDroneSeparation(d: Drone, drones: Drone[], dt: number, minDist: number) {
+  const minSep = minDist;
+  for (const other of drones) {
+    if (!other.active || other === d) continue;
+    const sx = d.pos.x - other.pos.x;
+    const sy = d.pos.y - other.pos.y;
+    const sd = Math.sqrt(sx * sx + sy * sy);
+    const totalMin = minSep + d.size + other.size;
+    if (sd < totalMin && sd > 0) {
+      const force = (totalMin - sd) * 4.5;
+      d.vel.x += (sx / sd) * force * dt;
+      d.vel.y += (sy / sd) * force * dt;
+    }
+  }
+}
 
 export function update(g: GameData, input: InputState, dt: number) {
   if (g.state !== 'playing') return;
@@ -2195,7 +2334,25 @@ export function update(g: GameData, input: InputState, dt: number) {
           g.firePools.length = 0;
           break;
         }
-        // gasmask removed — now purchased via card only
+        case 'gasmask': {
+          // Full-wave protection against gas — picked up via parachute.
+          addFloatingText(g, 'كمامة! 🛡️', { x: p.pos.x, y: p.pos.y - 40 }, '#16a34a');
+          spawnParticles(g, p.pos, 10, '#16a34a', 90);
+          p.gasMaskTimer = Math.max(15, g.waveTimer + 5);
+          g.gasMaskOwned = true;
+          g.gasMaskOffer = null;
+          g.gasMaskDropScheduled = false;
+          break;
+        }
+        case 'firesuit': {
+          addFloatingText(g, 'بدلة نار! 🔥', { x: p.pos.x, y: p.pos.y - 40 }, '#f97316');
+          spawnParticles(g, p.pos, 10, '#f97316', 90);
+          p.fireSuitTimer = Math.max(15, g.waveTimer + 5);
+          g.fireSuitOwned = true;
+          g.fireSuitOffer = null;
+          g.fireSuitDropScheduled = false;
+          break;
+        }
         case 'water': {
           const heal = 20;
           p.health = Math.min(p.maxHealth, p.health + heal);
@@ -2238,16 +2395,21 @@ export function update(g: GameData, input: InputState, dt: number) {
   }
 
   // === Player protection timers ===
-  // Gas mask stays active as long as gasMaskOwned AND chemical threat exists
-  if (g.gasMaskOwned) {
-    p.gasMaskTimer = 1; // Keep active
-    const hasChemThreat = g.gasClouds.length > 0 || g.drones.some(d => d.active && d.tier === 'chemical');
-    if (!hasChemThreat) {
-      g.gasMaskOwned = false;
-      p.gasMaskTimer = 0;
-    }
-  } else if (p.gasMaskTimer > 0) {
+  // Gas mask + fire suit are simple countdown timers. Duration is assigned
+  // when purchased or picked up (enough to cover the full wave).
+  if (p.gasMaskTimer > 0) {
     p.gasMaskTimer -= dt;
+    if (p.gasMaskTimer <= 0) {
+      p.gasMaskTimer = 0;
+      g.gasMaskOwned = false;
+    }
+  }
+  if (p.fireSuitTimer > 0) {
+    p.fireSuitTimer -= dt;
+    if (p.fireSuitTimer <= 0) {
+      p.fireSuitTimer = 0;
+      g.fireSuitOwned = false;
+    }
   }
   if (p.extinguisherTimer > 0) p.extinguisherTimer -= dt;
 
@@ -2265,8 +2427,9 @@ export function update(g: GameData, input: InputState, dt: number) {
       g.score += 5;
       continue;
     }
-    // Damage player if standing in fire (unless extinguisher active)
-    if (p.extinguisherTimer <= 0 && dist(p.pos, fp.pos) < fp.size + p.size) {
+    // Damage player if standing in fire (unless extinguisher or fire suit active)
+    const fireImmune = p.extinguisherTimer > 0 || p.fireSuitTimer > 0;
+    if (!fireImmune && dist(p.pos, fp.pos) < fp.size + p.size) {
       const fireDmg = fp.damagePerSec * dt;
       p.health = Math.max(0, p.health - fireDmg);
       if (Math.random() < 0.2) addFloatingText(g, '🔥', { x: p.pos.x, y: p.pos.y - 30 }, '#f97316');
@@ -2316,6 +2479,11 @@ export function update(g: GameData, input: InputState, dt: number) {
     if (!d.active) continue;
     d.wobble += dt;
 
+    // Smooth facing (prevents instant-flip when velocity changes sign)
+    const targetFacing = d.vel.x >= 0 ? 1 : -1;
+    if (d.facingLerp === undefined) d.facingLerp = targetFacing;
+    d.facingLerp += (targetFacing - d.facingLerp) * Math.min(1, dt * 3.5);
+
     // === Cargo drone: passive fly-through ===
     if (d.tier === 'cargo') {
       d.pos.x += d.vel.x * dt;
@@ -2341,20 +2509,25 @@ export function update(g: GameData, input: InputState, dt: number) {
           d.pos.x += Math.sin(d.wobble * 1.5) * 20 * dt;
           d.pos.y += Math.cos(d.wobble * 1.2) * 8 * dt;
         } else {
-          // Track player
+          // Track player — but stay in this drone's own altitude band
           const dx = p.pos.x - d.pos.x;
-          const targetY = p.pos.y - 70;
+          const altitudeBand = g.height * (0.12 + 0.08 * (Math.abs(d.altitudeOffset) % 3));
+          const targetY = Math.max(g.height * 0.1, p.pos.y - 120 - altitudeBand);
           const dy = targetY - d.pos.y;
           const dd = Math.sqrt(dx * dx + dy * dy);
           if (dd > 0) {
             d.vel.x += (dx / dd) * 80 * d.trackingAccuracy * dt;
             d.vel.y += (dy / dd) * 80 * d.trackingAccuracy * dt;
-            const vLen = Math.sqrt(d.vel.x * d.vel.x + d.vel.y * d.vel.y);
-            if (vLen > d.speed) { d.vel.x = (d.vel.x / vLen) * d.speed; d.vel.y = (d.vel.y / vLen) * d.speed; }
           }
+
+          // Separation from other drones (prevents clumping)
+          applyDroneSeparation(d, g.drones, dt, 55);
+
+          const vLen = Math.sqrt(d.vel.x * d.vel.x + d.vel.y * d.vel.y);
+          if (vLen > d.speed) { d.vel.x = (d.vel.x / vLen) * d.speed; d.vel.y = (d.vel.y / vLen) * d.speed; }
           d.pos.x += d.vel.x * g.slowMoFactor * dt;
           d.pos.y += d.vel.y * g.slowMoFactor * dt;
-          d.pos.y = Math.max(g.height * 0.08, Math.min(g.height * 0.5, d.pos.y));
+          d.pos.y = Math.max(g.height * 0.08, Math.min(g.height * 0.45, d.pos.y));
           d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
 
           // Drop firebomb when above player
@@ -2400,19 +2573,25 @@ export function update(g: GameData, input: InputState, dt: number) {
           d.pos.x += Math.sin(d.wobble * 1.2) * 15 * dt;
           d.pos.y += Math.cos(d.wobble * 0.9) * 6 * dt;
         } else {
+          // Track player — each chemical drone flies at its own altitude band
           const dx = p.pos.x - d.pos.x;
-          const targetY = p.pos.y - 80;
+          const bandIdx = Math.floor(Math.abs(d.altitudeOffset) / 35) % 3;
+          const targetY = Math.max(g.height * 0.09, p.pos.y - 100 - bandIdx * 55);
           const dy = targetY - d.pos.y;
           const dd = Math.sqrt(dx * dx + dy * dy);
           if (dd > 0) {
             d.vel.x += (dx / dd) * 60 * d.trackingAccuracy * dt;
             d.vel.y += (dy / dd) * 60 * d.trackingAccuracy * dt;
-            const vLen = Math.sqrt(d.vel.x * d.vel.x + d.vel.y * d.vel.y);
-            if (vLen > d.speed) { d.vel.x = (d.vel.x / vLen) * d.speed; d.vel.y = (d.vel.y / vLen) * d.speed; }
           }
+
+          // Separation from other drones — strong push so they don't clump
+          applyDroneSeparation(d, g.drones, dt, 65);
+
+          const vLen = Math.sqrt(d.vel.x * d.vel.x + d.vel.y * d.vel.y);
+          if (vLen > d.speed) { d.vel.x = (d.vel.x / vLen) * d.speed; d.vel.y = (d.vel.y / vLen) * d.speed; }
           d.pos.x += d.vel.x * g.slowMoFactor * dt;
           d.pos.y += d.vel.y * g.slowMoFactor * dt;
-          d.pos.y = Math.max(g.height * 0.08, Math.min(g.height * 0.5, d.pos.y));
+          d.pos.y = Math.max(g.height * 0.08, Math.min(g.height * 0.48, d.pos.y));
           d.pos.x = Math.max(-10, Math.min(g.width + 10, d.pos.x));
 
           // Drop gas canister
