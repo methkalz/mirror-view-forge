@@ -1348,107 +1348,276 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.fillText('☣', 0, 0);
       ctx.restore();
     } else {
-      // ═══ Shrapnel — tumbling metal shard with motion blur ═══
+      // ═══ Shrapnel — one of 4 variants, weight-based motion ═══
       ctx.rotate(hz.rotation);
+      const variant = hz.shrapnelVariant ?? 1;
+      const sz = hz.size;
 
-      // Subtle motion trail — two ghost copies offset backward
+      // Drop shadow helper for volume
+      const drawShadow = (poly: { x: number; y: number }[]) => {
+        ctx.save();
+        ctx.translate(1.3, 1.6);
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.beginPath();
+        ctx.moveTo(poly[0].x, poly[0].y);
+        for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i].x, poly[i].y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      };
+
+      // Shared motion trail (ghost copies trailing behind the tumble path)
       ctx.save();
-      ctx.globalAlpha = 0.18;
+      ctx.globalAlpha = 0.16;
       ctx.fillStyle = '#9a9590';
       for (let g2 = 1; g2 <= 2; g2++) {
-        const off = -g2 * hz.size * 0.35;
+        const off = -g2 * sz * 0.3;
         ctx.beginPath();
-        ctx.ellipse(off, off * 0.4, hz.size * 0.85, hz.size * 0.5, 0, 0, Math.PI * 2);
+        ctx.ellipse(off, off * 0.4, sz * 0.85, sz * 0.5, 0, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
 
-      // ── Main jagged shard with proper 3D shading ──
-      // Build an irregular hex that looks like torn metal
-      const pts = [
-        { x: -hz.size * 1.05, y: -hz.size * 0.35 },
-        { x: -hz.size * 0.35, y: -hz.size * 1.05 },
-        { x: hz.size * 0.55, y: -hz.size * 0.7 },
-        { x: hz.size * 1.1, y: hz.size * 0.15 },
-        { x: hz.size * 0.25, y: hz.size * 0.95 },
-        { x: -hz.size * 0.7, y: hz.size * 0.45 },
-      ];
+      if (variant === 0) {
+        // ── Rebar — long metal rod with threaded ends (heaviest) ──
+        const rodLen = sz * 2.8;
+        const rodW = sz * 0.38;
+        const pts = [
+          { x: -rodLen * 0.5, y: -rodW * 0.5 },
+          { x:  rodLen * 0.5, y: -rodW * 0.5 },
+          { x:  rodLen * 0.5, y:  rodW * 0.5 },
+          { x: -rodLen * 0.5, y:  rodW * 0.5 },
+        ];
+        drawShadow(pts);
 
-      // Shadow underneath (adds volume)
-      ctx.save();
-      ctx.translate(1.5, 1.8);
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
+        // Cylindrical shading
+        const rodGrad = ctx.createLinearGradient(0, -rodW * 0.5, 0, rodW * 0.5);
+        rodGrad.addColorStop(0, '#d6d1c8');
+        rodGrad.addColorStop(0.35, '#8f8a82');
+        rodGrad.addColorStop(0.65, '#4f4a44');
+        rodGrad.addColorStop(1, '#2a2320');
+        ctx.fillStyle = rodGrad;
+        ctx.beginPath();
+        ctx.roundRect(-rodLen * 0.5, -rodW * 0.5, rodLen, rodW, rodW * 0.35);
+        ctx.fill();
 
-      // Body gradient — steel with warm rust tint on lower half
-      const shrapGrad = ctx.createLinearGradient(-hz.size, -hz.size, hz.size * 0.8, hz.size * 0.8);
-      shrapGrad.addColorStop(0, '#d6d1c8');
-      shrapGrad.addColorStop(0.35, '#8f8a82');
-      shrapGrad.addColorStop(0.6, '#57534e');
-      shrapGrad.addColorStop(0.85, '#3d362f');
-      shrapGrad.addColorStop(1, '#2a2320');
-      ctx.fillStyle = shrapGrad;
-      ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-      ctx.closePath();
-      ctx.fill();
+        // Rib texture every ~sz*0.6
+        ctx.strokeStyle = 'rgba(25,20,15,0.55)';
+        ctx.lineWidth = 0.5;
+        const ribCount = Math.floor(rodLen / (sz * 0.55));
+        for (let r = 0; r < ribCount; r++) {
+          const rx = -rodLen * 0.5 + (r + 0.5) * (rodLen / ribCount);
+          ctx.beginPath();
+          ctx.moveTo(rx - 0.4, -rodW * 0.55);
+          ctx.lineTo(rx + 0.4, rodW * 0.55);
+          ctx.stroke();
+        }
 
-      // Bevel edge highlight — bright 2-segment line along upper edge
-      ctx.strokeStyle = 'rgba(230,225,215,0.9)';
-      ctx.lineWidth = 1.1;
-      ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
-      ctx.lineTo(pts[1].x, pts[1].y);
-      ctx.lineTo(pts[2].x, pts[2].y);
-      ctx.stroke();
-      // Darker shadow side
-      ctx.strokeStyle = 'rgba(25,20,15,0.85)';
-      ctx.lineWidth = 0.7;
-      ctx.beginPath();
-      ctx.moveTo(pts[3].x, pts[3].y);
-      ctx.lineTo(pts[4].x, pts[4].y);
-      ctx.lineTo(pts[5].x, pts[5].y);
-      ctx.stroke();
+        // Ends — darker caps (sheared)
+        ctx.fillStyle = 'rgba(20,14,8,0.85)';
+        ctx.beginPath();
+        ctx.ellipse(-rodLen * 0.5 + 0.5, 0, rodW * 0.32, rodW * 0.52, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(rodLen * 0.5 - 0.5, 0, rodW * 0.32, rodW * 0.52, 0, 0, Math.PI * 2);
+        ctx.fill();
 
-      // Scorch / oxidation patch
-      const scorchGrad = ctx.createRadialGradient(
-        hz.size * 0.2, hz.size * 0.35, 0,
-        hz.size * 0.2, hz.size * 0.35, hz.size * 0.75
-      );
-      scorchGrad.addColorStop(0, 'rgba(80,35,15,0.55)');
-      scorchGrad.addColorStop(0.6, 'rgba(40,20,10,0.25)');
-      scorchGrad.addColorStop(1, 'rgba(20,10,5,0)');
-      ctx.fillStyle = scorchGrad;
-      ctx.beginPath();
-      ctx.ellipse(hz.size * 0.2, hz.size * 0.35, hz.size * 0.75, hz.size * 0.55, 0, 0, Math.PI * 2);
-      ctx.fill();
+        // Top specular stripe
+        ctx.fillStyle = 'rgba(255,255,255,0.22)';
+        ctx.fillRect(-rodLen * 0.45, -rodW * 0.4, rodLen * 0.9, rodW * 0.2);
 
-      // Scratch marks (two short gashes) — random but stable per shrapnel via hz.rotation
-      const sc = Math.sin(hz.rotation * 3.7);
-      ctx.strokeStyle = 'rgba(240,235,225,0.5)';
-      ctx.lineWidth = 0.45;
-      ctx.beginPath();
-      ctx.moveTo(-hz.size * 0.55, -hz.size * 0.25 + sc * 0.15);
-      ctx.lineTo(hz.size * 0.4, hz.size * 0.05 + sc * 0.15);
-      ctx.moveTo(-hz.size * 0.25, -hz.size * 0.55);
-      ctx.lineTo(hz.size * 0.1, -hz.size * 0.15);
-      ctx.stroke();
+        // Red-hot tip ember
+        ctx.fillStyle = 'rgba(255,110,30,0.75)';
+        ctx.beginPath();
+        ctx.arc(rodLen * 0.5 - 0.3, 0, rodW * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (variant === 1) {
+        // ── Jagged chunk (current design, slightly refined) ──
+        const pts = [
+          { x: -sz * 1.05, y: -sz * 0.35 },
+          { x: -sz * 0.35, y: -sz * 1.05 },
+          { x:  sz * 0.55, y: -sz * 0.7  },
+          { x:  sz * 1.1,  y:  sz * 0.15 },
+          { x:  sz * 0.25, y:  sz * 0.95 },
+          { x: -sz * 0.7,  y:  sz * 0.45 },
+        ];
+        drawShadow(pts);
 
-      // Tiny red-hot ember edge on one corner (cooling)
-      ctx.fillStyle = 'rgba(255,80,20,0.7)';
-      ctx.beginPath();
-      ctx.arc(pts[1].x, pts[1].y, 0.6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = 'rgba(255,180,60,0.9)';
-      ctx.beginPath();
-      ctx.arc(pts[1].x, pts[1].y, 0.3, 0, Math.PI * 2);
-      ctx.fill();
+        const shrapGrad = ctx.createLinearGradient(-sz, -sz, sz * 0.8, sz * 0.8);
+        shrapGrad.addColorStop(0, '#d6d1c8');
+        shrapGrad.addColorStop(0.35, '#8f8a82');
+        shrapGrad.addColorStop(0.6, '#57534e');
+        shrapGrad.addColorStop(0.85, '#3d362f');
+        shrapGrad.addColorStop(1, '#2a2320');
+        ctx.fillStyle = shrapGrad;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.closePath();
+        ctx.fill();
+
+        // Bevel edges
+        ctx.strokeStyle = 'rgba(230,225,215,0.9)';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        ctx.lineTo(pts[1].x, pts[1].y);
+        ctx.lineTo(pts[2].x, pts[2].y);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(25,20,15,0.85)';
+        ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(pts[3].x, pts[3].y);
+        ctx.lineTo(pts[4].x, pts[4].y);
+        ctx.lineTo(pts[5].x, pts[5].y);
+        ctx.stroke();
+
+        // Scorch patch
+        const scorchGrad = ctx.createRadialGradient(sz * 0.2, sz * 0.35, 0, sz * 0.2, sz * 0.35, sz * 0.75);
+        scorchGrad.addColorStop(0, 'rgba(80,35,15,0.55)');
+        scorchGrad.addColorStop(0.6, 'rgba(40,20,10,0.25)');
+        scorchGrad.addColorStop(1, 'rgba(20,10,5,0)');
+        ctx.fillStyle = scorchGrad;
+        ctx.beginPath();
+        ctx.ellipse(sz * 0.2, sz * 0.35, sz * 0.75, sz * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Red-hot ember corner
+        ctx.fillStyle = 'rgba(255,80,20,0.7)';
+        ctx.beginPath();
+        ctx.arc(pts[1].x, pts[1].y, 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,180,60,0.9)';
+        ctx.beginPath();
+        ctx.arc(pts[1].x, pts[1].y, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (variant === 2) {
+        // ── Bent sheet metal — thin strip with a kink ──
+        // Drawn as a 4-vertex quad that bends at the midpoint
+        const w = sz * 2.6;
+        const h = sz * 0.45;
+        const bend = sz * 0.55;
+        const pts = [
+          { x: -w * 0.5,      y: -h * 0.5 },
+          { x:  0,            y: -h * 0.5 - bend * 0.4 },
+          { x:  w * 0.5,      y: -h * 0.5 + bend * 0.2 },
+          { x:  w * 0.5,      y:  h * 0.5 + bend * 0.2 },
+          { x:  0,            y:  h * 0.5 - bend * 0.4 },
+          { x: -w * 0.5,      y:  h * 0.5 },
+        ];
+        drawShadow(pts);
+
+        const sheetGrad = ctx.createLinearGradient(0, -h, 0, h);
+        sheetGrad.addColorStop(0, '#c8c3ba');
+        sheetGrad.addColorStop(0.4, '#8a857d');
+        sheetGrad.addColorStop(0.75, '#4a4540');
+        sheetGrad.addColorStop(1, '#262220');
+        ctx.fillStyle = sheetGrad;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.closePath();
+        ctx.fill();
+
+        // Torn ragged edge on one side (jagged notches)
+        ctx.strokeStyle = 'rgba(20,15,10,0.85)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let n = 0; n < 4; n++) {
+          const nx = -w * 0.5 + (n + 1) * (w * 0.5 / 4);
+          const ny = -h * 0.5 - bend * 0.4 * (n / 4) + (n % 2 ? -1 : 1) * 0.7;
+          ctx.lineTo(nx, ny);
+        }
+        ctx.stroke();
+
+        // Rivets / bolt holes
+        ctx.fillStyle = 'rgba(30,22,15,0.8)';
+        for (let b = 0; b < 3; b++) {
+          const bx = -w * 0.35 + b * (w * 0.35);
+          ctx.beginPath();
+          ctx.arc(bx, 0, 0.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Bright fold highlight along the bend line
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(0, -h * 0.5 - bend * 0.35);
+        ctx.lineTo(0, h * 0.5 - bend * 0.35);
+        ctx.stroke();
+      } else {
+        // ── Twisted wire/cable (lightest, most tumble) ──
+        // Drawn as a spiral using polyline with sinusoidal offset.
+        const wireLen = sz * 2.6;
+        const amp = sz * 0.5;
+
+        // Shadow first (single wobble offset)
+        ctx.save();
+        ctx.translate(1, 1.3);
+        ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+        ctx.lineWidth = 2.1;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        for (let i = 0; i <= 20; i++) {
+          const t = i / 20;
+          const px = -wireLen * 0.5 + t * wireLen;
+          const py = Math.sin(t * Math.PI * 3 + 1.5) * amp;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        // Wire core (twisted cable) — outer dark
+        ctx.strokeStyle = '#2a2220';
+        ctx.lineWidth = 2.2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        for (let i = 0; i <= 20; i++) {
+          const t = i / 20;
+          const px = -wireLen * 0.5 + t * wireLen;
+          const py = Math.sin(t * Math.PI * 3 + 1.5) * amp;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+
+        // Bright strand highlight
+        ctx.strokeStyle = 'rgba(220,215,200,0.75)';
+        ctx.lineWidth = 0.9;
+        ctx.beginPath();
+        for (let i = 0; i <= 20; i++) {
+          const t = i / 20;
+          const px = -wireLen * 0.5 + t * wireLen;
+          const py = Math.sin(t * Math.PI * 3 + 1.5) * amp - 0.6;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+
+        // Twisted strand markers
+        ctx.strokeStyle = 'rgba(25,18,12,0.7)';
+        ctx.lineWidth = 0.5;
+        for (let m = 0; m < 8; m++) {
+          const t = (m + 0.5) / 8;
+          const px = -wireLen * 0.5 + t * wireLen;
+          const py = Math.sin(t * Math.PI * 3 + 1.5) * amp;
+          ctx.beginPath();
+          ctx.moveTo(px - 0.8, py - 1.1);
+          ctx.lineTo(px + 0.8, py + 1.1);
+          ctx.stroke();
+        }
+
+        // Bright ember at one end
+        ctx.fillStyle = 'rgba(255,120,40,0.8)';
+        ctx.beginPath();
+        ctx.arc(wireLen * 0.5, Math.sin(Math.PI * 3 + 1.5) * amp, 0.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.lineCap = 'butt';
+      }
     }
     ctx.restore();
   }
@@ -4036,6 +4205,12 @@ function renderPlayer(ctx: CanvasRenderingContext2D, g: GameData) {
     isShooting,
     shootTimer: p.shootTimer,
     hasGasMask: p.gasMaskTimer > 0,
+    // Don/doff progress (0..1) — donTimer starts at 0.6, doffTimer at 0.45
+    gasMaskDon: p.gasMaskTimer > 0 ? 1 - (p.gasMaskDonTimer / 0.6) : 0,
+    gasMaskDoff: p.gasMaskDoffTimer > 0 ? (p.gasMaskDoffTimer / 0.45) : 0,
+    hasFireSuit: p.fireSuitTimer > 0,
+    fireSuitDon: p.fireSuitTimer > 0 ? 1 - (p.fireSuitDonTimer / 0.6) : 0,
+    fireSuitDoff: p.fireSuitDoffTimer > 0 ? (p.fireSuitDoffTimer / 0.5) : 0,
   });
 
   // Health bar above head (drawn after character, in player's local space)
@@ -4625,13 +4800,11 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.font = 'bold 22px Tajawal, sans-serif';
     ctx.fillText(`⭐ ${g.gasMaskOffer.cost}`, cx, cardY + 185);
 
-    // "اضغط للشراء" hint
+    // "اضغط على البطاقة للشراء" — full-card hint
     const pressPulse = 0.5 + Math.sin(g.elapsed * 4) * 0.3;
     ctx.fillStyle = `rgba(74, 222, 128, ${pressPulse})`;
-    ctx.font = 'bold 14px Tajawal, sans-serif';
-    ctx.fillText('اضغط للشراء', cx, cardY + 218);
-
-    ctx.direction = 'ltr';
+    ctx.font = 'bold 13px Tajawal, sans-serif';
+    ctx.fillText('اضغط البطاقة للشراء', cx, cardY + 218);
 
     // Timer bar at bottom
     const timerRatio = g.gasMaskOffer.timer / offerDuration;
@@ -4641,6 +4814,28 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = 'rgba(74, 222, 128, 0.7)';
     roundRect(ctx, cardX + 6, cardY + cardH - 12, (cardW - 12) * timerRatio, 6, 3);
     ctx.fill();
+
+    // ── Refuse pill below the card ──
+    const refuseW = Math.min(150, cardW);
+    const refuseH = 34;
+    const refuseX = (g.width - refuseW) / 2;
+    const refuseY = cardY + cardH + 12;
+    // Pill background
+    ctx.fillStyle = 'rgba(40,40,50,0.75)';
+    roundRect(ctx, refuseX, refuseY, refuseW, refuseH, refuseH / 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.lineWidth = 1;
+    roundRect(ctx, refuseX, refuseY, refuseW, refuseH, refuseH / 2);
+    ctx.stroke();
+    // Label
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.font = 'bold 13px Tajawal, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('بدّيش أشتري', refuseX + refuseW / 2, refuseY + refuseH / 2);
+    ctx.textBaseline = 'alphabetic';
+    ctx.direction = 'ltr';
 
     ctx.globalAlpha = 1;
   }
@@ -4721,9 +4916,8 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
 
     const pressPulse = 0.5 + Math.sin(g.elapsed * 4) * 0.3;
     ctx.fillStyle = `rgba(251, 146, 60, ${pressPulse})`;
-    ctx.font = 'bold 14px Tajawal, sans-serif';
-    ctx.fillText('اضغط للشراء', cx, cardY + 218);
-    ctx.direction = 'ltr';
+    ctx.font = 'bold 13px Tajawal, sans-serif';
+    ctx.fillText('اضغط البطاقة للشراء', cx, cardY + 218);
 
     const timerRatio = g.fireSuitOffer.timer / offerDuration;
     ctx.fillStyle = 'rgba(251, 146, 60, 0.2)';
@@ -4732,6 +4926,26 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = 'rgba(251, 146, 60, 0.75)';
     roundRect(ctx, cardX + 6, cardY + cardH - 12, (cardW - 12) * timerRatio, 6, 3);
     ctx.fill();
+
+    // ── Refuse pill below the card ──
+    const refuseW = Math.min(150, cardW);
+    const refuseH = 34;
+    const refuseX = (g.width - refuseW) / 2;
+    const refuseY = cardY + cardH + 12;
+    ctx.fillStyle = 'rgba(40,40,50,0.75)';
+    roundRect(ctx, refuseX, refuseY, refuseW, refuseH, refuseH / 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.lineWidth = 1;
+    roundRect(ctx, refuseX, refuseY, refuseW, refuseH, refuseH / 2);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.font = 'bold 13px Tajawal, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('بدّيش أشتري', refuseX + refuseW / 2, refuseY + refuseH / 2);
+    ctx.textBaseline = 'alphabetic';
+    ctx.direction = 'ltr';
 
     ctx.globalAlpha = 1;
   }
@@ -5014,6 +5228,15 @@ interface CharacterOptions {
   hasGoggles?: boolean;
   lookingBack?: boolean;
   hasGasMask?: boolean;
+  /** Gas mask donning progress (0..1). 0 = not yet worn, 1 = fully worn. */
+  gasMaskDon?: number;
+  /** Gas mask doffing progress (0..1). 1 = just started lifting, 0 = fully removed. */
+  gasMaskDoff?: number;
+  hasFireSuit?: boolean;
+  /** Fire suit donning progress (0..1). */
+  fireSuitDon?: number;
+  /** Fire suit doffing progress (0..1). */
+  fireSuitDoff?: number;
 }
 
 function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
@@ -5021,6 +5244,7 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
     x, y, scale, sitting, facingRight, isDriver, helmetColor,
     bodyBob, armOffset, legOffset, isHit, elapsed,
     holdingDriver, isShooting, shootTimer, isWaving, hasGoggles, lookingBack, hasGasMask,
+    gasMaskDon, gasMaskDoff, hasFireSuit, fireSuitDon, fireSuitDoff,
   } = opts;
 
   ctx.save();
@@ -5170,10 +5394,20 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
   }
 
   // ── Torso with gradient ──
+  // Fire suit donning/doffing progress determines a vertical reveal clip
+  // of the red torso so the jacket appears to be pulled on from top to
+  // bottom (donning) or lifted off (doffing).
+  const fireSuitVisible = !!hasFireSuit || (fireSuitDoff ?? 0) > 0;
+  const fireSuitReveal = Math.max(0, Math.min(1, (fireSuitDon ?? 1) * (1 - (fireSuitDoff ?? 0))));
   const torsoGrad = ctx.createLinearGradient(0, bodyTopY, 0, bodyBottomY);
   if (isHit) {
     torsoGrad.addColorStop(0, '#ef4444');
     torsoGrad.addColorStop(1, '#dc2626');
+  } else if (fireSuitVisible && fireSuitReveal >= 1) {
+    // Fully-donned fire suit — bright red with dark shading
+    torsoGrad.addColorStop(0, '#fca5a5');
+    torsoGrad.addColorStop(0.35, '#ef4444');
+    torsoGrad.addColorStop(1, '#991b1b');
   } else {
     torsoGrad.addColorStop(0, '#5a9ae6');
     torsoGrad.addColorStop(0.4, '#4a90e2');
@@ -5190,6 +5424,76 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
   ctx.strokeStyle = isHit ? '#b91c1c' : '#1d4ed8';
   ctx.lineWidth = 0.8;
   ctx.stroke();
+
+  // ── Fire suit overlay: pulled on top-down, removed top-up ──
+  if (fireSuitVisible && !isHit) {
+    // Compute visible vertical band of the fire suit. When donning, the
+    // suit fills top→bottom. When doffing, it empties top→bottom (lifted off).
+    const torsoH = bodyBottomY - bodyTopY;
+    const donH = torsoH * fireSuitReveal;
+    if (donH > 0.2) {
+      ctx.save();
+      // Clip to the torso polygon so overlay doesn't leak
+      ctx.beginPath();
+      ctx.moveTo(-6.5, bodyTopY - 0.2);
+      ctx.lineTo(6.5, bodyTopY - 0.2);
+      ctx.lineTo(5.5, bodyBottomY + 0.2);
+      ctx.lineTo(-5.5, bodyBottomY + 0.2);
+      ctx.closePath();
+      ctx.clip();
+
+      // Red jacket fill
+      const jacketGrad = ctx.createLinearGradient(0, bodyTopY, 0, bodyTopY + donH);
+      jacketGrad.addColorStop(0, '#fca5a5');
+      jacketGrad.addColorStop(0.35, '#ef4444');
+      jacketGrad.addColorStop(0.75, '#b91c1c');
+      jacketGrad.addColorStop(1, '#7f1d1d');
+      ctx.fillStyle = jacketGrad;
+      ctx.fillRect(-7, bodyTopY, 14, donH);
+
+      // Yellow reflective bands (the two horizontal stripes real firefighter suits have)
+      ctx.fillStyle = '#fde047';
+      const bandH = 1.1;
+      // Upper band only if donH reaches it
+      if (donH > torsoH * 0.42) {
+        ctx.fillRect(-5.5, bodyTopY + torsoH * 0.4, 11, bandH);
+        // Band shine
+        ctx.fillStyle = '#fff9c4';
+        ctx.fillRect(-5.5, bodyTopY + torsoH * 0.4, 11, 0.35);
+        ctx.fillStyle = '#fde047';
+      }
+      if (donH > torsoH * 0.72) {
+        ctx.fillRect(-5.5, bodyTopY + torsoH * 0.7, 11, bandH);
+        ctx.fillStyle = '#fff9c4';
+        ctx.fillRect(-5.5, bodyTopY + torsoH * 0.7, 11, 0.35);
+      }
+
+      // Dark outline around the jacket
+      ctx.strokeStyle = 'rgba(50,10,10,0.8)';
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(-6, bodyTopY);
+      ctx.lineTo(6, bodyTopY);
+      ctx.lineTo(5, Math.min(bodyBottomY, bodyTopY + donH));
+      ctx.lineTo(-5, Math.min(bodyBottomY, bodyTopY + donH));
+      ctx.closePath();
+      ctx.stroke();
+
+      // Collar indicator at top
+      if (donH > 2) {
+        ctx.fillStyle = '#7f1d1d';
+        ctx.fillRect(-4, bodyTopY - 0.5, 8, 1.2);
+      }
+
+      // Pulling-on motion: slight shimmer line at the bottom edge of the revealed area
+      if ((fireSuitDon ?? 1) < 1 && fireSuitReveal > 0.05 && fireSuitReveal < 0.95) {
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.fillRect(-7, bodyTopY + donH - 0.3, 14, 0.6);
+      }
+
+      ctx.restore();
+    }
+  }
 
   // V-neck collar
   ctx.strokeStyle = 'rgba(255,255,255,0.25)';
@@ -5633,8 +5937,18 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
     ctx.stroke();
   }
 
-  if (hasGasMask) {
-    // ── Gas Mask over face ──
+  // Gas mask donning/doffing progress
+  const maskVisible = !!hasGasMask || (gasMaskDoff ?? 0) > 0;
+  const maskReveal = Math.max(0, Math.min(1, (gasMaskDon ?? 1) * (1 - (gasMaskDoff ?? 0))));
+  if (maskVisible && maskReveal > 0.08) {
+    // ── Gas Mask — slides down from above the head during donning ──
+    // liftY: how much the whole mask is still hovering above its worn position
+    const liftY = (1 - maskReveal) * 6;
+    const maskAlpha = Math.min(1, maskReveal * 1.4);
+    ctx.save();
+    ctx.globalAlpha = maskAlpha;
+    ctx.translate(0, -liftY);
+
     // Mask body (covers lower face)
     ctx.fillStyle = '#2d4a35';
     ctx.beginPath();
@@ -5693,6 +6007,27 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
     ctx.moveTo(5, headY);
     ctx.lineTo(6.5, headY - 3);
     ctx.stroke();
+
+    ctx.restore();
+    // When donning, also draw the eyes underneath so the transition is clean
+    if (maskReveal < 1) {
+      ctx.globalAlpha = 1 - maskAlpha;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.ellipse(-2.2, headY - 0.5, 1.6, 1.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(2.2, headY - 0.5, 1.6, 1.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.arc(-2.2, headY - 0.5, 0.9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(2.2, headY - 0.5, 0.9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
   } else {
     // ── Eyes ──
     ctx.fillStyle = '#fff';

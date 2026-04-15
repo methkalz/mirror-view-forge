@@ -35,10 +35,18 @@ export interface Player {
   ammo: number;
   shootTimer: number;
   gasMaskTimer: number;
+  /** Donning animation timer (counts down from 0.6s when the mask is first
+   *  acquired). While > 0 the renderer fades the mask in. */
+  gasMaskDonTimer: number;
+  /** Doffing animation timer (counts down from 0.4s when the mask expires).
+   *  While > 0 the renderer fades the mask out. */
+  gasMaskDoffTimer: number;
   extinguisherTimer: number;
   /** Full-wave fire suit protection. Works like gasMaskTimer but guards
    *  against fire pools and incendiary drone collision damage. */
   fireSuitTimer: number;
+  fireSuitDonTimer: number;
+  fireSuitDoffTimer: number;
   // Upgrade-enhanced stats
   maxAmmo: number;
   speedMultiplier: number;
@@ -68,6 +76,12 @@ export interface Hazard {
   /** Marks a projectile as a chemical payload — on landing it spawns
    *  a gas cloud. Rendered as a green bioluminescent canister. */
   isGasBomb?: boolean;
+  /** Visual variant for shrapnel pieces (0..3). Determines shape
+   *  (rebar / jagged chunk / sheet metal / twisted wire). */
+  shrapnelVariant?: number;
+  /** Angular velocity in radians/sec — each shrapnel tumbles at its
+   *  own rate depending on mass and variant. */
+  spinSpeed?: number;
   rotation: number;
   trailTimer: number;
   clusterPhase?: 'flying' | 'opening' | 'releasing' | 'done';
@@ -383,6 +397,9 @@ export interface GameData {
   fireSuitOfferDelay: number;
   fireSuitDropScheduled: boolean;
   fireSuitDropTime: number;
+  /** If true, the fire suit offer is waiting for the gas mask offer to
+   *  resolve before it can start its delay countdown. */
+  fireSuitOfferPending: boolean;
 
   // Score countdown animation
   scoreCountdown: { remaining: number; tickTimer: number; totalCost: number } | null;
