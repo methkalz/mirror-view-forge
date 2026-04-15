@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { GameData, InputState } from '@/game/types';
 import { loadAudioSettings, reloadAudioSettings } from '@/game/audio';
-import { createGame, resetGame, update, updateIntro } from '@/game/engine';
+import { createGame, resetGame, update, updateIntro, updateCardsOnly, hasModalCard } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
 import { resumeAudio, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition, sfxAmmoTutorial, stopGameOverVoice } from '@/game/audio';
 import { fetchGameConfig, fetchLeaderboard, fetchDifficultyProfile, fetchWaveConfigs, submitScore, type RemoteGameConfig, type LeaderboardEntry, type DifficultyProfile, type RemoteWaveConfig } from '@/game/config';
@@ -217,6 +217,11 @@ const SkyfallGame: React.FC = () => {
           // admin-wide globalPause can freeze the simulation.
           const isFrozen = pauseRef.current || remoteConfig?.globalPause;
           if (isFrozen) {
+            render(ctx, g);
+          } else if (hasModalCard(g)) {
+            // A purchase or upgrade card is visible — hard-freeze the
+            // gameplay so the player can't be hit while reading it.
+            updateCardsOnly(g, inputRef.current, dt);
             render(ctx, g);
           } else if (remoteConfig?.ddaEnabled && g.player.health >= g.player.maxHealth) {
             if (g.elapsed > 15 && g.difficulty < 5) {
