@@ -341,19 +341,23 @@ export function updateIntro(g: GameData, dt: number) {
     case 'bikeEnter': {
       // Play bike engine sound at start
       if (g.introTimer < dt * 2) sfxBikeEngine();
-      // Bike enters from left, decelerates toward center
+      // Bike enters from left with a long, smooth deceleration using a
+      // cubic ease-out curve. Much more natural than linear speed falloff.
       const distToCenter = centerX - bike.pos.x;
-      // Decelerate as we approach
-      const decelZone = 200;
+      const decelZone = 260; // start decelerating earlier
       if (distToCenter < decelZone) {
-        bike.speed = Math.max(30, 280 * (distToCenter / decelZone));
+        // Cubic ease-out: preserves high speed until the last third then
+        // dives smoothly to ~25 as the bike nears its stop point.
+        const t = 1 - Math.max(0, distToCenter) / decelZone; // 0..1
+        const ease = 1 - Math.pow(1 - t, 3);
+        bike.speed = 280 * (1 - ease) + 22;
       }
       bike.pos.x += bike.speed * dt;
       // Player rides with bike
       g.player.pos.x = bike.pos.x;
 
-      // Camera follows bike
-      g.cameraFocusX = bike.pos.x;
+      // Camera follows bike with a small forward-bias (looks more cinematic)
+      g.cameraFocusX = bike.pos.x + 15;
 
       if (bike.pos.x >= centerX) {
         bike.pos.x = centerX;
@@ -1171,25 +1175,48 @@ function handleInterceptor(g: GameData) {
 let footstepTimer = 0;
 
 // ===== WAVE SYSTEM =====
+// ─── Upgrade tuning ────────────────────────────────────────────────────────
+// Values are intentionally conservative so stacking upgrades over a long
+// run stays within a "thoughtful, balanced" power curve. Guideline:
+//   * health/ammo: small steady increments, not doubled
+//   * speed: capped at +30% total (not +60%) so the player still has to dodge
+//   * cooldowns: shaved by 0.15 per card, floor at 0.45s (not 0.3)
+//   * bullet damage: +1 per card, capped at 3 (not 4)
 const ALL_UPGRADES: Omit<UpgradeCard, 'applied'>[] = [
-  { id: 'ammo_cap', name: 'Ammo Capacity+', nameAr: 'سعة ذخيرة+', description: 'Max ammo 30→40', icon: '🔫', color: '#a855f7' },
-  { id: 'max_health', name: 'Reinforced', nameAr: 'صحة محسّنة', description: 'Max HP 100→130', icon: '❤', color: '#22c55e' },
-  { id: 'speed_up', name: 'Speed Boost', nameAr: 'سرعة حركة+', description: 'Move speed +20%', icon: '🏃', color: '#06b6d4' },
-  { id: 'slowmo_ext', name: 'Time Warp', nameAr: 'تباطؤ مطوّل', description: 'Slow-Mo 5→7s', icon: '⏳', color: '#8b5cf6' },
-  { id: 'dash_fast', name: 'Quick Roll', nameAr: 'دحرجة سريعة', description: 'Dash CD 0.8→0.5s', icon: '💨', color: '#f59e0b' },
-  { id: 'shield_ext', name: 'Fortified', nameAr: 'درع ممتد', description: 'Shield 8→12s', icon: '🛡', color: '#3b82f6' },
-  { id: 'pickup_range', name: 'Magnetism', nameAr: 'جذب مغناطيسي', description: 'Pickup range +50%', icon: '🧲', color: '#94a3b8' },
+  { id: 'ammo_cap', name: 'Ammo Capacity+', nameAr: 'سعة ذخيرة+', description: 'Max ammo +5', icon: '🔫', color: '#a855f7' },
+  { id: 'max_health', name: 'Reinforced', nameAr: 'صحة محسّنة', description: 'Max HP +15', icon: '❤', color: '#22c55e' },
+  { id: 'speed_up', name: 'Speed Boost', nameAr: 'سرعة حركة+', description: 'Move speed +10%', icon: '🏃', color: '#06b6d4' },
+  { id: 'slowmo_ext', name: 'Time Warp', nameAr: 'تباطؤ مطوّل', description: 'Slow-Mo +1s', icon: '⏳', color: '#8b5cf6' },
+  { id: 'dash_fast', name: 'Quick Roll', nameAr: 'دحرجة سريعة', description: 'Dash CD -0.15s', icon: '💨', color: '#f59e0b' },
+  { id: 'shield_ext', name: 'Fortified', nameAr: 'درع ممتد', description: 'Shield +2s', icon: '🛡', color: '#3b82f6' },
+  { id: 'pickup_range', name: 'Magnetism', nameAr: 'جذب مغناطيسي', description: 'Pickup range +25%', icon: '🧲', color: '#94a3b8' },
   { id: 'bullet_dmg', name: 'Heavy Rounds', nameAr: 'ضربة قوية', description: 'Bullet damage +1', icon: '💥', color: '#ef4444' },
 ];
+
+// Hard caps — upgrades stop appearing in the card pool once they max out.
+const UPGRADE_CAPS = {
+  ammoCap:      50,   // 30 → 35 → 40 → 45 → 50 (4 picks)
+  maxHealth:    160,  // 100 → 115 → 130 → 145 → 160 (4 picks)
+  speedMul:     1.30, // 1.00 → 1.10 → 1.20 → 1.30 (3 picks)
+  slowMoDur:    9,    // 5 → 6 → 7 → 8 → 9 (4 picks)
+  dashCDMin:    0.45, // 0.80 → 0.65 → 0.50 → 0.45 (3 picks, clamped)
+  shieldDur:    14,   // 8 → 10 → 12 → 14 (3 picks)
+  pickupRange:  10,   // 5 → 6.25 → 7.5 → 8.75 → 10 (4 picks)
+  bulletDmg:    3,    // 1 → 2 → 3 (2 picks)
+};
 
 function generateUpgradeCards(g: GameData): UpgradeCard[] {
   // Shuffle and pick 3
   const pool = ALL_UPGRADES.filter(u => {
     // Don't offer already-maxed upgrades
-    if (u.id === 'ammo_cap' && g.player.maxAmmo >= 50) return false;
-    if (u.id === 'max_health' && g.player.maxHealth >= 200) return false;
-    if (u.id === 'speed_up' && g.player.speedMultiplier >= 1.6) return false;
-    if (u.id === 'bullet_dmg' && g.player.bulletDamage >= 4) return false;
+    if (u.id === 'ammo_cap' && g.player.maxAmmo >= UPGRADE_CAPS.ammoCap) return false;
+    if (u.id === 'max_health' && g.player.maxHealth >= UPGRADE_CAPS.maxHealth) return false;
+    if (u.id === 'speed_up' && g.player.speedMultiplier >= UPGRADE_CAPS.speedMul) return false;
+    if (u.id === 'slowmo_ext' && g.player.slowMoDuration >= UPGRADE_CAPS.slowMoDur) return false;
+    if (u.id === 'dash_fast' && g.player.dashCooldownBase <= UPGRADE_CAPS.dashCDMin) return false;
+    if (u.id === 'shield_ext' && g.player.shieldDuration >= UPGRADE_CAPS.shieldDur) return false;
+    if (u.id === 'pickup_range' && g.player.pickupRange >= UPGRADE_CAPS.pickupRange) return false;
+    if (u.id === 'bullet_dmg' && g.player.bulletDamage >= UPGRADE_CAPS.bulletDmg) return false;
     return true;
   });
   const shuffled = pool.sort(() => Math.random() - 0.5);
@@ -1199,14 +1226,34 @@ function generateUpgradeCards(g: GameData): UpgradeCard[] {
 export function applyUpgrade(g: GameData, cardId: string) {
   const p = g.player;
   switch (cardId) {
-    case 'ammo_cap': p.maxAmmo += 10; break;
-    case 'max_health': p.maxHealth += 30; p.health = Math.min(p.health + 30, p.maxHealth); break;
-    case 'speed_up': p.speedMultiplier += 0.2; break;
-    case 'slowmo_ext': p.slowMoDuration += 2; break;
-    case 'dash_fast': p.dashCooldownBase = Math.max(0.3, p.dashCooldownBase - 0.3); break;
-    case 'shield_ext': p.shieldDuration += 4; break;
-    case 'pickup_range': p.pickupRange += 2.5; break;
-    case 'bullet_dmg': p.bulletDamage += 1; break;
+    case 'ammo_cap':
+      p.maxAmmo = Math.min(UPGRADE_CAPS.ammoCap, p.maxAmmo + 5);
+      break;
+    case 'max_health': {
+      // Small bump + small heal (half of the bump) — not a full restore
+      const inc = 15;
+      p.maxHealth = Math.min(UPGRADE_CAPS.maxHealth, p.maxHealth + inc);
+      p.health = Math.min(p.maxHealth, p.health + Math.round(inc * 0.5));
+      break;
+    }
+    case 'speed_up':
+      p.speedMultiplier = Math.min(UPGRADE_CAPS.speedMul, p.speedMultiplier + 0.1);
+      break;
+    case 'slowmo_ext':
+      p.slowMoDuration = Math.min(UPGRADE_CAPS.slowMoDur, p.slowMoDuration + 1);
+      break;
+    case 'dash_fast':
+      p.dashCooldownBase = Math.max(UPGRADE_CAPS.dashCDMin, p.dashCooldownBase - 0.15);
+      break;
+    case 'shield_ext':
+      p.shieldDuration = Math.min(UPGRADE_CAPS.shieldDur, p.shieldDuration + 2);
+      break;
+    case 'pickup_range':
+      p.pickupRange = Math.min(UPGRADE_CAPS.pickupRange, p.pickupRange + 1.25);
+      break;
+    case 'bullet_dmg':
+      p.bulletDamage = Math.min(UPGRADE_CAPS.bulletDmg, p.bulletDamage + 1);
+      break;
   }
   sfxUpgradeSelect();
   g.selectedUpgrade = cardId;
@@ -1788,6 +1835,58 @@ function applyDroneSeparation(d: Drone, drones: Drone[], dt: number, minDist: nu
       const force = (totalMin - sd) * 4.5;
       d.vel.x += (sx / sd) * force * dt;
       d.vel.y += (sy / sd) * force * dt;
+    }
+  }
+}
+
+/**
+ * Returns true when a modal card is currently on screen: upgrade cards,
+ * the gas-mask purchase offer or the fire-suit purchase offer. The game
+ * loop skips the full physics update while any of these is visible —
+ * only the card timer and the input are advanced — so hazards do not
+ * slide forward into the player while they are reading a card.
+ */
+export function hasModalCard(g: GameData): boolean {
+  return (
+    g.wavePhase === 'cards' ||
+    !!(g.gasMaskOffer && g.gasMaskOffer.active) ||
+    !!(g.fireSuitOffer && g.fireSuitOffer.active)
+  );
+}
+
+/**
+ * Minimal per-frame update used while a modal card is visible.
+ * Advances ONLY:
+ *  - Card selection timers (cardsShownTimer, offer.timer, offer.delay)
+ *  - Purchase input handling
+ *  - A small amount of ambient animation state (elapsed, windOffset)
+ *    so the HUD clocks keep ticking but no entity physics advances.
+ */
+export function updateCardsOnly(g: GameData, input: InputState, dt: number) {
+  if (g.state !== 'playing') return;
+  dt = Math.min(dt, 0.05);
+  g.elapsed += dt;
+  g.windOffset = Math.sin(g.elapsed * 0.3) * 0.5;
+  g.slowMoFactor = 0; // hard freeze — renderer still shows the frozen scene
+
+  // Drive the wave system so card timers and purchase input are processed.
+  // updateWaveSystem early-returns from most branches when wavePhase is not
+  // 'active', so this is safe and scope-limited.
+  updateWaveSystem(g, input, dt);
+
+  // Keep score countdown animation ticking for the purchase visual.
+  if (g.scoreCountdown) {
+    g.scoreCountdown.tickTimer -= dt;
+    if (g.scoreCountdown.tickTimer <= 0) {
+      const chunk = Math.max(1, Math.ceil(g.scoreCountdown.remaining / 10));
+      const deduct = Math.min(chunk, g.scoreCountdown.remaining);
+      g.score -= deduct;
+      g.scoreCountdown.remaining -= deduct;
+      g.scoreCountdown.tickTimer = 0.04;
+      sfxScoreTick();
+      if (g.scoreCountdown.remaining <= 0) {
+        g.scoreCountdown = null;
+      }
     }
   }
 }
@@ -2543,6 +2642,14 @@ export function update(g: GameData, input: InputState, dt: number) {
   if (p.fireSuitDonTimer > 0) p.fireSuitDonTimer = Math.max(0, p.fireSuitDonTimer - dt);
   if (p.fireSuitDoffTimer > 0) p.fireSuitDoffTimer = Math.max(0, p.fireSuitDoffTimer - dt);
   if (p.extinguisherTimer > 0) p.extinguisherTimer -= dt;
+
+  // === Cap concurrent fire pools / gas clouds to avoid frame stalls ===
+  // Oldest entries get evicted so the player always sees the most recent
+  // threats. 8 is plenty for dense incendiary waves without over-drawing.
+  const MAX_FIRE_POOLS = 8;
+  const MAX_GAS_CLOUDS = 8;
+  while (g.firePools.length > MAX_FIRE_POOLS) g.firePools.shift();
+  while (g.gasClouds.length > MAX_GAS_CLOUDS) g.gasClouds.shift();
 
   // === Update Fire Pools ===
   for (let i = g.firePools.length - 1; i >= 0; i--) {

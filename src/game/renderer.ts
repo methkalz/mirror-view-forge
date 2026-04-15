@@ -5372,11 +5372,16 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
   const dir = facingRight ? 1 : -1;
   ctx.scale(dir, 1);
 
+  // Fire suit colour override — bright firefighter red with warm highlight.
+  // The suit is only considered visually active once the donning animation
+  // is far enough along to cover the body (reveal > 0.55).
+  const fireSuitFullyOn = !!hasFireSuit && (fireSuitDon ?? 1) >= 0.55 && (fireSuitDoff ?? 0) < 0.45;
+
   const skinColor = isHit ? '#fca5a5' : '#f0c4a0';
   const skinHighlight = isHit ? '#fecaca' : '#fad5b5';
-  const pantsColor = '#1a2f4a';
-  const pantsHighlight = '#2a4a6a';
-  const shoeColor = '#1a1a1a';
+  const pantsColor = fireSuitFullyOn ? '#b91c1c' : '#1a2f4a';
+  const pantsHighlight = fireSuitFullyOn ? '#ef4444' : '#2a4a6a';
+  const shoeColor = fireSuitFullyOn ? '#111' : '#1a1a1a';
 
   const headY = -32 + bodyBob;
   const bodyTopY = -24 + bodyBob;
@@ -5517,30 +5522,49 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
   // bottom (donning) or lifted off (doffing).
   const fireSuitVisible = !!hasFireSuit || (fireSuitDoff ?? 0) > 0;
   const fireSuitReveal = Math.max(0, Math.min(1, (fireSuitDon ?? 1) * (1 - (fireSuitDoff ?? 0))));
+  // When the fire suit is fully on, the torso is drawn as a PUFFY polygon:
+  // 1.8px wider on each side with outward-curving shoulder and hip flares.
+  // This sells the bulky inflated look of a real firefighter bunker gear.
+  const puffed = fireSuitVisible && fireSuitReveal >= 1;
   const torsoGrad = ctx.createLinearGradient(0, bodyTopY, 0, bodyBottomY);
   if (isHit) {
     torsoGrad.addColorStop(0, '#ef4444');
     torsoGrad.addColorStop(1, '#dc2626');
-  } else if (fireSuitVisible && fireSuitReveal >= 1) {
-    // Fully-donned fire suit — bright red with dark shading
-    torsoGrad.addColorStop(0, '#fca5a5');
-    torsoGrad.addColorStop(0.35, '#ef4444');
-    torsoGrad.addColorStop(1, '#991b1b');
+  } else if (puffed) {
+    // Fully-donned fire suit — bright red with strong contrast shading
+    torsoGrad.addColorStop(0, '#fecaca');
+    torsoGrad.addColorStop(0.25, '#ef4444');
+    torsoGrad.addColorStop(0.65, '#b91c1c');
+    torsoGrad.addColorStop(1, '#7f1d1d');
   } else {
     torsoGrad.addColorStop(0, '#5a9ae6');
     torsoGrad.addColorStop(0.4, '#4a90e2');
     torsoGrad.addColorStop(1, '#2563eb');
   }
   ctx.fillStyle = torsoGrad;
-  ctx.beginPath();
-  ctx.moveTo(-6, bodyTopY);
-  ctx.lineTo(6, bodyTopY);
-  ctx.lineTo(5, bodyBottomY);
-  ctx.lineTo(-5, bodyBottomY);
-  ctx.closePath();
+  if (puffed) {
+    // Puffy silhouette: shoulders flare outward, chest rounded, hips wider
+    ctx.beginPath();
+    ctx.moveTo(-7.6, bodyTopY + 0.5);
+    ctx.quadraticCurveTo(-8.4, bodyTopY + 2, -8.0, bodyTopY + 5);
+    ctx.lineTo(-7.4, bodyBottomY - 1);
+    ctx.quadraticCurveTo(-7.2, bodyBottomY + 0.5, -6.8, bodyBottomY);
+    ctx.lineTo(6.8, bodyBottomY);
+    ctx.quadraticCurveTo(7.2, bodyBottomY + 0.5, 7.4, bodyBottomY - 1);
+    ctx.lineTo(8.0, bodyTopY + 5);
+    ctx.quadraticCurveTo(8.4, bodyTopY + 2, 7.6, bodyTopY + 0.5);
+    ctx.closePath();
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(-6, bodyTopY);
+    ctx.lineTo(6, bodyTopY);
+    ctx.lineTo(5, bodyBottomY);
+    ctx.lineTo(-5, bodyBottomY);
+    ctx.closePath();
+  }
   ctx.fill();
-  ctx.strokeStyle = isHit ? '#b91c1c' : '#1d4ed8';
-  ctx.lineWidth = 0.8;
+  ctx.strokeStyle = isHit ? '#b91c1c' : puffed ? '#450a0a' : '#1d4ed8';
+  ctx.lineWidth = puffed ? 1 : 0.8;
   ctx.stroke();
 
   // ── Fire suit overlay: pulled on top-down, removed top-up ──
@@ -5560,30 +5584,44 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
       ctx.closePath();
       ctx.clip();
 
-      // Red jacket fill
+      // Red jacket fill — wider to match the puffy silhouette
       const jacketGrad = ctx.createLinearGradient(0, bodyTopY, 0, bodyTopY + donH);
-      jacketGrad.addColorStop(0, '#fca5a5');
-      jacketGrad.addColorStop(0.35, '#ef4444');
-      jacketGrad.addColorStop(0.75, '#b91c1c');
+      jacketGrad.addColorStop(0, '#fecaca');
+      jacketGrad.addColorStop(0.25, '#ef4444');
+      jacketGrad.addColorStop(0.65, '#b91c1c');
       jacketGrad.addColorStop(1, '#7f1d1d');
       ctx.fillStyle = jacketGrad;
-      ctx.fillRect(-7, bodyTopY, 14, donH);
+      ctx.fillRect(-8.5, bodyTopY, 17, donH);
 
-      // Yellow reflective bands (the two horizontal stripes real firefighter suits have)
+      // Yellow reflective bands — 3 high-vis stripes (shoulder, waist, hips)
       ctx.fillStyle = '#fde047';
-      const bandH = 1.1;
-      // Upper band only if donH reaches it
-      if (donH > torsoH * 0.42) {
-        ctx.fillRect(-5.5, bodyTopY + torsoH * 0.4, 11, bandH);
-        // Band shine
-        ctx.fillStyle = '#fff9c4';
-        ctx.fillRect(-5.5, bodyTopY + torsoH * 0.4, 11, 0.35);
+      const bandH = 1.3;
+      if (donH > torsoH * 0.28) {
+        ctx.fillRect(-7, bodyTopY + torsoH * 0.26, 14, bandH);
+        ctx.fillStyle = '#fffbd1';
+        ctx.fillRect(-7, bodyTopY + torsoH * 0.26, 14, 0.35);
         ctx.fillStyle = '#fde047';
       }
-      if (donH > torsoH * 0.72) {
-        ctx.fillRect(-5.5, bodyTopY + torsoH * 0.7, 11, bandH);
-        ctx.fillStyle = '#fff9c4';
-        ctx.fillRect(-5.5, bodyTopY + torsoH * 0.7, 11, 0.35);
+      if (donH > torsoH * 0.52) {
+        ctx.fillRect(-7, bodyTopY + torsoH * 0.5, 14, bandH);
+        ctx.fillStyle = '#fffbd1';
+        ctx.fillRect(-7, bodyTopY + torsoH * 0.5, 14, 0.35);
+        ctx.fillStyle = '#fde047';
+      }
+      if (donH > torsoH * 0.82) {
+        ctx.fillRect(-7, bodyTopY + torsoH * 0.8, 14, bandH);
+        ctx.fillStyle = '#fffbd1';
+        ctx.fillRect(-7, bodyTopY + torsoH * 0.8, 14, 0.35);
+        ctx.fillStyle = '#fde047';
+      }
+
+      // Chest badge (white square)
+      if (donH > torsoH * 0.4) {
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.fillRect(-2, bodyTopY + torsoH * 0.35, 4, 2);
+        ctx.strokeStyle = 'rgba(80,10,10,0.6)';
+        ctx.lineWidth = 0.3;
+        ctx.strokeRect(-2, bodyTopY + torsoH * 0.35, 4, 2);
       }
 
       // Dark outline around the jacket
@@ -5636,8 +5674,10 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
   ctx.fillRect(-1, bodyBottomY - 1.8, 2, 2);
 
   // ── Arms ──
-  const armColor = isHit ? '#ef4444' : '#3a7bd5';
-  const armHighlight = isHit ? '#f87171' : '#5a9ae6';
+  // When the fire suit is fully on, the sleeves become red and render
+  // slightly thicker so they look like padded bunker-gear arms.
+  const armColor = isHit ? '#ef4444' : fireSuitFullyOn ? '#b91c1c' : '#3a7bd5';
+  const armHighlight = isHit ? '#f87171' : fireSuitFullyOn ? '#ef4444' : '#5a9ae6';
 
   if (isWaving) {
     // Organic wave — dual oscillation for natural feel
@@ -5985,13 +6025,19 @@ function drawCharacter(ctx: CanvasRenderingContext2D, opts: CharacterOptions) {
   ctx.arc(0, headY, 6, 0, Math.PI * 2);
   ctx.fill();
 
-  // Helmet with gradient + shine
-  const hDark = helmetColor;
+  // Helmet with gradient + shine. If the fire suit is fully on, override
+  // the helmet to the classic firefighter red + yellow reflective strip.
+  const hDark = fireSuitFullyOn ? '#b91c1c' : helmetColor;
   const helmetGrad = ctx.createLinearGradient(0, headY - 8, 0, headY);
-  // Derive lighter/darker shades from base color
-  helmetGrad.addColorStop(0, hDark);
-  helmetGrad.addColorStop(0.5, hDark);
-  helmetGrad.addColorStop(1, '#0f172a');
+  if (fireSuitFullyOn) {
+    helmetGrad.addColorStop(0, '#fca5a5');
+    helmetGrad.addColorStop(0.45, '#ef4444');
+    helmetGrad.addColorStop(1, '#7f1d1d');
+  } else {
+    helmetGrad.addColorStop(0, hDark);
+    helmetGrad.addColorStop(0.5, hDark);
+    helmetGrad.addColorStop(1, '#0f172a');
+  }
   ctx.fillStyle = helmetGrad;
   ctx.beginPath();
   ctx.arc(0, headY - 1.5, 6.8, Math.PI, 0);
@@ -7337,23 +7383,12 @@ function renderMotorcycle(
     ctx.fill();
     ctx.restore();
     
-    // ── Enhanced Bloom Layers (3 extra radial layers) ──
-    const bloomLayers = [
-      { r: 20, alpha: 0.06 },
-      { r: 35, alpha: 0.035 },
-      { r: 50, alpha: 0.018 },
-    ];
-    for (const bl of bloomLayers) {
-      const bGrad = ctx.createRadialGradient(hlX, hlY, 0, hlX, hlY, bl.r);
-      bGrad.addColorStop(0, `rgba(255,255,220,${bl.alpha * flickerIntensity})`);
-      bGrad.addColorStop(0.5, `rgba(255,255,200,${bl.alpha * 0.4 * flickerIntensity})`);
-      bGrad.addColorStop(1, 'rgba(255,255,180,0)');
-      ctx.fillStyle = bGrad;
-      ctx.beginPath();
-      ctx.arc(hlX, hlY, bl.r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    
+    // NOTE: The old code drew 3 extra circular bloom rings around the
+    // headlight which looked like halos. The new design keeps only a
+    // single small halo right on the lens body — the volumetric cone
+    // above already carries the directional light work.
+
+
     // ── Headlight Lens (multi-layer glow) ──
     // Outer glow
     ctx.fillStyle = `rgba(255,255,200,${0.08 * flickerIntensity})`;
@@ -7381,45 +7416,51 @@ function renderMotorcycle(
     ctx.fill();
   }
 
-  // ── Tail Light — Physically correct RED with radial gradient bloom ──
+  // ── Tail Light — small filament + directional backward cast ──
+  // Replaces the old concentric-ring "bloom" with a proper red LED lens
+  // and a short directional cone aimed backward.
   const isBraking = bike.phase === 'idle' || bike.speed < 30;
   const brakeIntensity = isBraking ? (0.8 + Math.sin(g.elapsed * 4) * 0.15) : 0.5;
   const tailX = rearWX - 2, tailY = -10;
-  
-  // Layer 1: Wide ambient red glow (bloom)
-  const outerGlow = ctx.createRadialGradient(tailX, tailY, 0, tailX, tailY, isBraking ? 14 : 8);
-  outerGlow.addColorStop(0, `rgba(255,0,0,${brakeIntensity * 0.15})`);
-  outerGlow.addColorStop(0.4, `rgba(200,0,0,${brakeIntensity * 0.08})`);
-  outerGlow.addColorStop(1, 'rgba(150,0,0,0)');
-  ctx.fillStyle = outerGlow;
+
+  // Directional cast (linear gradient pointing backward). Not a circle.
+  const castLen = isBraking ? 18 : 10;
+  const castGrad = ctx.createLinearGradient(tailX, tailY, tailX - castLen, tailY);
+  castGrad.addColorStop(0, `rgba(255,40,20,${brakeIntensity * 0.45})`);
+  castGrad.addColorStop(0.5, `rgba(200,10,10,${brakeIntensity * 0.15})`);
+  castGrad.addColorStop(1, 'rgba(120,0,0,0)');
+  ctx.fillStyle = castGrad;
   ctx.beginPath();
-  ctx.ellipse(tailX, tailY, isBraking ? 14 : 8, isBraking ? 7 : 4, 0, 0, Math.PI * 2);
+  // Narrow triangular cone backward
+  ctx.moveTo(tailX, tailY - 2.8);
+  ctx.lineTo(tailX - castLen, tailY - castLen * 0.35);
+  ctx.lineTo(tailX - castLen, tailY + castLen * 0.35 + 1);
+  ctx.lineTo(tailX, tailY + 2.8);
+  ctx.closePath();
   ctx.fill();
-  
-  // Layer 2: Core red glow
-  const coreGlow = ctx.createRadialGradient(tailX, tailY, 0, tailX, tailY, 4);
-  coreGlow.addColorStop(0, `rgba(255,60,30,${brakeIntensity})`);
-  coreGlow.addColorStop(0.5, `rgba(220,20,10,${brakeIntensity * 0.7})`);
-  coreGlow.addColorStop(1, `rgba(180,0,0,${brakeIntensity * 0.2})`);
-  ctx.fillStyle = coreGlow;
+
+  // LED body — small, bright, and compact
+  const ledGrad = ctx.createRadialGradient(tailX, tailY, 0, tailX, tailY, 2.6);
+  ledGrad.addColorStop(0, `rgba(255,200,180,${brakeIntensity})`);
+  ledGrad.addColorStop(0.35, `rgba(255,60,30,${brakeIntensity})`);
+  ledGrad.addColorStop(0.75, `rgba(180,10,5,${brakeIntensity * 0.6})`);
+  ledGrad.addColorStop(1, 'rgba(80,0,0,0)');
+  ctx.fillStyle = ledGrad;
   ctx.beginPath();
-  ctx.ellipse(tailX, tailY, 4, 2.2, 0, 0, Math.PI * 2);
+  ctx.ellipse(tailX, tailY, 2.6, 1.8, 0, 0, Math.PI * 2);
   ctx.fill();
-  
-  // Layer 3: Hot center (bright red-orange filament)
-  const hotCenter = ctx.createRadialGradient(tailX, tailY, 0, tailX, tailY, 1.8);
-  hotCenter.addColorStop(0, `rgba(255,120,80,${brakeIntensity * 0.9})`);
-  hotCenter.addColorStop(0.6, `rgba(255,40,20,${brakeIntensity * 0.6})`);
-  hotCenter.addColorStop(1, 'rgba(200,0,0,0)');
-  ctx.fillStyle = hotCenter;
+
+  // Lens rim (plastic housing)
+  ctx.strokeStyle = 'rgba(40,5,5,0.85)';
+  ctx.lineWidth = 0.5;
   ctx.beginPath();
-  ctx.ellipse(tailX, tailY, 1.8, 1.2, 0, 0, Math.PI * 2);
-  ctx.fill();
-  
-  // Layer 4: Specular highlight
-  ctx.fillStyle = `rgba(255,180,160,${brakeIntensity * 0.35})`;
+  ctx.ellipse(tailX, tailY, 2.6, 1.8, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Tiny specular dot on the lens
+  ctx.fillStyle = `rgba(255,200,180,${brakeIntensity * 0.9})`;
   ctx.beginPath();
-  ctx.ellipse(tailX + 0.5, tailY - 0.8, 0.8, 0.4, 0.3, 0, Math.PI * 2);
+  ctx.arc(tailX - 0.6, tailY - 0.5, 0.35, 0, Math.PI * 2);
   ctx.fill();
 
   // ── Wet Asphalt Reflection (red only — no white/yellow behind bike) ──
@@ -7466,11 +7507,11 @@ function renderMotorcycle(
 
   // Cast shadow stretched away from the headlight (diagonal)
   ctx.globalAlpha = 0.12;
-  const castGrad = ctx.createLinearGradient(-40, 10, 20, 5);
-  castGrad.addColorStop(0, 'rgba(0,0,0,0)');
-  castGrad.addColorStop(0.3, 'rgba(0,0,0,0.55)');
-  castGrad.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = castGrad;
+  const shadowCastGrad = ctx.createLinearGradient(-40, 10, 20, 5);
+  shadowCastGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  shadowCastGrad.addColorStop(0.3, 'rgba(0,0,0,0.55)');
+  shadowCastGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = shadowCastGrad;
   ctx.beginPath();
   ctx.moveTo(-30, 5);
   ctx.lineTo(-42, 12);
@@ -7570,62 +7611,22 @@ function emitBikeLights(bike: {
   // ── Headlight: warm pool cast forward onto the ground ──
   const hlLocalX = (22 + 5) * dir; // frontWX + 5
   const hlLocalY = -10;
-  const isLeaving = bike.phase === 'leaving';
+  // NOTE: the bike now draws its own directional cone + LED bodies +
+  // ground casts inside renderMotorcycle(). We only emit a SINGLE very
+  // subtle warm tint at the ground pool position so the global lighting
+  // pass still picks the bike up as a light source — no more concentric
+  // halo rings that looked like circles stacked on top of the bike.
   const hlActive = bike.phase === 'idle' || bike.phase === 'leaving' || bike.phase === 'entering';
   if (hlActive) {
     emitLight({
-      x: bike.pos.x + hlLocalX * S,
-      y: baseY + hlLocalY * S,
-      radius: 140,
-      color: 'rgba(255,220,150,',
-      intensity: isLeaving ? 0.85 : 0.65,
-      flicker: 0.12,
-    });
-    // Ground pool — warmer, tighter
-    emitLight({
-      x: bike.pos.x + (40 * dir) * 0.9,
-      y: baseY + 4 * S,
-      radius: 90,
-      color: 'rgba(255,210,140,',
-      intensity: 0.55,
-      flicker: 0.06,
+      x: bike.pos.x + (45 * dir),
+      y: baseY + 6 * S,
+      radius: 70,
+      color: 'rgba(255,210,130,',
+      intensity: 0.3,
+      flicker: 0.05,
     });
   }
-
-  // ── Taillight: small red glow, brighter when braking ──
-  const tailLocalX = (-20 - 2) * dir;
-  const tailLocalY = -10;
-  const isBraking = bike.phase === 'idle' || bike.speed < 30;
-  emitLight({
-    x: bike.pos.x + tailLocalX * S,
-    y: baseY + tailLocalY * S,
-    radius: isBraking ? 70 : 40,
-    color: 'rgba(255,40,40,',
-    intensity: isBraking ? 0.7 : 0.35,
-    flicker: 0.08,
-  });
-
-  // ── Engine heat glow: subtle orange smoulder underneath ──
-  if (bike.phase === 'idle' || Math.abs(bike.speed) > 20) {
-    emitLight({
-      x: bike.pos.x,
-      y: baseY + -3 * S,
-      radius: 55,
-      color: 'rgba(255,150,60,',
-      intensity: 0.28,
-      flicker: 0.25,
-    });
-  }
-
-  // ── Underbody accent LED: cool cyan strip (modern styling) ──
-  emitLight({
-    x: bike.pos.x - 8 * dir,
-    y: baseY + 2 * S,
-    radius: 45,
-    color: 'rgba(120,180,255,',
-    intensity: 0.3,
-    flicker: 0.04,
-  });
 }
 
 function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
