@@ -7,7 +7,7 @@ export type GameState = 'start' | 'intro' | 'playing' | 'gameover';
 export type IntroPhase = 'bikeEnter' | 'bikeStop' | 'playerDismount' | 'bikeLeave' | 'done';
 
 export type HazardType = 'shrapnel' | 'missile' | 'cluster';
-export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike' | 'extinguisher' | 'water';
+export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike' | 'extinguisher' | 'water' | 'gasmask' | 'firesuit';
 export type DroneState = 'entering' | 'tracking' | 'bombing';
 export type DroneTier = 'scout' | 'tracker' | 'bomber' | 'cargo' | 'incendiary' | 'chemical';
 export type PlayerAnim = 'idle' | 'walk' | 'roll' | 'hit';
@@ -36,6 +36,9 @@ export interface Player {
   shootTimer: number;
   gasMaskTimer: number;
   extinguisherTimer: number;
+  /** Full-wave fire suit protection. Works like gasMaskTimer but guards
+   *  against fire pools and incendiary drone collision damage. */
+  fireSuitTimer: number;
   // Upgrade-enhanced stats
   maxAmmo: number;
   speedMultiplier: number;
@@ -144,6 +147,9 @@ export interface Drone {
   label?: string;
   fireDropTimer?: number;
   gasDropTimer?: number;
+  /** Smoothed facing value in [-1..1]. Eased toward sign(vel.x) so the
+   *  drone banks/turns instead of flipping instantly. */
+  facingLerp?: number;
 }
 
 export interface FirePool {
@@ -355,10 +361,23 @@ export interface GameData {
   // Tutorial slides
   tutorialPage: number;
   tutorialFade: number;
-  // Gas mask purchase system
+  // Gas mask purchase + per-wave parachute drop system
   gasMaskOffer: { active: boolean; timer: number; cost: number } | null;
   gasMaskOwned: boolean;
   gasMaskOfferDelay: number;
+  /** True if a gas-mask parachute drop is still scheduled for the current
+   *  chemical wave (set on wave start, cleared once the drop spawns). */
+  gasMaskDropScheduled: boolean;
+  /** Elapsed time at which the scheduled drop should spawn. */
+  gasMaskDropTime: number;
+
+  // Fire suit purchase + per-wave parachute drop system (mirror of gas mask)
+  fireSuitOffer: { active: boolean; timer: number; cost: number } | null;
+  fireSuitOwned: boolean;
+  fireSuitOfferDelay: number;
+  fireSuitDropScheduled: boolean;
+  fireSuitDropTime: number;
+
   // Score countdown animation
   scoreCountdown: { remaining: number; tickTimer: number; totalCost: number } | null;
 }
