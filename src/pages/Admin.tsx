@@ -591,8 +591,75 @@ function generatePreviewWaves(profile: DifficultyProfile, count: number = 20) {
   return previews;
 }
 
-const THREAT_ICONS: Record<string, string> = { shrapnel: '💥', missile: '🚀', cluster: '🎯' };
-const DRONE_ICONS: Record<string, string> = { scout: '🔍', tracker: '📡', bomber: '💣', chemical: '☣️', incendiary: '🔥', cargo: '📦' };
+const THREAT_ICONS: Record<string, string> = { shrapnel: '💥', missile: '🚀', cluster: '🎯', meteor: '☄️', mine: '💣' };
+const DRONE_ICONS: Record<string, string> = { scout: '🔍', tracker: '📡', bomber: '💣', chemical: '☣️', incendiary: '🔥', cargo: '📦', laser: '🔴' };
+
+// Difficulty curve presets — one-click overhauls of the whole profile.
+const DIFFICULTY_PRESETS: {
+  key: string; nameAr: string; descAr: string; icon: string; color: string;
+  values: Partial<DifficultyProfile>;
+}[] = [
+  {
+    key: 'chill', nameAr: 'هادئ', descAr: 'سهل ومريح',
+    icon: '🌿', color: '#22c55e',
+    values: {
+      baseMaxConcurrent: 2, maxConcurrentCap: 10, concurrentGrowth: 0.4,
+      baseSpawnInterval: 3.0, minSpawnInterval: 1.0, spawnIntervalDecay: 0.08,
+      threatsUnlock: { shrapnel: 1, missile: 3, cluster: 5, meteor: 9 },
+      dronesUnlock: { scout: 3, tracker: 6, incendiary: 8, bomber: 9, chemical: 10, laser: 12 },
+      clusterSplitsBase: 2, clusterSplitsCap: 5, clusterSplitsGrowth: 0.2,
+      droneIntervalBase: 25, droneIntervalMin: 10, droneIntervalDecay: 0.9,
+      bossEveryNWaves: 8, bossStartWave: 15,
+      bulletLevelWaves: { '2': 3, '3': 6, '4': 10 },
+      waveDuration: 60, phaseInDelay: 15,
+    },
+  },
+  {
+    key: 'balanced', nameAr: 'متوازن (الافتراضي)', descAr: 'صعب لكن عادل',
+    icon: '⚖️', color: '#60a5fa',
+    values: {
+      baseMaxConcurrent: 3, maxConcurrentCap: 15, concurrentGrowth: 0.7,
+      baseSpawnInterval: 2.4, minSpawnInterval: 0.55, spawnIntervalDecay: 0.15,
+      threatsUnlock: { shrapnel: 1, missile: 2, cluster: 3, meteor: 6 },
+      dronesUnlock: { scout: 2, tracker: 4, incendiary: 5, bomber: 7, chemical: 7, laser: 8 },
+      clusterSplitsBase: 2, clusterSplitsCap: 8, clusterSplitsGrowth: 0.35,
+      droneIntervalBase: 18, droneIntervalMin: 7, droneIntervalDecay: 0.85,
+      bossEveryNWaves: 6, bossStartWave: 12,
+      bulletLevelWaves: { '2': 2, '3': 4, '4': 8 },
+      waveDuration: 60, phaseInDelay: 10,
+    },
+  },
+  {
+    key: 'intense', nameAr: 'مكثف', descAr: 'ضغط مستمر',
+    icon: '🔥', color: '#f59e0b',
+    values: {
+      baseMaxConcurrent: 4, maxConcurrentCap: 18, concurrentGrowth: 0.9,
+      baseSpawnInterval: 2.0, minSpawnInterval: 0.45, spawnIntervalDecay: 0.2,
+      threatsUnlock: { shrapnel: 1, missile: 1, cluster: 2, meteor: 4 },
+      dronesUnlock: { scout: 1, tracker: 3, incendiary: 4, bomber: 5, chemical: 5, laser: 6 },
+      clusterSplitsBase: 3, clusterSplitsCap: 10, clusterSplitsGrowth: 0.5,
+      droneIntervalBase: 14, droneIntervalMin: 5, droneIntervalDecay: 0.8,
+      bossEveryNWaves: 4, bossStartWave: 10,
+      bulletLevelWaves: { '2': 2, '3': 3, '4': 6 },
+      waveDuration: 55, phaseInDelay: 6,
+    },
+  },
+  {
+    key: 'hardcore', nameAr: 'نخبة', descAr: 'وحشي — خطأ واحد يكفي',
+    icon: '💀', color: '#ef4444',
+    values: {
+      baseMaxConcurrent: 5, maxConcurrentCap: 22, concurrentGrowth: 1.2,
+      baseSpawnInterval: 1.6, minSpawnInterval: 0.35, spawnIntervalDecay: 0.28,
+      threatsUnlock: { shrapnel: 1, missile: 1, cluster: 1, meteor: 2 },
+      dronesUnlock: { scout: 1, tracker: 2, incendiary: 3, bomber: 3, chemical: 4, laser: 4 },
+      clusterSplitsBase: 4, clusterSplitsCap: 12, clusterSplitsGrowth: 0.7,
+      droneIntervalBase: 10, droneIntervalMin: 4, droneIntervalDecay: 0.75,
+      bossEveryNWaves: 3, bossStartWave: 8,
+      bulletLevelWaves: { '2': 2, '3': 3, '4': 5 },
+      waveDuration: 50, phaseInDelay: 3,
+    },
+  },
+];
 
 // Slider + numeric input combo
 const SliderWithInput: React.FC<{
@@ -693,6 +760,36 @@ const WavesPanel: React.FC<{
 
       {showAutoScale && diffProfile && (
         <div>
+          {/* Difficulty Preset Buttons */}
+          <div style={cardStyle}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 10, color: '#f1f5f9' }}>⚡ إعدادات مسبقة</h3>
+            <p style={{ fontSize: 11, color: 'rgba(148,163,184,0.4)', marginBottom: 14 }}>
+              اختر منحنى صعوبة جاهز. يطبّق على كل الإعدادات دفعة واحدة ويمكنك تعديلها يدوياً بعدها.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)', gap: 10 }}>
+              {DIFFICULTY_PRESETS.map(preset => (
+                <button
+                  key={preset.key}
+                  onClick={() => {
+                    if (!confirm(`تطبيق إعداد "${preset.nameAr}"؟ سيحل محل جميع الإعدادات الحالية.`)) return;
+                    onSaveDiffProfile(preset.values);
+                  }}
+                  style={{
+                    padding: '12px 14px', borderRadius: 10,
+                    background: `${preset.color}15`, border: `1px solid ${preset.color}55`,
+                    cursor: 'pointer', textAlign: 'center' as const, transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = `${preset.color}25`; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = `${preset.color}15`; }}
+                >
+                  <div style={{ fontSize: 22, marginBottom: 4 }}>{preset.icon}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: preset.color }}>{preset.nameAr}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)', marginTop: 2 }}>{preset.descAr}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Auto-Scaling Settings */}
           <div style={cardStyle}>
             <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 18, color: '#f1f5f9' }}>⚙️ إعدادات التصاعد التلقائي</h3>
