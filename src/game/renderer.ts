@@ -600,6 +600,41 @@ function renderWarnings(ctx: CanvasRenderingContext2D, g: GameData) {
     const progress = 1 - hz.warningTimer / hz.warningDuration;
     const alpha = 0.2 + progress * 0.5;
 
+    // ═══ Meteor warning: large pulsing blast circle on ground ═══
+    if (hz.type === 'meteor') {
+      ctx.save();
+      ctx.translate(hz.targetPos.x, hz.targetPos.y);
+      const blastR = 120; // must match meteor blast radius
+      const pulse = 0.5 + Math.sin(progress * 20) * 0.5;
+      // Outer danger zone
+      ctx.strokeStyle = `rgba(220,40,40,${0.5 * alpha})`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath();
+      ctx.arc(0, 0, blastR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Fill — shows intensifying red as meteor nears
+      ctx.fillStyle = `rgba(220,60,40,${0.06 + progress * 0.15})`;
+      ctx.beginPath();
+      ctx.arc(0, 0, blastR, 0, Math.PI * 2);
+      ctx.fill();
+      // Inner pulsing core
+      ctx.strokeStyle = `rgba(255,80,40,${0.6 + pulse * 0.3})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, 30 + pulse * 8, 0, Math.PI * 2);
+      ctx.stroke();
+      // Exclamation
+      ctx.fillStyle = `rgba(255,80,40,${0.9 * alpha})`;
+      ctx.font = 'bold 28px Tajawal, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⚠', 0, -blastR - 12);
+      ctx.restore();
+      continue;
+    }
+
     ctx.save();
     ctx.translate(hz.targetPos.x, hz.targetPos.y);
 
@@ -1500,6 +1535,57 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.textBaseline = 'middle';
       ctx.fillText('☣', 0, 0);
       ctx.restore();
+    } else if (hz.type === 'meteor') {
+      // ═══ Meteor — large glowing rock with fiery trail ═══
+      const r = hz.size;
+      const mt = performance.now() * 0.001 + hz.pos.x * 0.01;
+      // Outer heat halo
+      const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.2);
+      halo.addColorStop(0, 'rgba(255,180,60,0.5)');
+      halo.addColorStop(0.5, 'rgba(255,90,30,0.25)');
+      halo.addColorStop(1, 'rgba(120,30,0,0)');
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      // Trailing flame
+      const flicker = 0.7 + Math.sin(mt * 18) * 0.2;
+      ctx.fillStyle = `rgba(255,120,30,${0.45 * flicker})`;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.4, -r * 0.6);
+      ctx.quadraticCurveTo(-r * 2.5, -r * 3.5, r * 0.1, -r * 0.4);
+      ctx.quadraticCurveTo(-r * 1.5, -r * 2.5, r * 0.4, -r * 0.6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = `rgba(255,220,120,${0.55 * flicker})`;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.2, -r * 0.5);
+      ctx.quadraticCurveTo(-r * 1.2, -r * 2.5, r * 0.1, -r * 0.3);
+      ctx.quadraticCurveTo(-r * 0.6, -r * 1.5, r * 0.3, -r * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      // Rock body — dark with glowing cracks
+      const rockGrad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, 0, 0, 0, r);
+      rockGrad.addColorStop(0, '#6b4226');
+      rockGrad.addColorStop(0.4, '#3d2817');
+      rockGrad.addColorStop(1, '#1a0f08');
+      ctx.fillStyle = rockGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+      // Glowing cracks
+      ctx.strokeStyle = `rgba(255,140,40,${0.6 + Math.sin(mt * 8) * 0.3})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.6, -r * 0.2); ctx.lineTo(r * 0.3, r * 0.4);
+      ctx.moveTo(r * 0.4, -r * 0.5); ctx.lineTo(-r * 0.2, r * 0.3);
+      ctx.moveTo(-r * 0.3, r * 0.5); ctx.lineTo(r * 0.5, -r * 0.1);
+      ctx.stroke();
+      // Hot center glow
+      ctx.fillStyle = `rgba(255,180,80,${0.3 + Math.sin(mt * 12) * 0.2})`;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.35, 0, Math.PI * 2);
+      ctx.fill();
     } else {
       // ═══ Shrapnel — one of 4 variants, weight-based motion ═══
       ctx.rotate(hz.rotation);

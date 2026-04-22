@@ -708,18 +708,18 @@ function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
   if (wave === 4) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.7, droneInterval: 20, droneTiers: ['scout', 'tracker'], clusterSplits: 2, bulletLevel: 3, phaseInDelay: 10, duration: D, surgeMultiplier: S };
   // W5 — Fire Warning with mid-wave scout swarm
   if (wave === 5) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.6, droneInterval: 18, droneTiers: ['scout', 'tracker', 'incendiary'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 12, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'swarm', triggerAt: 30, duration: 8 }] };
-  // W6 — Mini-Boss wave
-  if (wave === 6) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.5, droneInterval: 18, droneTiers: ['scout', 'tracker', 'incendiary'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 0, hasIncendiary: true, duration: D, surgeMultiplier: S };
+  // W6 — Mini-Boss wave (meteor debut)
+  if (wave === 6) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 7, spawnInterval: 1.5, droneInterval: 18, droneTiers: ['scout', 'tracker', 'incendiary'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 0, hasIncendiary: true, duration: D, surgeMultiplier: S };
   // W7 — Chemical Rain with volley + late surge
-  if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.4, droneInterval: 16, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'volley', triggerAt: 25, duration: 3 }, { type: 'surge', triggerAt: 45, duration: 15 }] };
+  if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 7, spawnInterval: 1.4, droneInterval: 16, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'volley', triggerAt: 25, duration: 3 }, { type: 'surge', triggerAt: 45, duration: 15 }] };
   // W8 — Surge wave: the entire wave is a surge
-  if (wave === 8) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 8, spawnInterval: 1.2, droneInterval: 14, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 6, hasChemical: true, hasIncendiary: true, duration: 45, surgeMultiplier: 1.3, events: [{ type: 'surge', triggerAt: 0, duration: 45 }] };
+  if (wave === 8) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 8, spawnInterval: 1.2, droneInterval: 14, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 6, hasChemical: true, hasIncendiary: true, duration: 45, surgeMultiplier: 1.3, events: [{ type: 'surge', triggerAt: 0, duration: 45 }] };
   // W9 — Calm: the entire wave is a calm
   if (wave === 9) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 5, spawnInterval: 1.8, droneInterval: 22, droneTiers: ['scout', 'incendiary'], clusterSplits: 3, bulletLevel: 4, phaseInDelay: 0, duration: D, surgeMultiplier: S, events: [{ type: 'calm', triggerAt: 0, duration: 60 }] };
   // W10 — Combined: volley + swarm during wave
-  if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 9, spawnInterval: 1.1, droneInterval: 13, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'volley', triggerAt: 20, duration: 3 }, { type: 'swarm', triggerAt: 40, duration: 8 }] };
+  if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 9, spawnInterval: 1.1, droneInterval: 13, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'volley', triggerAt: 20, duration: 3 }, { type: 'swarm', triggerAt: 40, duration: 8 }] };
   // W11 — Pre-Boss: extra bombers, tense
-  if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 11, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
+  if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 11, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
   // W12 — BOSS
   if (wave === 12) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 12, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 12, hasBoss: true, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
   const extra = wave - 12;
@@ -850,6 +850,14 @@ function spawnHazard(g: GameData, type: HazardType) {
       h.damage = 22;
       h.warningDuration = 1.2;
       break;
+    case 'meteor': {
+      // Meteor: slow, heavy, large blast radius. Long warning so skilled players can clear the zone.
+      h.speed = 180 + g.difficulty * 10 + Math.random() * 40;
+      h.size = 30;
+      h.damage = 35;
+      h.warningDuration = 3.0;
+      break;
+    }
     case 'cluster': {
       const fromRight = Math.random() > 0.5;
       const startX = fromRight ? g.width + 40 : -40;
@@ -2385,6 +2393,11 @@ export function update(g: GameData, input: InputState, dt: number) {
         const prevRecipe = g.waveNumber > 1 ? getWaveRecipe(g.waveNumber - 1, g) : { threats: [] as string[] };
         const isNew = !prevRecipe.threats.includes(t);
         if (isNew && g.waveElapsed < recipe.phaseInDelay) continue;
+        // Meteor: very rare (10% weight relative to shrapnel) since blast is huge
+        if (t === 'meteor') {
+          if (Math.random() < 0.1) types.push(t as HazardType);
+          continue;
+        }
         types.push(t as HazardType);
         if (t === 'shrapnel') types.push('shrapnel'); // weight shrapnel higher
       }
@@ -2617,20 +2630,31 @@ export function update(g: GameData, input: InputState, dt: number) {
           continue;
         }
 
-        addExplosion(g, h.targetPos, h.type === 'missile' ? h.size * 3 : h.size * 2);
+        const isMeteor = h.type === 'meteor';
+        addExplosion(g, h.targetPos, isMeteor ? h.size * 4 : (h.type === 'missile' ? h.size * 3 : h.size * 2));
 
         const colors = ['#ef4444', '#f97316', '#fbbf24', '#6b7280', '#4b5563'];
         for (const c of colors.slice(0, 3)) {
-          spawnParticles(g, h.targetPos, h.type === 'missile' ? 6 : 3, c, h.type === 'missile' ? 250 : 150);
+          spawnParticles(g, h.targetPos, isMeteor ? 12 : (h.type === 'missile' ? 6 : 3), c, isMeteor ? 340 : (h.type === 'missile' ? 250 : 150));
+        }
+        if (isMeteor) {
+          spawnParticles(g, h.targetPos, 20, '#fbbf24', 260);
+          sfxExplosion();
         }
 
-        g.craters.push({ pos: { ...h.targetPos }, size: h.size * 2.5, life: 8, maxLife: 8 });
+        g.craters.push({ pos: { ...h.targetPos }, size: isMeteor ? h.size * 4 : h.size * 2.5, life: 8, maxLife: 8 });
 
-        // Trauma-based screen shake — missiles feel heavier than shrapnel
-        addTrauma(h.type === 'missile' ? 0.55 : 0.3);
+        // Trauma-based screen shake — missiles feel heavier than shrapnel; meteors shake the world
+        addTrauma(isMeteor ? 0.85 : (h.type === 'missile' ? 0.55 : 0.3));
 
         const distToPlayer = dist(h.targetPos, p.pos);
-        if (distToPlayer < h.size * 1.5 + p.size) {
+        // Meteor: large blast radius with falloff (direct 35, edge ~20)
+        const meteorBlast = 120;
+        if (isMeteor && distToPlayer < meteorBlast + p.size) {
+          const falloff = 1 - Math.min(1, distToPlayer / meteorBlast);
+          const dmg = Math.floor(20 + falloff * 15);
+          damagePlayer(g, dmg, h.targetPos);
+        } else if (distToPlayer < h.size * 1.5 + p.size) {
           damagePlayer(g, h.damage, h.targetPos);
         } else {
           const maxBonusDist = 150;
