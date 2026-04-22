@@ -9,7 +9,8 @@ import {
   fetchDifficultyProfile, updateDifficultyProfile,
   fetchAudioConfig, updateAudioEntry, updateAudioCategory, uploadAudioFile, deleteAudioFile, listAudioLibrary,
   addAudioFile, removeAudioFile, fetchAnalytics, createAudioEntry, deleteAudioEntry, updateAudioFileVolume,
-  type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type VolumeMode, type GameAnalytics, type DifficultyProfile,
+  fetchPrizeEntries, deletePrizeEntry, clearPrizeEntries,
+  type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type VolumeMode, type GameAnalytics, type DifficultyProfile, type PrizeEntry,
 } from '@/game/config';
 import {
   fetchBackgroundConfig, updateBackgroundPhase, uploadBackgroundImage, deleteBackgroundImage,
@@ -19,7 +20,7 @@ import {
 import { playSynthesizedPreview } from '@/game/audio';
 import { WAVE_WARNINGS } from '@/game/engine';
 
-type TabKey = 'analytics' | 'config' | 'branding' | 'backgrounds' | 'waves' | 'leaderboard' | 'audio';
+type TabKey = 'analytics' | 'config' | 'branding' | 'backgrounds' | 'waves' | 'leaderboard' | 'prizes' | 'audio';
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'analytics', icon: '📊', label: 'Analytics' },
@@ -29,6 +30,7 @@ const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'waves', icon: '🌊', label: 'Waves' },
   { key: 'audio', icon: '🔊', label: 'Audio' },
   { key: 'leaderboard', icon: '🏆', label: 'Leaders' },
+  { key: 'prizes', icon: '🎁', label: 'Prizes' },
 ];
 
 const Admin: React.FC = () => {
@@ -48,6 +50,7 @@ const Admin: React.FC = () => {
   const [analytics, setAnalytics] = useState<GameAnalytics | null>(null);
   const [bgPhases, setBgPhases] = useState<BackgroundPhase[]>([]);
   const [diffProfile, setDiffProfile] = useState<DifficultyProfile | null>(null);
+  const [prizes, setPrizes] = useState<PrizeEntry[]>([]);
 
   useEffect(() => {
     const check = async () => {
@@ -63,8 +66,8 @@ const Admin: React.FC = () => {
   }, [navigate]);
 
   const loadAll = useCallback(async () => {
-    const [c, w, l, a, an, bg, dp] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard(), fetchAudioConfig(), fetchAnalytics(), fetchBackgroundConfig(), fetchDifficultyProfile()]);
-    setConfig(c); setWaves(w); setLeaders(l); setAudioEntries(a); setAnalytics(an); setBgPhases(bg); setDiffProfile(dp);
+    const [c, w, l, a, an, bg, dp, pz] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard(), fetchAudioConfig(), fetchAnalytics(), fetchBackgroundConfig(), fetchDifficultyProfile(), fetchPrizeEntries()]);
+    setConfig(c); setWaves(w); setLeaders(l); setAudioEntries(a); setAnalytics(an); setBgPhases(bg); setDiffProfile(dp); setPrizes(pz);
   }, []);
 
   useEffect(() => { if (isAdmin) loadAll(); }, [isAdmin, loadAll]);
@@ -317,6 +320,20 @@ const Admin: React.FC = () => {
 
         {tab === 'leaderboard' && (
           <LeaderboardPanel leaders={leaders} onDelete={handleDeleteEntry} onClearAll={handleClearAll} isDesktop={isDesktop} />
+        )}
+
+        {tab === 'prizes' && (
+          <PrizesPanel
+            prizes={prizes}
+            isDesktop={isDesktop}
+            onRefresh={async () => setPrizes(await fetchPrizeEntries())}
+            onDelete={async (id) => { await deletePrizeEntry(id); setPrizes((prev) => prev.filter((p) => p.id !== id)); }}
+            onClearAll={async () => {
+              if (!confirm('Clear ALL prize entries? هذا يحذف كل الأرقام المحفوظة.')) return;
+              await clearPrizeEntries();
+              setPrizes([]);
+            }}
+          />
         )}
       </main>
     </div>
