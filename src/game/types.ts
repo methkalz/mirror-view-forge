@@ -403,6 +403,18 @@ export interface GameData {
 
   // Score countdown animation
   scoreCountdown: { remaining: number; tickTimer: number; totalCost: number } | null;
+
+  // Multi-scene system
+  currentSceneIndex: number;
+  sceneChangeWaveInterval: number;
+  scenes: import('@/game/backgroundConfig').Scene[];
+  allBgPhases: import('@/game/backgroundConfig').BackgroundPhase[];
+  sceneTransition: {
+    active: boolean;
+    phase: 'zoomIn' | 'blackout' | 'swap' | 'zoomOut';
+    timer: number;
+    nextSceneIndex: number;
+  } | null;
 }
 
 export interface InputState {

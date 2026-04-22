@@ -8,6 +8,9 @@ import { getFromPool, releaseAll } from './pool';
 import { addTrauma, updateCameraShake, resetTrauma } from './cameraShake';
 import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameOverVoice, sfxGameStart, sfxUpgradeSelect, sfxScoreTick, sfxSlideTransition, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber, playCustomAudio } from './audio';
 
+let onSceneSwap: ((sceneIndex: number) => void) | null = null;
+export function setOnSceneSwap(cb: ((sceneIndex: number) => void) | null) { onSceneSwap = cb; }
+
 const DASH_SPEED = 520;
 const DASH_DURATION = 0.25;
 const DASH_COOLDOWN = 0.8;
@@ -163,6 +166,11 @@ export function createGame(w: number, h: number): GameData {
     fireSuitDropTime: 0,
     fireSuitOfferPending: false,
     scoreCountdown: null,
+    currentSceneIndex: 0,
+    sceneChangeWaveInterval: 6,
+    scenes: [],
+    allBgPhases: [],
+    sceneTransition: null,
   };
 }
 
@@ -754,12 +762,22 @@ function createPowerUpDefault(): PowerUp {
   };
 }
 
+function getTargetedRatio(waveNumber: number): number {
+  if (waveNumber <= 2) return 0;
+  return Math.min(0.6, (waveNumber - 2) * 0.1);
+}
+
 function spawnHazard(g: GameData, type: HazardType) {
   const recipe = getWaveRecipe(g.waveNumber, g);
 
   const h = getFromPool<Hazard>(g.hazards, createHazardDefault);
   const groundY = g.height * GROUND_RATIO;
-  const tx = 30 + Math.random() * (g.width - 60);
+  const targetedRatio = getTargetedRatio(g.waveNumber);
+  const isTargeted = Math.random() < targetedRatio;
+  const rawTx = isTargeted
+    ? g.player.pos.x + (Math.random() - 0.5) * 40
+    : 30 + Math.random() * (g.width - 60);
+  const tx = Math.max(30, Math.min(g.width - 30, rawTx));
   const ty = groundY - 5 + Math.random() * 10;
   h.type = type;
   h.targetPos = { x: tx, y: ty };
@@ -1410,12 +1428,79 @@ function updateBikePhysics(bike: DeliveryBike, dt: number) {
   bike.rpmPhase += rpmRate * dt;
 }
 
+const SCENE_ZOOM_IN_DUR = 1.0;
+const SCENE_BLACKOUT_DUR = 0.4;
+const SCENE_ZOOM_OUT_DUR = 1.2;
+
+export function updateSceneTransition(g: GameData, dt: number) {
+  const st = g.sceneTransition;
+  if (!st || !st.active) return;
+
+  st.timer += dt;
+
+  switch (st.phase) {
+    case 'zoomIn':
+      g.cameraZoomTarget = 1.0 + (1.2 * Math.min(1, st.timer / SCENE_ZOOM_IN_DUR));
+      g.cameraFocusX = g.player.pos.x;
+      g.cameraFocusY = g.player.pos.y;
+      if (st.timer >= SCENE_ZOOM_IN_DUR) {
+        st.phase = 'blackout';
+        st.timer = 0;
+      }
+      break;
+    case 'blackout':
+      if (st.timer >= SCENE_BLACKOUT_DUR) {
+        st.phase = 'swap';
+        st.timer = 0;
+      }
+      break;
+    case 'swap':
+      g.currentSceneIndex = st.nextSceneIndex;
+      if (onSceneSwap) onSceneSwap(g.currentSceneIndex);
+      st.phase = 'zoomOut';
+      st.timer = 0;
+      break;
+    case 'zoomOut':
+      g.cameraZoomTarget = 2.2 - (1.2 * Math.min(1, st.timer / SCENE_ZOOM_OUT_DUR));
+      if (st.timer >= SCENE_ZOOM_OUT_DUR) {
+        g.cameraZoomTarget = 1.0;
+        g.sceneTransition = null;
+      }
+      break;
+  }
+}
+
+export function getSceneBlackout(g: GameData): number {
+  const st = g.sceneTransition;
+  if (!st || !st.active) return 0;
+  switch (st.phase) {
+    case 'zoomIn': return Math.min(1, st.timer / SCENE_ZOOM_IN_DUR);
+    case 'blackout': return 1;
+    case 'swap': return 1;
+    case 'zoomOut': return 1 - Math.min(1, st.timer / SCENE_ZOOM_OUT_DUR);
+    default: return 0;
+  }
+}
+
 function startNextWave(g: GameData) {
   g.waveNumber++;
   g.levelNumber = Math.floor((g.waveNumber - 1) / 3) + 1;
   g.waveElapsed = 0;
   g.waveFinale = false;
   g.wavePhase = 'active';
+
+  // Trigger scene change at wave boundaries
+  if (g.scenes.length > 1 && g.waveNumber > 1) {
+    const interval = g.sceneChangeWaveInterval || 6;
+    if (g.waveNumber % interval === 0) {
+      g.sceneTransition = {
+        active: true,
+        phase: 'zoomIn',
+        timer: 0,
+        nextSceneIndex: (g.currentSceneIndex + 1) % g.scenes.length,
+      };
+    }
+  }
 
   // Apply recipe settings for this wave
   const recipe = getWaveRecipe(g.waveNumber, g);
@@ -1948,6 +2033,9 @@ export function update(g: GameData, input: InputState, dt: number) {
   g.difficulty = 1 + g.elapsed / 120; // slower difficulty scaling
   if (g.wavePhase === 'active') g.score += Math.round(dt);
   g.windOffset = Math.sin(g.elapsed * 0.3) * 0.5;
+
+  // === Scene Transition ===
+  updateSceneTransition(g, dt);
 
   // === Wave Phase System ===
   updateWaveSystem(g, input, dt);
