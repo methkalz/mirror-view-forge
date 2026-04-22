@@ -451,6 +451,7 @@ export type Database = {
           drone_interval: number
           drone_types: Json
           duration: number
+          events: Json
           has_boss: boolean
           has_chemical: boolean
           has_incendiary: boolean
@@ -472,6 +473,7 @@ export type Database = {
           drone_interval?: number
           drone_types?: Json
           duration?: number
+          events?: Json
           has_boss?: boolean
           has_chemical?: boolean
           has_incendiary?: boolean
@@ -493,6 +495,7 @@ export type Database = {
           drone_interval?: number
           drone_types?: Json
           duration?: number
+          events?: Json
           has_boss?: boolean
           has_chemical?: boolean
           has_incendiary?: boolean
