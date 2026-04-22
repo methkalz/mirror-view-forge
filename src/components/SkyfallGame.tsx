@@ -9,6 +9,7 @@ import { fetchBackgroundConfig } from '@/game/backgroundConfig';
 import { setBackgroundConfig, setCameraMargin } from '@/game/renderer';
 import { supabase } from '@/integrations/supabase/client';
 import NameEntry from './NameEntry';
+import PrizeEntryCard from './PrizeEntryCard';
 import Leaderboard from './Leaderboard';
 import GameLoader from './GameLoader';
 import SettingsDrawer from './SettingsDrawer';
@@ -52,6 +53,8 @@ const SkyfallGame: React.FC = () => {
   const [ammoArrowVisible, setAmmoArrowVisible] = useState(false);
   const ammoTutorialShownRef = useRef(false);
   const ammoArrowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showPrizeCard, setShowPrizeCard] = useState(false);
+  const prizeShownRef = useRef(false);
 
   // Settings drawer — reachable only between rounds (start screen / game over)
   const [settingsOpen, setSettingsOpen] = useState(false);
