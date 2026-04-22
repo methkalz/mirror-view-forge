@@ -310,7 +310,7 @@ export function resetGame(g: GameData) {
   g.introBike = {
     active: true,
     pos: { x: bikeStartX, y: g.player.groundY },
-    speed: 280,
+    speed: 480,
     facingRight: true,
     phase: 'entering',
     dropX: g.width / 2,
@@ -352,13 +352,13 @@ export function updateIntro(g: GameData, dt: number) {
       // Bike enters from left with a long, smooth deceleration using a
       // cubic ease-out curve. Much more natural than linear speed falloff.
       const distToCenter = centerX - bike.pos.x;
-      const decelZone = 260; // start decelerating earlier
+      const decelZone = 140;
       if (distToCenter < decelZone) {
         // Cubic ease-out: preserves high speed until the last third then
         // dives smoothly to ~25 as the bike nears its stop point.
         const t = 1 - Math.max(0, distToCenter) / decelZone; // 0..1
         const ease = 1 - Math.pow(1 - t, 3);
-        bike.speed = 280 * (1 - ease) + 22;
+        bike.speed = 480 * (1 - ease) + 22;
       }
       bike.pos.x += bike.speed * dt;
       // Player rides with bike
@@ -1303,6 +1303,7 @@ function spawnDeliveryBike(g: GameData) {
     idleTimer: 0,
     shakeOffset: { x: 0, y: 0 },
   };
+  sfxBikeEngine();
 }
 
 function updateDeliveryBike(g: GameData, dt: number) {
@@ -1319,6 +1320,7 @@ function updateDeliveryBike(g: GameData, dt: number) {
     const distToDrop = Math.abs(bike.pos.x - bike.dropX);
     if (distToDrop < 30) {
       bike.phase = 'slowing';
+      sfxBikeBrake();
     }
   } else if (bike.phase === 'slowing') {
     // Decelerate
@@ -1346,6 +1348,7 @@ function updateDeliveryBike(g: GameData, dt: number) {
     bike.phase = 'idle';
     bike.idleTimer = 4.0;
     bike.speed = 0;
+    sfxBikeIdle();
   } else if (bike.phase === 'idle') {
     // Promotional stop — stronger engine vibration
     bike.idleTimer -= dt;
@@ -1356,6 +1359,7 @@ function updateDeliveryBike(g: GameData, dt: number) {
       bike.phase = 'leaving';
       const leaveDir = bike.facingRight ? 1 : -1;
       bike.speed = leaveDir * 40;
+      sfxBikeDepart();
     }
   } else if (bike.phase === 'leaving') {
     // Accelerate away
