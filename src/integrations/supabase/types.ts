@@ -361,6 +361,36 @@ export type Database = {
         }
         Relationships: []
       }
+      prize_entries: {
+        Row: {
+          created_at: string
+          id: string
+          phone: string
+          player_name: string
+          rank: number | null
+          score: number
+          waves_reached: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          phone: string
+          player_name: string
+          rank?: number | null
+          score?: number
+          waves_reached?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          phone?: string
+          player_name?: string
+          rank?: number | null
+          score?: number
+          waves_reached?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

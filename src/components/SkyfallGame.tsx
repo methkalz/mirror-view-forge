@@ -9,6 +9,7 @@ import { fetchBackgroundConfig } from '@/game/backgroundConfig';
 import { setBackgroundConfig, setCameraMargin } from '@/game/renderer';
 import { supabase } from '@/integrations/supabase/client';
 import NameEntry from './NameEntry';
+import PrizeEntryCard from './PrizeEntryCard';
 import Leaderboard from './Leaderboard';
 import GameLoader from './GameLoader';
 import SettingsDrawer from './SettingsDrawer';
@@ -52,6 +53,8 @@ const SkyfallGame: React.FC = () => {
   const [ammoArrowVisible, setAmmoArrowVisible] = useState(false);
   const ammoTutorialShownRef = useRef(false);
   const ammoArrowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showPrizeCard, setShowPrizeCard] = useState(false);
+  const prizeShownRef = useRef(false);
 
   // Settings drawer — reachable only between rounds (start screen / game over)
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -250,6 +253,11 @@ const SkyfallGame: React.FC = () => {
             }).then(({ rank }) => {
               setGameOverData({ score: g.score, rank, waves: g.waveNumber });
               fetchLeaderboard().then(setLeaderboard);
+              // Show prize-entry card if player landed in top 10
+              if (rank && rank <= 10 && !prizeShownRef.current) {
+                prizeShownRef.current = true;
+                setShowPrizeCard(true);
+              }
             });
           }
         }
@@ -281,6 +289,8 @@ const SkyfallGame: React.FC = () => {
           setAmmoArrowVisible(false);
           ammoTutorialShownRef.current = false;
           if (ammoArrowTimerRef.current) clearTimeout(ammoArrowTimerRef.current);
+          prizeShownRef.current = false;
+          setShowPrizeCard(false);
         }
         prevState = g.state;
       }
@@ -639,6 +649,18 @@ const SkyfallGame: React.FC = () => {
 
       {/* Settings drawer */}
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      {/* Prize entry card — only when player is in top 10 */}
+      {showPrizeCard && gameOverData?.rank && playerName && gameOverData.rank <= 10 && (
+        <PrizeEntryCard
+          playerName={playerName}
+          score={gameOverData.score}
+          rank={gameOverData.rank}
+          waves={gameOverData.waves}
+          onSubmitted={() => setShowPrizeCard(false)}
+          onDismiss={() => setShowPrizeCard(false)}
+        />
+      )}
 
       {/* Game Over: leaderboard is now rendered on Canvas */}
       {showButtons && (
