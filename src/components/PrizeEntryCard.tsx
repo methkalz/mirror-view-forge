@@ -44,7 +44,7 @@ const PrizeEntryCard: React.FC<PrizeEntryCardProps> = ({ playerName, score, rank
       toast.error('تعذر إرسال الرقم — حاول لاحقاً');
       return;
     }
-    toast.success('تم — حظًا موفقًا! 🍀');
+    toast.success('مبروك يا كبير');
     setFadeOut(true);
     setTimeout(() => onSubmitted(), 350);
   }, [phone, playerName, score, rank, waves, onSubmitted]);
@@ -235,7 +235,7 @@ const PrizeEntryCard: React.FC<PrizeEntryCardProps> = ({ playerName, score, rank
               if (e.key === 'Enter') handleSubmit();
             }}
             maxLength={20}
-            placeholder="+962 7X XXX XXXX"
+            placeholder="0526444414"
             disabled={submitting}
             autoFocus
             style={{
@@ -349,6 +349,11 @@ const PrizeEntryCard: React.FC<PrizeEntryCardProps> = ({ playerName, score, rank
         @keyframes trophyFloat {
           0%, 100% { transform: translateY(0) rotate(-2deg); }
           50% { transform: translateY(-6px) rotate(2deg); }
+        }
+        input[type="tel"]::placeholder {
+          color: rgba(148, 163, 184, 0.35);
+          font-weight: 500;
+          letter-spacing: 1px;
         }
       `}</style>
     </div>
