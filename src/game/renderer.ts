@@ -4,6 +4,17 @@ import type { BackgroundPhase, DisplayMode } from './backgroundConfig';
 import { applyBloom, renderVignette, renderDamageFlash } from './render/postFx';
 import { beginFrameLights, emitLight, renderLights } from './render/lighting';
 
+function isAnyWaveEventActive(g: GameData, type: string): boolean {
+  if (!g.waveEvents || g.waveEvents.length === 0) return false;
+  for (let i = 0; i < g.waveEvents.length; i++) {
+    if (!g.waveEventsFired[i]) continue;
+    const e = g.waveEvents[i];
+    if (e.type !== type) continue;
+    if (g.waveElapsed < e.triggerAt + e.duration) return true;
+  }
+  return false;
+}
+
 function getSceneBlackoutAlpha(g: GameData): number {
   const st = g.sceneTransition;
   if (!st || !st.active) return 0;
@@ -8346,6 +8357,26 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillText('\u26A0 FINAL BARRAGE', g.width / 2, 32);
     ctx.globalAlpha = 1;
     ctx.restore();
+  }
+
+  // Mid-wave event visual cues
+  if (g.wavePhase === 'active') {
+    const surgeActive = isAnyWaveEventActive(g, 'surge');
+    const calmActive = isAnyWaveEventActive(g, 'calm');
+    if (surgeActive) {
+      const pulse = 0.08 + Math.sin(g.elapsed * 8) * 0.05;
+      const cx = g.width / 2, cy = g.height / 2;
+      const r = Math.max(g.width, g.height) * 0.7;
+      const vigGrad = ctx.createRadialGradient(cx, cy, r * 0.35, cx, cy, r);
+      vigGrad.addColorStop(0, 'rgba(239,68,68,0)');
+      vigGrad.addColorStop(1, `rgba(239,68,68,${pulse})`);
+      ctx.fillStyle = vigGrad;
+      ctx.fillRect(0, 0, g.width, g.height);
+    } else if (calmActive) {
+      // Soft blue tint for calm
+      ctx.fillStyle = 'rgba(96,165,250,0.06)';
+      ctx.fillRect(0, 0, g.width, g.height);
+    }
   }
 
   // Scene transition blackout overlay

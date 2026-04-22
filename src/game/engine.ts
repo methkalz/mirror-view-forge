@@ -166,6 +166,10 @@ export function createGame(w: number, h: number): GameData {
     fireSuitDropTime: 0,
     fireSuitOfferPending: false,
     scoreCountdown: null,
+    waveEvents: [],
+    waveEventsFired: [],
+    volleyQueue: null,
+    surgeFlashTimer: 0,
     currentSceneIndex: 0,
     sceneChangeWaveInterval: 6,
     scenes: [],
@@ -279,6 +283,10 @@ export function resetGame(g: GameData) {
   g.fireSuitDropTime = 0;
   g.fireSuitOfferPending = false;
   g.scoreCountdown = null;
+  g.waveEvents = [];
+  g.waveEventsFired = [];
+  g.volleyQueue = null;
+  g.surgeFlashTimer = 0;
   // Wave system reset
   g.waveNumber = 1;
   g.wavePhase = 'active';
@@ -287,6 +295,8 @@ export function resetGame(g: GameData) {
   const wave1Recipe = getWaveRecipe(1, g);
   g.waveTimer = wave1Recipe.duration || 60;
   g.bulletLevel = wave1Recipe.bulletLevel;
+  g.waveEvents = (wave1Recipe.events ?? []).map(e => ({ type: e.type, triggerAt: e.triggerAt, duration: e.duration }));
+  g.waveEventsFired = g.waveEvents.map(() => false);
   // Override timers from wave 1 recipe so admin settings apply immediately
   g.spawnTimer = wave1Recipe.spawnInterval || g.spawnTimer;
   g.droneTimer = wave1Recipe.droneInterval > 0 ? (wave1Recipe.droneInterval * 0.5) : 90;
@@ -563,6 +573,7 @@ interface WaveRecipe {
   warningColor?: string;
   warningType?: string;
   warningSoundKey?: string | null;
+  events?: import('./types').WaveEventSpec[];
 }
 
 function generateWaveFromProfile(wave: number, profile: DifficultyProfile): WaveRecipe {
@@ -665,6 +676,11 @@ function remoteToRecipe(r: RemoteWaveConfig): WaveRecipe {
     warningColor: r.warningColor,
     warningType: r.warningType,
     warningSoundKey: r.warningSoundKey,
+    events: (r.events ?? []).map(e => ({
+      type: e.type as import('./types').WaveEventType,
+      triggerAt: e.triggerAt,
+      duration: e.duration,
+    })),
   };
 }
 
@@ -686,22 +702,22 @@ function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
   if (wave <= 1) return { threats: ['shrapnel'], maxConcurrent: 3, spawnInterval: 2.4, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 1, phaseInDelay: 0, duration: D, surgeMultiplier: S };
   // W2 — First Hunter: missile + first scout, bullet upgrade
   if (wave === 2) return { threats: ['shrapnel', 'missile'], maxConcurrent: 4, spawnInterval: 2.0, droneInterval: 28, droneTiers: ['scout'], clusterSplits: 0, bulletLevel: 2, phaseInDelay: 8, duration: D, surgeMultiplier: S };
-  // W3 — Cluster Intro
-  if (wave === 3) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 5, spawnInterval: 1.8, droneInterval: 24, droneTiers: ['scout'], clusterSplits: 2, bulletLevel: 2, phaseInDelay: 10, duration: D, surgeMultiplier: S };
+  // W3 — Cluster Intro with mid-wave calm
+  if (wave === 3) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 5, spawnInterval: 1.8, droneInterval: 24, droneTiers: ['scout'], clusterSplits: 2, bulletLevel: 2, phaseInDelay: 10, duration: D, surgeMultiplier: S, events: [{ type: 'calm', triggerAt: 25, duration: 10 }] };
   // W4 — Tracker Swarm: tracker appears, bullet upgrade
   if (wave === 4) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.7, droneInterval: 20, droneTiers: ['scout', 'tracker'], clusterSplits: 2, bulletLevel: 3, phaseInDelay: 10, duration: D, surgeMultiplier: S };
-  // W5 — Fire Warning: incendiary drone pulled in
-  if (wave === 5) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.6, droneInterval: 18, droneTiers: ['scout', 'tracker', 'incendiary'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 12, hasIncendiary: true, duration: D, surgeMultiplier: S };
+  // W5 — Fire Warning with mid-wave scout swarm
+  if (wave === 5) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.6, droneInterval: 18, droneTiers: ['scout', 'tracker', 'incendiary'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 12, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'swarm', triggerAt: 30, duration: 8 }] };
   // W6 — Mini-Boss wave
   if (wave === 6) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.5, droneInterval: 18, droneTiers: ['scout', 'tracker', 'incendiary'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 0, hasIncendiary: true, duration: D, surgeMultiplier: S };
-  // W7 — Chemical Rain: chemical drone pulled in, bomber joins
-  if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.4, droneInterval: 16, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
-  // W8 — Surge wave: short duration, heavy pressure, bullet upgrade #4
-  if (wave === 8) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 8, spawnInterval: 1.2, droneInterval: 14, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 6, hasChemical: true, hasIncendiary: true, duration: 45, surgeMultiplier: 1.3 };
-  // W9 — Calm: breather wave, reduced pressure, power-ups
-  if (wave === 9) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 5, spawnInterval: 1.8, droneInterval: 22, droneTiers: ['scout', 'incendiary'], clusterSplits: 3, bulletLevel: 4, phaseInDelay: 0, duration: D, surgeMultiplier: S };
-  // W10 — Combined: all threats, full pressure
-  if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 9, spawnInterval: 1.1, droneInterval: 13, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
+  // W7 — Chemical Rain with volley + late surge
+  if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.4, droneInterval: 16, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'volley', triggerAt: 25, duration: 3 }, { type: 'surge', triggerAt: 45, duration: 15 }] };
+  // W8 — Surge wave: the entire wave is a surge
+  if (wave === 8) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 8, spawnInterval: 1.2, droneInterval: 14, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 6, hasChemical: true, hasIncendiary: true, duration: 45, surgeMultiplier: 1.3, events: [{ type: 'surge', triggerAt: 0, duration: 45 }] };
+  // W9 — Calm: the entire wave is a calm
+  if (wave === 9) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 5, spawnInterval: 1.8, droneInterval: 22, droneTiers: ['scout', 'incendiary'], clusterSplits: 3, bulletLevel: 4, phaseInDelay: 0, duration: D, surgeMultiplier: S, events: [{ type: 'calm', triggerAt: 0, duration: 60 }] };
+  // W10 — Combined: volley + swarm during wave
+  if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 9, spawnInterval: 1.1, droneInterval: 13, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'volley', triggerAt: 20, duration: 3 }, { type: 'swarm', triggerAt: 40, duration: 8 }] };
   // W11 — Pre-Boss: extra bombers, tense
   if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 11, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
   // W12 — BOSS
@@ -1513,6 +1529,88 @@ export function getSceneBlackout(g: GameData): number {
   }
 }
 
+// ========== MID-WAVE DYNAMIC EVENTS ==========
+
+/** Returns true if a specific event type is currently active. */
+function isWaveEventActive(g: GameData, type: import('./types').WaveEventType): boolean {
+  for (let i = 0; i < g.waveEvents.length; i++) {
+    if (!g.waveEventsFired[i]) continue;
+    const e = g.waveEvents[i];
+    if (e.type !== type) continue;
+    if (g.waveElapsed < e.triggerAt + e.duration) return true;
+  }
+  return false;
+}
+
+/** Spawns a coordinated scout swarm (formation) of count drones. */
+function spawnSwarm(g: GameData, count: number) {
+  for (let i = 0; i < count; i++) {
+    spawnDrone(g, 'scout');
+  }
+  addTrauma(0.35);
+  g.cinematicWarning = { text: '⚠ سرب طائرات!', subText: '', color: '#ef4444', timer: 1.0, duration: 1.0, type: 'warning' };
+}
+
+/** Starts a missile volley: 5 missiles from the same X, 0.4s apart. */
+function startVolley(g: GameData) {
+  const x = 60 + Math.random() * (g.width - 120);
+  g.volleyQueue = { remaining: 5, nextTimer: 0, x };
+  g.cinematicWarning = { text: '⚠ وابل صواريخ!', subText: '', color: '#dc2626', timer: 0.8, duration: 0.8, type: 'warning' };
+}
+
+/** Drives the scheduled wave events forward, firing them when the elapsed time matches. */
+function updateWaveEvents(g: GameData, dt: number) {
+  // Only active during the playable wave phase
+  if (g.wavePhase !== 'active') return;
+
+  for (let i = 0; i < g.waveEvents.length; i++) {
+    if (g.waveEventsFired[i]) continue;
+    const e = g.waveEvents[i];
+    if (g.waveElapsed < e.triggerAt) continue;
+    g.waveEventsFired[i] = true;
+    if (e.type === 'swarm') {
+      spawnSwarm(g, 4 + Math.floor(Math.random() * 3));
+    } else if (e.type === 'volley') {
+      startVolley(g);
+    } else if (e.type === 'surge') {
+      g.surgeFlashTimer = 1.0;
+    }
+    // 'calm' just becomes active; isWaveEventActive handles it
+  }
+
+  // Drive volley queue
+  if (g.volleyQueue) {
+    g.volleyQueue.nextTimer -= dt;
+    if (g.volleyQueue.nextTimer <= 0) {
+      const q = g.volleyQueue;
+      const h = getFromPool<Hazard>(g.hazards, createHazardDefault);
+      const groundY = g.height * GROUND_RATIO;
+      h.type = 'missile';
+      h.targetPos = { x: q.x + (Math.random() - 0.5) * 20, y: groundY };
+      h.pos = { x: q.x + (Math.random() - 0.5) * 40, y: -40 };
+      h.speed = Math.min(220 + g.difficulty * 15 + Math.random() * 60, MAX_MISSILE_SPEED);
+      h.size = 12;
+      h.damage = 22;
+      h.warningDuration = 0.9;
+      h.warningTimer = 0;
+      h.falling = false;
+      h.splitDone = false;
+      h.isFireBomb = false;
+      h.isGasBomb = false;
+      h.isClusterBomb = false;
+      h.parachuting = false;
+      h.fallSpeed = 0;
+      h.rotation = 0;
+      h.trailTimer = 0;
+      q.remaining--;
+      q.nextTimer = 0.4;
+      if (q.remaining <= 0) g.volleyQueue = null;
+    }
+  }
+
+  if (g.surgeFlashTimer > 0) g.surgeFlashTimer = Math.max(0, g.surgeFlashTimer - dt);
+}
+
 function startNextWave(g: GameData) {
   g.waveNumber++;
   g.levelNumber = Math.floor((g.waveNumber - 1) / 3) + 1;
@@ -1537,6 +1635,12 @@ function startNextWave(g: GameData) {
   const recipe = getWaveRecipe(g.waveNumber, g);
   g.waveTimer = recipe.duration || 60;
   g.bulletLevel = Math.max(g.bulletLevel, recipe.bulletLevel);
+
+  // Load mid-wave events for this wave
+  g.waveEvents = (recipe.events ?? []).map(e => ({ type: e.type, triggerAt: e.triggerAt, duration: e.duration }));
+  g.waveEventsFired = g.waveEvents.map(() => false);
+  g.volleyQueue = null;
+  g.surgeFlashTimer = 0;
 
   // Reset threat timers based on recipe so admin settings apply per-wave
   if (recipe.droneInterval > 0) g.droneTimer = Math.min(g.droneTimer, recipe.droneInterval * 0.3);
@@ -2068,6 +2172,9 @@ export function update(g: GameData, input: InputState, dt: number) {
   // === Scene Transition ===
   updateSceneTransition(g, dt);
 
+  // === Mid-wave Events ===
+  updateWaveEvents(g, dt);
+
   // === Wave Phase System ===
   updateWaveSystem(g, input, dt);
 
@@ -2310,6 +2417,9 @@ export function update(g: GameData, input: InputState, dt: number) {
         // SpawnRate from recipe (finale = half interval for shrapnel)
         let interval = recipe.spawnInterval;
         if (g.waveFinale) interval *= 0.5;
+        // Mid-wave event modifiers
+        if (isWaveEventActive(g, 'surge')) interval *= 0.6;   // +67% faster spawn
+        else if (isWaveEventActive(g, 'calm')) interval *= 2.0; // 50% slower spawn
         const bossMultiplier = g.boss && !g.boss.defeated ? 2.5 : 1;
         g.spawnTimer = interval * bossMultiplier;
       }
@@ -2548,7 +2658,10 @@ export function update(g: GameData, input: InputState, dt: number) {
   // === Spawn & update power-ups ===
   g.powerUpTimer -= dt;
   if (g.powerUpTimer <= 0) {
-    g.powerUpTimer = 8 + Math.random() * 5;
+    // Calm event → power-ups drop more frequently (breather)
+    const puBase = isWaveEventActive(g, 'calm') ? 4 : 8;
+    const puVar = isWaveEventActive(g, 'calm') ? 3 : 5;
+    g.powerUpTimer = puBase + Math.random() * puVar;
     if (!g.firstAmmoDropped && g.elapsed >= 10) {
       // Force first drop to be ammo
       g.firstAmmoDropped = true;

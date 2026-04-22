@@ -7,6 +7,14 @@ export type GameState = 'start' | 'intro' | 'playing' | 'gameover';
 export type IntroPhase = 'bikeEnter' | 'bikeStop' | 'playerDismount' | 'bikeLeave' | 'done';
 
 export type HazardType = 'shrapnel' | 'missile' | 'cluster';
+
+export type WaveEventType = 'surge' | 'calm' | 'swarm' | 'volley';
+
+export interface WaveEventSpec {
+  type: WaveEventType;
+  triggerAt: number;
+  duration: number;
+}
 export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike' | 'extinguisher' | 'water' | 'gasmask' | 'firesuit';
 export type DroneState = 'entering' | 'tracking' | 'bombing';
 export type DroneTier = 'scout' | 'tracker' | 'bomber' | 'cargo' | 'incendiary' | 'chemical';
@@ -404,6 +412,12 @@ export interface GameData {
 
   // Score countdown animation
   scoreCountdown: { remaining: number; tickTimer: number; totalCost: number } | null;
+
+  // Mid-wave dynamic events
+  waveEvents: WaveEventSpec[];
+  waveEventsFired: boolean[];
+  volleyQueue: { remaining: number; nextTimer: number; x: number } | null;
+  surgeFlashTimer: number;
 
   // Multi-scene system
   currentSceneIndex: number;
