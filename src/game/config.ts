@@ -40,6 +40,7 @@ export interface RemoteWaveConfig {
   warningColor: string;
   warningType: string;
   warningSoundKey: string | null;
+  events: { type: string; triggerAt: number; duration: number }[];
 }
 
 export interface DifficultyProfile {
@@ -152,6 +153,7 @@ export async function fetchWaveConfigs(): Promise<RemoteWaveConfig[]> {
       warningColor: w.warning_color ?? '#ef4444',
       warningType: w.warning_type ?? 'warning',
       warningSoundKey: w.warning_sound_key ?? null,
+      events: Array.isArray(w.events) ? w.events : [],
     }));
   } catch {
     return [];
@@ -162,23 +164,23 @@ const DEFAULT_DIFFICULTY: DifficultyProfile = {
   id: '',
   baseMaxConcurrent: 3,
   maxConcurrentCap: 15,
-  concurrentGrowth: 0.5,
-  baseSpawnInterval: 2.5,
-  minSpawnInterval: 0.5,
-  spawnIntervalDecay: 0.1,
-  threatsUnlock: { shrapnel: 1, missile: 2, cluster: 4 },
-  dronesUnlock: { scout: 5, tracker: 7, bomber: 9, chemical: 10, incendiary: 11 },
+  concurrentGrowth: 0.7,
+  baseSpawnInterval: 2.4,
+  minSpawnInterval: 0.55,
+  spawnIntervalDecay: 0.15,
+  threatsUnlock: { shrapnel: 1, missile: 2, cluster: 3, meteor: 6 },
+  dronesUnlock: { scout: 2, tracker: 4, incendiary: 5, bomber: 7, chemical: 7, laser: 8 },
   clusterSplitsBase: 2,
-  clusterSplitsGrowth: 0.3,
+  clusterSplitsGrowth: 0.35,
   clusterSplitsCap: 8,
-  droneIntervalBase: 25,
-  droneIntervalMin: 6,
-  droneIntervalDecay: 0.8,
+  droneIntervalBase: 18,
+  droneIntervalMin: 7,
+  droneIntervalDecay: 0.85,
   bossEveryNWaves: 6,
   bossStartWave: 12,
-  bulletLevelWaves: { '2': 3, '3': 8 },
+  bulletLevelWaves: { '2': 2, '3': 4, '4': 8 },
   waveDuration: 60,
-  phaseInDelay: 12,
+  phaseInDelay: 10,
   scalingFormula: 'linear',
 };
 

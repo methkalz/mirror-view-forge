@@ -6,10 +6,18 @@ export interface Vec2 {
 export type GameState = 'start' | 'intro' | 'playing' | 'gameover';
 export type IntroPhase = 'bikeEnter' | 'bikeStop' | 'playerDismount' | 'bikeLeave' | 'done';
 
-export type HazardType = 'shrapnel' | 'missile' | 'cluster';
+export type HazardType = 'shrapnel' | 'missile' | 'cluster' | 'meteor' | 'mine';
+
+export type WaveEventType = 'surge' | 'calm' | 'swarm' | 'volley' | 'minefield';
+
+export interface WaveEventSpec {
+  type: WaveEventType;
+  triggerAt: number;
+  duration: number;
+}
 export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike' | 'extinguisher' | 'water' | 'gasmask' | 'firesuit';
 export type DroneState = 'entering' | 'tracking' | 'bombing';
-export type DroneTier = 'scout' | 'tracker' | 'bomber' | 'cargo' | 'incendiary' | 'chemical';
+export type DroneTier = 'scout' | 'tracker' | 'bomber' | 'cargo' | 'incendiary' | 'chemical' | 'laser';
 export type PlayerAnim = 'idle' | 'walk' | 'roll' | 'hit';
 export type WavePhase = 'active' | 'clearing' | 'announce' | 'cards' | 'bike';
 
@@ -89,6 +97,10 @@ export interface Hazard {
   clusterVelX?: number;
   clusterVelY?: number;
   clusterStartSpeed?: number;
+  /** Mine state machine: arming (1s yellow pulse) → armed (passive) → triggered (0.5s red flash) → explode */
+  mineState?: 'arming' | 'armed' | 'triggered';
+  mineTimer?: number;
+  mineLife?: number;
 }
 
 export interface PowerUp {
@@ -167,6 +179,9 @@ export interface Drone {
   label?: string;
   fireDropTimer?: number;
   gasDropTimer?: number;
+  /** Laser drone: 'idle' | 'telegraph' | 'firing' | 'cooldown'. Uses bombTimer as phase timer. */
+  laserPhase?: 'idle' | 'telegraph' | 'firing' | 'cooldown';
+  laserTargetX?: number;
   /** Smoothed facing value in [-1..1]. Eased toward sign(vel.x) so the
    *  drone banks/turns instead of flipping instantly. */
   facingLerp?: number;
@@ -242,6 +257,7 @@ export interface Boss {
   carpetDir: number;
   spawnedDrones: number;
   damageFlash: number;
+  isMini?: boolean;
 }
 
 export interface Bullet {
@@ -403,6 +419,12 @@ export interface GameData {
 
   // Score countdown animation
   scoreCountdown: { remaining: number; tickTimer: number; totalCost: number } | null;
+
+  // Mid-wave dynamic events
+  waveEvents: WaveEventSpec[];
+  waveEventsFired: boolean[];
+  volleyQueue: { remaining: number; nextTimer: number; x: number } | null;
+  surgeFlashTimer: number;
 
   // Multi-scene system
   currentSceneIndex: number;

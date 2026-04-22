@@ -4,6 +4,17 @@ import type { BackgroundPhase, DisplayMode } from './backgroundConfig';
 import { applyBloom, renderVignette, renderDamageFlash } from './render/postFx';
 import { beginFrameLights, emitLight, renderLights } from './render/lighting';
 
+function isAnyWaveEventActive(g: GameData, type: string): boolean {
+  if (!g.waveEvents || g.waveEvents.length === 0) return false;
+  for (let i = 0; i < g.waveEvents.length; i++) {
+    if (!g.waveEventsFired[i]) continue;
+    const e = g.waveEvents[i];
+    if (e.type !== type) continue;
+    if (g.waveElapsed < e.triggerAt + e.duration) return true;
+  }
+  return false;
+}
+
 function getSceneBlackoutAlpha(g: GameData): number {
   const st = g.sceneTransition;
   if (!st || !st.active) return 0;
@@ -588,6 +599,41 @@ function renderWarnings(ctx: CanvasRenderingContext2D, g: GameData) {
     if (!hz.active || hz.falling) continue;
     const progress = 1 - hz.warningTimer / hz.warningDuration;
     const alpha = 0.2 + progress * 0.5;
+
+    // ═══ Meteor warning: large pulsing blast circle on ground ═══
+    if (hz.type === 'meteor') {
+      ctx.save();
+      ctx.translate(hz.targetPos.x, hz.targetPos.y);
+      const blastR = 120; // must match meteor blast radius
+      const pulse = 0.5 + Math.sin(progress * 20) * 0.5;
+      // Outer danger zone
+      ctx.strokeStyle = `rgba(220,40,40,${0.5 * alpha})`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath();
+      ctx.arc(0, 0, blastR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Fill — shows intensifying red as meteor nears
+      ctx.fillStyle = `rgba(220,60,40,${0.06 + progress * 0.15})`;
+      ctx.beginPath();
+      ctx.arc(0, 0, blastR, 0, Math.PI * 2);
+      ctx.fill();
+      // Inner pulsing core
+      ctx.strokeStyle = `rgba(255,80,40,${0.6 + pulse * 0.3})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, 30 + pulse * 8, 0, Math.PI * 2);
+      ctx.stroke();
+      // Exclamation
+      ctx.fillStyle = `rgba(255,80,40,${0.9 * alpha})`;
+      ctx.font = 'bold 28px Tajawal, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⚠', 0, -blastR - 12);
+      ctx.restore();
+      continue;
+    }
 
     ctx.save();
     ctx.translate(hz.targetPos.x, hz.targetPos.y);
@@ -1489,6 +1535,111 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.textBaseline = 'middle';
       ctx.fillText('☣', 0, 0);
       ctx.restore();
+    } else if (hz.type === 'mine') {
+      // ═══ Ground Mine — half-dome with antenna and state-based pulse ═══
+      const r = hz.size;
+      const state = hz.mineState ?? 'armed';
+      const tm = performance.now() * 0.001;
+      let glow: string;
+      let pulseRate: number;
+      if (state === 'arming') {
+        glow = '#fbbf24';  // yellow
+        pulseRate = 4;
+      } else if (state === 'triggered') {
+        glow = '#ef4444';  // urgent red
+        // Accelerate flash as detonation approaches
+        const remaining = hz.mineTimer ?? 0;
+        pulseRate = 12 + (0.5 - Math.max(0, remaining)) * 40;
+      } else {
+        glow = '#f97316';  // muted orange when armed
+        pulseRate = 1.5;
+      }
+      const flash = 0.5 + Math.sin(tm * pulseRate) * 0.5;
+      // Base dome (half circle sitting on ground)
+      const baseGrad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, 0, 0, 0, r);
+      baseGrad.addColorStop(0, '#5a5a60');
+      baseGrad.addColorStop(0.6, '#2c2c32');
+      baseGrad.addColorStop(1, '#18181c');
+      ctx.fillStyle = baseGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, Math.PI, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+      // Antenna
+      ctx.strokeStyle = '#3a3a40';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 0.2);
+      ctx.lineTo(0, -r * 1.3);
+      ctx.stroke();
+      // Indicator light on top of antenna
+      ctx.fillStyle = glow;
+      ctx.globalAlpha = 0.7 + flash * 0.3;
+      ctx.beginPath();
+      ctx.arc(0, -r * 1.3, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      // Glow halo when armed/triggered
+      if (state !== 'arming' || flash > 0.5) {
+        const halo = ctx.createRadialGradient(0, -r * 0.3, 0, 0, -r * 0.3, r * 2.2);
+        halo.addColorStop(0, `${glow === '#ef4444' ? 'rgba(239,68,68,' : glow === '#fbbf24' ? 'rgba(251,191,36,' : 'rgba(249,115,22,'}${flash * 0.4})`);
+        halo.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(0, -r * 0.3, r * 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (hz.type === 'meteor') {
+      // ═══ Meteor — large glowing rock with fiery trail ═══
+      const r = hz.size;
+      const mt = performance.now() * 0.001 + hz.pos.x * 0.01;
+      // Outer heat halo
+      const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.2);
+      halo.addColorStop(0, 'rgba(255,180,60,0.5)');
+      halo.addColorStop(0.5, 'rgba(255,90,30,0.25)');
+      halo.addColorStop(1, 'rgba(120,30,0,0)');
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      // Trailing flame
+      const flicker = 0.7 + Math.sin(mt * 18) * 0.2;
+      ctx.fillStyle = `rgba(255,120,30,${0.45 * flicker})`;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.4, -r * 0.6);
+      ctx.quadraticCurveTo(-r * 2.5, -r * 3.5, r * 0.1, -r * 0.4);
+      ctx.quadraticCurveTo(-r * 1.5, -r * 2.5, r * 0.4, -r * 0.6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = `rgba(255,220,120,${0.55 * flicker})`;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.2, -r * 0.5);
+      ctx.quadraticCurveTo(-r * 1.2, -r * 2.5, r * 0.1, -r * 0.3);
+      ctx.quadraticCurveTo(-r * 0.6, -r * 1.5, r * 0.3, -r * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      // Rock body — dark with glowing cracks
+      const rockGrad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, 0, 0, 0, r);
+      rockGrad.addColorStop(0, '#6b4226');
+      rockGrad.addColorStop(0.4, '#3d2817');
+      rockGrad.addColorStop(1, '#1a0f08');
+      ctx.fillStyle = rockGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+      // Glowing cracks
+      ctx.strokeStyle = `rgba(255,140,40,${0.6 + Math.sin(mt * 8) * 0.3})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.6, -r * 0.2); ctx.lineTo(r * 0.3, r * 0.4);
+      ctx.moveTo(r * 0.4, -r * 0.5); ctx.lineTo(-r * 0.2, r * 0.3);
+      ctx.moveTo(-r * 0.3, r * 0.5); ctx.lineTo(r * 0.5, -r * 0.1);
+      ctx.stroke();
+      // Hot center glow
+      ctx.fillStyle = `rgba(255,180,80,${0.3 + Math.sin(mt * 12) * 0.2})`;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.35, 0, Math.PI * 2);
+      ctx.fill();
     } else {
       // ═══ Shrapnel — one of 4 variants, weight-based motion ═══
       ctx.rotate(hz.rotation);
@@ -3901,6 +4052,49 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
         }
       }
 
+    } else if (d.tier === 'laser') {
+      // ═══ LASER DRONE — Hovering turret with a single optical lens ═══
+      const lt = performance.now() * 0.001;
+      // Body disc
+      const bodyGrad = ctx.createRadialGradient(-d.size * 0.25, -d.size * 0.3, 0, 0, 0, d.size);
+      bodyGrad.addColorStop(0, '#7a1d2e');
+      bodyGrad.addColorStop(0.5, '#4a0f1c');
+      bodyGrad.addColorStop(1, '#1a0408');
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, d.size * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+      // Lens ring
+      ctx.strokeStyle = '#2a0810';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, d.size * 0.55, 0, Math.PI * 2);
+      ctx.stroke();
+      // Glowing eye — brightens during telegraph/firing
+      const eyeActive = d.laserPhase === 'telegraph' || d.laserPhase === 'firing';
+      const eyeGlow = eyeActive ? 0.85 + Math.sin(lt * 20) * 0.1 : 0.35;
+      const eyeGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, d.size * 0.4);
+      eyeGrad.addColorStop(0, `rgba(255,80,120,${eyeGlow})`);
+      eyeGrad.addColorStop(0.6, `rgba(200,30,80,${eyeGlow * 0.6})`);
+      eyeGrad.addColorStop(1, 'rgba(80,10,30,0)');
+      ctx.fillStyle = eyeGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, d.size * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      // Pupil
+      ctx.fillStyle = eyeActive ? `rgba(255,255,255,${0.9})` : 'rgba(120,30,60,0.8)';
+      ctx.beginPath();
+      ctx.arc(0, 0, d.size * 0.12, 0, Math.PI * 2);
+      ctx.fill();
+      // Antenna pods
+      ctx.strokeStyle = '#5a0f1a';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-d.size * 0.55, -d.size * 0.15);
+      ctx.lineTo(-d.size * 0.75, -d.size * 0.35);
+      ctx.moveTo(d.size * 0.55, -d.size * 0.15);
+      ctx.lineTo(d.size * 0.75, -d.size * 0.35);
+      ctx.stroke();
     } else {
       // ═══ BOMBER — Twin-rotor tiltwing heavy bomber ═══
       // Unique silhouette: wide fuselage, dorsal engine pod, visible bomb
@@ -4269,6 +4463,67 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.fillRect(-barW / 2, barY, barW * hpRatio, barH);
     }
 
+    ctx.restore();
+  }
+}
+
+// ─── Laser beams (drawn in world space after drones) ────
+function renderLaserBeams(ctx: CanvasRenderingContext2D, g: GameData) {
+  const groundY = g.height * 0.78;
+  for (const d of g.drones) {
+    if (!d.active || d.tier !== 'laser') continue;
+    if (d.laserPhase !== 'telegraph' && d.laserPhase !== 'firing') continue;
+    const targetX = d.laserTargetX ?? d.pos.x;
+    const startY = d.pos.y + d.size * 0.5;
+    const endY = groundY;
+    ctx.save();
+    if (d.laserPhase === 'telegraph') {
+      // Thin telegraph line, dashed red
+      const t = performance.now() * 0.002;
+      const pulse = 0.4 + Math.sin(t * 6) * 0.3;
+      ctx.strokeStyle = `rgba(255,40,80,${pulse})`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(targetX, startY);
+      ctx.lineTo(targetX, endY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Ground impact marker
+      ctx.fillStyle = `rgba(255,40,80,${pulse * 0.6})`;
+      ctx.beginPath();
+      ctx.arc(targetX, endY, 8, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Firing — thick white-hot beam with red glow
+      const glow = ctx.createLinearGradient(targetX - 40, 0, targetX + 40, 0);
+      glow.addColorStop(0, 'rgba(255,40,80,0)');
+      glow.addColorStop(0.5, 'rgba(255,40,80,0.5)');
+      glow.addColorStop(1, 'rgba(255,40,80,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(targetX - 40, startY, 80, endY - startY);
+      // Core beam
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+      ctx.lineWidth = 10;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(targetX, startY);
+      ctx.lineTo(targetX, endY);
+      ctx.stroke();
+      // Inner hot layer
+      ctx.strokeStyle = 'rgba(255,200,220,1)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(targetX, startY);
+      ctx.lineTo(targetX, endY);
+      ctx.stroke();
+      // Ground burn
+      ctx.fillStyle = 'rgba(255,100,150,0.85)';
+      ctx.beginPath();
+      ctx.arc(targetX, endY, 16, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineCap = 'butt';
+    }
     ctx.restore();
   }
 }
@@ -8082,6 +8337,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderIntroBike(ctx, g);
   renderGasClouds(ctx, g);
   renderDrones(ctx, g);
+  renderLaserBeams(ctx, g);
   renderBoss(ctx, g);
   renderBullets(ctx, g);
   // Player shadow on ground
@@ -8346,6 +8602,26 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillText('\u26A0 FINAL BARRAGE', g.width / 2, 32);
     ctx.globalAlpha = 1;
     ctx.restore();
+  }
+
+  // Mid-wave event visual cues
+  if (g.wavePhase === 'active') {
+    const surgeActive = isAnyWaveEventActive(g, 'surge');
+    const calmActive = isAnyWaveEventActive(g, 'calm');
+    if (surgeActive) {
+      const pulse = 0.08 + Math.sin(g.elapsed * 8) * 0.05;
+      const cx = g.width / 2, cy = g.height / 2;
+      const r = Math.max(g.width, g.height) * 0.7;
+      const vigGrad = ctx.createRadialGradient(cx, cy, r * 0.35, cx, cy, r);
+      vigGrad.addColorStop(0, 'rgba(239,68,68,0)');
+      vigGrad.addColorStop(1, `rgba(239,68,68,${pulse})`);
+      ctx.fillStyle = vigGrad;
+      ctx.fillRect(0, 0, g.width, g.height);
+    } else if (calmActive) {
+      // Soft blue tint for calm
+      ctx.fillStyle = 'rgba(96,165,250,0.06)';
+      ctx.fillRect(0, 0, g.width, g.height);
+    }
   }
 
   // Scene transition blackout overlay
