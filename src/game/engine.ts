@@ -2385,6 +2385,18 @@ export function update(g: GameData, input: InputState, dt: number) {
     p.dashTimer -= dt;
     p.velocity.x = p.dashDir.x * DASH_SPEED;
     p.animTimer += dt;
+    // Dash defuses ground mines on contact
+    for (const h of g.hazards) {
+      if (!h.active || h.type !== 'mine') continue;
+      if (Math.abs(p.pos.x - h.pos.x) < 30 + p.size) {
+        h.active = false;
+        g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
+        addExplosion(g, h.pos, h.size * 1.5);
+        spawnParticles(g, h.pos, 8, '#fbbf24', 120);
+        addFloatingText(g, 'Defused! +50', h.pos, '#22c55e');
+        g.score += 50;
+      }
+    }
     if (p.dashTimer <= 0) {
       p.isDashing = false;
       p.anim = 'idle';
