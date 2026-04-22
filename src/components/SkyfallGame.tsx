@@ -253,6 +253,11 @@ const SkyfallGame: React.FC = () => {
             }).then(({ rank }) => {
               setGameOverData({ score: g.score, rank, waves: g.waveNumber });
               fetchLeaderboard().then(setLeaderboard);
+              // Show prize-entry card if player landed in top 10
+              if (rank && rank <= 10 && !prizeShownRef.current) {
+                prizeShownRef.current = true;
+                setShowPrizeCard(true);
+              }
             });
           }
         }
@@ -284,6 +289,8 @@ const SkyfallGame: React.FC = () => {
           setAmmoArrowVisible(false);
           ammoTutorialShownRef.current = false;
           if (ammoArrowTimerRef.current) clearTimeout(ammoArrowTimerRef.current);
+          prizeShownRef.current = false;
+          setShowPrizeCard(false);
         }
         prevState = g.state;
       }
