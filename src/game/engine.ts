@@ -707,28 +707,28 @@ function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
   // W4 — Tracker Swarm: tracker appears, bullet upgrade
   if (wave === 4) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.7, droneInterval: 20, droneTiers: ['scout', 'tracker'], clusterSplits: 2, bulletLevel: 3, phaseInDelay: 10, duration: D, surgeMultiplier: S };
   // W5 — Fire Warning with mid-wave scout swarm
-  if (wave === 5) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.6, droneInterval: 18, droneTiers: ['scout', 'tracker', 'incendiary'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 12, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'swarm', triggerAt: 30, duration: 8 }] };
+  if (wave === 5) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.6, droneInterval: 18, droneTiers: ['scout', 'tracker'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 12, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'swarm', triggerAt: 30, duration: 8 }] };
   // W6 — Mini-Boss wave (meteor debut)
-  if (wave === 6) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 7, spawnInterval: 1.5, droneInterval: 18, droneTiers: ['scout', 'tracker', 'incendiary'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 0, hasIncendiary: true, duration: D, surgeMultiplier: S };
+  if (wave === 6) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 7, spawnInterval: 1.5, droneInterval: 18, droneTiers: ['scout', 'tracker'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 0, hasIncendiary: true, duration: D, surgeMultiplier: S };
   // W7 — Chemical Rain with volley + late surge + minefield debut
-  if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 7, spawnInterval: 1.4, droneInterval: 16, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'minefield', triggerAt: 15, duration: 1 }, { type: 'volley', triggerAt: 30, duration: 3 }, { type: 'surge', triggerAt: 45, duration: 15 }] };
+  if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 7, spawnInterval: 1.4, droneInterval: 16, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'minefield', triggerAt: 15, duration: 1 }, { type: 'volley', triggerAt: 30, duration: 3 }, { type: 'surge', triggerAt: 45, duration: 15 }] };
   // W8 — Surge wave: laser debuts, entire wave is a surge
-  if (wave === 8) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 8, spawnInterval: 1.2, droneInterval: 14, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical', 'laser'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 6, hasChemical: true, hasIncendiary: true, duration: 45, surgeMultiplier: 1.3, events: [{ type: 'surge', triggerAt: 0, duration: 45 }] };
+  if (wave === 8) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 8, spawnInterval: 1.2, droneInterval: 14, droneTiers: ['scout', 'tracker', 'bomber', 'laser'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 6, hasChemical: true, hasIncendiary: true, duration: 45, surgeMultiplier: 1.3, events: [{ type: 'surge', triggerAt: 0, duration: 45 }] };
   // W9 — Calm: the entire wave is a calm
-  if (wave === 9) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 5, spawnInterval: 1.8, droneInterval: 22, droneTiers: ['scout', 'incendiary'], clusterSplits: 3, bulletLevel: 4, phaseInDelay: 0, duration: D, surgeMultiplier: S, events: [{ type: 'calm', triggerAt: 0, duration: 60 }] };
+  if (wave === 9) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 5, spawnInterval: 1.8, droneInterval: 22, droneTiers: ['scout'], clusterSplits: 3, bulletLevel: 4, phaseInDelay: 0, duration: D, surgeMultiplier: S, events: [{ type: 'calm', triggerAt: 0, duration: 60 }] };
   // W10 — Combined: volley + swarm during wave
-  if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 9, spawnInterval: 1.1, droneInterval: 13, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical', 'laser'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'volley', triggerAt: 20, duration: 3 }, { type: 'swarm', triggerAt: 40, duration: 8 }] };
+  if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 9, spawnInterval: 1.1, droneInterval: 13, droneTiers: ['scout', 'tracker', 'bomber', 'laser'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'volley', triggerAt: 20, duration: 3 }, { type: 'swarm', triggerAt: 40, duration: 8 }] };
   // W11 — Pre-Boss: extra bombers + minefield, tense
-  if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 11, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical', 'laser'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'minefield', triggerAt: 25, duration: 1 }, { type: 'surge', triggerAt: 48, duration: 12 }] };
+  if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 11, droneTiers: ['scout', 'tracker', 'bomber', 'laser'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'minefield', triggerAt: 25, duration: 1 }, { type: 'surge', triggerAt: 48, duration: 12 }] };
   // W12 — BOSS
-  if (wave === 12) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 12, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 12, hasBoss: true, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
+  if (wave === 12) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 12, hasBoss: true, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
   const extra = wave - 12;
   return {
     threats: ['shrapnel', 'missile', 'cluster'],
     maxConcurrent: Math.min(13, 10 + Math.floor(extra / 2)),
     spawnInterval: Math.max(0.55, 0.95 - extra * 0.03),
     droneInterval: Math.max(7, 11 - extra * 0.5),
-    droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'] as DroneTier[],
+    droneTiers: ['scout', 'tracker', 'bomber', 'laser'] as DroneTier[],
     clusterSplits: Math.min(6, 5 + Math.floor(extra / 3)),
     bulletLevel: 4,
     phaseInDelay: 0,
@@ -784,6 +784,7 @@ function createHazardDefault(): Hazard {
     warningTimer: 0, warningDuration: 0,
     falling: false, rotation: 0, trailTimer: 0,
     isFireBomb: false, isGasBomb: false, isClusterBomb: false,
+    mineState: undefined, mineTimer: 0, mineLife: 0,
   };
 }
 
@@ -822,6 +823,9 @@ function spawnHazard(g: GameData, type: HazardType) {
   h.isFireBomb = false;
   h.isGasBomb = false;
   h.isClusterBomb = false;
+  h.mineState = undefined;
+  h.mineTimer = 0;
+  h.mineLife = 0;
   h.rotation = Math.random() * Math.PI * 2;
   h.trailTimer = 0;
 
@@ -981,6 +985,7 @@ function createDroneDefault(): Drone {
     tier: 'scout', bombTimer: 0, bombCooldown: 0, hoverTimer: 0,
     aggroDelay: 0, trackingAccuracy: 0, wobble: 0,
     altitudeOffset: 0, colorHue: 0,
+    laserPhase: undefined, laserTargetX: 0,
   };
 }
 
@@ -1122,7 +1127,7 @@ function queueWaveEvent(
     else if (id.includes('missile')) sfxWarningMissile();
     else if (id.includes('cluster')) sfxWarningCluster();
     else if (id.includes('drone') || id.includes('tracker') || id.includes('chemical') || id.includes('incendiary')) sfxWarningDrone();
-    else if (id.includes('boss')) sfxWarningBoss();
+    else if (id.includes('boss') || id.includes('minibos')) sfxWarningBoss();
     else if (id.includes('bomber')) sfxWarningBomber();
     else if (id.includes('gas') || id.includes('fire') || id.includes('extinguisher')) sfxWarningHazard();
     else sfxWarningAlert();
@@ -1669,16 +1674,16 @@ function updateWaveEvents(g: GameData, dt: number) {
       h.size = 12;
       h.damage = 22;
       h.warningDuration = 0.9;
-      h.warningTimer = 0;
+      h.warningTimer = 0.9;
       h.falling = false;
       h.splitDone = false;
       h.isFireBomb = false;
       h.isGasBomb = false;
       h.isClusterBomb = false;
-      h.parachuting = false;
-      h.fallSpeed = 0;
+      h.mineState = undefined;
       h.rotation = 0;
       h.trailTimer = 0;
+      g.activeHazardCount++;
       q.remaining--;
       q.nextTimer = 0.4;
       if (q.remaining <= 0) g.volleyQueue = null;
@@ -3303,13 +3308,14 @@ export function update(g: GameData, input: InputState, dt: number) {
             d.laserPhase = 'firing';
             d.bombTimer = 0.5;
             addTrauma(0.2);
+            // Deal laser damage ONCE at the moment of firing (not every frame)
+            const targetX = d.laserTargetX ?? d.pos.x;
+            const playerInBeam = Math.abs(p.pos.x - targetX) < 18 + p.size;
+            if (playerInBeam) {
+              damagePlayer(g, 25, { x: targetX, y: p.pos.y });
+            }
           }
         } else if (d.laserPhase === 'firing') {
-          const targetX = d.laserTargetX ?? d.pos.x;
-          const playerInBeam = Math.abs(p.pos.x - targetX) < 18 + p.size;
-          if (playerInBeam && !p.shielded) {
-            damagePlayer(g, 25, { x: targetX, y: p.pos.y });
-          }
           if (d.bombTimer <= 0) {
             d.laserPhase = 'cooldown';
             d.bombTimer = 3.0;
