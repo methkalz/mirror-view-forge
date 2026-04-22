@@ -650,6 +650,18 @@ const SkyfallGame: React.FC = () => {
       {/* Settings drawer */}
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
+      {/* Prize entry card — only when player is in top 10 */}
+      {showPrizeCard && gameOverData?.rank && playerName && gameOverData.rank <= 10 && (
+        <PrizeEntryCard
+          playerName={playerName}
+          score={gameOverData.score}
+          rank={gameOverData.rank}
+          waves={gameOverData.waves}
+          onSubmitted={() => setShowPrizeCard(false)}
+          onDismiss={() => setShowPrizeCard(false)}
+        />
+      )}
+
       {/* Game Over: leaderboard is now rendered on Canvas */}
       {showButtons && (
         <>
