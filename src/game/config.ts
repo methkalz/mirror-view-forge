@@ -683,3 +683,75 @@ export async function deleteAudioEntry(id: string): Promise<boolean> {
   const { error } = await supabase.from('audio_config').delete().eq('id', id);
   return !error;
 }
+
+// ─── Prize Entries (Top-10 phone capture) ───
+
+export interface PrizeEntry {
+  id: string;
+  playerName: string;
+  phone: string;
+  score: number;
+  rank: number | null;
+  wavesReached: number;
+  createdAt: string;
+}
+
+export async function submitPrizeEntry(
+  playerName: string,
+  phone: string,
+  score: number,
+  rank: number,
+  waves: number,
+): Promise<boolean> {
+  try {
+    const cleanName = playerName.trim().slice(0, 20);
+    const cleanPhone = phone.trim().slice(0, 20);
+    if (cleanName.length < 1 || cleanPhone.length < 6) return false;
+    if (!/^[+0-9\s\-]+$/.test(cleanPhone)) return false;
+
+    const { error } = await supabase.from('prize_entries' as any).insert({
+      player_name: cleanName,
+      phone: cleanPhone,
+      score: Math.max(0, Math.min(999999, Math.floor(score))),
+      rank: rank ?? null,
+      waves_reached: Math.max(0, Math.floor(waves)),
+    });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function fetchPrizeEntries(): Promise<PrizeEntry[]> {
+  try {
+    const { data, error } = await supabase
+      .from('prize_entries' as any)
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error || !data) return [];
+    return (data as any[]).map((e) => ({
+      id: e.id,
+      playerName: e.player_name,
+      phone: e.phone,
+      score: e.score,
+      rank: e.rank,
+      wavesReached: e.waves_reached,
+      createdAt: e.created_at,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function deletePrizeEntry(id: string): Promise<boolean> {
+  const { error } = await supabase.from('prize_entries' as any).delete().eq('id', id);
+  return !error;
+}
+
+export async function clearPrizeEntries(): Promise<boolean> {
+  const { error } = await supabase
+    .from('prize_entries' as any)
+    .delete()
+    .neq('id', '00000000-0000-0000-0000-000000000000');
+  return !error;
+}
