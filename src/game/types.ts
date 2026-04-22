@@ -6,9 +6,9 @@ export interface Vec2 {
 export type GameState = 'start' | 'intro' | 'playing' | 'gameover';
 export type IntroPhase = 'bikeEnter' | 'bikeStop' | 'playerDismount' | 'bikeLeave' | 'done';
 
-export type HazardType = 'shrapnel' | 'missile' | 'cluster' | 'meteor';
+export type HazardType = 'shrapnel' | 'missile' | 'cluster' | 'meteor' | 'mine';
 
-export type WaveEventType = 'surge' | 'calm' | 'swarm' | 'volley';
+export type WaveEventType = 'surge' | 'calm' | 'swarm' | 'volley' | 'minefield';
 
 export interface WaveEventSpec {
   type: WaveEventType;
@@ -97,6 +97,10 @@ export interface Hazard {
   clusterVelX?: number;
   clusterVelY?: number;
   clusterStartSpeed?: number;
+  /** Mine state machine: arming (1s yellow pulse) → armed (passive) → triggered (0.5s red flash) → explode */
+  mineState?: 'arming' | 'armed' | 'triggered';
+  mineTimer?: number;
+  mineLife?: number;
 }
 
 export interface PowerUp {

@@ -710,16 +710,16 @@ function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
   if (wave === 5) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.6, droneInterval: 18, droneTiers: ['scout', 'tracker', 'incendiary'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 12, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'swarm', triggerAt: 30, duration: 8 }] };
   // W6 — Mini-Boss wave (meteor debut)
   if (wave === 6) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 7, spawnInterval: 1.5, droneInterval: 18, droneTiers: ['scout', 'tracker', 'incendiary'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 0, hasIncendiary: true, duration: D, surgeMultiplier: S };
-  // W7 — Chemical Rain with volley + late surge
-  if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 7, spawnInterval: 1.4, droneInterval: 16, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'volley', triggerAt: 25, duration: 3 }, { type: 'surge', triggerAt: 45, duration: 15 }] };
+  // W7 — Chemical Rain with volley + late surge + minefield debut
+  if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 7, spawnInterval: 1.4, droneInterval: 16, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'minefield', triggerAt: 15, duration: 1 }, { type: 'volley', triggerAt: 30, duration: 3 }, { type: 'surge', triggerAt: 45, duration: 15 }] };
   // W8 — Surge wave: laser debuts, entire wave is a surge
   if (wave === 8) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 8, spawnInterval: 1.2, droneInterval: 14, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical', 'laser'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 6, hasChemical: true, hasIncendiary: true, duration: 45, surgeMultiplier: 1.3, events: [{ type: 'surge', triggerAt: 0, duration: 45 }] };
   // W9 — Calm: the entire wave is a calm
   if (wave === 9) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 5, spawnInterval: 1.8, droneInterval: 22, droneTiers: ['scout', 'incendiary'], clusterSplits: 3, bulletLevel: 4, phaseInDelay: 0, duration: D, surgeMultiplier: S, events: [{ type: 'calm', triggerAt: 0, duration: 60 }] };
   // W10 — Combined: volley + swarm during wave
   if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 9, spawnInterval: 1.1, droneInterval: 13, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical', 'laser'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'volley', triggerAt: 20, duration: 3 }, { type: 'swarm', triggerAt: 40, duration: 8 }] };
-  // W11 — Pre-Boss: extra bombers, tense
-  if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 11, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical', 'laser'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
+  // W11 — Pre-Boss: extra bombers + minefield, tense
+  if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 11, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical', 'laser'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'minefield', triggerAt: 25, duration: 1 }, { type: 'surge', triggerAt: 48, duration: 12 }] };
   // W12 — BOSS
   if (wave === 12) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 12, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 12, hasBoss: true, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
   const extra = wave - 12;
@@ -856,6 +856,21 @@ function spawnHazard(g: GameData, type: HazardType) {
       h.size = 30;
       h.damage = 35;
       h.warningDuration = 3.0;
+      break;
+    }
+    case 'mine': {
+      // Mines are placed directly on the ground — no falling, no warning circle.
+      h.pos = { x: tx, y: groundY };
+      h.targetPos = { x: tx, y: groundY };
+      h.speed = 0;
+      h.size = 10;
+      h.damage = 25;
+      h.warningDuration = 0;
+      h.warningTimer = 0;
+      h.falling = true;  // bypass warning → update loop
+      h.mineState = 'arming';
+      h.mineTimer = 1.0;  // 1s to arm
+      h.mineLife = 5.0;   // despawn if not triggered
       break;
     }
     case 'cluster': {
@@ -1574,6 +1589,43 @@ function spawnSwarm(g: GameData, count: number) {
   g.cinematicWarning = { text: '⚠ سرب طائرات!', subText: '', color: '#ef4444', timer: 1.0, duration: 1.0, type: 'warning' };
 }
 
+/** Drops 5 mines across the ground at evenly-spaced positions. */
+function spawnMinefield(g: GameData) {
+  const margin = 60;
+  const spacing = (g.width - margin * 2) / 5;
+  for (let i = 0; i < 5; i++) {
+    const x = margin + spacing * i + spacing * 0.5 + (Math.random() - 0.5) * spacing * 0.4;
+    spawnMineAt(g, x);
+  }
+  g.cinematicWarning = { text: '⚠ حقل ألغام!', subText: '', color: '#fbbf24', timer: 1.0, duration: 1.0, type: 'warning' };
+}
+
+/** Spawns a single mine at a specific ground X. */
+function spawnMineAt(g: GameData, x: number) {
+  const groundY = g.height * GROUND_RATIO;
+  const h = getFromPool<Hazard>(g.hazards, createHazardDefault);
+  const cx = Math.max(30, Math.min(g.width - 30, x));
+  h.type = 'mine';
+  h.pos = { x: cx, y: groundY };
+  h.targetPos = { x: cx, y: groundY };
+  h.speed = 0;
+  h.size = 10;
+  h.damage = 25;
+  h.warningDuration = 0;
+  h.warningTimer = 0;
+  h.falling = true;
+  h.mineState = 'arming';
+  h.mineTimer = 1.0;
+  h.mineLife = 5.0;
+  h.rotation = 0;
+  h.trailTimer = 0;
+  h.isFireBomb = false;
+  h.isGasBomb = false;
+  h.isClusterBomb = false;
+  h.splitDone = false;
+  g.activeHazardCount++;
+}
+
 /** Starts a missile volley: 5 missiles from the same X, 0.4s apart. */
 function startVolley(g: GameData) {
   const x = 60 + Math.random() * (g.width - 120);
@@ -1595,6 +1647,8 @@ function updateWaveEvents(g: GameData, dt: number) {
       spawnSwarm(g, 4 + Math.floor(Math.random() * 3));
     } else if (e.type === 'volley') {
       startVolley(g);
+    } else if (e.type === 'minefield') {
+      spawnMinefield(g);
     } else if (e.type === 'surge') {
       g.surgeFlashTimer = 1.0;
     }
@@ -2457,6 +2511,49 @@ export function update(g: GameData, input: InputState, dt: number) {
   // === Update hazards ===
   for (const h of g.hazards) {
     if (!h.active) continue;
+
+    // === Mine state machine (ground-placed, no falling) ===
+    if (h.type === 'mine') {
+      const p = g.player;
+      h.mineTimer = (h.mineTimer ?? 0) - dt * g.slowMoFactor;
+      h.mineLife = (h.mineLife ?? 0) - dt * g.slowMoFactor;
+      if (h.mineState === 'arming') {
+        if (h.mineTimer <= 0) {
+          h.mineState = 'armed';
+          h.mineTimer = 0;
+        }
+      } else if (h.mineState === 'armed') {
+        const dp = dist(h.pos, p.pos);
+        if (dp < 60 + p.size) {
+          h.mineState = 'triggered';
+          h.mineTimer = 0.5;
+        }
+        if ((h.mineLife ?? 0) <= 0) {
+          h.active = false;
+          g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
+          continue;
+        }
+      } else if (h.mineState === 'triggered') {
+        if (h.mineTimer <= 0) {
+          // Detonate
+          addExplosion(g, h.pos, h.size * 4);
+          spawnParticles(g, h.pos, 14, '#fbbf24', 220);
+          spawnParticles(g, h.pos, 10, '#ef4444', 160);
+          sfxExplosion();
+          addTrauma(0.45);
+          g.craters.push({ pos: { ...h.pos }, size: h.size * 3, life: 6, maxLife: 6 });
+          const dp = dist(h.pos, p.pos);
+          if (dp < 80 + p.size) {
+            const falloff = 1 - Math.min(1, dp / 80);
+            damagePlayer(g, Math.floor(15 + falloff * 10), h.pos);
+          }
+          h.active = false;
+          g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
+        }
+      }
+      continue;
+    }
+
     // Each shrapnel piece tumbles at its own variant-specific rate.
     // Missiles and clusters use the legacy constant.
     if (h.type === 'shrapnel') {

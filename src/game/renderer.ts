@@ -1535,6 +1535,60 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.textBaseline = 'middle';
       ctx.fillText('☣', 0, 0);
       ctx.restore();
+    } else if (hz.type === 'mine') {
+      // ═══ Ground Mine — half-dome with antenna and state-based pulse ═══
+      const r = hz.size;
+      const state = hz.mineState ?? 'armed';
+      const tm = performance.now() * 0.001;
+      let glow: string;
+      let pulseRate: number;
+      if (state === 'arming') {
+        glow = '#fbbf24';  // yellow
+        pulseRate = 4;
+      } else if (state === 'triggered') {
+        glow = '#ef4444';  // urgent red
+        // Accelerate flash as detonation approaches
+        const remaining = hz.mineTimer ?? 0;
+        pulseRate = 12 + (0.5 - Math.max(0, remaining)) * 40;
+      } else {
+        glow = '#f97316';  // muted orange when armed
+        pulseRate = 1.5;
+      }
+      const flash = 0.5 + Math.sin(tm * pulseRate) * 0.5;
+      // Base dome (half circle sitting on ground)
+      const baseGrad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, 0, 0, 0, r);
+      baseGrad.addColorStop(0, '#5a5a60');
+      baseGrad.addColorStop(0.6, '#2c2c32');
+      baseGrad.addColorStop(1, '#18181c');
+      ctx.fillStyle = baseGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, Math.PI, Math.PI * 2);
+      ctx.closePath();
+      ctx.fill();
+      // Antenna
+      ctx.strokeStyle = '#3a3a40';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 0.2);
+      ctx.lineTo(0, -r * 1.3);
+      ctx.stroke();
+      // Indicator light on top of antenna
+      ctx.fillStyle = glow;
+      ctx.globalAlpha = 0.7 + flash * 0.3;
+      ctx.beginPath();
+      ctx.arc(0, -r * 1.3, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      // Glow halo when armed/triggered
+      if (state !== 'arming' || flash > 0.5) {
+        const halo = ctx.createRadialGradient(0, -r * 0.3, 0, 0, -r * 0.3, r * 2.2);
+        halo.addColorStop(0, `${glow === '#ef4444' ? 'rgba(239,68,68,' : glow === '#fbbf24' ? 'rgba(251,191,36,' : 'rgba(249,115,22,'}${flash * 0.4})`);
+        halo.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(0, -r * 0.3, r * 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
     } else if (hz.type === 'meteor') {
       // ═══ Meteor — large glowing rock with fiery trail ═══
       const r = hz.size;
