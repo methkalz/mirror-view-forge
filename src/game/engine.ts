@@ -680,31 +680,43 @@ function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
     return generateWaveFromProfile(wave, g.difficultyProfile);
   }
 
-  // 3. Fallback to hardcoded recipes
-  const D = 60; const S = 1; // default duration & surge
-  if (wave <= 1) return { threats: ['shrapnel'], maxConcurrent: 3, spawnInterval: 2.5, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 1, phaseInDelay: 0, duration: D, surgeMultiplier: S };
-  if (wave === 2) return { threats: ['shrapnel', 'missile'], maxConcurrent: 4, spawnInterval: 2.2, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 1, phaseInDelay: 12, duration: D, surgeMultiplier: S };
-  if (wave === 3) return { threats: ['shrapnel', 'missile'], maxConcurrent: 5, spawnInterval: 2.0, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 2, phaseInDelay: 0, duration: D, surgeMultiplier: S };
-  if (wave === 4) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 4, spawnInterval: 2.1, droneInterval: 0, droneTiers: [], clusterSplits: 2, bulletLevel: 2, phaseInDelay: 15, duration: D, surgeMultiplier: S };
-  if (wave === 5) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.8, droneInterval: 22, droneTiers: ['scout'], clusterSplits: 2, bulletLevel: 2, phaseInDelay: 12, duration: D, surgeMultiplier: S };
-  if (wave === 6) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.7, droneInterval: 20, droneTiers: ['scout'], clusterSplits: 3, bulletLevel: 2, phaseInDelay: 0, duration: D, surgeMultiplier: S };
-  if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.6, droneInterval: 18, droneTiers: ['scout', 'tracker'], clusterSplits: 3, bulletLevel: 2, phaseInDelay: 12, duration: D, surgeMultiplier: S };
-  if (wave === 8) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.5, droneInterval: 16, droneTiers: ['scout', 'tracker'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15, duration: D, surgeMultiplier: S };
-  if (wave === 9) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 8, spawnInterval: 1.4, droneInterval: 14, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 12, duration: D, surgeMultiplier: S };
-  if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 8, spawnInterval: 1.3, droneInterval: 14, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15, hasChemical: true, duration: D, surgeMultiplier: S };
-  if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 9, spawnInterval: 1.2, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 4, bulletLevel: 3, phaseInDelay: 15, hasIncendiary: true, duration: D, surgeMultiplier: S };
-  if (wave === 12) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 5, bulletLevel: 3, phaseInDelay: 12, hasBoss: true, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
+  // 3. Fallback to hardcoded recipes — themed progression
+  const D = 60; const S = 1;
+  // W1 — First Blood: shrapnel tutorial
+  if (wave <= 1) return { threats: ['shrapnel'], maxConcurrent: 3, spawnInterval: 2.4, droneInterval: 0, droneTiers: [], clusterSplits: 0, bulletLevel: 1, phaseInDelay: 0, duration: D, surgeMultiplier: S };
+  // W2 — First Hunter: missile + first scout, bullet upgrade
+  if (wave === 2) return { threats: ['shrapnel', 'missile'], maxConcurrent: 4, spawnInterval: 2.0, droneInterval: 28, droneTiers: ['scout'], clusterSplits: 0, bulletLevel: 2, phaseInDelay: 8, duration: D, surgeMultiplier: S };
+  // W3 — Cluster Intro
+  if (wave === 3) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 5, spawnInterval: 1.8, droneInterval: 24, droneTiers: ['scout'], clusterSplits: 2, bulletLevel: 2, phaseInDelay: 10, duration: D, surgeMultiplier: S };
+  // W4 — Tracker Swarm: tracker appears, bullet upgrade
+  if (wave === 4) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.7, droneInterval: 20, droneTiers: ['scout', 'tracker'], clusterSplits: 2, bulletLevel: 3, phaseInDelay: 10, duration: D, surgeMultiplier: S };
+  // W5 — Fire Warning: incendiary drone pulled in
+  if (wave === 5) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.6, droneInterval: 18, droneTiers: ['scout', 'tracker', 'incendiary'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 12, hasIncendiary: true, duration: D, surgeMultiplier: S };
+  // W6 — Mini-Boss wave
+  if (wave === 6) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.5, droneInterval: 18, droneTiers: ['scout', 'tracker', 'incendiary'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 0, hasIncendiary: true, duration: D, surgeMultiplier: S };
+  // W7 — Chemical Rain: chemical drone pulled in, bomber joins
+  if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 7, spawnInterval: 1.4, droneInterval: 16, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
+  // W8 — Surge wave: short duration, heavy pressure, bullet upgrade #4
+  if (wave === 8) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 8, spawnInterval: 1.2, droneInterval: 14, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 6, hasChemical: true, hasIncendiary: true, duration: 45, surgeMultiplier: 1.3 };
+  // W9 — Calm: breather wave, reduced pressure, power-ups
+  if (wave === 9) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 5, spawnInterval: 1.8, droneInterval: 22, droneTiers: ['scout', 'incendiary'], clusterSplits: 3, bulletLevel: 4, phaseInDelay: 0, duration: D, surgeMultiplier: S };
+  // W10 — Combined: all threats, full pressure
+  if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 9, spawnInterval: 1.1, droneInterval: 13, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
+  // W11 — Pre-Boss: extra bombers, tense
+  if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 11, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
+  // W12 — BOSS
+  if (wave === 12) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 12, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 12, hasBoss: true, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
   const extra = wave - 12;
   return {
     threats: ['shrapnel', 'missile', 'cluster'],
-    maxConcurrent: Math.min(12, 10 + Math.floor(extra / 2)),
-    spawnInterval: Math.max(0.6, 0.9 - extra * 0.03),
-    droneInterval: Math.max(8, 11 - extra * 0.5),
-    droneTiers: ['scout', 'tracker', 'bomber'] as DroneTier[],
+    maxConcurrent: Math.min(13, 10 + Math.floor(extra / 2)),
+    spawnInterval: Math.max(0.55, 0.95 - extra * 0.03),
+    droneInterval: Math.max(7, 11 - extra * 0.5),
+    droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'] as DroneTier[],
     clusterSplits: Math.min(6, 5 + Math.floor(extra / 3)),
-    bulletLevel: 3,
+    bulletLevel: 4,
     phaseInDelay: 0,
-    hasBoss: extra % 3 === 0,
+    hasBoss: extra % 4 === 0,
     hasChemical: true,
     hasIncendiary: true,
     duration: D,
@@ -715,25 +727,32 @@ function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
 // Warning messages for new threats introduced in each wave
 export const WAVE_WARNINGS: Record<number, { id: string; text: string; sub: string; color: string; type: 'warning' | 'upgrade' }[]> = {
   1: [{ id: 'w1_shrapnel', text: 'تحذير: شظايا متساقطة!', sub: '', color: '#ef4444', type: 'warning' }],
-  2: [{ id: 'w2_missile', text: 'تحذير: صواريخ قادمة!', sub: '', color: '#dc2626', type: 'warning' }],
-  3: [{ id: 'w3_bullet2', text: 'تطوير: طلقة مزدوجة', sub: '', color: '#22c55e', type: 'upgrade' }],
-  4: [{ id: 'w4_cluster', text: 'تحذير: صواريخ متشظية!', sub: '', color: '#f43f5e', type: 'warning' }],
-  5: [{ id: 'w5_drone', text: 'تحذير: طائرات استطلاع!', sub: '', color: '#ef4444', type: 'warning' }],
-  6: [{ id: 'w6_cluster3', text: 'تحذير: تشظي ثلاثي!', sub: '', color: '#ef4444', type: 'warning' }],
-  7: [{ id: 'w7_tracker', text: 'تحذير: طائرات تتبع!', sub: '', color: '#dc2626', type: 'warning' }],
+  2: [
+    { id: 'w2_missile', text: 'تحذير: صواريخ + طائرات استطلاع!', sub: '', color: '#dc2626', type: 'warning' },
+    { id: 'w2_bullet2', text: 'تطوير: طلقة مزدوجة', sub: '', color: '#22c55e', type: 'upgrade' },
+  ],
+  3: [{ id: 'w3_cluster', text: 'تحذير: صواريخ متشظية!', sub: '', color: '#f43f5e', type: 'warning' }],
+  4: [
+    { id: 'w4_tracker', text: 'تحذير: طائرات تتبع!', sub: '', color: '#dc2626', type: 'warning' },
+    { id: 'w4_bullet3', text: 'تطوير: طلقة ثلاثية', sub: '', color: '#22c55e', type: 'upgrade' },
+  ],
+  5: [
+    { id: 'w5_extinguisher', text: 'إمدادات: طفاية حريق!', sub: '', color: '#f97316', type: 'upgrade' },
+    { id: 'w5_incendiary', text: 'تحذير: طائرات حارقة!', sub: '', color: '#ea580c', type: 'warning' },
+  ],
+  6: [{ id: 'w6_minibos', text: '⚠ قائد معركة قادم!', sub: '', color: '#f59e0b', type: 'warning' }],
+  7: [
+    { id: 'w7_gasmask', text: 'إمدادات: كمامة غاز!', sub: '', color: '#16a34a', type: 'upgrade' },
+    { id: 'w7_chemical', text: 'تحذير: طائرات كيميائية!', sub: '', color: '#15803d', type: 'warning' },
+    { id: 'w7_bomber', text: 'تحذير: قاذفات قنابل!', sub: '', color: '#ef4444', type: 'warning' },
+  ],
   8: [
-    { id: 'w8_bullet3', text: 'تطوير: طلقة ثلاثية', sub: '', color: '#22c55e', type: 'upgrade' },
-    { id: 'w8_cluster4', text: 'تحذير: تشظي رباعي!', sub: '', color: '#dc2626', type: 'warning' },
+    { id: 'w8_surge', text: '⚠ موجة عاصفة!', sub: '', color: '#dc2626', type: 'warning' },
+    { id: 'w8_bullet4', text: 'تطوير: طلقة رباعية', sub: '', color: '#22c55e', type: 'upgrade' },
   ],
-  9: [{ id: 'w9_bomber', text: 'تحذير: قاذفات قنابل!', sub: '', color: '#ef4444', type: 'warning' }],
-  10: [
-    { id: 'w10_gasmask', text: 'إمدادات: كمامة غاز!', sub: '', color: '#16a34a', type: 'upgrade' },
-    { id: 'w10_chemical', text: 'تحذير: طائرات كيميائية!', sub: '', color: '#15803d', type: 'warning' },
-  ],
-  11: [
-    { id: 'w11_extinguisher', text: 'إمدادات: طفاية حريق!', sub: '', color: '#f97316', type: 'upgrade' },
-    { id: 'w11_incendiary', text: 'تحذير: طائرات حارقة!', sub: '', color: '#ea580c', type: 'warning' },
-  ],
+  9: [{ id: 'w9_calm', text: 'هدوء قبل العاصفة', sub: '', color: '#60a5fa', type: 'warning' }],
+  10: [{ id: 'w10_combined', text: 'تحذير: جميع التهديدات!', sub: '', color: '#991b1b', type: 'warning' }],
+  11: [{ id: 'w11_preboss', text: '⚠ قاذفات إضافية قادمة!', sub: '', color: '#dc2626', type: 'warning' }],
   12: [
     { id: 'w12_boss', text: 'تحذير: طائرة حربية!', sub: '', color: '#dc2626', type: 'warning' },
     { id: 'w12_cluster5', text: 'تحذير: تشظي خماسي!', sub: '', color: '#991b1b', type: 'warning' },
@@ -1071,6 +1090,14 @@ function applyWaveEvent(g: GameData, id: string) {
   // Drone spawns
   if (id.includes('drone') && !id.includes('incendiary') && !id.includes('chemical')) {
     g.droneTimer = Math.min(g.droneTimer, 2 + Math.random() * 3);
+    return;
+  }
+
+  // Mini-Boss (check BEFORE main boss since 'minibos' contains 'bos')
+  if (id.includes('minibos')) {
+    if (!g.boss) {
+      spawnBoss(g, false, true);
+    }
     return;
   }
 
@@ -3414,34 +3441,39 @@ export function update(g: GameData, input: InputState, dt: number) {
 
 // ========== BOSS SYSTEM ==========
 
-function spawnBoss(g: GameData, showWarning = true) {
+function spawnBoss(g: GameData, showWarning = true, isMini = false) {
   const count = g.bossCount;
-  // First boss: 10 HP, subsequent: 15 + count*5
-  const baseHP = count === 0 ? 10 : 15 + count * 5;
+  const baseHP = isMini ? 5 : (count === 0 ? 10 : 15 + count * 5);
+  const size = isMini ? 55 : 80;
   const side = Math.random() < 0.5 ? -80 : g.width + 80;
-  // First boss: slower attacks (4.5s cooldown)
-  const cooldown = count === 0 ? 4.5 : Math.max(1.5, 3 - count * 0.3);
+  const cooldown = isMini ? 2.8 : (count === 0 ? 4.5 : Math.max(1.5, 3 - count * 0.3));
   g.boss = {
-    pos: { x: side, y: g.height * 0.12 },
+    pos: { x: side, y: g.height * (isMini ? 0.15 : 0.12) },
     vel: { x: 0, y: 0 },
     health: baseHP,
     maxHealth: baseHP,
-    size: 80,
+    size,
     phase: 1,
     attackTimer: cooldown,
     attackCooldown: cooldown,
     attackPattern: 'missiles',
     entered: false,
     defeated: false,
-    entryTarget: { x: g.width * 0.5, y: g.height * 0.12 },
+    entryTarget: { x: g.width * 0.5, y: g.height * (isMini ? 0.15 : 0.12) },
     carpetX: 0,
     carpetDir: 1,
     spawnedDrones: 0,
     damageFlash: 0,
+    isMini,
   };
   sfxBossSiren();
   if (showWarning) {
-    g.cinematicWarning = { text: '⚠ تحذير: طائرة حربية!', subText: '', color: '#dc2626', timer: 1.5, duration: 1.5, type: 'warning' };
+    g.cinematicWarning = {
+      text: isMini ? '⚠ قائد معركة!' : '⚠ تحذير: طائرة حربية!',
+      subText: '',
+      color: isMini ? '#f59e0b' : '#dc2626',
+      timer: 1.5, duration: 1.5, type: 'warning',
+    };
     g.slowMoFactor = 0.1;
   }
 }
@@ -3468,8 +3500,9 @@ function updateBoss(g: GameData, dt: number) {
   }
 
   // Phase determination with cooldown between phases
+  // Mini-boss stays in phase 1 only (missile barrage), no carpet/escort phases
   const hpRatio = boss.health / boss.maxHealth;
-  const newPhase = hpRatio > 0.66 ? 1 : hpRatio > 0.33 ? 2 : 3;
+  const newPhase = (boss.isMini ? 1 : (hpRatio > 0.66 ? 1 : hpRatio > 0.33 ? 2 : 3)) as typeof boss.phase;
   if (newPhase !== boss.phase) {
     boss.phase = newPhase;
     // Phase transition: 2s cooldown + warning + power-up drop
@@ -3603,8 +3636,10 @@ function updateBoss(g: GameData, dt: number) {
 function defeatBoss(g: GameData) {
   const boss = g.boss!;
   boss.defeated = true;
-  g.bossCount++;
-  g.stats.bossesDefeated++;
+  if (!boss.isMini) {
+    g.bossCount++;
+    g.stats.bossesDefeated++;
+  }
 
   // Cinematic explosion sequence
   sfxBossExplosion();
@@ -3625,8 +3660,9 @@ function defeatBoss(g: GameData) {
   }, 1300);
 
   // Rewards
-  g.score += 500;
-  addFloatingText(g, `BOSS DOWN! +500`, boss.pos, '#fbbf24');
+  const reward = boss.isMini ? 200 : 500;
+  g.score += reward;
+  addFloatingText(g, boss.isMini ? `MINI-BOSS! +${reward}` : `BOSS DOWN! +${reward}`, boss.pos, '#fbbf24');
 
   // Guaranteed power-up drop
   const pu = getFromPool<PowerUp>(g.powerUps, createPowerUpDefault, 20);

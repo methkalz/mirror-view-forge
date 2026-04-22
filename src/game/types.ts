@@ -242,6 +242,7 @@ export interface Boss {
   carpetDir: number;
   spawnedDrones: number;
   damageFlash: number;
+  isMini?: boolean;
 }
 
 export interface Bullet {
