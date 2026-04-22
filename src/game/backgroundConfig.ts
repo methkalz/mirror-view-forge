@@ -86,7 +86,7 @@ export async function createBackgroundPhase(phase: string, sceneId?: string): Pr
     sort_order: nextOrder,
   };
   if (sceneId) insertPayload.scene_id = sceneId;
-  const { data, error } = await supabase.from('background_config').insert(insertPayload).select().single();
+  const { data, error } = await supabase.from('background_config').insert(insertPayload as any).select().single();
   if (error || !data) return null;
   return {
     id: data.id,
