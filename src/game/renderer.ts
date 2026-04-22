@@ -3998,6 +3998,49 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
         }
       }
 
+    } else if (d.tier === 'laser') {
+      // ═══ LASER DRONE — Hovering turret with a single optical lens ═══
+      const lt = performance.now() * 0.001;
+      // Body disc
+      const bodyGrad = ctx.createRadialGradient(-d.size * 0.25, -d.size * 0.3, 0, 0, 0, d.size);
+      bodyGrad.addColorStop(0, '#7a1d2e');
+      bodyGrad.addColorStop(0.5, '#4a0f1c');
+      bodyGrad.addColorStop(1, '#1a0408');
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, d.size * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+      // Lens ring
+      ctx.strokeStyle = '#2a0810';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, d.size * 0.55, 0, Math.PI * 2);
+      ctx.stroke();
+      // Glowing eye — brightens during telegraph/firing
+      const eyeActive = d.laserPhase === 'telegraph' || d.laserPhase === 'firing';
+      const eyeGlow = eyeActive ? 0.85 + Math.sin(lt * 20) * 0.1 : 0.35;
+      const eyeGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, d.size * 0.4);
+      eyeGrad.addColorStop(0, `rgba(255,80,120,${eyeGlow})`);
+      eyeGrad.addColorStop(0.6, `rgba(200,30,80,${eyeGlow * 0.6})`);
+      eyeGrad.addColorStop(1, 'rgba(80,10,30,0)');
+      ctx.fillStyle = eyeGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, d.size * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      // Pupil
+      ctx.fillStyle = eyeActive ? `rgba(255,255,255,${0.9})` : 'rgba(120,30,60,0.8)';
+      ctx.beginPath();
+      ctx.arc(0, 0, d.size * 0.12, 0, Math.PI * 2);
+      ctx.fill();
+      // Antenna pods
+      ctx.strokeStyle = '#5a0f1a';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-d.size * 0.55, -d.size * 0.15);
+      ctx.lineTo(-d.size * 0.75, -d.size * 0.35);
+      ctx.moveTo(d.size * 0.55, -d.size * 0.15);
+      ctx.lineTo(d.size * 0.75, -d.size * 0.35);
+      ctx.stroke();
     } else {
       // ═══ BOMBER — Twin-rotor tiltwing heavy bomber ═══
       // Unique silhouette: wide fuselage, dorsal engine pod, visible bomb
@@ -4366,6 +4409,67 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.fillRect(-barW / 2, barY, barW * hpRatio, barH);
     }
 
+    ctx.restore();
+  }
+}
+
+// ─── Laser beams (drawn in world space after drones) ────
+function renderLaserBeams(ctx: CanvasRenderingContext2D, g: GameData) {
+  const groundY = g.height * 0.78;
+  for (const d of g.drones) {
+    if (!d.active || d.tier !== 'laser') continue;
+    if (d.laserPhase !== 'telegraph' && d.laserPhase !== 'firing') continue;
+    const targetX = d.laserTargetX ?? d.pos.x;
+    const startY = d.pos.y + d.size * 0.5;
+    const endY = groundY;
+    ctx.save();
+    if (d.laserPhase === 'telegraph') {
+      // Thin telegraph line, dashed red
+      const t = performance.now() * 0.002;
+      const pulse = 0.4 + Math.sin(t * 6) * 0.3;
+      ctx.strokeStyle = `rgba(255,40,80,${pulse})`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(targetX, startY);
+      ctx.lineTo(targetX, endY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Ground impact marker
+      ctx.fillStyle = `rgba(255,40,80,${pulse * 0.6})`;
+      ctx.beginPath();
+      ctx.arc(targetX, endY, 8, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Firing — thick white-hot beam with red glow
+      const glow = ctx.createLinearGradient(targetX - 40, 0, targetX + 40, 0);
+      glow.addColorStop(0, 'rgba(255,40,80,0)');
+      glow.addColorStop(0.5, 'rgba(255,40,80,0.5)');
+      glow.addColorStop(1, 'rgba(255,40,80,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(targetX - 40, startY, 80, endY - startY);
+      // Core beam
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+      ctx.lineWidth = 10;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(targetX, startY);
+      ctx.lineTo(targetX, endY);
+      ctx.stroke();
+      // Inner hot layer
+      ctx.strokeStyle = 'rgba(255,200,220,1)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(targetX, startY);
+      ctx.lineTo(targetX, endY);
+      ctx.stroke();
+      // Ground burn
+      ctx.fillStyle = 'rgba(255,100,150,0.85)';
+      ctx.beginPath();
+      ctx.arc(targetX, endY, 16, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineCap = 'butt';
+    }
     ctx.restore();
   }
 }
@@ -8179,6 +8283,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderIntroBike(ctx, g);
   renderGasClouds(ctx, g);
   renderDrones(ctx, g);
+  renderLaserBeams(ctx, g);
   renderBoss(ctx, g);
   renderBullets(ctx, g);
   // Player shadow on ground

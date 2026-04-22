@@ -169,7 +169,7 @@ const DEFAULT_DIFFICULTY: DifficultyProfile = {
   minSpawnInterval: 0.55,
   spawnIntervalDecay: 0.15,
   threatsUnlock: { shrapnel: 1, missile: 2, cluster: 3, meteor: 6 },
-  dronesUnlock: { scout: 2, tracker: 4, incendiary: 5, bomber: 7, chemical: 7 },
+  dronesUnlock: { scout: 2, tracker: 4, incendiary: 5, bomber: 7, chemical: 7, laser: 8 },
   clusterSplitsBase: 2,
   clusterSplitsGrowth: 0.35,
   clusterSplitsCap: 8,

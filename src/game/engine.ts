@@ -712,14 +712,14 @@ function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
   if (wave === 6) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 7, spawnInterval: 1.5, droneInterval: 18, droneTiers: ['scout', 'tracker', 'incendiary'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 0, hasIncendiary: true, duration: D, surgeMultiplier: S };
   // W7 — Chemical Rain with volley + late surge
   if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 7, spawnInterval: 1.4, droneInterval: 16, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'volley', triggerAt: 25, duration: 3 }, { type: 'surge', triggerAt: 45, duration: 15 }] };
-  // W8 — Surge wave: the entire wave is a surge
-  if (wave === 8) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 8, spawnInterval: 1.2, droneInterval: 14, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 6, hasChemical: true, hasIncendiary: true, duration: 45, surgeMultiplier: 1.3, events: [{ type: 'surge', triggerAt: 0, duration: 45 }] };
+  // W8 — Surge wave: laser debuts, entire wave is a surge
+  if (wave === 8) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 8, spawnInterval: 1.2, droneInterval: 14, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical', 'laser'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 6, hasChemical: true, hasIncendiary: true, duration: 45, surgeMultiplier: 1.3, events: [{ type: 'surge', triggerAt: 0, duration: 45 }] };
   // W9 — Calm: the entire wave is a calm
   if (wave === 9) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 5, spawnInterval: 1.8, droneInterval: 22, droneTiers: ['scout', 'incendiary'], clusterSplits: 3, bulletLevel: 4, phaseInDelay: 0, duration: D, surgeMultiplier: S, events: [{ type: 'calm', triggerAt: 0, duration: 60 }] };
   // W10 — Combined: volley + swarm during wave
-  if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 9, spawnInterval: 1.1, droneInterval: 13, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'volley', triggerAt: 20, duration: 3 }, { type: 'swarm', triggerAt: 40, duration: 8 }] };
+  if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 9, spawnInterval: 1.1, droneInterval: 13, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical', 'laser'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'volley', triggerAt: 20, duration: 3 }, { type: 'swarm', triggerAt: 40, duration: 8 }] };
   // W11 — Pre-Boss: extra bombers, tense
-  if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 11, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
+  if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 11, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical', 'laser'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
   // W12 — BOSS
   if (wave === 12) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 12, droneTiers: ['scout', 'tracker', 'incendiary', 'bomber', 'chemical'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 12, hasBoss: true, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
   const extra = wave - 12;
@@ -926,6 +926,21 @@ function configureDroneByTier(d: Drone, tier: DroneTier, elapsed: number) {
     d.trackingAccuracy = 0.7 + Math.min(0.15, elapsed * 0.001);
     d.bombTimer = 0;
     d.bombCooldown = 3.5 + Math.random() * 1.5; // dive attack cooldown
+    return;
+  }
+
+  if (tier === 'laser') {
+    d.speed = 25;             // hovers, doesn't track player
+    d.size = 26;
+    d.health = 3;
+    d.maxHealth = 3;
+    d.aggroDelay = 1.2 + Math.random() * 0.6;  // used as initial idle hover
+    d.trackingAccuracy = 0;
+    d.bombTimer = 1.5;        // telegraph duration
+    d.bombCooldown = 3.0;     // between cycles
+    d.colorHue = 330;         // magenta/red
+    d.laserPhase = 'idle';
+    d.laserTargetX = 0;
     return;
   }
 
@@ -3172,6 +3187,46 @@ export function update(g: GameData, input: InputState, dt: number) {
         // Gentle idle movement (patrol)
         d.pos.x += Math.sin(d.wobble * 1.5) * 20 * dt;
         d.pos.y += Math.cos(d.wobble * 1.2) * 8 * dt;
+      } else if (d.tier === 'laser') {
+        // LASER: stationary hover, cycles through telegraph → firing → cooldown
+        if (!d.laserPhase) d.laserPhase = 'idle';
+        d.bombTimer -= dt;
+        // Gentle hover movement
+        d.pos.x += Math.sin(d.wobble + g.elapsed * 0.8) * 8 * dt;
+        d.pos.y += Math.cos(d.wobble + g.elapsed * 1.1) * 4 * dt;
+        if (d.laserPhase === 'idle') {
+          if (d.bombTimer <= 0) {
+            d.laserPhase = 'telegraph';
+            d.laserTargetX = Math.max(40, Math.min(g.width - 40, p.pos.x));
+            d.bombTimer = 1.5;
+            sfxWarning();
+          }
+        } else if (d.laserPhase === 'telegraph') {
+          if (d.bombTimer <= 0) {
+            d.laserPhase = 'firing';
+            d.bombTimer = 0.5;
+            addTrauma(0.2);
+          }
+        } else if (d.laserPhase === 'firing') {
+          const targetX = d.laserTargetX ?? d.pos.x;
+          const playerInBeam = Math.abs(p.pos.x - targetX) < 18 + p.size;
+          if (playerInBeam && !p.shielded) {
+            damagePlayer(g, 25, { x: targetX, y: p.pos.y });
+          }
+          if (d.bombTimer <= 0) {
+            d.laserPhase = 'cooldown';
+            d.bombTimer = 3.0;
+          }
+        } else if (d.laserPhase === 'cooldown') {
+          if (d.bombTimer <= 0) {
+            d.laserPhase = 'idle';
+            d.bombTimer = 0.8;
+          }
+        }
+        const minY = g.height * 0.12;
+        const maxY = g.height * 0.25;
+        d.pos.y = Math.max(minY, Math.min(maxY, d.pos.y));
+        d.pos.x = Math.max(40, Math.min(g.width - 40, d.pos.x));
       } else if (d.tier === 'tracker') {
         // TRACKER: Orbital movement with dive attacks + projectile fire
         d.bombTimer += dt;

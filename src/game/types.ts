@@ -17,7 +17,7 @@ export interface WaveEventSpec {
 }
 export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike' | 'extinguisher' | 'water' | 'gasmask' | 'firesuit';
 export type DroneState = 'entering' | 'tracking' | 'bombing';
-export type DroneTier = 'scout' | 'tracker' | 'bomber' | 'cargo' | 'incendiary' | 'chemical';
+export type DroneTier = 'scout' | 'tracker' | 'bomber' | 'cargo' | 'incendiary' | 'chemical' | 'laser';
 export type PlayerAnim = 'idle' | 'walk' | 'roll' | 'hit';
 export type WavePhase = 'active' | 'clearing' | 'announce' | 'cards' | 'bike';
 
@@ -175,6 +175,9 @@ export interface Drone {
   label?: string;
   fireDropTimer?: number;
   gasDropTimer?: number;
+  /** Laser drone: 'idle' | 'telegraph' | 'firing' | 'cooldown'. Uses bombTimer as phase timer. */
+  laserPhase?: 'idle' | 'telegraph' | 'firing' | 'cooldown';
+  laserTargetX?: number;
   /** Smoothed facing value in [-1..1]. Eased toward sign(vel.x) so the
    *  drone banks/turns instead of flipping instantly. */
   facingLerp?: number;
