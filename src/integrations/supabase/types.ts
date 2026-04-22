@@ -116,6 +116,7 @@ export type Database = {
           overlay_opacity: number | null
           overlay_top: string | null
           phase: string
+          scene_id: string | null
           sort_order: number | null
           transition_end: number
           transition_start: number
@@ -133,6 +134,7 @@ export type Database = {
           overlay_opacity?: number | null
           overlay_top?: string | null
           phase: string
+          scene_id?: string | null
           sort_order?: number | null
           transition_end?: number
           transition_start?: number
@@ -150,12 +152,21 @@ export type Database = {
           overlay_opacity?: number | null
           overlay_top?: string | null
           phase?: string
+          scene_id?: string | null
           sort_order?: number | null
           transition_end?: number
           transition_start?: number
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "background_config_scene_id_fkey"
+            columns: ["scene_id"]
+            isOneToOne: false
+            referencedRelation: "scenes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       difficulty_profile: {
         Row: {
@@ -248,6 +259,7 @@ export type Database = {
           gravity: number
           id: string
           logo_url: string | null
+          scene_change_interval: number
           show_title: boolean
           spawn_interval: number
           updated_at: string
@@ -267,6 +279,7 @@ export type Database = {
           gravity?: number
           id?: string
           logo_url?: string | null
+          scene_change_interval?: number
           show_title?: boolean
           spawn_interval?: number
           updated_at?: string
@@ -286,6 +299,7 @@ export type Database = {
           gravity?: number
           id?: string
           logo_url?: string | null
+          scene_change_interval?: number
           show_title?: boolean
           spawn_interval?: number
           updated_at?: string
@@ -388,6 +402,27 @@ export type Database = {
           rank?: number | null
           score?: number
           waves_reached?: number
+        }
+        Relationships: []
+      }
+      scenes: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
         }
         Relationships: []
       }
