@@ -18,6 +18,7 @@ export interface RemoteGameConfig {
   cameraMargin: number;
   bgLoop: boolean;
   bgLoopFadeDuration: number;
+  sceneChangeInterval: number;
 }
 
 export interface RemoteWaveConfig {
@@ -91,6 +92,7 @@ const DEFAULT_CONFIG: RemoteGameConfig = {
   cameraMargin: 400,
   bgLoop: false,
   bgLoopFadeDuration: 60,
+  sceneChangeInterval: 6,
 };
 
 export async function fetchGameConfig(): Promise<RemoteGameConfig> {
@@ -117,6 +119,7 @@ export async function fetchGameConfig(): Promise<RemoteGameConfig> {
       cameraMargin: (data as any).camera_margin ?? 400,
       bgLoop: (data as any).bg_loop ?? false,
       bgLoopFadeDuration: (data as any).bg_loop_fade_duration ?? 60,
+      sceneChangeInterval: (data as any).scene_change_interval ?? 6,
     };
   } catch {
     return DEFAULT_CONFIG;
@@ -437,6 +440,7 @@ export async function updateGameConfig(config: Partial<RemoteGameConfig>): Promi
   if (config.cameraMargin !== undefined) mapped.camera_margin = config.cameraMargin;
   if (config.bgLoop !== undefined) mapped.bg_loop = config.bgLoop;
   if (config.bgLoopFadeDuration !== undefined) mapped.bg_loop_fade_duration = config.bgLoopFadeDuration;
+  if (config.sceneChangeInterval !== undefined) mapped.scene_change_interval = config.sceneChangeInterval;
 
   const { data: rows } = await supabase.from('game_config').select('id').limit(1);
   if (!rows || rows.length === 0) return false;

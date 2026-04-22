@@ -4,6 +4,18 @@ import type { BackgroundPhase, DisplayMode } from './backgroundConfig';
 import { applyBloom, renderVignette, renderDamageFlash } from './render/postFx';
 import { beginFrameLights, emitLight, renderLights } from './render/lighting';
 
+function getSceneBlackoutAlpha(g: GameData): number {
+  const st = g.sceneTransition;
+  if (!st || !st.active) return 0;
+  switch (st.phase) {
+    case 'zoomIn': return Math.min(1, st.timer / 1.0);
+    case 'blackout': return 1;
+    case 'swap': return 1;
+    case 'zoomOut': return 1 - Math.min(1, st.timer / 1.2);
+    default: return 0;
+  }
+}
+
 // ─── Multi-Image Background System ───────────────────
 interface BgLayer {
   image: HTMLImageElement;
@@ -53,6 +65,18 @@ export function setBackgroundConfig(phases: BackgroundPhase[], loop?: boolean, l
     }
     return layer;
   });
+}
+
+export function setBackgroundConfigForScene(
+  allPhases: BackgroundPhase[],
+  sceneId: string,
+  loop?: boolean,
+  loopFadeDuration?: number,
+) {
+  const scenePhases = allPhases.filter(p => p.sceneId === sceneId);
+  if (scenePhases.length > 0) {
+    setBackgroundConfig(scenePhases, loop, loopFadeDuration);
+  }
 }
 
 // ─── Color Interpolation Helpers ──────────────────────
@@ -113,7 +137,7 @@ function getPhaseBlend(elapsed: number): {
     } else if (elapsed >= lastPhaseEnd) {
       // In the loop-fade zone: blend last phase → first phase
       const t = (elapsed - lastPhaseEnd) / fadeDur;
-      loopFadeBlend = applyEasing(Math.min(1, t), bgPhases[0].easingType || 'smoothstep');
+      loopFadeBlend = applyEasing(Math.min(1, t), bgPhases[bgPhases.length - 1].easingType || 'smoothstep');
     }
   }
 
@@ -328,9 +352,9 @@ function renderBackground(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.fillStyle = overlayGrad;
   ctx.fillRect(0, 0, w, h);
 
-  // Stars — more visible at night (later elapsed)
+  // Stars — visibility driven by overlay opacity (darker overlay = more stars)
   const groundY = h * 0.78;
-  const nightFactor = Math.min(1, Math.max(0, (g.elapsed - 200) / 100));
+  const nightFactor = Math.min(1, Math.max(0, (blend.overlayOpacity - 0.3) / 0.5));
   const starAlphaBase = nightFactor * 0.6;
   if (starAlphaBase > 0.02) {
     ctx.save();
@@ -8322,6 +8346,15 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillText('\u26A0 FINAL BARRAGE', g.width / 2, 32);
     ctx.globalAlpha = 1;
     ctx.restore();
+  }
+
+  // Scene transition blackout overlay
+  if (g.sceneTransition?.active) {
+    const blackout = getSceneBlackoutAlpha(g);
+    if (blackout > 0) {
+      ctx.fillStyle = `rgba(0,0,0,${blackout})`;
+      ctx.fillRect(0, 0, g.width, g.height);
+    }
   }
 
   // Wave End Slow-Mo — cinematic vignette + WAVE COMPLETE text

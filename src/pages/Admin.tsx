@@ -14,7 +14,8 @@ import {
 import {
   fetchBackgroundConfig, updateBackgroundPhase, uploadBackgroundImage, deleteBackgroundImage,
   createBackgroundPhase, deleteBackgroundPhase,
-  type BackgroundPhase, type DisplayMode,
+  fetchScenes, createScene, deleteScene, updateScene,
+  type BackgroundPhase, type DisplayMode, type Scene,
 } from '@/game/backgroundConfig';
 import { playSynthesizedPreview } from '@/game/audio';
 import { WAVE_WARNINGS } from '@/game/engine';
@@ -47,6 +48,7 @@ const Admin: React.FC = () => {
   const [audioEntries, setAudioEntries] = useState<AudioConfigEntry[]>([]);
   const [analytics, setAnalytics] = useState<GameAnalytics | null>(null);
   const [bgPhases, setBgPhases] = useState<BackgroundPhase[]>([]);
+  const [scenes, setScenes] = useState<Scene[]>([]);
   const [diffProfile, setDiffProfile] = useState<DifficultyProfile | null>(null);
 
   useEffect(() => {
@@ -63,8 +65,8 @@ const Admin: React.FC = () => {
   }, [navigate]);
 
   const loadAll = useCallback(async () => {
-    const [c, w, l, a, an, bg, dp] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard(), fetchAudioConfig(), fetchAnalytics(), fetchBackgroundConfig(), fetchDifficultyProfile()]);
-    setConfig(c); setWaves(w); setLeaders(l); setAudioEntries(a); setAnalytics(an); setBgPhases(bg); setDiffProfile(dp);
+    const [c, w, l, a, an, bg, dp, sc] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard(), fetchAudioConfig(), fetchAnalytics(), fetchBackgroundConfig(), fetchDifficultyProfile(), fetchScenes()]);
+    setConfig(c); setWaves(w); setLeaders(l); setAudioEntries(a); setAnalytics(an); setBgPhases(bg); setDiffProfile(dp); setScenes(sc);
   }, []);
 
   useEffect(() => { if (isAdmin) loadAll(); }, [isAdmin, loadAll]);
@@ -292,7 +294,7 @@ const Admin: React.FC = () => {
 
         {tab === 'branding' && config && <BrandingPanel config={config} onSave={saveConfig} isDesktop={isDesktop} />}
 
-        {tab === 'backgrounds' && <BackgroundsPanel phases={bgPhases} setPhases={setBgPhases} isDesktop={isDesktop} config={config} onSaveConfig={saveConfig} />}
+        {tab === 'backgrounds' && <BackgroundsPanel phases={bgPhases} setPhases={setBgPhases} scenes={scenes} setScenes={setScenes} isDesktop={isDesktop} config={config} onSaveConfig={saveConfig} />}
 
         {tab === 'waves' && (
           <WavesPanel waves={waves} editingWave={editingWave} setEditingWave={setEditingWave} onSaveWave={handleSaveWave} onDeleteWave={handleDeleteWave} isDesktop={isDesktop}
@@ -1964,15 +1966,45 @@ const PhoneMockupPreview: React.FC<{
 const BackgroundsPanel: React.FC<{
   phases: BackgroundPhase[];
   setPhases: React.Dispatch<React.SetStateAction<BackgroundPhase[]>>;
+  scenes: Scene[];
+  setScenes: React.Dispatch<React.SetStateAction<Scene[]>>;
   isDesktop: boolean;
   config: RemoteGameConfig | null;
   onSaveConfig: (updates: Partial<RemoteGameConfig>) => Promise<void>;
-}> = ({ phases, setPhases, isDesktop, config, onSaveConfig }) => {
+}> = ({ phases, setPhases, scenes, setScenes, isDesktop, config, onSaveConfig }) => {
   const [uploading, setUploading] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [timelineHover, setTimelineHover] = useState<number | null>(null);
   const [editingName, setEditingName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedSceneId, setSelectedSceneId] = useState<string>(scenes[0]?.id ?? '');
+
+  const filteredPhases = scenes.length > 1
+    ? phases.filter(p => p.sceneId === selectedSceneId)
+    : phases;
+
+  const handleAddScene = async () => {
+    const name = prompt('Enter scene name (e.g. City, Desert, Forest):');
+    if (!name?.trim()) return;
+    const newScene = await createScene(name.trim());
+    if (newScene) {
+      setScenes(prev => [...prev, newScene]);
+      setSelectedSceneId(newScene.id);
+    }
+  };
+
+  const handleDeleteScene = async (sceneId: string) => {
+    if (scenes.length <= 1) { alert('Cannot delete the last scene.'); return; }
+    if (!confirm('Delete this scene and all its phases?')) return;
+    const ok = await deleteScene(sceneId);
+    if (ok) {
+      setScenes(prev => prev.filter(s => s.id !== sceneId));
+      setPhases(prev => prev.filter(p => p.sceneId !== sceneId));
+      if (selectedSceneId === sceneId) {
+        setSelectedSceneId(scenes.find(s => s.id !== sceneId)?.id ?? '');
+      }
+    }
+  };
 
   const handleUpload = async (phaseId: string, phaseName: string, file: File) => {
     setUploading(phaseId);
@@ -2000,7 +2032,8 @@ const BackgroundsPanel: React.FC<{
   const handleAddPhase = async () => {
     const name = prompt('Enter phase name (e.g. dawn, dusk, storm):');
     if (!name?.trim()) return;
-    const newPhase = await createBackgroundPhase(name.trim().toLowerCase());
+    const sceneId = scenes.length > 1 ? selectedSceneId : undefined;
+    const newPhase = await createBackgroundPhase(name.trim().toLowerCase(), sceneId);
     if (newPhase) setPhases(prev => [...prev, newPhase]);
   };
 
@@ -2017,7 +2050,7 @@ const BackgroundsPanel: React.FC<{
     setEditingName(null);
   };
 
-  const maxTime = Math.max(...phases.map(p => p.transitionEnd), 600);
+  const maxTime = Math.max(...filteredPhases.map(p => p.transitionEnd), 600);
 
   // Slider + Number input combo helper
   const SliderWithInput = ({ label, value, min, max, step, unit, color, onChange }: {
@@ -2070,6 +2103,56 @@ const BackgroundsPanel: React.FC<{
       <p style={{ fontSize: 11, color: 'rgba(148,163,184,0.4)', marginBottom: 24 }}>
         Manage background phases with smooth cross-fade transitions
       </p>
+
+      {/* ─── Scene Selector ─── */}
+      <div style={{
+        padding: '12px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.06)', marginBottom: 20,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>🎬 Scenes</div>
+          <button onClick={handleAddScene} style={{ ...btnPrimary, padding: '4px 10px', fontSize: 11 }}>+ Add Scene</button>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+          {scenes.map(s => (
+            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <button
+                onClick={() => setSelectedSceneId(s.id)}
+                style={{
+                  padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  background: selectedSceneId === s.id ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.06)',
+                  color: selectedSceneId === s.id ? '#60a5fa' : '#94a3b8',
+                  fontWeight: selectedSceneId === s.id ? 700 : 500,
+                  fontSize: 12, transition: 'all 0.2s',
+                }}
+              >
+                {s.name}
+              </button>
+              {scenes.length > 1 && (
+                <button onClick={() => handleDeleteScene(s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(239,68,68,0.5)', fontSize: 11, padding: 2 }}>✕</button>
+              )}
+            </div>
+          ))}
+        </div>
+        {scenes.length > 1 && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>Scene Change Every</span>
+              <span style={{ fontSize: 12, color: '#94a3b8' }}>{config?.sceneChangeInterval ?? 6} waves</span>
+            </div>
+            <input
+              type="range" min={2} max={20} step={1}
+              value={config?.sceneChangeInterval ?? 6}
+              onChange={e => onSaveConfig({ sceneChangeInterval: Number(e.target.value) })}
+              style={{ width: '100%', accentColor: '#60a5fa' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(148,163,184,0.4)', marginTop: 4 }}>
+              <span>2 waves</span>
+              <span>20 waves</span>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ─── Loop Toggle ─── */}
       <div style={{
@@ -2140,17 +2223,17 @@ const BackgroundsPanel: React.FC<{
         </div>
         {/* Thumbnails row */}
         <div style={{ display: 'flex', height: 36, borderRadius: 8, overflow: 'hidden', background: 'rgba(0,0,0,0.3)', position: 'relative' }}>
-          {phases.map((p, i) => {
+          {filteredPhases.map((p, i) => {
             const meta = getDynamicMeta(p.phase, i);
             const start = p.transitionStart;
-            const end = i < phases.length - 1 ? phases[i + 1].transitionStart : maxTime;
+            const end = i < filteredPhases.length - 1 ? filteredPhases[i + 1].transitionStart : maxTime;
             const widthPct = ((end - start) / maxTime) * 100;
             return (
               <div key={p.id} style={{
                 width: `${widthPct}%`, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 backgroundImage: p.imageUrl ? `url(${p.imageUrl})` : undefined,
                 backgroundSize: 'cover', backgroundPosition: 'center',
-                borderRight: i < phases.length - 1 ? `2px solid ${meta.color}60` : 'none',
+                borderRight: i < filteredPhases.length - 1 ? `2px solid ${meta.color}60` : 'none',
                 position: 'relative',
               }}>
                 <div style={{
@@ -2181,11 +2264,11 @@ const BackgroundsPanel: React.FC<{
       </div>
 
       {/* ─── Live Preview ─── */}
-      <BackgroundPreviewPlayer phases={phases} />
+      <BackgroundPreviewPlayer phases={filteredPhases} />
 
       {/* ─── Phase Cards ─── */}
       <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(auto-fill, minmax(320px, 1fr))' : '1fr', gap: 16 }}>
-        {phases.map((p, idx) => {
+        {filteredPhases.map((p, idx) => {
           const meta = getDynamicMeta(p.phase, idx);
           const isUploading = uploading === p.id;
           const isSaving = saving === p.id;
@@ -2372,7 +2455,7 @@ const BackgroundsPanel: React.FC<{
         })}
       </div>
 
-      {phases.length === 0 && (
+      {filteredPhases.length === 0 && (
         <p style={{ color: 'rgba(148,163,184,0.3)', fontSize: 13, textAlign: 'center', padding: 24 }}>
           No background phases configured. Click "+ Add Phase" to create one.
         </p>

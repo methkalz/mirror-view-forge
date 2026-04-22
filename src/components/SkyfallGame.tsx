@@ -5,8 +5,9 @@ import { createGame, resetGame, update, updateIntro, updateCardsOnly, hasModalCa
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
 import { resumeAudio, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition, sfxAmmoTutorial, stopGameOverVoice } from '@/game/audio';
 import { fetchGameConfig, fetchLeaderboard, fetchDifficultyProfile, fetchWaveConfigs, submitScore, type RemoteGameConfig, type LeaderboardEntry, type DifficultyProfile, type RemoteWaveConfig } from '@/game/config';
-import { fetchBackgroundConfig } from '@/game/backgroundConfig';
-import { setBackgroundConfig, setCameraMargin } from '@/game/renderer';
+import { fetchBackgroundConfig, fetchScenes, type Scene, type BackgroundPhase } from '@/game/backgroundConfig';
+import { setBackgroundConfig, setBackgroundConfigForScene, setCameraMargin } from '@/game/renderer';
+import { setOnSceneSwap } from '@/game/engine';
 import { supabase } from '@/integrations/supabase/client';
 import NameEntry from './NameEntry';
 import Leaderboard from './Leaderboard';
@@ -52,6 +53,8 @@ const SkyfallGame: React.FC = () => {
   const [ammoArrowVisible, setAmmoArrowVisible] = useState(false);
   const ammoTutorialShownRef = useRef(false);
   const ammoArrowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scenesRef = useRef<Scene[]>([]);
+  const allBgPhasesRef = useRef<BackgroundPhase[]>([]);
 
   // Settings drawer — reachable only between rounds (start screen / game over)
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -84,9 +87,10 @@ const SkyfallGame: React.FC = () => {
         const bgPromise = fetchBackgroundConfig();
         const dpPromise = fetchDifficultyProfile();
         const wcPromise = fetchWaveConfigs();
+        const scenesPromise = fetchScenes();
         setLoadProgress(15);
 
-        const [cfg, lb, bgPhases, dp, wc] = await Promise.all([cfgPromise, lbPromise, bgPromise, dpPromise, wcPromise]);
+        const [cfg, lb, bgPhases, dp, wc, scenes] = await Promise.all([cfgPromise, lbPromise, bgPromise, dpPromise, wcPromise, scenesPromise]);
         if (!mounted) return;
         setLoadProgress(40);
 
@@ -97,9 +101,17 @@ const SkyfallGame: React.FC = () => {
         difficultyProfileRef.current = dp;
         waveOverridesRef.current = wc;
         
-        // Inject background config into renderer
+        // Store scenes + phases for multi-scene support
+        scenesRef.current = scenes;
+        allBgPhasesRef.current = bgPhases;
+
+        // Inject background config into renderer (first scene's phases)
         if (bgPhases.length > 0) {
-          setBackgroundConfig(bgPhases, cfg.bgLoop, cfg.bgLoopFadeDuration);
+          if (scenes.length > 1) {
+            setBackgroundConfigForScene(bgPhases, scenes[0].id, cfg.bgLoop, cfg.bgLoopFadeDuration);
+          } else {
+            setBackgroundConfig(bgPhases, cfg.bgLoop, cfg.bgLoopFadeDuration);
+          }
         }
 
         // Load audio with progress tracking (40% → 95%)
@@ -128,7 +140,19 @@ const SkyfallGame: React.FC = () => {
       .channel('bg-config-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'background_config' }, () => {
         fetchBackgroundConfig().then(phases => {
-          if (phases.length > 0) setBackgroundConfig(phases, remoteConfigRef.current?.bgLoop, remoteConfigRef.current?.bgLoopFadeDuration);
+          allBgPhasesRef.current = phases;
+          if (phases.length > 0) {
+            const scenes = scenesRef.current;
+            const g = gameRef.current;
+            if (scenes.length > 1 && g) {
+              const currentScene = scenes[g.currentSceneIndex];
+              if (currentScene) {
+                setBackgroundConfigForScene(phases, currentScene.id, remoteConfigRef.current?.bgLoop, remoteConfigRef.current?.bgLoopFadeDuration);
+              }
+            } else {
+              setBackgroundConfig(phases, remoteConfigRef.current?.bgLoop, remoteConfigRef.current?.bgLoopFadeDuration);
+            }
+          }
         });
       })
       .subscribe();
@@ -167,6 +191,22 @@ const SkyfallGame: React.FC = () => {
     // Apply difficulty profile and wave overrides
     g.difficultyProfile = difficultyProfileRef.current;
     g.remoteWaveOverrides = waveOverridesRef.current;
+
+    // Inject scene data for multi-scene transitions
+    g.scenes = scenesRef.current;
+    g.allBgPhases = allBgPhasesRef.current;
+    g.sceneChangeWaveInterval = cfg?.sceneChangeInterval ?? 6;
+    g.currentSceneIndex = 0;
+
+    // Wire up scene swap callback
+    setOnSceneSwap((sceneIndex: number) => {
+      const scenes = scenesRef.current;
+      const allPhases = allBgPhasesRef.current;
+      const remoteCfg = remoteConfigRef.current;
+      if (scenes[sceneIndex]) {
+        setBackgroundConfigForScene(allPhases, scenes[sceneIndex].id, remoteCfg?.bgLoop, remoteCfg?.bgLoopFadeDuration);
+      }
+    });
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -329,7 +369,18 @@ const SkyfallGame: React.FC = () => {
           g.remoteWaveOverrides = wc;
           difficultyProfileRef.current = dp;
           waveOverridesRef.current = wc;
+          g.scenes = scenesRef.current;
+          g.allBgPhases = allBgPhasesRef.current;
+          g.sceneChangeWaveInterval = cfg?.sceneChangeInterval ?? 6;
+          g.currentSceneIndex = 0;
+          g.sceneTransition = null;
           resetGame(g);
+          // Reset background to first scene
+          const scenes = scenesRef.current;
+          const allPhases = allBgPhasesRef.current;
+          if (scenes.length > 1 && allPhases.length > 0) {
+            setBackgroundConfigForScene(allPhases, scenes[0].id, cfg?.bgLoop, cfg?.bgLoopFadeDuration);
+          }
         });
       } else if (g.state === 'gameover') {
         // Only restart if clicking the restart button
@@ -376,8 +427,19 @@ const SkyfallGame: React.FC = () => {
           g.remoteWaveOverrides = wc;
           difficultyProfileRef.current = dp;
           waveOverridesRef.current = wc;
+          g.scenes = scenesRef.current;
+          g.allBgPhases = allBgPhasesRef.current;
+          g.sceneChangeWaveInterval = cfg?.sceneChangeInterval ?? 6;
+          g.currentSceneIndex = 0;
+          g.sceneTransition = null;
           g.tutorialPage = 3;
           resetGame(g);
+          // Reset background to first scene
+          const scenes = scenesRef.current;
+          const allPhases = allBgPhasesRef.current;
+          if (scenes.length > 1 && allPhases.length > 0) {
+            setBackgroundConfigForScene(allPhases, scenes[0].id, cfg?.bgLoop, cfg?.bgLoopFadeDuration);
+          }
         });
       }
     };
@@ -477,6 +539,7 @@ const SkyfallGame: React.FC = () => {
       document.removeEventListener('selectstart', preventSelect);
       document.removeEventListener('contextmenu', preventContext);
       canvas.removeEventListener('touchstart', preventTouch);
+      setOnSceneSwap(null);
     };
   }, [showNameEntry, playerName]);
 
