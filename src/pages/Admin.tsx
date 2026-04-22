@@ -9,7 +9,8 @@ import {
   fetchDifficultyProfile, updateDifficultyProfile,
   fetchAudioConfig, updateAudioEntry, updateAudioCategory, uploadAudioFile, deleteAudioFile, listAudioLibrary,
   addAudioFile, removeAudioFile, fetchAnalytics, createAudioEntry, deleteAudioEntry, updateAudioFileVolume,
-  type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type VolumeMode, type GameAnalytics, type DifficultyProfile,
+  fetchPrizeEntries, deletePrizeEntry, clearPrizeEntries,
+  type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type VolumeMode, type GameAnalytics, type DifficultyProfile, type PrizeEntry,
 } from '@/game/config';
 import {
   fetchBackgroundConfig, updateBackgroundPhase, uploadBackgroundImage, deleteBackgroundImage,
@@ -20,7 +21,7 @@ import {
 import { playSynthesizedPreview } from '@/game/audio';
 import { WAVE_WARNINGS } from '@/game/engine';
 
-type TabKey = 'analytics' | 'config' | 'branding' | 'backgrounds' | 'waves' | 'leaderboard' | 'audio';
+type TabKey = 'analytics' | 'config' | 'branding' | 'backgrounds' | 'waves' | 'leaderboard' | 'prizes' | 'audio';
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'analytics', icon: '📊', label: 'Analytics' },
@@ -30,6 +31,7 @@ const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'waves', icon: '🌊', label: 'Waves' },
   { key: 'audio', icon: '🔊', label: 'Audio' },
   { key: 'leaderboard', icon: '🏆', label: 'Leaders' },
+  { key: 'prizes', icon: '🎁', label: 'Prizes' },
 ];
 
 const Admin: React.FC = () => {
@@ -50,6 +52,7 @@ const Admin: React.FC = () => {
   const [bgPhases, setBgPhases] = useState<BackgroundPhase[]>([]);
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [diffProfile, setDiffProfile] = useState<DifficultyProfile | null>(null);
+  const [prizes, setPrizes] = useState<PrizeEntry[]>([]);
 
   useEffect(() => {
     const check = async () => {
@@ -65,8 +68,8 @@ const Admin: React.FC = () => {
   }, [navigate]);
 
   const loadAll = useCallback(async () => {
-    const [c, w, l, a, an, bg, dp, sc] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard(), fetchAudioConfig(), fetchAnalytics(), fetchBackgroundConfig(), fetchDifficultyProfile(), fetchScenes()]);
-    setConfig(c); setWaves(w); setLeaders(l); setAudioEntries(a); setAnalytics(an); setBgPhases(bg); setDiffProfile(dp); setScenes(sc);
+    const [c, w, l, a, an, bg, dp, pz, sc] = await Promise.all([fetchGameConfig(), fetchWaveConfigs(), fetchLeaderboard(), fetchAudioConfig(), fetchAnalytics(), fetchBackgroundConfig(), fetchDifficultyProfile(), fetchPrizeEntries(), fetchScenes()]);
+    setConfig(c); setWaves(w); setLeaders(l); setAudioEntries(a); setAnalytics(an); setBgPhases(bg); setDiffProfile(dp); setPrizes(pz); setScenes(sc);
   }, []);
 
   useEffect(() => { if (isAdmin) loadAll(); }, [isAdmin, loadAll]);
@@ -320,6 +323,20 @@ const Admin: React.FC = () => {
         {tab === 'leaderboard' && (
           <LeaderboardPanel leaders={leaders} onDelete={handleDeleteEntry} onClearAll={handleClearAll} isDesktop={isDesktop} />
         )}
+
+        {tab === 'prizes' && (
+          <PrizesPanel
+            prizes={prizes}
+            isDesktop={isDesktop}
+            onRefresh={async () => setPrizes(await fetchPrizeEntries())}
+            onDelete={async (id) => { await deletePrizeEntry(id); setPrizes((prev) => prev.filter((p) => p.id !== id)); }}
+            onClearAll={async () => {
+              if (!confirm('Clear ALL prize entries? هذا يحذف كل الأرقام المحفوظة.')) return;
+              await clearPrizeEntries();
+              setPrizes([]);
+            }}
+          />
+        )}
       </main>
     </div>
   );
@@ -436,7 +453,106 @@ const LeaderboardPanel: React.FC<{ leaders: LeaderboardEntry[]; onDelete: (id: s
   </div>
 );
 
-// ─── Waves Panel ───
+// ─── Prize Entries Panel ───
+const PrizesPanel: React.FC<{
+  prizes: PrizeEntry[];
+  isDesktop: boolean;
+  onRefresh: () => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+  onClearAll: () => Promise<void>;
+}> = ({ prizes, isDesktop, onRefresh, onDelete, onClearAll }) => {
+  const exportCSV = () => {
+    const header = ['Name', 'Phone', 'Score', 'Rank', 'Waves', 'Date'];
+    const rows = prizes.map((p) => [
+      p.playerName.replace(/"/g, '""'),
+      p.phone,
+      String(p.score),
+      p.rank != null ? String(p.rank) : '',
+      String(p.wavesReached),
+      new Date(p.createdAt).toISOString(),
+    ]);
+    const csv = [header, ...rows]
+      .map((r) => r.map((v) => `"${v}"`).join(','))
+      .join('\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `prize-entries-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div style={cardStyle}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>
+          🎁 Prize Entries ({prizes.length})
+        </h3>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onRefresh} style={btnGhost}>↻ Refresh</button>
+          <button onClick={exportCSV} disabled={prizes.length === 0} style={{ ...btnPrimary, opacity: prizes.length === 0 ? 0.4 : 1 }}>
+            ⬇ Export CSV
+          </button>
+          <button onClick={onClearAll} disabled={prizes.length === 0} style={{ ...btnDanger, opacity: prizes.length === 0 ? 0.4 : 1 }}>
+            Clear All
+          </button>
+        </div>
+      </div>
+
+      {prizes.length === 0 ? (
+        <div style={{
+          padding: 40, textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontSize: 13,
+          background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px dashed rgba(255,255,255,0.06)',
+        }}>
+          لا توجد إدخالات بعد — ستظهر هنا عندما يدخل لاعبون من قائمة العشرة الأوائل أرقامهم.
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                {['#', 'Name', 'Phone', 'Score', 'Rank', 'Waves', 'Date', ''].map((h, i) => (
+                  <th key={i} style={{
+                    textAlign: 'left', padding: '10px 12px', fontSize: 11,
+                    color: 'rgba(148,163,184,0.6)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1,
+                  }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {prizes.map((p, i) => (
+                <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '10px 12px', color: 'rgba(148,163,184,0.4)', fontWeight: 700 }}>{i + 1}</td>
+                  <td style={{ padding: '10px 12px', fontWeight: 600, color: '#f1f5f9', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {p.playerName}
+                  </td>
+                  <td style={{ padding: '10px 12px', color: '#fbbf24', fontFamily: 'monospace', direction: 'ltr' }}>
+                    <a href={`tel:${p.phone}`} style={{ color: '#fbbf24', textDecoration: 'none' }}>{p.phone}</a>
+                  </td>
+                  <td style={{ padding: '10px 12px', color: '#60a5fa', fontWeight: 700 }}>{p.score.toLocaleString()}</td>
+                  <td style={{ padding: '10px 12px', color: '#fbbf24', fontWeight: 700 }}>
+                    {p.rank != null ? `#${p.rank}` : '—'}
+                  </td>
+                  <td style={{ padding: '10px 12px', color: 'rgba(148,163,184,0.6)' }}>W{p.wavesReached}</td>
+                  <td style={{ padding: '10px 12px', color: 'rgba(148,163,184,0.5)', fontSize: 11, whiteSpace: 'nowrap' }}>
+                    {new Date(p.createdAt).toLocaleString()}
+                  </td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                    <button
+                      onClick={() => { if (confirm(`Delete entry for ${p.playerName}?`)) onDelete(p.id); }}
+                      style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 14, padding: '2px 6px' }}
+                    >✕</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Helper: generate preview of auto-scaled waves
 function generatePreviewWaves(profile: DifficultyProfile, count: number = 20) {

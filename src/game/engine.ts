@@ -3470,7 +3470,7 @@ function updateBoss(g: GameData, dt: number) {
     boss.phase = newPhase;
     // Phase transition: 2s cooldown + warning + power-up drop
     boss.attackTimer = 2.0;
-    const phaseText = newPhase === 2 ? '⚡ المرحلة الثانية!' : '⚡ المرحلة الأخيرة!';
+    const phaseText = newPhase === 2 ? '⚡ انتبه' : '🔥 ولّعت عنجد';
     g.cinematicWarning = { text: phaseText, subText: '', color: '#fbbf24', timer: 1.0, duration: 1.0, type: 'warning' };
     g.slowMoFactor = 0.1;
     // Drop a random power-up as mid-fight reward
