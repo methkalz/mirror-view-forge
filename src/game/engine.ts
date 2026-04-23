@@ -1033,6 +1033,15 @@ function spawnDrone(g: GameData, forcedTier?: DroneTier) {
       ? unlockedTiers[Math.floor(Math.random() * unlockedTiers.length)]
       : 'scout');
 
+  // Cap laser drones to 1 at a time — they're high-impact, not swarm enemies
+  if (selectedTier === 'laser') {
+    const activeLasers = g.drones.filter(dr => dr.active && dr.tier === 'laser').length;
+    if (activeLasers >= 1) {
+      configureDroneByTier(d, 'scout', g.elapsed);
+      return;
+    }
+  }
+
   configureDroneByTier(d, selectedTier, g.elapsed);
 }
 
@@ -2320,7 +2329,8 @@ export function hasModalCard(g: GameData): boolean {
   return (
     g.wavePhase === 'cards' ||
     !!(g.gasMaskOffer && g.gasMaskOffer.active) ||
-    !!(g.fireSuitOffer && g.fireSuitOffer.active)
+    !!(g.fireSuitOffer && g.fireSuitOffer.active) ||
+    !!(g.minesweeperOffer && g.minesweeperOffer.active)
   );
 }
 
