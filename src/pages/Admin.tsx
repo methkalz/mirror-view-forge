@@ -2780,8 +2780,9 @@ const BrandingPanel: React.FC<{
 };
 
 // ─── Wave Editor Modal ───
-const THREAT_TYPES = ['shrapnel', 'missile', 'cluster'];
-const DRONE_TYPES = ['scout', 'tracker', 'bomber', 'cargo', 'incendiary', 'chemical'];
+const THREAT_TYPES = ['shrapnel', 'missile', 'cluster', 'meteor', 'mine'];
+const DRONE_TYPES = ['scout', 'tracker', 'bomber', 'cargo', 'incendiary', 'chemical', 'laser'];
+const WAVE_EVENT_TYPES = ['surge', 'calm', 'swarm', 'volley', 'minefield'];
 
 const WaveEditor: React.FC<{
   wave: RemoteWaveConfig;
@@ -2861,6 +2862,49 @@ const WaveEditor: React.FC<{
             <button key={t} onClick={() => setW({ ...w, droneTypes: toggle(w.droneTypes, t) })} style={chipStyle(w.droneTypes.includes(t))}>
               {DRONE_ICONS[t] || ''} {t}
             </button>
+          ))}
+        </div>
+
+        {/* Wave Events Editor */}
+        <div style={{ marginBottom: 16, padding: 14, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <label style={{ ...labelStyle, marginBottom: 0, fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>⚡ أحداث الموجة</label>
+            <button onClick={() => setW({ ...w, events: [...(w.events || []), { type: 'surge', triggerAt: 20, duration: 10 }] })}
+              style={{ ...btnPrimary, padding: '4px 10px', fontSize: 11 }}>+ حدث</button>
+          </div>
+          {(w.events || []).length === 0 && (
+            <p style={{ fontSize: 11, color: 'rgba(148,163,184,0.3)', textAlign: 'center', padding: 8 }}>لا أحداث — اضغط "+ حدث" لإضافة surge أو calm أو swarm...</p>
+          )}
+          {(w.events || []).map((ev: any, ei: number) => (
+            <div key={ei} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+              <select value={ev.type} onChange={e => {
+                const evts = [...(w.events || [])];
+                evts[ei] = { ...evts[ei], type: e.target.value };
+                setW({ ...w, events: evts });
+              }} style={{ ...inputStyle, width: 110, padding: '4px 6px', fontSize: 11 }}>
+                {WAVE_EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)' }}>@</span>
+              <input type="number" min={0} max={120} value={ev.triggerAt} style={{ ...inputStyle, width: 50, padding: '4px 6px', fontSize: 11, textAlign: 'center' as const }}
+                onChange={e => {
+                  const evts = [...(w.events || [])];
+                  evts[ei] = { ...evts[ei], triggerAt: parseInt(e.target.value) || 0 };
+                  setW({ ...w, events: evts });
+                }} />
+              <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)' }}>ث ×</span>
+              <input type="number" min={1} max={60} value={ev.duration} style={{ ...inputStyle, width: 45, padding: '4px 6px', fontSize: 11, textAlign: 'center' as const }}
+                onChange={e => {
+                  const evts = [...(w.events || [])];
+                  evts[ei] = { ...evts[ei], duration: parseInt(e.target.value) || 1 };
+                  setW({ ...w, events: evts });
+                }} />
+              <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)' }}>ث</span>
+              <button onClick={() => {
+                const evts = [...(w.events || [])];
+                evts.splice(ei, 1);
+                setW({ ...w, events: evts });
+              }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(239,68,68,0.5)', fontSize: 13, padding: 2 }}>✕</button>
+            </div>
           ))}
         </div>
 

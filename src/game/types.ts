@@ -442,6 +442,12 @@ export interface GameData {
   minesweeperOffer: { active: boolean; timer: number; cost: number } | null;
   minesweeperOwned: boolean;
   minesweeperOfferDelay: number;
+  /** True once the FIRST offer of each type has been shown in this run.
+   *  The first card of each is FREE — displays the price struck-through and
+   *  "أول مرة علينا". After this flag is set, future offers are full price. */
+  gasMaskEverOffered: boolean;
+  fireSuitEverOffered: boolean;
+  minesweeperEverOffered: boolean;
   /** Time at which the mine-planter soldier should arrive (wave-clock). */
   minePlanterArrivalTime: number;
   minePlanterScheduled: boolean;
