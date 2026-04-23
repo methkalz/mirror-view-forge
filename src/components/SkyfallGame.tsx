@@ -168,7 +168,38 @@ const SkyfallGame: React.FC = () => {
       })
       .subscribe();
 
-    return () => { mounted = false; supabase.removeChannel(channel); supabase.removeChannel(bgChannel); supabase.removeChannel(audioChannel); };
+    // Realtime subscription for wave config changes — admin edits apply live
+    const waveChannel = supabase
+      .channel('wave-config-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wave_configs' }, () => {
+        fetchWaveConfigs().then(wc => {
+          waveOverridesRef.current = wc;
+          const g = gameRef.current;
+          if (g) g.remoteWaveOverrides = wc;
+        });
+      })
+      .subscribe();
+
+    // Realtime subscription for difficulty profile (admin preset changes)
+    const diffChannel = supabase
+      .channel('difficulty-profile-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'difficulty_profile' }, () => {
+        fetchDifficultyProfile().then(dp => {
+          difficultyProfileRef.current = dp;
+          const g = gameRef.current;
+          if (g) g.difficultyProfile = dp;
+        });
+      })
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      supabase.removeChannel(channel);
+      supabase.removeChannel(bgChannel);
+      supabase.removeChannel(audioChannel);
+      supabase.removeChannel(waveChannel);
+      supabase.removeChannel(diffChannel);
+    };
   }, []);
 
   const handleNameSubmit = useCallback((name: string) => {

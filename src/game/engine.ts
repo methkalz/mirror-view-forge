@@ -174,6 +174,9 @@ export function createGame(w: number, h: number): GameData {
     minePlanterArrivalTime: 0,
     minePlanterScheduled: false,
     minePlanter: null,
+    gasMaskEverOffered: false,
+    fireSuitEverOffered: false,
+    minesweeperEverOffered: false,
     scoreCountdown: null,
     waveEvents: [],
     waveEventsFired: [],
@@ -300,6 +303,9 @@ export function resetGame(g: GameData) {
   g.minePlanterArrivalTime = 0;
   g.minePlanterScheduled = false;
   g.minePlanter = null;
+  g.gasMaskEverOffered = false;
+  g.fireSuitEverOffered = false;
+  g.minesweeperEverOffered = false;
   g.scoreCountdown = null;
   g.waveEvents = [];
   g.waveEventsFired = [];
@@ -594,6 +600,60 @@ interface WaveRecipe {
   events?: import('./types').WaveEventSpec[];
 }
 
+/**
+ * Extracts the "themed" aspects of a hardcoded wave — events, theme-forced
+ * flags, and theme-forced threat/drone lists. These layer on top of the
+ * profile-computed numbers so admins can tune numeric difficulty while the
+ * narrative arc (mini-boss at W6, calm at W9, laser-only theme at W15…)
+ * stays intact.
+ */
+function getHardcodedThemedTemplate(wave: number): Partial<WaveRecipe> {
+  const themed: Partial<WaveRecipe> = {};
+  const wrap = (events?: WaveRecipe['events'], extras?: Partial<WaveRecipe>) => ({ events: events ?? [], ...extras });
+  if (wave === 3) return wrap([{ type: 'calm', triggerAt: 25, duration: 10 }]);
+  if (wave === 5) return wrap([{ type: 'swarm', triggerAt: 30, duration: 8 }], { hasIncendiary: true });
+  if (wave === 6) return wrap([], { hasIncendiary: true });
+  if (wave === 7) return wrap([
+    { type: 'minefield', triggerAt: 15, duration: 1 },
+    { type: 'volley', triggerAt: 30, duration: 3 },
+    { type: 'surge', triggerAt: 45, duration: 15 },
+  ], { hasChemical: true, hasIncendiary: true });
+  if (wave === 8) return wrap([{ type: 'surge', triggerAt: 0, duration: 45 }], { hasChemical: true, hasIncendiary: true, duration: 45, surgeMultiplier: 1.3 });
+  if (wave === 9) return wrap([{ type: 'calm', triggerAt: 0, duration: 60 }]);
+  if (wave === 10) return wrap([
+    { type: 'volley', triggerAt: 20, duration: 3 },
+    { type: 'swarm', triggerAt: 40, duration: 8 },
+  ], { hasChemical: true, hasIncendiary: true });
+  if (wave === 11) return wrap([
+    { type: 'minefield', triggerAt: 25, duration: 1 },
+    { type: 'surge', triggerAt: 48, duration: 12 },
+  ], { hasChemical: true, hasIncendiary: true });
+  if (wave === 12) return wrap([], { hasBoss: true, hasChemical: true, hasIncendiary: true });
+  // Smoother post-12 curve, themed W15, peak at W16
+  if (wave === 13) return wrap([{ type: 'calm', triggerAt: 0, duration: 30 }]);
+  if (wave === 14) return wrap([{ type: 'swarm', triggerAt: 30, duration: 8 }], { hasIncendiary: true });
+  // W15: laser + meteor only — a standout themed wave
+  if (wave === 15) return wrap([], {
+    threats: ['meteor'],
+    droneTiers: ['laser'],
+    hasChemical: false,
+    hasIncendiary: false,
+  });
+  if (wave === 16) return wrap([
+    { type: 'volley', triggerAt: 20, duration: 3 },
+    { type: 'surge', triggerAt: 45, duration: 15 },
+  ], { hasBoss: true, hasChemical: true, hasIncendiary: true });
+  // Post-16 cycles through event patterns
+  const extra = wave - 16;
+  if (extra > 0) {
+    const mod = extra % 3;
+    if (mod === 0) return wrap([{ type: 'minefield', triggerAt: 15, duration: 1 }, { type: 'surge', triggerAt: 40, duration: 15 }]);
+    if (mod === 1) return wrap([{ type: 'volley', triggerAt: 20, duration: 3 }, { type: 'swarm', triggerAt: 35, duration: 8 }]);
+    return wrap([{ type: 'surge', triggerAt: 30, duration: 20 }]);
+  }
+  return themed;
+}
+
 function generateWaveFromProfile(wave: number, profile: DifficultyProfile): WaveRecipe {
   // Determine available threats
   const threats: HazardType[] = [];
@@ -658,20 +718,23 @@ function generateWaveFromProfile(wave: number, profile: DifficultyProfile): Wave
     Object.values(profile.dronesUnlock).includes(wave);
   const phaseInDelay = isNewThreatWave ? profile.phaseInDelay : 0;
 
+  // Layer themed metadata on top of profile-computed numbers
+  const themed = getHardcodedThemedTemplate(wave);
   return {
-    threats,
+    threats: themed.threats ?? threats,
     maxConcurrent,
     spawnInterval,
     droneInterval,
-    droneTiers,
+    droneTiers: themed.droneTiers ?? droneTiers,
     clusterSplits,
     bulletLevel,
     phaseInDelay,
-    hasChemical,
-    hasIncendiary,
-    hasBoss,
-    duration: profile.waveDuration,
-    surgeMultiplier: 1,
+    hasChemical: themed.hasChemical !== undefined ? themed.hasChemical : hasChemical,
+    hasIncendiary: themed.hasIncendiary !== undefined ? themed.hasIncendiary : hasIncendiary,
+    hasBoss: themed.hasBoss ?? hasBoss,
+    duration: themed.duration ?? profile.waveDuration,
+    surgeMultiplier: themed.surgeMultiplier ?? 1,
+    events: themed.events ?? [],
   };
 }
 
@@ -740,33 +803,37 @@ function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
   if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 11, droneTiers: ['scout', 'tracker', 'bomber', 'laser'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'minefield', triggerAt: 25, duration: 1 }, { type: 'surge', triggerAt: 48, duration: 12 }] };
   // W12 — BOSS
   if (wave === 12) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 12, hasBoss: true, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
+  // W13+: pull themed aspects and layer numeric curve
+  const themed = getHardcodedThemedTemplate(wave);
   const extra = wave - 12;
-  // Cycle through event patterns for late-game variety
-  const lateEvents: import('./types').WaveEventSpec[] = [];
-  if (extra % 3 === 0) {
-    lateEvents.push({ type: 'minefield', triggerAt: 15, duration: 1 });
-    lateEvents.push({ type: 'surge', triggerAt: 40, duration: 15 });
-  } else if (extra % 3 === 1) {
-    lateEvents.push({ type: 'volley', triggerAt: 20, duration: 3 });
-    lateEvents.push({ type: 'swarm', triggerAt: 35, duration: 8 });
-  } else {
-    lateEvents.push({ type: 'surge', triggerAt: 30, duration: 20 });
+  // Smoother numeric curve — W13 eases off from W12 peak, rebuilds to W16
+  // Mapping per wave offset: 13=ease, 14=rebuild, 15=theme (low numbers), 16=peak
+  let mc: number, si: number;
+  if (extra === 1) { mc = 8; si = 1.2; }          // W13 recovery
+  else if (extra === 2) { mc = 10; si = 1.1; }    // W14 rebuild
+  else if (extra === 3) { mc = 6; si = 1.6; }     // W15 themed laser-only (less clutter)
+  else if (extra === 4) { mc = 12; si = 0.9; }    // W16 PEAK
+  else {
+    // W17+ very gentle continuation
+    const e2 = extra - 4;
+    mc = Math.min(13, 12 + Math.floor(e2 / 3));
+    si = Math.max(0.6, 0.9 - e2 * 0.02);
   }
   return {
-    threats: ['shrapnel', 'missile', 'cluster', 'meteor'],
-    maxConcurrent: Math.min(13, 10 + Math.floor(extra / 2)),
-    spawnInterval: Math.max(0.55, 0.95 - extra * 0.03),
-    droneInterval: Math.max(7, 11 - extra * 0.5),
-    droneTiers: ['scout', 'tracker', 'bomber', 'laser'] as DroneTier[],
+    threats: themed.threats ?? ['shrapnel', 'missile', 'cluster', 'meteor'],
+    maxConcurrent: mc,
+    spawnInterval: si,
+    droneInterval: Math.max(8, 12 - extra * 0.3),
+    droneTiers: themed.droneTiers ?? (['scout', 'tracker', 'bomber', 'laser'] as DroneTier[]),
     clusterSplits: Math.min(6, 5 + Math.floor(extra / 3)),
     bulletLevel: 4,
     phaseInDelay: 0,
-    hasBoss: extra % 4 === 0,
-    hasChemical: true,
-    hasIncendiary: true,
-    duration: D,
-    surgeMultiplier: S,
-    events: lateEvents,
+    hasBoss: themed.hasBoss ?? (extra % 4 === 0),
+    hasChemical: themed.hasChemical !== undefined ? themed.hasChemical : true,
+    hasIncendiary: themed.hasIncendiary !== undefined ? themed.hasIncendiary : true,
+    duration: themed.duration ?? D,
+    surgeMultiplier: themed.surgeMultiplier ?? S,
+    events: themed.events ?? [],
   };
 }
 
@@ -797,7 +864,7 @@ export const WAVE_WARNINGS: Record<number, { id: string; text: string; sub: stri
     { id: 'w8_surge', text: '⚠ موجة عاصفة!', sub: '', color: '#dc2626', type: 'warning' },
     { id: 'w8_bullet4', text: 'تطوير: طلقة رباعية', sub: '', color: '#22c55e', type: 'upgrade' },
   ],
-  9: [{ id: 'w9_calm', text: 'هدوء قبل العاصفة', sub: '', color: '#60a5fa', type: 'warning' }],
+  9: [{ id: 'w9_calm', text: '🌿 موجة استراحة — استعد', sub: '', color: '#60a5fa', type: 'warning' }],
   10: [{ id: 'w10_combined', text: 'تحذير: جميع التهديدات!', sub: '', color: '#991b1b', type: 'warning' }],
   11: [
     { id: 'w11_preboss', text: '⚠ قاذفات إضافية قادمة!', sub: '', color: '#dc2626', type: 'warning' },
@@ -807,6 +874,10 @@ export const WAVE_WARNINGS: Record<number, { id: string; text: string; sub: stri
     { id: 'w12_boss', text: 'تحذير: طائرة حربية!', sub: '', color: '#dc2626', type: 'warning' },
     { id: 'w12_cluster5', text: 'تحذير: تشظي خماسي!', sub: '', color: '#991b1b', type: 'warning' },
   ],
+  13: [{ id: 'w13_recover', text: '🌿 استراحة ما بعد القائد', sub: '', color: '#60a5fa', type: 'warning' }],
+  14: [{ id: 'w14_rebuild', text: '⚠ التوتر يعود', sub: '', color: '#f59e0b', type: 'warning' }],
+  15: [{ id: 'w15_laser_theme', text: '🎯 موجة الليزر والنيازك فقط!', sub: '', color: '#a855f7', type: 'warning' }],
+  16: [{ id: 'w16_peak', text: '☠ الذروة — كل التهديدات + البوس!', sub: '', color: '#dc2626', type: 'warning' }],
 };
 
 /** Factory for default Hazard pool entries. */
@@ -1851,8 +1922,10 @@ function startNextWave(g: GameData) {
 
   // Reset threat timers based on recipe so admin settings apply per-wave
   if (recipe.droneInterval > 0) g.droneTimer = Math.min(g.droneTimer, recipe.droneInterval * 0.3);
-  if (recipe.hasIncendiary) g.incendiaryTimer = Math.min(g.incendiaryTimer, 8 + Math.random() * 8);
-  if (recipe.hasChemical) g.chemicalTimer = Math.min(g.chemicalTimer, 10 + Math.random() * 8);
+  // Threat-specific drones are gated to AT LEAST 14s after wave start so the
+  // paired purchase card (fire suit / gas mask) has time to appear and resolve.
+  if (recipe.hasIncendiary) g.incendiaryTimer = Math.max(14, 14 + Math.random() * 6);
+  if (recipe.hasChemical) g.chemicalTimer = Math.max(14, 14 + Math.random() * 8);
 
   // Queue wave warnings — recipe custom warnings take priority over hardcoded
   if (recipe.warningText) {
@@ -1882,8 +1955,12 @@ function startNextWave(g: GameData) {
   // If both threats are present in the wave, the gas mask offer is shown
   // first and the fire suit offer waits in a pending state until the
   // previous card closes (purchased, refused or timed out).
-  const needsGas = !!recipe.hasChemical && g.player.gasMaskTimer <= 0;
-  const needsFire = !!recipe.hasIncendiary && g.player.fireSuitTimer <= 0;
+  // Offers are shown whenever the wave has the matching threat — even if the
+  // player still has protection from a prior wave. This guarantees the player
+  // always SEES a card before drones arrive. Already-protected players get
+  // the "renewal" flavor (card closes quickly if refused).
+  const needsGas = !!recipe.hasChemical;
+  const needsFire = !!recipe.hasIncendiary;
 
   if (needsGas) {
     g.gasMaskOfferDelay = 2.5;
@@ -1905,22 +1982,20 @@ function startNextWave(g: GameData) {
     g.fireSuitDropScheduled = false;
   }
 
-  // ── Minesweeper offer — triggered if this wave has a minefield event ──
+  // ── Minesweeper offer — shown whenever the wave has a minefield event,
+  //    even if the player already owns the sweeper (so they always see the
+  //    price-renewal card before the planter arrives). ──
   const hasMinefield = !!recipe.events?.some(e => e.type === 'minefield');
-  const needsSweeper = hasMinefield && g.player.minesweeperTimer <= 0;
-  if (needsSweeper) {
-    // Show offer a few seconds before the planter arrives. Offer starts after
-    // any gas/fire offers have had time to resolve.
+  if (hasMinefield) {
+    // Show offer a few seconds before the planter arrives, queued after any
+    // gas/fire offers so protection cards never overlap visually.
     const extraDelay = (needsGas || needsFire) ? 4.0 : 2.5;
     g.minesweeperOfferDelay = extraDelay;
-    g.minePlanterScheduled = true;
-    // Find the first minefield event time and plan to arrive ~6s later so the
-    // offer has time to appear before mines are actually planted.
-    const ev = recipe.events?.find(e => e.type === 'minefield');
-    g.minePlanterArrivalTime = g.waveElapsed + (ev?.triggerAt ?? 15);
-  } else {
-    g.minePlanterScheduled = false;
+    // Planter scheduling is handled entirely by updateWaveEvents — we do NOT
+    // pre-schedule here so the event handler's delay is authoritative.
   }
+  g.minePlanterScheduled = false;
+  g.minePlanterArrivalTime = 0;
 }
 
 function updateWaveSystem(g: GameData, input: InputState, dt: number) {
@@ -2009,18 +2084,19 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         // 2) Otherwise: any click on the card itself = buy
         else if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
           input.cardClick = null;
-          if (g.score >= g.gasMaskOffer.cost) {
-            const cost = g.gasMaskOffer.cost;
-            g.scoreCountdown = { remaining: cost, tickTimer: 0, totalCost: cost };
+          const firstTime = !g.gasMaskEverOffered;
+          const effectiveCost = firstTime ? 0 : g.gasMaskOffer.cost;
+          if (g.score >= effectiveCost) {
+            if (effectiveCost > 0) g.scoreCountdown = { remaining: effectiveCost, tickTimer: 0, totalCost: effectiveCost };
+            g.gasMaskEverOffered = true;
             g.gasMaskOwned = true;
             g.player.gasMaskTimer = Math.max(15, g.waveTimer + 5);
-            // Trigger the donning animation
             g.player.gasMaskDonTimer = 0.6;
             g.gasMaskDropScheduled = false;
             g.gasMaskOffer = null;
             g.slowMoFactor = 0.5;
             sfxUpgradeSelect();
-            addFloatingText(g, 'كمامة! 🛡️', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#16a34a');
+            addFloatingText(g, firstTime ? 'كمامة مجانية! 🎁' : 'كمامة! 🛡️', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#16a34a');
             spawnParticles(g, g.player.pos, 10, '#16a34a', 90);
           } else {
             addFloatingText(g, 'نقاط غير كافية!', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#ef4444');
@@ -2077,9 +2153,11 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         // 2) Whole card = buy
         else if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
           input.cardClick = null;
-          if (g.score >= g.fireSuitOffer.cost) {
-            const cost = g.fireSuitOffer.cost;
-            g.scoreCountdown = { remaining: cost, tickTimer: 0, totalCost: cost };
+          const firstTime = !g.fireSuitEverOffered;
+          const effectiveCost = firstTime ? 0 : g.fireSuitOffer.cost;
+          if (g.score >= effectiveCost) {
+            if (effectiveCost > 0) g.scoreCountdown = { remaining: effectiveCost, tickTimer: 0, totalCost: effectiveCost };
+            g.fireSuitEverOffered = true;
             g.fireSuitOwned = true;
             g.player.fireSuitTimer = Math.max(15, g.waveTimer + 5);
             g.player.fireSuitDonTimer = 0.6;
@@ -2087,7 +2165,7 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
             g.fireSuitOffer = null;
             g.slowMoFactor = 0.5;
             sfxUpgradeSelect();
-            addFloatingText(g, 'بدلة نار! 🔥', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#f97316');
+            addFloatingText(g, firstTime ? 'بدلة مجانية! 🎁' : 'بدلة نار! 🔥', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#f97316');
             spawnParticles(g, g.player.pos, 10, '#f97316', 90);
           } else {
             addFloatingText(g, 'نقاط غير كافية!', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#ef4444');
@@ -2139,16 +2217,18 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
           sfxSlideTransition();
         } else if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
           input.cardClick = null;
-          if (g.score >= g.minesweeperOffer.cost) {
-            const cost = g.minesweeperOffer.cost;
-            g.scoreCountdown = { remaining: cost, tickTimer: 0, totalCost: cost };
+          const firstTime = !g.minesweeperEverOffered;
+          const effectiveCost = firstTime ? 0 : g.minesweeperOffer.cost;
+          if (g.score >= effectiveCost) {
+            if (effectiveCost > 0) g.scoreCountdown = { remaining: effectiveCost, tickTimer: 0, totalCost: effectiveCost };
+            g.minesweeperEverOffered = true;
             g.minesweeperOwned = true;
             g.player.minesweeperTimer = Math.max(20, g.waveTimer + 10);
             g.player.minesweeperDonTimer = 0.6;
             g.minesweeperOffer = null;
             g.slowMoFactor = 0.5;
             sfxUpgradeSelect();
-            addFloatingText(g, 'كاشف ألغام! 🔍', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#fbbf24');
+            addFloatingText(g, firstTime ? 'كاشف مجاني! 🎁' : 'كاشف ألغام! 🔍', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#fbbf24');
             spawnParticles(g, g.player.pos, 10, '#fbbf24', 90);
           } else {
             addFloatingText(g, 'نقاط غير كافية!', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#ef4444');
@@ -3868,17 +3948,38 @@ export function update(g: GameData, input: InputState, dt: number) {
           spawnParticles(g, d.pos, 15, '#f97316', 180);
           spawnParticles(g, d.pos, 8, '#555', 100);
           incrementCombo(g);
-          // Cargo drone drops its payload
-          if (d.tier === 'cargo' && d.cargoType) {
-            const pu = getFromPool<PowerUp>(g.powerUps, createPowerUpDefault, 20);
-            pu.type = d.cargoType;
-            pu.pos = { x: d.pos.x, y: d.pos.y };
-            pu.size = 14;
-            pu.parachuting = true;
-            pu.fallSpeed = 30;
-            pu.bobTimer = 0;
-            pu.groundTimer = 0;
-            addFloatingText(g, `CARGO DROP!`, d.pos, '#fbbf24');
+          // Cargo drone (OTLOP) drops 3 different boxes across a small arc
+          if (d.tier === 'cargo') {
+            const pool: PowerUpType[] = ['medkit', 'ammo', 'shield', 'interceptor', 'slowmo', 'magnet', 'airstrike'];
+            for (let k = 0; k < 3; k++) {
+              const t = pool[Math.floor(Math.random() * pool.length)];
+              const pu = getFromPool<PowerUp>(g.powerUps, createPowerUpDefault, 20);
+              pu.type = t;
+              pu.pos = { x: d.pos.x + (k - 1) * 26, y: d.pos.y - 10 + k * 4 };
+              pu.size = 14;
+              pu.parachuting = true;
+              pu.fallSpeed = 28 + Math.random() * 12;
+              pu.bobTimer = 0;
+              pu.groundTimer = 0;
+            }
+            addFloatingText(g, `TRIPLE CARGO DROP!`, d.pos, '#fbbf24');
+          }
+          // Threat-dropping drones reward the player on kill with a 50% chance loot
+          else if (d.tier === 'bomber' || d.tier === 'incendiary' || d.tier === 'chemical' || d.tier === 'tracker') {
+            const dropRate = d.tier === 'tracker' ? 0.4 : 0.5;
+            if (Math.random() < dropRate) {
+              const pool: PowerUpType[] = ['medkit', 'ammo', 'shield', 'slowmo'];
+              const t = pool[Math.floor(Math.random() * pool.length)];
+              const pu = getFromPool<PowerUp>(g.powerUps, createPowerUpDefault, 20);
+              pu.type = t;
+              pu.pos = { x: d.pos.x, y: d.pos.y };
+              pu.size = 14;
+              pu.parachuting = true;
+              pu.fallSpeed = 35;
+              pu.bobTimer = 0;
+              pu.groundTimer = 0;
+              addFloatingText(g, `Loot!`, d.pos, '#22c55e');
+            }
           }
           const base = d.tier === 'cargo' ? 60 : d.tier === 'bomber' ? 80 : d.tier === 'tracker' ? 50 : 30;
           const bonus = comboScore(g, base);

@@ -4988,6 +4988,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     };
     drawPill('🛡 GAS', p.gasMaskTimer, 'rgba(22,163,74,0.55)', '#ecfccb');
     drawPill('🔥 FIRE', p.fireSuitTimer, 'rgba(234,88,12,0.55)', '#ffedd5');
+    drawPill('🔍 MINE', p.minesweeperTimer, 'rgba(251,191,36,0.55)', '#fef3c7');
     ctx.textBaseline = 'alphabetic';
   }
 
@@ -5313,10 +5314,8 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.font = '13px Tajawal, sans-serif';
     ctx.fillText('احمِ نفسك من الغاز!', cx, cardY + 148);
 
-    // Cost
-    ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 22px Tajawal, sans-serif';
-    ctx.fillText(`⭐ ${g.gasMaskOffer.cost}`, cx, cardY + 185);
+    // Cost — first offer is free
+    drawOfferPrice(ctx, cx, cardY + 185, g.gasMaskOffer.cost, !g.gasMaskEverOffered);
 
     // "اضغط على البطاقة للشراء" — full-card hint
     const pressPulse = 0.5 + Math.sin(g.elapsed * 4) * 0.3;
@@ -5430,7 +5429,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
 
     ctx.fillStyle = '#fbbf24';
     ctx.font = 'bold 22px Tajawal, sans-serif';
-    ctx.fillText(`⭐ ${g.fireSuitOffer.cost}`, cx, cardY + 185);
+    drawOfferPrice(ctx, cx, cardY + 185, g.fireSuitOffer.cost, !g.fireSuitEverOffered);
 
     const pressPulse = 0.5 + Math.sin(g.elapsed * 4) * 0.3;
     ctx.fillStyle = `rgba(251, 146, 60, ${pressPulse})`;
@@ -5559,7 +5558,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
 
     ctx.fillStyle = '#fbbf24';
     ctx.font = 'bold 22px Tajawal, sans-serif';
-    ctx.fillText(`⭐ ${g.minesweeperOffer.cost}  (1%)`, cx, cardY + 185);
+    drawOfferPrice(ctx, cx, cardY + 185, g.minesweeperOffer.cost, !g.minesweeperEverOffered, '1%');
 
     const pressPulse = 0.5 + Math.sin(g.elapsed * 4) * 0.3;
     ctx.fillStyle = `rgba(251, 191, 36, ${pressPulse})`;
@@ -5594,6 +5593,37 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.direction = 'ltr';
 
     ctx.globalAlpha = 1;
+  }
+}
+
+/** Draws the price for an offer card, with strike-through + "أول مرة علينا" on first offer. */
+function drawOfferPrice(ctx: CanvasRenderingContext2D, cx: number, baselineY: number, cost: number, firstTime: boolean, suffix?: string) {
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  if (firstTime) {
+    // Strike-through original price
+    ctx.fillStyle = 'rgba(251,191,36,0.55)';
+    ctx.font = 'bold 16px Tajawal, sans-serif';
+    const label = suffix ? `⭐ ${cost} ${suffix}` : `⭐ ${cost}`;
+    const textW = ctx.measureText(label).width;
+    ctx.fillText(label, cx, baselineY - 16);
+    ctx.strokeStyle = 'rgba(251,191,36,0.85)';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(cx - textW / 2 - 3, baselineY - 21);
+    ctx.lineTo(cx + textW / 2 + 3, baselineY - 21);
+    ctx.stroke();
+    // Free label
+    ctx.fillStyle = '#22c55e';
+    ctx.font = 'bold 22px Tajawal, sans-serif';
+    ctx.fillText('🎁 مجاناً', cx, baselineY + 6);
+    ctx.fillStyle = 'rgba(34,197,94,0.9)';
+    ctx.font = 'bold 11px Tajawal, sans-serif';
+    ctx.fillText('أول مرة علينا', cx, baselineY + 22);
+  } else {
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 22px Tajawal, sans-serif';
+    ctx.fillText(suffix ? `⭐ ${cost}  (${suffix})` : `⭐ ${cost}`, cx, baselineY);
   }
 }
 
@@ -5797,11 +5827,6 @@ function renderBoss(ctx: CanvasRenderingContext2D, g: GameData) {
   const hpColor = hpRatio > 0.5 ? '#22c55e' : hpRatio > 0.25 ? '#eab308' : '#ef4444';
   ctx.fillStyle = hpColor;
   ctx.fillRect(-barW / 2, barY, barW * hpRatio, barH);
-  // Boss label
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 8px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('طائرة حربية', 0, barY - 4);
 
   ctx.globalAlpha = 1;
   ctx.restore();
