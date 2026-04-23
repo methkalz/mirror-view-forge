@@ -741,8 +741,19 @@ function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
   // W12 — BOSS
   if (wave === 12) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 12, hasBoss: true, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
   const extra = wave - 12;
+  // Cycle through event patterns for late-game variety
+  const lateEvents: import('./types').WaveEventSpec[] = [];
+  if (extra % 3 === 0) {
+    lateEvents.push({ type: 'minefield', triggerAt: 15, duration: 1 });
+    lateEvents.push({ type: 'surge', triggerAt: 40, duration: 15 });
+  } else if (extra % 3 === 1) {
+    lateEvents.push({ type: 'volley', triggerAt: 20, duration: 3 });
+    lateEvents.push({ type: 'swarm', triggerAt: 35, duration: 8 });
+  } else {
+    lateEvents.push({ type: 'surge', triggerAt: 30, duration: 20 });
+  }
   return {
-    threats: ['shrapnel', 'missile', 'cluster'],
+    threats: ['shrapnel', 'missile', 'cluster', 'meteor'],
     maxConcurrent: Math.min(13, 10 + Math.floor(extra / 2)),
     spawnInterval: Math.max(0.55, 0.95 - extra * 0.03),
     droneInterval: Math.max(7, 11 - extra * 0.5),
@@ -755,6 +766,7 @@ function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
     hasIncendiary: true,
     duration: D,
     surgeMultiplier: S,
+    events: lateEvents,
   };
 }
 
@@ -779,6 +791,7 @@ export const WAVE_WARNINGS: Record<number, { id: string; text: string; sub: stri
     { id: 'w7_gasmask', text: 'إمدادات: كمامة غاز!', sub: '', color: '#16a34a', type: 'upgrade' },
     { id: 'w7_chemical', text: 'تحذير: طائرات كيميائية!', sub: '', color: '#15803d', type: 'warning' },
     { id: 'w7_bomber', text: 'تحذير: قاذفات قنابل!', sub: '', color: '#ef4444', type: 'warning' },
+    { id: 'w7_minefield', text: 'تحذير: ألغام أرضية قادمة!', sub: '', color: '#fbbf24', type: 'warning' },
   ],
   8: [
     { id: 'w8_surge', text: '⚠ موجة عاصفة!', sub: '', color: '#dc2626', type: 'warning' },
@@ -786,7 +799,10 @@ export const WAVE_WARNINGS: Record<number, { id: string; text: string; sub: stri
   ],
   9: [{ id: 'w9_calm', text: 'هدوء قبل العاصفة', sub: '', color: '#60a5fa', type: 'warning' }],
   10: [{ id: 'w10_combined', text: 'تحذير: جميع التهديدات!', sub: '', color: '#991b1b', type: 'warning' }],
-  11: [{ id: 'w11_preboss', text: '⚠ قاذفات إضافية قادمة!', sub: '', color: '#dc2626', type: 'warning' }],
+  11: [
+    { id: 'w11_preboss', text: '⚠ قاذفات إضافية قادمة!', sub: '', color: '#dc2626', type: 'warning' },
+    { id: 'w11_minefield', text: 'تحذير: ألغام أرضية قادمة!', sub: '', color: '#fbbf24', type: 'warning' },
+  ],
   12: [
     { id: 'w12_boss', text: 'تحذير: طائرة حربية!', sub: '', color: '#dc2626', type: 'warning' },
     { id: 'w12_cluster5', text: 'تحذير: تشظي خماسي!', sub: '', color: '#991b1b', type: 'warning' },
@@ -1751,8 +1767,12 @@ function updateWaveEvents(g: GameData, dt: number) {
     } else if (e.type === 'volley') {
       startVolley(g);
     } else if (e.type === 'minefield') {
-      // Dispatch a mine-planting soldier (no more instant 5-mine drops)
-      if (!g.minePlanter) spawnMinePlanter(g);
+      // Delay soldier arrival by 5s after the event trigger so the
+      // minesweeper offer card has time to appear and be purchased.
+      if (!g.minePlanter && !g.minePlanterScheduled) {
+        g.minePlanterScheduled = true;
+        g.minePlanterArrivalTime = g.waveElapsed + 5;
+      }
     } else if (e.type === 'surge') {
       g.surgeFlashTimer = 1.0;
     }
@@ -1787,6 +1807,12 @@ function updateWaveEvents(g: GameData, dt: number) {
       q.nextTimer = 0.4;
       if (q.remaining <= 0) g.volleyQueue = null;
     }
+  }
+
+  // Delayed mine planter arrival — give player time to buy minesweeper
+  if (g.minePlanterScheduled && !g.minePlanter && g.waveElapsed >= g.minePlanterArrivalTime) {
+    g.minePlanterScheduled = false;
+    spawnMinePlanter(g);
   }
 
   if (g.surgeFlashTimer > 0) g.surgeFlashTimer = Math.max(0, g.surgeFlashTimer - dt);
@@ -1924,6 +1950,11 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
           d.vel.y = -d.speed * 2;
         }
       }
+      // Clean up mine planter soldier
+      if (g.minePlanter) { g.minePlanter.active = false; g.minePlanter = null; }
+      g.minePlanterScheduled = false;
+      // Dismiss any active minesweeper offer
+      if (g.minesweeperOffer) { g.minesweeperOffer = null; }
     }
     return;
   }
