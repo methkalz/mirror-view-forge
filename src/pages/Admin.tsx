@@ -740,6 +740,7 @@ const WavesPanel: React.FC<{
         warningColor: '#ef4444',
         warningType: 'warning',
         warningSoundKey: null,
+        events: [],
       });
     }
   };
@@ -949,6 +950,7 @@ const WavesPanel: React.FC<{
               clusterSplits: 0, bulletLevel: 1, phaseInDelay: 0, droneInterval: 0,
               hasBoss: false, hasChemical: false, hasIncendiary: false,
               warningText: null, warningColor: '#ef4444', warningType: 'warning', warningSoundKey: null,
+              events: [],
             })} style={btnPrimary}>+ إضافة موجة</button>
           </div>
 
