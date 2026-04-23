@@ -57,6 +57,9 @@ export function createGame(w: number, h: number): GameData {
       fireSuitTimer: 0,
       fireSuitDonTimer: 0,
       fireSuitDoffTimer: 0,
+      minesweeperTimer: 0,
+      minesweeperDonTimer: 0,
+      minesweeperDoffTimer: 0,
       maxAmmo: 30,
       speedMultiplier: 1,
       slowMoDuration: 5,
@@ -165,6 +168,12 @@ export function createGame(w: number, h: number): GameData {
     fireSuitDropScheduled: false,
     fireSuitDropTime: 0,
     fireSuitOfferPending: false,
+    minesweeperOffer: null,
+    minesweeperOwned: false,
+    minesweeperOfferDelay: 0,
+    minePlanterArrivalTime: 0,
+    minePlanterScheduled: false,
+    minePlanter: null,
     scoreCountdown: null,
     waveEvents: [],
     waveEventsFired: [],
@@ -209,6 +218,9 @@ export function resetGame(g: GameData) {
   g.player.fireSuitTimer = 0;
   g.player.fireSuitDonTimer = 0;
   g.player.fireSuitDoffTimer = 0;
+  g.player.minesweeperTimer = 0;
+  g.player.minesweeperDonTimer = 0;
+  g.player.minesweeperDoffTimer = 0;
   g.player.maxAmmo = 30;
   g.player.speedMultiplier = 1;
   g.player.slowMoDuration = 5;
@@ -282,6 +294,12 @@ export function resetGame(g: GameData) {
   g.fireSuitDropScheduled = false;
   g.fireSuitDropTime = 0;
   g.fireSuitOfferPending = false;
+  g.minesweeperOffer = null;
+  g.minesweeperOwned = false;
+  g.minesweeperOfferDelay = 0;
+  g.minePlanterArrivalTime = 0;
+  g.minePlanterScheduled = false;
+  g.minePlanter = null;
   g.scoreCountdown = null;
   g.waveEvents = [];
   g.waveEventsFired = [];
@@ -1595,18 +1613,40 @@ function spawnSwarm(g: GameData, count: number) {
 }
 
 /** Drops 5 mines across the ground at evenly-spaced positions. */
-function spawnMinefield(g: GameData) {
-  const margin = 60;
-  const spacing = (g.width - margin * 2) / 5;
-  for (let i = 0; i < 5; i++) {
-    const x = margin + spacing * i + spacing * 0.5 + (Math.random() - 0.5) * spacing * 0.4;
-    spawnMineAt(g, x);
+/** Schedules a mine-planter soldier to arrive. Creates the entity with a plant
+ *  plan (3 spots spread across the ground). */
+function spawnMinePlanter(g: GameData) {
+  const fromRight = Math.random() < 0.5;
+  const groundY = g.height * GROUND_RATIO;
+  const margin = 80;
+  // Three plant spots spread across the play area
+  const usable = g.width - margin * 2;
+  const spots: number[] = [];
+  const count = 3;
+  for (let i = 0; i < count; i++) {
+    const t = (i + 0.5) / count;
+    spots.push(margin + t * usable + (Math.random() - 0.5) * 50);
   }
-  g.cinematicWarning = { text: '⚠ حقل ألغام!', subText: '', color: '#fbbf24', timer: 1.0, duration: 1.0, type: 'warning' };
+  // Sort spots by walk direction so the soldier moves monotonically
+  if (fromRight) spots.sort((a, b) => b - a); else spots.sort((a, b) => a - b);
+
+  g.minePlanter = {
+    active: true,
+    pos: { x: fromRight ? g.width + 30 : -30, y: groundY },
+    facingRight: !fromRight,
+    phase: 'entering',
+    phaseTimer: 0,
+    plantSpots: spots,
+    currentSpot: 0,
+    minesPlanted: 0,
+    walkAnim: 0,
+  };
+  g.cinematicWarning = { text: '⚠ عسكري يزرع ألغام!', subText: '', color: '#f59e0b', timer: 1.2, duration: 1.2, type: 'warning' };
+  sfxWarningAlert();
 }
 
-/** Spawns a single mine at a specific ground X. */
-function spawnMineAt(g: GameData, x: number) {
+/** Plants a single mine at a specific ground X. */
+function plantMineAt(g: GameData, x: number) {
   const groundY = g.height * GROUND_RATIO;
   const h = getFromPool<Hazard>(g.hazards, createHazardDefault);
   const cx = Math.max(30, Math.min(g.width - 30, x));
@@ -1621,7 +1661,8 @@ function spawnMineAt(g: GameData, x: number) {
   h.falling = true;
   h.mineState = 'arming';
   h.mineTimer = 1.0;
-  h.mineLife = 5.0;
+  h.mineLife = 60.0;  // long life — stays until end of wave
+  h.mineDefuseProgress = 0;
   h.rotation = 0;
   h.trailTimer = 0;
   h.isFireBomb = false;
@@ -1629,6 +1670,54 @@ function spawnMineAt(g: GameData, x: number) {
   h.isClusterBomb = false;
   h.splitDone = false;
   g.activeHazardCount++;
+  spawnParticles(g, { x: cx, y: groundY }, 4, '#6b6b6b', 30, false);
+}
+
+/** Drives the mine-planter soldier through its state machine. */
+function updateMinePlanter(g: GameData, dt: number) {
+  const m = g.minePlanter;
+  if (!m || !m.active) return;
+  const walkSpeed = 70;
+  const dir = m.facingRight ? 1 : -1;
+  m.walkAnim += Math.abs(walkSpeed) * dt * 0.05;
+  m.phaseTimer += dt;
+
+  if (m.phase === 'entering' || m.phase === 'walkingToSpot') {
+    // Walk toward current plant spot
+    const target = m.plantSpots[m.currentSpot];
+    if (target === undefined) {
+      m.phase = 'leaving';
+      m.phaseTimer = 0;
+      return;
+    }
+    const dx = target - m.pos.x;
+    if (Math.abs(dx) < 4) {
+      m.phase = 'planting';
+      m.phaseTimer = 0;
+    } else {
+      m.pos.x += Math.sign(dx) * walkSpeed * dt;
+    }
+  } else if (m.phase === 'planting') {
+    // 1 second crouch-and-plant animation
+    if (m.phaseTimer >= 1.0) {
+      plantMineAt(g, m.pos.x);
+      m.minesPlanted++;
+      m.currentSpot++;
+      if (m.currentSpot >= m.plantSpots.length) {
+        m.phase = 'leaving';
+      } else {
+        m.phase = 'walkingToSpot';
+      }
+      m.phaseTimer = 0;
+    }
+  } else if (m.phase === 'leaving') {
+    // Walk off screen
+    m.pos.x += dir * walkSpeed * dt;
+    if (m.pos.x < -60 || m.pos.x > g.width + 60) {
+      m.active = false;
+      g.minePlanter = null;
+    }
+  }
 }
 
 /** Starts a missile volley: 5 missiles from the same X, 0.4s apart. */
@@ -1653,7 +1742,8 @@ function updateWaveEvents(g: GameData, dt: number) {
     } else if (e.type === 'volley') {
       startVolley(g);
     } else if (e.type === 'minefield') {
-      spawnMinefield(g);
+      // Dispatch a mine-planting soldier (no more instant 5-mine drops)
+      if (!g.minePlanter) spawnMinePlanter(g);
     } else if (e.type === 'surge') {
       g.surgeFlashTimer = 1.0;
     }
@@ -1778,6 +1868,23 @@ function startNextWave(g: GameData) {
   } else {
     g.fireSuitOfferPending = false;
     g.fireSuitDropScheduled = false;
+  }
+
+  // ── Minesweeper offer — triggered if this wave has a minefield event ──
+  const hasMinefield = !!recipe.events?.some(e => e.type === 'minefield');
+  const needsSweeper = hasMinefield && g.player.minesweeperTimer <= 0;
+  if (needsSweeper) {
+    // Show offer a few seconds before the planter arrives. Offer starts after
+    // any gas/fire offers have had time to resolve.
+    const extraDelay = (needsGas || needsFire) ? 4.0 : 2.5;
+    g.minesweeperOfferDelay = extraDelay;
+    g.minePlanterScheduled = true;
+    // Find the first minefield event time and plan to arrive ~6s later so the
+    // offer has time to appear before mines are actually planted.
+    const ev = recipe.events?.find(e => e.type === 'minefield');
+    g.minePlanterArrivalTime = g.waveElapsed + (ev?.triggerAt ?? 15);
+  } else {
+    g.minePlanterScheduled = false;
   }
 }
 
@@ -1942,6 +2049,67 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
             sfxUpgradeSelect();
             addFloatingText(g, 'بدلة نار! 🔥', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#f97316');
             spawnParticles(g, g.player.pos, 10, '#f97316', 90);
+          } else {
+            addFloatingText(g, 'نقاط غير كافية!', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#ef4444');
+          }
+        }
+      }
+    }
+
+    // ── Minesweeper offer (dynamic 1% price, fires before the planter arrives) ──
+    if (g.minesweeperOfferDelay > 0) {
+      // Don't start countdown while another offer card is open
+      if (!g.gasMaskOffer && !g.fireSuitOffer) {
+        g.minesweeperOfferDelay -= dt;
+        if (g.minesweeperOfferDelay <= 0) {
+          g.minesweeperOfferDelay = 0;
+          // 1% of current score, min 10
+          const cost = Math.max(10, Math.ceil(g.score * 0.01));
+          g.minesweeperOffer = { active: true, timer: 8, cost };
+          g.slowMoFactor = 0.1;
+          sfxUpgradeAlert();
+        }
+      }
+    }
+
+    if (g.minesweeperOffer && g.minesweeperOffer.active) {
+      g.minesweeperOffer.timer -= dt;
+      if (g.minesweeperOffer.timer <= 0) {
+        g.minesweeperOffer = null;
+        g.slowMoFactor = 1;
+      }
+      if (input.cardClick && g.minesweeperOffer) {
+        const { x, y } = input.cardClick;
+        const offerDuration = 8;
+        const slideIn = Math.min(1, (offerDuration - g.minesweeperOffer.timer) * 4);
+        const slideY = (1 - slideIn) * 80;
+        const cardW = Math.min(200, g.width - 40);
+        const cardH = Math.min(270, g.height * 0.55);
+        const cardX = (g.width - cardW) / 2;
+        const cardY = g.height * 0.5 - cardH / 2 + slideY;
+        const refuseW = Math.min(150, cardW);
+        const refuseH = 34;
+        const refuseX = (g.width - refuseW) / 2;
+        const refuseY = cardY + cardH + 12;
+
+        if (x >= refuseX && x <= refuseX + refuseW && y >= refuseY && y <= refuseY + refuseH) {
+          input.cardClick = null;
+          g.minesweeperOffer = null;
+          g.slowMoFactor = 1;
+          sfxSlideTransition();
+        } else if (x >= cardX && x <= cardX + cardW && y >= cardY && y <= cardY + cardH) {
+          input.cardClick = null;
+          if (g.score >= g.minesweeperOffer.cost) {
+            const cost = g.minesweeperOffer.cost;
+            g.scoreCountdown = { remaining: cost, tickTimer: 0, totalCost: cost };
+            g.minesweeperOwned = true;
+            g.player.minesweeperTimer = Math.max(20, g.waveTimer + 10);
+            g.player.minesweeperDonTimer = 0.6;
+            g.minesweeperOffer = null;
+            g.slowMoFactor = 0.5;
+            sfxUpgradeSelect();
+            addFloatingText(g, 'كاشف ألغام! 🔍', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#fbbf24');
+            spawnParticles(g, g.player.pos, 10, '#fbbf24', 90);
           } else {
             addFloatingText(g, 'نقاط غير كافية!', { x: g.player.pos.x, y: g.player.pos.y - 40 }, '#ef4444');
           }
@@ -2257,6 +2425,9 @@ export function update(g: GameData, input: InputState, dt: number) {
   // === Mid-wave Events ===
   updateWaveEvents(g, dt);
 
+  // === Mine Planter Soldier ===
+  updateMinePlanter(g, dt);
+
   // === Wave Phase System ===
   updateWaveSystem(g, input, dt);
 
@@ -2385,6 +2556,18 @@ export function update(g: GameData, input: InputState, dt: number) {
     p.dashTimer -= dt;
     p.velocity.x = p.dashDir.x * DASH_SPEED;
     p.animTimer += dt;
+    // Dash defuses ground mines on contact
+    for (const h of g.hazards) {
+      if (!h.active || h.type !== 'mine') continue;
+      if (Math.abs(p.pos.x - h.pos.x) < 30 + p.size) {
+        h.active = false;
+        g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
+        addExplosion(g, h.pos, h.size * 1.5);
+        spawnParticles(g, h.pos, 8, '#fbbf24', 120);
+        addFloatingText(g, 'Defused! +50', h.pos, '#22c55e');
+        g.score += 50;
+      }
+    }
     if (p.dashTimer <= 0) {
       p.isDashing = false;
       p.anim = 'idle';
@@ -2529,9 +2712,29 @@ export function update(g: GameData, input: InputState, dt: number) {
         }
       } else if (h.mineState === 'armed') {
         const dp = dist(h.pos, p.pos);
-        if (dp < 60 + p.size) {
-          h.mineState = 'triggered';
-          h.mineTimer = 0.5;
+        const DEFUSE_RANGE = 45;
+        const TRIGGER_RANGE = 60;
+        const hasSweeper = p.minesweeperTimer > 0;
+        if (hasSweeper && dp < DEFUSE_RANGE + p.size) {
+          // Player is defusing — progress fills over 3 seconds
+          h.mineDefuseProgress = (h.mineDefuseProgress ?? 0) + dt;
+          if ((h.mineDefuseProgress ?? 0) >= 3.0) {
+            // Safely defused
+            h.active = false;
+            g.activeHazardCount = Math.max(0, g.activeHazardCount - 1);
+            spawnParticles(g, h.pos, 10, '#22c55e', 140);
+            addFloatingText(g, 'Defused! +75', h.pos, '#22c55e');
+            g.score += 75;
+            sfxPickup();
+          }
+        } else {
+          // Out of defuse range — reset progress
+          if ((h.mineDefuseProgress ?? 0) > 0) h.mineDefuseProgress = 0;
+          // Normal trigger check (only if player has no sweeper or is out of defuse range)
+          if (!hasSweeper && dp < TRIGGER_RANGE + p.size) {
+            h.mineState = 'triggered';
+            h.mineTimer = 0.5;
+          }
         }
         if ((h.mineLife ?? 0) <= 0) {
           h.active = false;
@@ -3009,11 +3212,21 @@ export function update(g: GameData, input: InputState, dt: number) {
       p.fireSuitDoffTimer = 0.5;
     }
   }
+  if (p.minesweeperTimer > 0) {
+    p.minesweeperTimer -= dt;
+    if (p.minesweeperTimer <= 0) {
+      p.minesweeperTimer = 0;
+      g.minesweeperOwned = false;
+      p.minesweeperDoffTimer = 0.4;
+    }
+  }
   // Decay the don/doff animation timers
   if (p.gasMaskDonTimer > 0) p.gasMaskDonTimer = Math.max(0, p.gasMaskDonTimer - dt);
   if (p.gasMaskDoffTimer > 0) p.gasMaskDoffTimer = Math.max(0, p.gasMaskDoffTimer - dt);
   if (p.fireSuitDonTimer > 0) p.fireSuitDonTimer = Math.max(0, p.fireSuitDonTimer - dt);
   if (p.fireSuitDoffTimer > 0) p.fireSuitDoffTimer = Math.max(0, p.fireSuitDoffTimer - dt);
+  if (p.minesweeperDonTimer > 0) p.minesweeperDonTimer = Math.max(0, p.minesweeperDonTimer - dt);
+  if (p.minesweeperDoffTimer > 0) p.minesweeperDoffTimer = Math.max(0, p.minesweeperDoffTimer - dt);
   if (p.extinguisherTimer > 0) p.extinguisherTimer -= dt;
 
   // === Cap concurrent fire pools / gas clouds to avoid frame stalls ===
