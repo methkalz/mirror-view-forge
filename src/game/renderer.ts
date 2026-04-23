@@ -1589,6 +1589,28 @@ function renderHazards(ctx: CanvasRenderingContext2D, g: GameData) {
         ctx.arc(0, -r * 0.3, r * 2.2, 0, Math.PI * 2);
         ctx.fill();
       }
+      // Defuse progress bar above the mine
+      if ((hz.mineDefuseProgress ?? 0) > 0) {
+        const progress = Math.min(1, (hz.mineDefuseProgress ?? 0) / 3);
+        const barW = 32;
+        const barH = 4;
+        const barY = -r * 2 - 6;
+        // Background
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(-barW / 2, barY, barW, barH);
+        // Fill
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(-barW / 2, barY, barW * progress, barH);
+        // Border
+        ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+        ctx.lineWidth = 0.8;
+        ctx.strokeRect(-barW / 2, barY, barW, barH);
+        // Text
+        ctx.fillStyle = '#22c55e';
+        ctx.font = 'bold 9px Tajawal, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('جارٍ التفكيك', 0, barY - 4);
+      }
     } else if (hz.type === 'meteor') {
       // ═══ Meteor — large glowing rock with fiery trail ═══
       const r = hz.size;
@@ -5346,6 +5368,134 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
 
     ctx.globalAlpha = 1;
   }
+
+  // ═══ Minesweeper offer card ═══
+  if (g.minesweeperOffer && g.minesweeperOffer.active && g.state === 'playing') {
+    const cardW = Math.min(200, g.width - 40);
+    const cardH = Math.min(270, g.height * 0.55);
+    const cardX = (g.width - cardW) / 2;
+    const offerDuration = 8;
+    const slideIn = Math.min(1, (offerDuration - g.minesweeperOffer.timer) * 4);
+    const fadeOut = g.minesweeperOffer.timer < 1 ? g.minesweeperOffer.timer : 1;
+    const slideY = (1 - slideIn) * 80;
+    const cardY = g.height * 0.5 - cardH / 2 + slideY;
+
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.7 * slideIn * fadeOut})`;
+    ctx.fillRect(0, 0, g.width, g.height);
+    ctx.globalAlpha = slideIn * fadeOut;
+
+    ctx.shadowColor = 'rgba(251, 191, 36, 0.45)';
+    ctx.shadowBlur = 30;
+    const bgGrad = ctx.createLinearGradient(cardX, cardY, cardX, cardY + cardH);
+    bgGrad.addColorStop(0, 'rgba(120, 90, 15, 0.97)');
+    bgGrad.addColorStop(0.5, 'rgba(90, 65, 10, 0.97)');
+    bgGrad.addColorStop(1, 'rgba(60, 43, 6, 0.97)');
+    ctx.fillStyle = bgGrad;
+    roundRect(ctx, cardX, cardY, cardW, cardH, 16);
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+
+    ctx.strokeStyle = `rgba(251, 191, 36, ${0.55 + Math.sin(g.elapsed * 3) * 0.2})`;
+    ctx.lineWidth = 2.5;
+    roundRect(ctx, cardX, cardY, cardW, cardH, 16);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.15)';
+    ctx.lineWidth = 1;
+    roundRect(ctx, cardX + 4, cardY + 4, cardW - 8, cardH - 8, 13);
+    ctx.stroke();
+
+    const cx = cardX + cardW / 2;
+    const iconY = cardY + 65;
+
+    const iconGrad = ctx.createRadialGradient(cx, iconY, 0, cx, iconY, 36);
+    iconGrad.addColorStop(0, 'rgba(251, 191, 36, 0.28)');
+    iconGrad.addColorStop(1, 'rgba(251, 191, 36, 0.05)');
+    ctx.fillStyle = iconGrad;
+    ctx.beginPath();
+    ctx.arc(cx, iconY, 36, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Metal detector icon — handle + head
+    ctx.save();
+    ctx.translate(cx, iconY);
+    ctx.rotate(-0.25);
+    // Handle
+    ctx.strokeStyle = '#8b6b2e';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-10, -18);
+    ctx.lineTo(-2, 16);
+    ctx.stroke();
+    // Disc head
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath();
+    ctx.ellipse(-2, 18, 16, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#4a3310';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // Pulse dot
+    ctx.fillStyle = 'rgba(34,197,94,0.9)';
+    ctx.beginPath();
+    ctx.arc(-2, 16, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px Tajawal, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.direction = 'rtl';
+    ctx.fillText('كاشف ألغام', cx, cardY + 120);
+
+    ctx.fillStyle = 'rgba(255, 232, 170, 0.85)';
+    ctx.font = '13px Tajawal, sans-serif';
+    ctx.fillText('اقترب من اللغم لتفكيكه!', cx, cardY + 148);
+
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 22px Tajawal, sans-serif';
+    ctx.fillText(`⭐ ${g.minesweeperOffer.cost}  (1%)`, cx, cardY + 185);
+
+    const pressPulse = 0.5 + Math.sin(g.elapsed * 4) * 0.3;
+    ctx.fillStyle = `rgba(251, 191, 36, ${pressPulse})`;
+    ctx.font = 'bold 13px Tajawal, sans-serif';
+    ctx.fillText('اضغط البطاقة للشراء', cx, cardY + 218);
+
+    const timerRatio = g.minesweeperOffer.timer / offerDuration;
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.2)';
+    roundRect(ctx, cardX + 6, cardY + cardH - 12, cardW - 12, 6, 3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.75)';
+    roundRect(ctx, cardX + 6, cardY + cardH - 12, (cardW - 12) * timerRatio, 6, 3);
+    ctx.fill();
+
+    const refuseW = Math.min(150, cardW);
+    const refuseH = 34;
+    const refuseX = (g.width - refuseW) / 2;
+    const refuseY = cardY + cardH + 12;
+    ctx.fillStyle = 'rgba(40,40,50,0.75)';
+    roundRect(ctx, refuseX, refuseY, refuseW, refuseH, refuseH / 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.lineWidth = 1;
+    roundRect(ctx, refuseX, refuseY, refuseW, refuseH, refuseH / 2);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.font = 'bold 13px Tajawal, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('بدّيش أشتري', refuseX + refuseW / 2, refuseY + refuseH / 2);
+    ctx.textBaseline = 'alphabetic';
+    ctx.direction = 'ltr';
+
+    ctx.globalAlpha = 1;
+  }
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -7914,6 +8064,106 @@ function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
   renderMotorcycle(ctx, bike, g, false, false, 0);
 }
 
+function renderMinePlanter(ctx: CanvasRenderingContext2D, g: GameData) {
+  const m = g.minePlanter;
+  if (!m || !m.active) return;
+  const planting = m.phase === 'planting';
+  const walkCycle = Math.sin(m.walkAnim * 2);
+  const legSwing = planting ? 0 : walkCycle * 8;
+  const crouchY = planting ? 8 : 0;
+  const dir = m.facingRight ? 1 : -1;
+
+  ctx.save();
+  ctx.translate(m.pos.x, m.pos.y + crouchY);
+  ctx.scale(dir, 1);
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(0, 2, 14, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Legs (military pants, slight swing while walking)
+  ctx.fillStyle = '#3d4d2e';
+  ctx.fillRect(-6, -22, 4, 22 - crouchY * 0.5);  // back leg
+  ctx.fillRect(2 + legSwing * 0.3, -22, 4, 22 - crouchY * 0.5);  // front leg
+  // Boots
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(-7, -3, 6, 3);
+  ctx.fillRect(1 + legSwing * 0.3, -3, 6, 3);
+
+  // Torso (military jacket)
+  const torsoGrad = ctx.createLinearGradient(0, -48, 0, -22);
+  torsoGrad.addColorStop(0, '#526340');
+  torsoGrad.addColorStop(1, '#3d4d2e');
+  ctx.fillStyle = torsoGrad;
+  const torsoY = planting ? -36 : -48;
+  ctx.fillRect(-7, torsoY, 14, (planting ? 14 : 26));
+
+  // Vest straps (lighter for visibility)
+  ctx.fillStyle = '#6b7a55';
+  ctx.fillRect(-6, torsoY + 4, 12, 2);
+  ctx.fillRect(-6, torsoY + 10, 12, 2);
+
+  // Arms (reaching down when planting)
+  ctx.fillStyle = '#3d4d2e';
+  if (planting) {
+    // Both hands near ground working on mine
+    ctx.fillRect(2, -24, 4, 16);   // right arm reaching down
+    ctx.fillRect(-6, -24, 4, 16);  // left arm reaching down
+  } else {
+    // One arm forward (carrying), one back
+    ctx.fillRect(4, -44 + Math.abs(walkCycle) * 3, 4, 14);
+    ctx.fillRect(-8, -44 + Math.abs(walkCycle) * -3, 4, 14);
+  }
+
+  // Helmet
+  ctx.fillStyle = '#4a5a3c';
+  ctx.beginPath();
+  ctx.arc(0, planting ? -40 : -52, 7, Math.PI, Math.PI * 2);
+  ctx.fill();
+  // Helmet rim
+  ctx.strokeStyle = '#2a331f';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-7, planting ? -40 : -52);
+  ctx.lineTo(7, planting ? -40 : -52);
+  ctx.stroke();
+
+  // Face (minimal)
+  ctx.fillStyle = '#c7a888';
+  ctx.fillRect(-4, planting ? -40 : -52, 8, 4);
+
+  // Mine in hands during planting (visual cue)
+  if (planting) {
+    const plantProgress = Math.min(1, m.phaseTimer / 1.0);
+    const mineY = -14 + plantProgress * 12;  // lowers toward ground
+    ctx.fillStyle = '#2a2a30';
+    ctx.beginPath();
+    ctx.arc(0, mineY, 5, Math.PI, Math.PI * 2);
+    ctx.closePath();
+    ctx.fill();
+    // Yellow top light on mine
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath();
+    ctx.arc(0, mineY - 3, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+
+  // "PLANTING" text while planting
+  if (planting) {
+    ctx.save();
+    const alpha = 0.7 + Math.sin(performance.now() * 0.008) * 0.3;
+    ctx.fillStyle = `rgba(251,191,36,${alpha})`;
+    ctx.font = 'bold 10px Tajawal, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚠ يزرع لغم', m.pos.x, m.pos.y - 70);
+    ctx.restore();
+  }
+}
+
 // ─── Intro Bike + Passenger + Farewell Scene ──────────────────────────
 function renderIntroBike(ctx: CanvasRenderingContext2D, g: GameData) {
   const bike = g.introBike;
@@ -8334,6 +8584,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderPowerUps(ctx, g);
   renderFirePools(ctx, g);
   renderDeliveryBike(ctx, g);
+  renderMinePlanter(ctx, g);
   renderIntroBike(ctx, g);
   renderGasClouds(ctx, g);
   renderDrones(ctx, g);
@@ -8398,6 +8649,49 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.restore();
     }
     renderPlayer(ctx, g);
+    // Minesweeper tool in the player's hand (drawn after player body)
+    if (g.player.minesweeperTimer > 0 || g.player.minesweeperDoffTimer > 0) {
+      const p = g.player;
+      const donProgress = p.minesweeperDonTimer > 0 ? 1 - (p.minesweeperDonTimer / 0.6) : 1;
+      const doffProgress = p.minesweeperDoffTimer > 0 ? (p.minesweeperDoffTimer / 0.4) : 1;
+      const vis = p.minesweeperTimer > 0 ? donProgress : doffProgress;
+      ctx.save();
+      ctx.globalAlpha = vis;
+      ctx.translate(p.pos.x + (p.facingRight ? 12 : -12), p.pos.y - 18);
+      ctx.rotate(p.facingRight ? 0.4 : -0.4);
+      if (!p.facingRight) ctx.scale(-1, 1);
+      // Handle (wood/metal)
+      ctx.strokeStyle = '#8b6b2e';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-2, -10);
+      ctx.lineTo(6, 14);
+      ctx.stroke();
+      // Disc head (gold)
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.ellipse(6, 16, 10, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#3a2a0a';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Status LED (pulses green when near a mine, amber otherwise)
+      let nearArmedMine = false;
+      for (const h of g.hazards) {
+        if (h.active && h.type === 'mine' && h.mineState === 'armed') {
+          if (Math.abs(h.pos.x - p.pos.x) < 60) { nearArmedMine = true; break; }
+        }
+      }
+      const led = nearArmedMine ? '#22c55e' : '#fbbf24';
+      const pulse = 0.5 + Math.sin(g.elapsed * (nearArmedMine ? 10 : 3)) * 0.5;
+      ctx.fillStyle = led;
+      ctx.globalAlpha = vis * (0.5 + pulse * 0.5);
+      ctx.beginPath();
+      ctx.arc(6, 14, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
   renderParticles(ctx, g);
   renderRain(ctx, g);

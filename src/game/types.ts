@@ -15,7 +15,7 @@ export interface WaveEventSpec {
   triggerAt: number;
   duration: number;
 }
-export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike' | 'extinguisher' | 'water' | 'gasmask' | 'firesuit';
+export type PowerUpType = 'medkit' | 'shield' | 'interceptor' | 'ammo' | 'slowmo' | 'magnet' | 'airstrike' | 'extinguisher' | 'water' | 'gasmask' | 'firesuit' | 'minesweeper';
 export type DroneState = 'entering' | 'tracking' | 'bombing';
 export type DroneTier = 'scout' | 'tracker' | 'bomber' | 'cargo' | 'incendiary' | 'chemical' | 'laser';
 export type PlayerAnim = 'idle' | 'walk' | 'roll' | 'hit';
@@ -55,6 +55,11 @@ export interface Player {
   fireSuitTimer: number;
   fireSuitDonTimer: number;
   fireSuitDoffTimer: number;
+  /** Mine sweeper tool. While > 0 the player can defuse armed mines by
+   *  standing within range for 3 seconds. Shown as a metal detector in-hand. */
+  minesweeperTimer: number;
+  minesweeperDonTimer: number;
+  minesweeperDoffTimer: number;
   // Upgrade-enhanced stats
   maxAmmo: number;
   speedMultiplier: number;
@@ -101,6 +106,8 @@ export interface Hazard {
   mineState?: 'arming' | 'armed' | 'triggered';
   mineTimer?: number;
   mineLife?: number;
+  /** Defuse progress 0..3s when player with minesweeper is within range. */
+  mineDefuseProgress?: number;
 }
 
 export interface PowerUp {
@@ -290,6 +297,20 @@ export interface DeliveryBike {
   rpmPhase?: number;
 }
 
+/** Enemy soldier that walks across the ground planting mines at scheduled spots.
+ *  Cinematic entity — cannot be damaged, only moves through its own state machine. */
+export interface MinePlanter {
+  active: boolean;
+  pos: Vec2;
+  facingRight: boolean;
+  phase: 'entering' | 'walkingToSpot' | 'planting' | 'leaving';
+  phaseTimer: number;
+  plantSpots: number[];       // X coordinates where mines will be planted
+  currentSpot: number;        // index into plantSpots
+  minesPlanted: number;
+  walkAnim: number;
+}
+
 export interface UpgradeCard {
   id: string;
   name: string;
@@ -416,6 +437,15 @@ export interface GameData {
   /** If true, the fire suit offer is waiting for the gas mask offer to
    *  resolve before it can start its delay countdown. */
   fireSuitOfferPending: boolean;
+
+  // Minesweeper purchase + per-wave mine planter arrival (mirror of gas mask)
+  minesweeperOffer: { active: boolean; timer: number; cost: number } | null;
+  minesweeperOwned: boolean;
+  minesweeperOfferDelay: number;
+  /** Time at which the mine-planter soldier should arrive (wave-clock). */
+  minePlanterArrivalTime: number;
+  minePlanterScheduled: boolean;
+  minePlanter: MinePlanter | null;
 
   // Score countdown animation
   scoreCountdown: { remaining: number; tickTimer: number; totalCost: number } | null;
