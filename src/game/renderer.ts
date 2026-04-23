@@ -4075,48 +4075,147 @@ function renderDrones(ctx: CanvasRenderingContext2D, g: GameData) {
       }
 
     } else if (d.tier === 'laser') {
-      // ═══ LASER DRONE — Hovering turret with a single optical lens ═══
+      // ═══ LASER DRONE — Armoured sentinel turret with targeting eye ═══
       const lt = performance.now() * 0.001;
-      // Body disc
-      const bodyGrad = ctx.createRadialGradient(-d.size * 0.25, -d.size * 0.3, 0, 0, 0, d.size);
-      bodyGrad.addColorStop(0, '#7a1d2e');
-      bodyGrad.addColorStop(0.5, '#4a0f1c');
-      bodyGrad.addColorStop(1, '#1a0408');
+      const sz = d.size;
+      const eyeActive = d.laserPhase === 'telegraph' || d.laserPhase === 'firing';
+      const isFiring = d.laserPhase === 'firing';
+
+      // ── Hover shadow on ground ──
+      const groundDist = g.height * 0.78 - d.pos.y;
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.beginPath();
+      ctx.ellipse(0, groundDist, sz * 0.5, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // ── Anti-gravity repulsor glow (beneath) ──
+      const repGrad = ctx.createLinearGradient(0, sz * 0.4, 0, sz * 0.8);
+      repGrad.addColorStop(0, `rgba(255,60,100,${0.15 + Math.sin(lt * 6) * 0.08})`);
+      repGrad.addColorStop(1, 'rgba(255,60,100,0)');
+      ctx.fillStyle = repGrad;
+      ctx.beginPath();
+      ctx.moveTo(-sz * 0.3, sz * 0.35);
+      ctx.lineTo(sz * 0.3, sz * 0.35);
+      ctx.lineTo(sz * 0.15, sz * 0.75);
+      ctx.lineTo(-sz * 0.15, sz * 0.75);
+      ctx.closePath();
+      ctx.fill();
+
+      // ── Side armour plates (angular, military look) ──
+      const armourGrad = ctx.createLinearGradient(-sz * 0.6, 0, sz * 0.6, 0);
+      armourGrad.addColorStop(0, '#1a1015');
+      armourGrad.addColorStop(0.3, '#2a1520');
+      armourGrad.addColorStop(0.5, '#3a2030');
+      armourGrad.addColorStop(0.7, '#2a1520');
+      armourGrad.addColorStop(1, '#1a1015');
+      ctx.fillStyle = armourGrad;
+      // Left plate
+      ctx.beginPath();
+      ctx.moveTo(-sz * 0.35, -sz * 0.35);
+      ctx.lineTo(-sz * 0.7, -sz * 0.1);
+      ctx.lineTo(-sz * 0.6, sz * 0.25);
+      ctx.lineTo(-sz * 0.3, sz * 0.35);
+      ctx.closePath();
+      ctx.fill();
+      // Right plate
+      ctx.beginPath();
+      ctx.moveTo(sz * 0.35, -sz * 0.35);
+      ctx.lineTo(sz * 0.7, -sz * 0.1);
+      ctx.lineTo(sz * 0.6, sz * 0.25);
+      ctx.lineTo(sz * 0.3, sz * 0.35);
+      ctx.closePath();
+      ctx.fill();
+
+      // ── Central body (octagonal turret) ──
+      const bodyGrad = ctx.createRadialGradient(-sz * 0.1, -sz * 0.1, 0, 0, 0, sz * 0.5);
+      bodyGrad.addColorStop(0, '#3a1525');
+      bodyGrad.addColorStop(0.6, '#25101a');
+      bodyGrad.addColorStop(1, '#180a10');
       ctx.fillStyle = bodyGrad;
       ctx.beginPath();
-      ctx.arc(0, 0, d.size * 0.7, 0, Math.PI * 2);
+      const sides = 8;
+      for (let i = 0; i < sides; i++) {
+        const a = (i / sides) * Math.PI * 2 - Math.PI / 2;
+        const px = Math.cos(a) * sz * 0.4;
+        const py = Math.sin(a) * sz * 0.38;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
       ctx.fill();
-      // Lens ring
-      ctx.strokeStyle = '#2a0810';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, d.size * 0.55, 0, Math.PI * 2);
+      // Turret edge highlight
+      ctx.strokeStyle = `rgba(255,60,100,${0.15 + (eyeActive ? 0.2 : 0)})`;
+      ctx.lineWidth = 1.2;
       ctx.stroke();
-      // Glowing eye — brightens during telegraph/firing
-      const eyeActive = d.laserPhase === 'telegraph' || d.laserPhase === 'firing';
-      const eyeGlow = eyeActive ? 0.85 + Math.sin(lt * 20) * 0.1 : 0.35;
-      const eyeGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, d.size * 0.4);
-      eyeGrad.addColorStop(0, `rgba(255,80,120,${eyeGlow})`);
-      eyeGrad.addColorStop(0.6, `rgba(200,30,80,${eyeGlow * 0.6})`);
-      eyeGrad.addColorStop(1, 'rgba(80,10,30,0)');
-      ctx.fillStyle = eyeGrad;
-      ctx.beginPath();
-      ctx.arc(0, 0, d.size * 0.4, 0, Math.PI * 2);
-      ctx.fill();
-      // Pupil
-      ctx.fillStyle = eyeActive ? `rgba(255,255,255,${0.9})` : 'rgba(120,30,60,0.8)';
-      ctx.beginPath();
-      ctx.arc(0, 0, d.size * 0.12, 0, Math.PI * 2);
-      ctx.fill();
-      // Antenna pods
-      ctx.strokeStyle = '#5a0f1a';
+
+      // ── Targeting eye — the core feature ──
+      // Outer ring
+      ctx.strokeStyle = eyeActive ? `rgba(255,80,120,${0.8 + Math.sin(lt * 12) * 0.2})` : 'rgba(120,30,60,0.5)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(-d.size * 0.55, -d.size * 0.15);
-      ctx.lineTo(-d.size * 0.75, -d.size * 0.35);
-      ctx.moveTo(d.size * 0.55, -d.size * 0.15);
-      ctx.lineTo(d.size * 0.75, -d.size * 0.35);
+      ctx.arc(0, 0, sz * 0.28, 0, Math.PI * 2);
       ctx.stroke();
+      // Eye interior glow
+      const eyeGlow = eyeActive ? 0.9 : 0.3;
+      const eyeGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, sz * 0.26);
+      eyeGrad.addColorStop(0, isFiring ? `rgba(255,255,255,${eyeGlow})` : `rgba(255,60,100,${eyeGlow})`);
+      eyeGrad.addColorStop(0.5, `rgba(200,20,70,${eyeGlow * 0.6})`);
+      eyeGrad.addColorStop(1, 'rgba(60,10,25,0)');
+      ctx.fillStyle = eyeGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, sz * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+      // Pupil/lens
+      ctx.fillStyle = isFiring ? '#ffffff' : (eyeActive ? 'rgba(255,200,220,0.9)' : 'rgba(120,25,50,0.8)');
+      ctx.beginPath();
+      ctx.arc(0, 0, sz * 0.08, 0, Math.PI * 2);
+      ctx.fill();
+      // Crosshair lines inside the eye when active
+      if (eyeActive) {
+        ctx.strokeStyle = `rgba(255,120,160,${0.6 + Math.sin(lt * 16) * 0.3})`;
+        ctx.lineWidth = 0.7;
+        const cr = sz * 0.22;
+        ctx.beginPath();
+        ctx.moveTo(0, -cr); ctx.lineTo(0, cr);
+        ctx.moveTo(-cr, 0); ctx.lineTo(cr, 0);
+        ctx.stroke();
+      }
+
+      // ── Top antenna array ──
+      ctx.strokeStyle = '#4a1525';
+      ctx.lineWidth = 1.5;
+      ctx.lineCap = 'round';
+      // Central antenna
+      ctx.beginPath();
+      ctx.moveTo(0, -sz * 0.38);
+      ctx.lineTo(0, -sz * 0.6);
+      ctx.stroke();
+      // Antenna tip
+      ctx.fillStyle = eyeActive ? '#ff4070' : '#6a2040';
+      ctx.beginPath();
+      ctx.arc(0, -sz * 0.62, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      // Side antennas
+      ctx.strokeStyle = '#3a1020';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-sz * 0.3, -sz * 0.32);
+      ctx.lineTo(-sz * 0.5, -sz * 0.52);
+      ctx.moveTo(sz * 0.3, -sz * 0.32);
+      ctx.lineTo(sz * 0.5, -sz * 0.52);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+
+      // ── Warning glow when about to fire ──
+      if (eyeActive) {
+        const pulseAlpha = 0.15 + Math.sin(lt * (isFiring ? 24 : 8)) * 0.1;
+        const warnGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, sz * 0.9);
+        warnGrad.addColorStop(0, `rgba(255,40,80,${pulseAlpha})`);
+        warnGrad.addColorStop(1, 'rgba(255,40,80,0)');
+        ctx.fillStyle = warnGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, sz * 0.9, 0, Math.PI * 2);
+        ctx.fill();
+      }
     } else {
       // ═══ BOMBER — Twin-rotor tiltwing heavy bomber ═══
       // Unique silhouette: wide fuselage, dorsal engine pod, visible bomb
