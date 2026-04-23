@@ -5638,12 +5638,30 @@ function renderBoss(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.translate(boss.pos.x, boss.pos.y);
 
   const s = boss.size;
-  const tilt = Math.sin(g.elapsed * 0.8) * 0.03;
+  const isMini = !!boss.isMini;
+  const tilt = Math.sin(g.elapsed * (isMini ? 1.2 : 0.8)) * (isMini ? 0.05 : 0.03);
   ctx.rotate(tilt);
+
+  // Mini-boss color tint
+  if (isMini) {
+    ctx.filter = 'hue-rotate(30deg) saturate(1.4)';
+  }
 
   // Damage flash
   if (boss.damageFlash > 0) {
     ctx.globalAlpha = 0.7 + boss.damageFlash;
+  }
+
+  // Mini-boss label
+  if (isMini) {
+    ctx.save();
+    ctx.filter = 'none';
+    const pulse = 0.7 + Math.sin(g.elapsed * 5) * 0.3;
+    ctx.fillStyle = `rgba(245,158,11,${pulse})`;
+    ctx.font = 'bold 11px Tajawal, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚠ قائد معركة', 0, -s * 0.65);
+    ctx.restore();
   }
 
   // Shadow on ground
