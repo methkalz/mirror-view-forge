@@ -23,7 +23,7 @@ import {
 import { playSynthesizedPreview } from '@/game/audio';
 import { WAVE_WARNINGS } from '@/game/engine';
 
-type TabKey = 'analytics' | 'config' | 'branding' | 'backgrounds' | 'waves' | 'leaderboard' | 'prizes' | 'audio' | 'simulator';
+type TabKey = 'analytics' | 'config' | 'branding' | 'backgrounds' | 'waves' | 'messages' | 'leaderboard' | 'prizes' | 'audio' | 'simulator';
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'analytics', icon: '📊', label: 'Analytics' },
@@ -31,6 +31,7 @@ const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'branding', icon: '🎨', label: 'Brand' },
   { key: 'backgrounds', icon: '🌅', label: 'Backgrounds' },
   { key: 'waves', icon: '🌊', label: 'Waves' },
+  { key: 'messages', icon: '💬', label: 'Messages' },
   { key: 'audio', icon: '🔊', label: 'Audio' },
   { key: 'simulator', icon: '🎮', label: 'Simulator' },
   { key: 'leaderboard', icon: '🏆', label: 'Leaders' },
