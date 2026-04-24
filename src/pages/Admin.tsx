@@ -2784,7 +2784,7 @@ const BrandingPanel: React.FC<{
 // ─── Wave Editor Modal ───
 const THREAT_TYPES = ['shrapnel', 'missile', 'cluster', 'meteor', 'mine'];
 const DRONE_TYPES = ['scout', 'tracker', 'bomber', 'cargo', 'incendiary', 'chemical', 'laser'];
-const WAVE_EVENT_TYPES = ['surge', 'calm', 'swarm', 'volley', 'minefield'];
+const WAVE_EVENT_TYPES = ['surge', 'calm', 'swarm', 'volley', 'minefield', 'airstrike_flyby'];
 
 const WaveEditor: React.FC<{
   wave: RemoteWaveConfig;
@@ -3010,12 +3010,16 @@ const SimulatorPanel: React.FC<{ isDesktop: boolean }> = ({ isDesktop }) => {
     { tier: 'tracker', icon: '📡', label: 'Tracker' },
     { tier: 'bomber', icon: '💣', label: 'Bomber' },
     { tier: 'laser', icon: '🔴', label: 'Laser' },
+    { tier: 'incendiary', icon: '🔥', label: 'Fire' },
+    { tier: 'chemical', icon: '☣️', label: 'Gas' },
+    { tier: 'cargo', icon: '📦', label: 'Cargo' },
   ];
   const EVENT_BTNS = [
     { type: 'surge', icon: '🔥', label: 'Surge' },
     { type: 'swarm', icon: '🐝', label: 'Swarm' },
     { type: 'volley', icon: '🚀', label: 'Volley' },
     { type: 'minefield', icon: '💣', label: 'Mines' },
+    { type: 'airstrike_flyby', icon: '✈️', label: 'Air Raid' },
   ];
 
   const simBtnStyle: React.CSSProperties = {
