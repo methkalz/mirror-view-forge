@@ -4,9 +4,10 @@ import { startMenuMusic } from '@/game/audio';
 interface GameLoaderProps {
   onLoaded: () => void;
   progress: number;
+  autoStart?: boolean;
 }
 
-const GameLoader: React.FC<GameLoaderProps> = ({ onLoaded, progress }) => {
+const GameLoader: React.FC<GameLoaderProps> = ({ onLoaded, progress, autoStart = false }) => {
   const [displayProgress, setDisplayProgress] = useState(0);
   const [fadeOut, setFadeOut] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -42,6 +43,16 @@ const GameLoader: React.FC<GameLoaderProps> = ({ onLoaded, progress }) => {
       return () => clearTimeout(timer);
     }
   }, [progress]);
+
+  // Auto-start: skip the button click when in simulator mode
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (autoStart && ready && !autoStartedRef.current) {
+      autoStartedRef.current = true;
+      setFadeOut(true);
+      setTimeout(onLoaded, 700);
+    }
+  }, [autoStart, ready, onLoaded]);
 
   const handleStart = async () => {
     startMenuMusic();
