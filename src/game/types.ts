@@ -456,6 +456,9 @@ export interface GameData {
   // Score countdown animation
   scoreCountdown: { remaining: number; tickTimer: number; totalCost: number } | null;
 
+  // Breaking News — dramatic cinematic overlay between waves
+  breakingNews: { text: string; subText: string; timer: number; duration: number } | null;
+
   // Mid-wave dynamic events
   waveEvents: WaveEventSpec[];
   waveEventsFired: boolean[];
