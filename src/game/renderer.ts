@@ -9243,37 +9243,51 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
 
     if (isBreakingNews) {
       // ═══ BREAKING NEWS — خبر عاجل ═══
+      const w = g.width;
+      const h = g.height;
+
       // Full dark overlay
       ctx.globalAlpha = textAlpha * 0.82;
       ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, g.width, g.height);
-
+      ctx.fillRect(0, 0, w, h);
       ctx.globalAlpha = textAlpha;
 
-      // Main red banner — gradient from red to darker red
-      const bannerH = 56;
-      const bannerY = g.height * 0.46 - bannerH / 2;
+      // Responsive sizing
+      const isMobile = w < 500;
+      const pad = isMobile ? 16 : 32;
+      const line1Size = Math.min(isMobile ? 17 : 22, w * 0.045);
+      const line2Size = Math.min(isMobile ? 15 : 19, w * 0.038);
+      const lineGap = line1Size * 1.4;
+      const bannerH = lineGap + line2Size + pad * 2;
+      const bannerY = h * 0.46 - bannerH / 2;
+
+      // Banner gradient — red to darker red
       const bannerGrad = ctx.createLinearGradient(0, bannerY, 0, bannerY + bannerH);
       bannerGrad.addColorStop(0, '#c41a1a');
       bannerGrad.addColorStop(0.5, '#a01010');
       bannerGrad.addColorStop(1, '#7a0a0a');
       ctx.fillStyle = bannerGrad;
-      ctx.fillRect(0, bannerY, g.width, bannerH);
+      ctx.fillRect(0, bannerY, w, bannerH);
 
-      // Thin white line top + bottom
+      // Thin white lines top + bottom
       ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      ctx.fillRect(0, bannerY, g.width, 1);
-      ctx.fillRect(0, bannerY + bannerH - 1, g.width, 1);
+      ctx.fillRect(0, bannerY, w, 1.5);
+      ctx.fillRect(0, bannerY + bannerH - 1.5, w, 1.5);
 
-      // Breaking news text — white on red
+      // Line 1: "خبر عاجل:"
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 18px Tajawal, Arial, sans-serif';
+      ctx.font = `bold ${Math.round(line1Size)}px Tajawal, Arial, sans-serif`;
       ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.textBaseline = 'top';
       ctx.direction = 'rtl';
-      ctx.fillText('خبر عاجل: المعاصر تدعو مواطنيها الى مغادرة كفرمندا فوراً', g.width / 2, bannerY + bannerH / 2);
+      ctx.fillText('خبر عاجل:', w / 2, bannerY + pad);
+
+      // Line 2: the message
+      ctx.font = `${Math.round(line2Size)}px Tajawal, Arial, sans-serif`;
+      ctx.fillText('المعاصر تدعو مواطنيها الى مغادرة كفرمندا فوراً', w / 2, bannerY + pad + lineGap);
 
       ctx.direction = 'ltr';
+      ctx.textBaseline = 'alphabetic';
     } else {
       // Standard wave announce
       ctx.globalAlpha = textAlpha * 0.7;
