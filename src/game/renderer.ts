@@ -4594,55 +4594,82 @@ function renderLaserBeams(ctx: CanvasRenderingContext2D, g: GameData) {
   for (const d of g.drones) {
     if (!d.active || d.tier !== 'laser') continue;
     if (d.laserPhase !== 'telegraph' && d.laserPhase !== 'firing') continue;
-    const targetX = d.laserTargetX ?? d.pos.x;
-    const startY = d.pos.y + d.size * 0.5;
+    const beamX = d.pos.x;
+    const startY = d.pos.y + d.size * 0.35;
     const endY = groundY;
     ctx.save();
     if (d.laserPhase === 'telegraph') {
-      // Thin telegraph line, dashed red
       const t = performance.now() * 0.002;
-      const pulse = 0.4 + Math.sin(t * 6) * 0.3;
+      const pulse = 0.3 + Math.sin(t * 8) * 0.25;
+      // Scanning line from drone to ground
       ctx.strokeStyle = `rgba(255,40,80,${pulse})`;
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 6]);
       ctx.beginPath();
-      ctx.moveTo(targetX, startY);
-      ctx.lineTo(targetX, endY);
+      ctx.moveTo(beamX, startY);
+      ctx.lineTo(beamX, endY);
       ctx.stroke();
       ctx.setLineDash([]);
-      // Ground impact marker
-      ctx.fillStyle = `rgba(255,40,80,${pulse * 0.6})`;
+      // Pulsing dot at drone exit point
+      ctx.fillStyle = `rgba(255,80,120,${pulse + 0.3})`;
       ctx.beginPath();
-      ctx.arc(targetX, endY, 8, 0, Math.PI * 2);
+      ctx.arc(beamX, startY, 3, 0, Math.PI * 2);
       ctx.fill();
+      // Ground target marker
+      ctx.strokeStyle = `rgba(255,40,80,${pulse * 0.5})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(beamX, endY, 12 + Math.sin(t * 4) * 4, 0, Math.PI * 2);
+      ctx.stroke();
     } else {
-      // Firing — thick white-hot beam with red glow
-      const glow = ctx.createLinearGradient(targetX - 40, 0, targetX + 40, 0);
-      glow.addColorStop(0, 'rgba(255,40,80,0)');
-      glow.addColorStop(0.5, 'rgba(255,40,80,0.5)');
-      glow.addColorStop(1, 'rgba(255,40,80,0)');
-      ctx.fillStyle = glow;
-      ctx.fillRect(targetX - 40, startY, 80, endY - startY);
-      // Core beam
+      // Firing — beam from drone down to ground
+      // Outer glow
+      const glowGrad = ctx.createLinearGradient(beamX - 30, 0, beamX + 30, 0);
+      glowGrad.addColorStop(0, 'rgba(255,40,80,0)');
+      glowGrad.addColorStop(0.3, 'rgba(255,40,80,0.12)');
+      glowGrad.addColorStop(0.5, 'rgba(255,80,120,0.35)');
+      glowGrad.addColorStop(0.7, 'rgba(255,40,80,0.12)');
+      glowGrad.addColorStop(1, 'rgba(255,40,80,0)');
+      ctx.fillStyle = glowGrad;
+      ctx.fillRect(beamX - 30, startY, 60, endY - startY);
+      // Core beam (white hot)
       ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-      ctx.lineWidth = 10;
+      ctx.lineWidth = 6;
       ctx.lineCap = 'round';
+      ctx.shadowColor = 'rgba(255,80,120,0.8)';
+      ctx.shadowBlur = 15;
       ctx.beginPath();
-      ctx.moveTo(targetX, startY);
-      ctx.lineTo(targetX, endY);
+      ctx.moveTo(beamX, startY);
+      ctx.lineTo(beamX, endY);
       ctx.stroke();
-      // Inner hot layer
-      ctx.strokeStyle = 'rgba(255,200,220,1)';
-      ctx.lineWidth = 4;
+      // Inner hot pink
+      ctx.strokeStyle = 'rgba(255,180,200,1)';
+      ctx.lineWidth = 2.5;
+      ctx.shadowBlur = 0;
       ctx.beginPath();
-      ctx.moveTo(targetX, startY);
-      ctx.lineTo(targetX, endY);
+      ctx.moveTo(beamX, startY);
+      ctx.lineTo(beamX, endY);
       ctx.stroke();
-      // Ground burn
-      ctx.fillStyle = 'rgba(255,100,150,0.85)';
+      ctx.shadowColor = 'transparent';
+      // Ground burn with glow
+      const burnGrad = ctx.createRadialGradient(beamX, endY, 0, beamX, endY, 22);
+      burnGrad.addColorStop(0, 'rgba(255,255,255,0.9)');
+      burnGrad.addColorStop(0.3, 'rgba(255,120,160,0.7)');
+      burnGrad.addColorStop(1, 'rgba(255,40,80,0)');
+      ctx.fillStyle = burnGrad;
       ctx.beginPath();
-      ctx.arc(targetX, endY, 16, 0, Math.PI * 2);
+      ctx.arc(beamX, endY, 22, 0, Math.PI * 2);
       ctx.fill();
+      // Sparks at impact
+      const sparkT = performance.now() * 0.003;
+      for (let i = 0; i < 4; i++) {
+        const sx = beamX + Math.sin(sparkT + i * 1.5) * 12;
+        const sy = endY - 2 - Math.abs(Math.sin(sparkT * 2 + i)) * 10;
+        ctx.fillStyle = `rgba(255,200,220,${0.5 + Math.sin(sparkT + i) * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.lineCap = 'butt';
     }
     ctx.restore();
