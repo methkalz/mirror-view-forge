@@ -1717,13 +1717,28 @@ function isWaveEventActive(g: GameData, type: import('./types').WaveEventType): 
   return false;
 }
 
+/** Resolves a dynamic event warning from admin DB or returns the fallback. */
+function getDynamicWarning(g: GameData, key: string, fallbackText: string, fallbackColor: string, fallbackDuration: number): { text: string; color: string; duration: number; soundKey: string | null; enabled: boolean } {
+  const dw = g.dynamicWarnings?.[key];
+  if (dw && dw.enabled) {
+    return { text: dw.text || fallbackText, color: dw.color || fallbackColor, duration: dw.duration || fallbackDuration, soundKey: dw.soundKey ?? null, enabled: true };
+  }
+  if (dw && !dw.enabled) {
+    return { text: '', color: fallbackColor, duration: 0, soundKey: null, enabled: false };
+  }
+  return { text: fallbackText, color: fallbackColor, duration: fallbackDuration, soundKey: null, enabled: true };
+}
+
 /** Spawns a coordinated scout swarm (formation) of count drones. */
 function spawnSwarm(g: GameData, count: number) {
   for (let i = 0; i < count; i++) {
     spawnDrone(g, 'scout');
   }
   addTrauma(0.35);
-  g.cinematicWarning = { text: '⚠ سرب طائرات!', subText: '', color: '#ef4444', timer: 1.0, duration: 1.0, type: 'warning' };
+  const dw = getDynamicWarning(g, 'swarm', '⚠ سرب طائرات!', '#ef4444', 1.0);
+  if (dw.enabled) {
+    g.cinematicWarning = { text: dw.text, subText: '', color: dw.color, timer: dw.duration, duration: dw.duration, type: 'warning' };
+  }
   sfxWarningDrone();
 }
 
