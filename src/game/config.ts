@@ -21,6 +21,15 @@ export interface RemoteGameConfig {
   sceneChangeInterval: number;
 }
 
+export interface WaveWarningEntry {
+  id: string;
+  text: string;
+  sub?: string;
+  color: string;
+  type: 'warning' | 'upgrade';
+  soundKey?: string | null;
+}
+
 export interface RemoteWaveConfig {
   waveNumber: number;
   duration: number;
@@ -40,7 +49,19 @@ export interface RemoteWaveConfig {
   warningColor: string;
   warningType: string;
   warningSoundKey: string | null;
+  /** Multiple per-wave admin warnings. If non-empty, replaces hardcoded WAVE_WARNINGS. */
+  warnings: WaveWarningEntry[];
   events: { type: string; triggerAt: number; duration: number }[];
+}
+
+export interface DynamicWarning {
+  eventKey: string;
+  text: string;
+  color: string;
+  soundKey: string | null;
+  enabled: boolean;
+  duration: number;
+  labelAr: string;
 }
 
 export interface DifficultyProfile {
@@ -153,11 +174,46 @@ export async function fetchWaveConfigs(): Promise<RemoteWaveConfig[]> {
       warningColor: w.warning_color ?? '#ef4444',
       warningType: w.warning_type ?? 'warning',
       warningSoundKey: w.warning_sound_key ?? null,
+      warnings: Array.isArray((w as any).warnings) ? (w as any).warnings as WaveWarningEntry[] : [],
       events: Array.isArray(w.events) ? w.events : [],
     }));
   } catch {
     return [];
   }
+}
+
+// ─── Dynamic Warnings (in-game event messages) ───
+
+export async function fetchDynamicWarnings(): Promise<DynamicWarning[]> {
+  try {
+    const { data, error } = await supabase
+      .from('dynamic_warnings' as any)
+      .select('*')
+      .order('event_key', { ascending: true });
+    if (error || !data) return [];
+    return (data as any[]).map(r => ({
+      eventKey: r.event_key,
+      text: r.text,
+      color: r.color,
+      soundKey: r.sound_key ?? null,
+      enabled: r.enabled,
+      duration: r.duration ?? 1.0,
+      labelAr: r.label_ar ?? '',
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function updateDynamicWarning(eventKey: string, updates: Partial<Omit<DynamicWarning, 'eventKey' | 'labelAr'>>): Promise<boolean> {
+  const mapped: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (updates.text !== undefined) mapped.text = updates.text;
+  if (updates.color !== undefined) mapped.color = updates.color;
+  if (updates.soundKey !== undefined) mapped.sound_key = updates.soundKey;
+  if (updates.enabled !== undefined) mapped.enabled = updates.enabled;
+  if (updates.duration !== undefined) mapped.duration = updates.duration;
+  const { error } = await supabase.from('dynamic_warnings' as any).update(mapped).eq('event_key', eventKey);
+  return !error;
 }
 
 const DEFAULT_DIFFICULTY: DifficultyProfile = {
@@ -478,6 +534,7 @@ export async function upsertWaveConfig(wave: RemoteWaveConfig): Promise<boolean>
     warning_color: wave.warningColor,
     warning_type: wave.warningType,
     warning_sound_key: wave.warningSoundKey,
+    warnings: (wave.warnings ?? []) as unknown as Json,
     events: (wave.events ?? []) as unknown as Json,
   };
 

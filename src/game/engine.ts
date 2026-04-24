@@ -158,6 +158,7 @@ export function createGame(w: number, h: number): GameData {
     tutorialFade: 1,
     difficultyProfile: null,
     remoteWaveOverrides: [],
+    dynamicWarnings: {},
     gasMaskOffer: null,
     gasMaskOwned: false,
     gasMaskOfferDelay: 0,
@@ -600,6 +601,8 @@ interface WaveRecipe {
   warningColor?: string;
   warningType?: string;
   warningSoundKey?: string | null;
+  /** Multi-warning per-wave list (admin-controlled, takes precedence over WAVE_WARNINGS). */
+  warnings?: import('./config').WaveWarningEntry[];
   events?: import('./types').WaveEventSpec[];
 }
 
@@ -759,6 +762,7 @@ function remoteToRecipe(r: RemoteWaveConfig): WaveRecipe {
     warningColor: r.warningColor,
     warningType: r.warningType,
     warningSoundKey: r.warningSoundKey,
+    warnings: r.warnings,
     events: (r.events ?? []).map(e => ({
       type: e.type as import('./types').WaveEventType,
       triggerAt: e.triggerAt,
@@ -1713,13 +1717,28 @@ function isWaveEventActive(g: GameData, type: import('./types').WaveEventType): 
   return false;
 }
 
+/** Resolves a dynamic event warning from admin DB or returns the fallback. */
+function getDynamicWarning(g: GameData, key: string, fallbackText: string, fallbackColor: string, fallbackDuration: number): { text: string; color: string; duration: number; soundKey: string | null; enabled: boolean } {
+  const dw = g.dynamicWarnings?.[key];
+  if (dw && dw.enabled) {
+    return { text: dw.text || fallbackText, color: dw.color || fallbackColor, duration: dw.duration || fallbackDuration, soundKey: dw.soundKey ?? null, enabled: true };
+  }
+  if (dw && !dw.enabled) {
+    return { text: '', color: fallbackColor, duration: 0, soundKey: null, enabled: false };
+  }
+  return { text: fallbackText, color: fallbackColor, duration: fallbackDuration, soundKey: null, enabled: true };
+}
+
 /** Spawns a coordinated scout swarm (formation) of count drones. */
 function spawnSwarm(g: GameData, count: number) {
   for (let i = 0; i < count; i++) {
     spawnDrone(g, 'scout');
   }
   addTrauma(0.35);
-  g.cinematicWarning = { text: '⚠ سرب طائرات!', subText: '', color: '#ef4444', timer: 1.0, duration: 1.0, type: 'warning' };
+  const dw = getDynamicWarning(g, 'swarm', '⚠ سرب طائرات!', '#ef4444', 1.0);
+  if (dw.enabled) {
+    g.cinematicWarning = { text: dw.text, subText: '', color: dw.color, timer: dw.duration, duration: dw.duration, type: 'warning' };
+  }
   sfxWarningDrone();
 }
 
@@ -1752,7 +1771,7 @@ function spawnMinePlanter(g: GameData) {
     minesPlanted: 0,
     walkAnim: 0,
   };
-  g.cinematicWarning = { text: '⚠ عسكري يزرع ألغام!', subText: '', color: '#f59e0b', timer: 1.2, duration: 1.2, type: 'warning' };
+  { const dw = getDynamicWarning(g, 'minefield', '⚠ عسكري يزرع ألغام!', '#f59e0b', 1.2); if (dw.enabled) g.cinematicWarning = { text: dw.text, subText: '', color: dw.color, timer: dw.duration, duration: dw.duration, type: 'warning' }; }
   sfxWarningMine();
 }
 
@@ -1835,7 +1854,7 @@ function updateMinePlanter(g: GameData, dt: number) {
 function startVolley(g: GameData) {
   const x = 60 + Math.random() * (g.width - 120);
   g.volleyQueue = { remaining: 5, nextTimer: 0, x };
-  g.cinematicWarning = { text: '⚠ وابل صواريخ!', subText: '', color: '#dc2626', timer: 0.8, duration: 0.8, type: 'warning' };
+  { const dw = getDynamicWarning(g, 'volley', '⚠ وابل صواريخ!', '#dc2626', 0.8); if (dw.enabled) g.cinematicWarning = { text: dw.text, subText: '', color: dw.color, timer: dw.duration, duration: dw.duration, type: 'warning' }; }
   sfxWarningMissile();
 }
 
@@ -1852,7 +1871,7 @@ function startAirRaidFlyby(g: GameData) {
     threatType,
     facingRight: !fromRight,
   };
-  g.cinematicWarning = { text: '⚠ قصف جوي!', subText: '', color: '#dc2626', timer: 1.0, duration: 1.0, type: 'warning' };
+  { const dw = getDynamicWarning(g, 'airstrike_flyby', '⚠ قصف جوي!', '#dc2626', 1.0); if (dw.enabled) g.cinematicWarning = { text: dw.text, subText: '', color: dw.color, timer: dw.duration, duration: dw.duration, type: 'warning' }; }
   sfxWarningBoss();
 }
 
@@ -1959,26 +1978,41 @@ function startNextWave(g: GameData) {
   if (recipe.hasIncendiary) g.incendiaryTimer = Math.max(14, 14 + Math.random() * 6);
   if (recipe.hasChemical) g.chemicalTimer = Math.max(14, 14 + Math.random() * 8);
 
-  // Queue wave warnings — admin custom warning REPLACES hardcoded ones
-  const hasAdminWarning = !!recipe.warningText;
-  if (hasAdminWarning) {
-    const customId = `custom_w${g.waveNumber}`;
-    if (!g.waveTriggered.has(customId)) {
-      const delay = recipe.phaseInDelay || 0;
-      if (delay <= 0) {
-        queueWaveEvent(g, { id: customId, text: recipe.warningText!, sub: '', color: recipe.warningColor || '#ef4444', type: (recipe.warningType as 'warning' | 'upgrade') || 'warning', duration: 2.0, soundKey: recipe.warningSoundKey });
+  // Queue wave warnings — priority:
+  //   1) recipe.warnings[] (admin multi-message, NEW system)
+  //   2) recipe.warningText (legacy single admin override)
+  //   3) WAVE_WARNINGS hardcoded (fallback)
+  const adminWarningsList = (recipe.warnings && recipe.warnings.length > 0) ? recipe.warnings : null;
+  const hasLegacyAdminWarning = !adminWarningsList && !!recipe.warningText;
+  const delay = recipe.phaseInDelay || 0;
+
+  if (adminWarningsList) {
+    if (delay <= 0) {
+      for (const w of adminWarningsList) {
+        const id = w.id || `custom_w${g.waveNumber}_${Math.random().toString(36).slice(2, 7)}`;
+        if (!g.waveTriggered.has(id)) {
+          queueWaveEvent(g, {
+            id,
+            text: w.text,
+            sub: w.sub || '',
+            color: w.color || '#ef4444',
+            type: (w.type === 'upgrade' ? 'upgrade' : 'warning'),
+            duration: 2.0,
+            soundKey: w.soundKey ?? null,
+          });
+        }
       }
     }
-  }
-  // Show hardcoded warnings ONLY if admin hasn't set a custom one
-  const warnings = !hasAdminWarning ? WAVE_WARNINGS[g.waveNumber] : undefined;
-  if (warnings) {
-    for (const w of warnings) {
-      if (!g.waveTriggered.has(w.id)) {
-        const delay = recipe.phaseInDelay || 0;
-        if (delay > 0) {
-          // Will be triggered later by wave elapsed check
-        } else {
+  } else if (hasLegacyAdminWarning) {
+    const customId = `custom_w${g.waveNumber}`;
+    if (!g.waveTriggered.has(customId) && delay <= 0) {
+      queueWaveEvent(g, { id: customId, text: recipe.warningText!, sub: '', color: recipe.warningColor || '#ef4444', type: (recipe.warningType as 'warning' | 'upgrade') || 'warning', duration: 2.0, soundKey: recipe.warningSoundKey });
+    }
+  } else {
+    const warnings = WAVE_WARNINGS[g.waveNumber];
+    if (warnings) {
+      for (const w of warnings) {
+        if (!g.waveTriggered.has(w.id) && delay <= 0) {
           queueWaveEvent(g, { ...w, duration: 2.0 });
         }
       }
@@ -2644,13 +2678,31 @@ export function update(g: GameData, input: InputState, dt: number) {
   if (g.magnetTimer > 0) g.magnetTimer -= dt;
   if (g.magnetFlashTimer > 0) g.magnetFlashTimer -= dt;
 
-  // === Wave-based warning system ===
+  // === Wave-based warning system (delayed-trigger path, when phaseInDelay > 0) ===
   const recipe = getWaveRecipe(g.waveNumber, g);
-  const warnings = WAVE_WARNINGS[g.waveNumber];
-  if (warnings && g.wavePhase === 'active') {
-    for (const w of warnings) {
+  // Same priority as applyWaveSettings: warnings[] > legacy warningText > WAVE_WARNINGS
+  let pendingWarnings: { id: string; text: string; sub: string; color: string; type: 'warning' | 'upgrade'; soundKey?: string | null }[] | null = null;
+  if (recipe.warnings && recipe.warnings.length > 0) {
+    pendingWarnings = recipe.warnings.map(w => ({
+      id: w.id || `custom_w${g.waveNumber}_${Math.random().toString(36).slice(2, 7)}`,
+      text: w.text, sub: w.sub || '', color: w.color || '#ef4444',
+      type: (w.type === 'upgrade' ? 'upgrade' : 'warning'),
+      soundKey: w.soundKey ?? null,
+    }));
+  } else if (recipe.warningText) {
+    pendingWarnings = [{
+      id: `custom_w${g.waveNumber}`,
+      text: recipe.warningText, sub: '', color: recipe.warningColor || '#ef4444',
+      type: (recipe.warningType as 'warning' | 'upgrade') || 'warning',
+      soundKey: recipe.warningSoundKey ?? null,
+    }];
+  } else {
+    const hc = WAVE_WARNINGS[g.waveNumber];
+    if (hc) pendingWarnings = hc.map(w => ({ ...w, soundKey: null }));
+  }
+  if (pendingWarnings && g.wavePhase === 'active') {
+    for (const w of pendingWarnings) {
       if (g.waveTriggered.has(w.id)) continue;
-      // Check phaseInDelay — trigger after delay seconds into the wave
       const delay = recipe.phaseInDelay || 0;
       if (g.waveElapsed >= delay) {
         if (!g.cinematicWarning && g.pendingWaveEvents.length === 0 && g.elapsed >= g.warningLockUntil) {
