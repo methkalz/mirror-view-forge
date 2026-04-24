@@ -225,6 +225,7 @@ const SkyfallGame: React.FC = () => {
     // Simulator mode — skip tutorial, jump straight to gameplay
     if (isSimulatorMode) {
       g.tutorialPage = 3; // mark tutorial as complete
+      tutorialShownRef.current = true; // skip control tutorial overlay too
     }
 
     // Apply remote config from ref (not state dependency)
@@ -594,7 +595,7 @@ const SkyfallGame: React.FC = () => {
       canvas.removeEventListener('touchstart', preventTouch);
       setOnSceneSwap(null);
     };
-  }, [showNameEntry, playerName]);
+  }, [showNameEntry, playerName, isLoading]);
 
   const hapticRef = useRef<{ checkbox: HTMLInputElement; label: HTMLLabelElement } | null>(null);
   useEffect(() => {
@@ -633,20 +634,29 @@ const SkyfallGame: React.FC = () => {
 
   // Simulator mode — auto-start game once loaded
   useEffect(() => {
-    if (!isSimulatorMode || isLoading) return;
-    const g = gameRef.current;
-    if (g && g.state === 'start') {
-      resumeAudio();
-      g.tutorialPage = 3;
-      resetGame(g);
+    if (!isSimulatorMode) return;
+    // Auto-dismiss loading screen
+    if (isLoading && loadProgress >= 100) {
+      setIsLoading(false);
+      return;
     }
-  }, [isLoading, isSimulatorMode]);
+    if (isLoading) return;
+    // Wait one frame for canvas to mount
+    requestAnimationFrame(() => {
+      const g = gameRef.current;
+      if (g && g.state === 'start') {
+        resumeAudio();
+        g.tutorialPage = 3;
+        resetGame(g);
+      }
+    });
+  }, [isLoading, isSimulatorMode, loadProgress]);
 
   // Loading screen
   if (isLoading) {
     return (
       <div style={{ position: 'relative', width: '100vw', height: 'var(--app-height, 100vh)', overflow: 'hidden', background: '#000' }}>
-        <GameLoader progress={loadProgress} onLoaded={() => setIsLoading(false)} />
+        <GameLoader progress={loadProgress} onLoaded={() => setIsLoading(false)} autoStart={isSimulatorMode} />
       </div>
     );
   }
