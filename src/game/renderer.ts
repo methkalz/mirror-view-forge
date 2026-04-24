@@ -9231,52 +9231,84 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
 
   // Wave Announce phase — full-screen banner after all threats cleared
   if (g.wavePhase === 'announce' && g.waveAnnounceTimer > 0) {
-    const duration = 3.0;
+    const isBreakingNews = g.waveNumber === 1;
+    const duration = isBreakingNews ? 5.0 : 3.0;
     const elapsed = duration - g.waveAnnounceTimer;
-    // Fade in first 0.3s, hold, fade out last 0.5s
     let textAlpha = 1;
-    if (elapsed < 0.3) textAlpha = elapsed / 0.3;
-    else if (g.waveAnnounceTimer < 0.5) textAlpha = g.waveAnnounceTimer / 0.5;
+    if (elapsed < 0.4) textAlpha = elapsed / 0.4;
+    else if (g.waveAnnounceTimer < 0.6) textAlpha = g.waveAnnounceTimer / 0.6;
 
     const nextWave = g.waveNumber + 1;
     ctx.save();
 
-    // Dim the entire screen
-    ctx.globalAlpha = textAlpha * 0.7;
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, g.width, g.height);
+    if (isBreakingNews) {
+      // ═══ BREAKING NEWS — خبر عاجل ═══
+      // Full dark overlay
+      ctx.globalAlpha = textAlpha * 0.82;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, g.width, g.height);
 
-    // Banner bar
-    ctx.globalAlpha = textAlpha * 0.85;
-    const bannerH = 64;
-    const bannerY = g.height * 0.48 - bannerH / 2;
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(0, bannerY, g.width, bannerH);
+      ctx.globalAlpha = textAlpha;
 
-    // Gold accent lines
-    ctx.strokeStyle = '#fbbf24';
-    ctx.lineWidth = 1.5;
-    ctx.globalAlpha = textAlpha * 0.7;
-    ctx.beginPath();
-    ctx.moveTo(g.width * 0.15, bannerY);
-    ctx.lineTo(g.width * 0.85, bannerY);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(g.width * 0.15, bannerY + bannerH);
-    ctx.lineTo(g.width * 0.85, bannerY + bannerH);
-    ctx.stroke();
+      // Main red banner — gradient from red to darker red
+      const bannerH = 56;
+      const bannerY = g.height * 0.46 - bannerH / 2;
+      const bannerGrad = ctx.createLinearGradient(0, bannerY, 0, bannerY + bannerH);
+      bannerGrad.addColorStop(0, '#c41a1a');
+      bannerGrad.addColorStop(0.5, '#a01010');
+      bannerGrad.addColorStop(1, '#7a0a0a');
+      ctx.fillStyle = bannerGrad;
+      ctx.fillRect(0, bannerY, g.width, bannerH);
 
-    // Wave text
-    ctx.globalAlpha = textAlpha;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.direction = 'rtl';
-    ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 28px Tajawal, Arial, sans-serif';
-    ctx.shadowColor = 'rgba(251,191,36,0.6)';
-    ctx.shadowBlur = 16;
-    ctx.fillText(`بداية الموجة ${nextWave}`, g.width / 2, g.height * 0.48);
-    ctx.direction = 'ltr';
+      // Thin white line top + bottom
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillRect(0, bannerY, g.width, 1);
+      ctx.fillRect(0, bannerY + bannerH - 1, g.width, 1);
+
+      // Breaking news text — white on red
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 18px Tajawal, Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.direction = 'rtl';
+      ctx.fillText('خبر عاجل: المعاصر تدعو مواطنيها الى مغادرة كفرمندا فوراً', g.width / 2, bannerY + bannerH / 2);
+
+      ctx.direction = 'ltr';
+    } else {
+      // Standard wave announce
+      ctx.globalAlpha = textAlpha * 0.7;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, g.width, g.height);
+
+      const bannerH = 64;
+      const bannerY = g.height * 0.48 - bannerH / 2;
+      ctx.globalAlpha = textAlpha * 0.85;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0, bannerY, g.width, bannerH);
+
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.5;
+      ctx.globalAlpha = textAlpha * 0.7;
+      ctx.beginPath();
+      ctx.moveTo(g.width * 0.15, bannerY);
+      ctx.lineTo(g.width * 0.85, bannerY);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(g.width * 0.15, bannerY + bannerH);
+      ctx.lineTo(g.width * 0.85, bannerY + bannerH);
+      ctx.stroke();
+
+      ctx.globalAlpha = textAlpha;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.direction = 'rtl';
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 28px Tajawal, Arial, sans-serif';
+      ctx.shadowColor = 'rgba(251,191,36,0.6)';
+      ctx.shadowBlur = 16;
+      ctx.fillText(`بداية الموجة ${nextWave}`, g.width / 2, g.height * 0.48);
+      ctx.direction = 'ltr';
+    }
 
     ctx.restore();
   }

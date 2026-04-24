@@ -2365,7 +2365,8 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
       } else {
         // Enter announce phase instead of starting next wave immediately
         g.wavePhase = 'announce';
-        g.waveAnnounceTimer = 3.0; // 3 seconds
+        // After wave 1: longer pause for breaking news
+        g.waveAnnounceTimer = g.waveNumber === 1 ? 5.0 : 3.0;
       }
     }
   } else if (g.wavePhase === 'announce') {
