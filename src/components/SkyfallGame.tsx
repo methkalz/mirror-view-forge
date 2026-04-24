@@ -199,6 +199,18 @@ const SkyfallGame: React.FC = () => {
       })
       .subscribe();
 
+    // Realtime: dynamic_warnings (admin live edits to swarm/volley/etc messages)
+    const dynWarnChannel = supabase
+      .channel('dynamic-warnings-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dynamic_warnings' }, () => {
+        fetchDynamicWarnings().then(dw => {
+          dynamicWarningsRef.current = Object.fromEntries(dw.map(d => [d.eventKey, d]));
+          const g = gameRef.current;
+          if (g) g.dynamicWarnings = dynamicWarningsRef.current;
+        });
+      })
+      .subscribe();
+
     return () => {
       mounted = false;
       supabase.removeChannel(channel);
@@ -206,6 +218,7 @@ const SkyfallGame: React.FC = () => {
       supabase.removeChannel(audioChannel);
       supabase.removeChannel(waveChannel);
       supabase.removeChannel(diffChannel);
+      supabase.removeChannel(dynWarnChannel);
     };
   }, []);
 
