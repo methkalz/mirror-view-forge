@@ -347,7 +347,7 @@ export function resetGame(g: GameData) {
   g.introBike = {
     active: true,
     pos: { x: bikeStartX, y: g.player.groundY },
-    speed: 480,
+    speed: 200,
     facingRight: true,
     phase: 'entering',
     dropX: g.width / 2,
@@ -386,22 +386,18 @@ export function updateIntro(g: GameData, dt: number) {
     case 'bikeEnter': {
       // Play bike engine sound at start
       if (g.introTimer < dt * 2) sfxBikeEngine();
-      // Bike enters from left with a long, smooth deceleration using a
-      // cubic ease-out curve. Much more natural than linear speed falloff.
+      // Same approach as delivery bike: cruise at constant speed, then
+      // decelerate linearly near the center (like updateDeliveryBike).
       const distToCenter = centerX - bike.pos.x;
-      const decelZone = 140;
-      if (distToCenter < decelZone) {
-        // Cubic ease-out: preserves high speed until the last third then
-        // dives smoothly to ~25 as the bike nears its stop point.
-        const t = 1 - Math.max(0, distToCenter) / decelZone; // 0..1
-        const ease = 1 - Math.pow(1 - t, 3);
-        bike.speed = 480 * (1 - ease) + 12;
+      if (distToCenter < 60) {
+        // Near center — begin linear braking (same as delivery bike)
+        bike.phase = 'slowing';
+        const decel = -400;
+        bike.speed += decel * dt;
+        if (bike.speed < 30) bike.speed = 30;
       }
       bike.pos.x += bike.speed * dt;
-      // Player rides with bike
       g.player.pos.x = bike.pos.x;
-
-      // Camera follows bike with a small forward-bias (looks more cinematic)
       g.cameraFocusX = bike.pos.x + 15;
 
       if (bike.pos.x >= centerX) {
@@ -410,7 +406,6 @@ export function updateIntro(g: GameData, dt: number) {
         bike.speed = 0;
         g.introPhase = 'bikeStop';
         g.introTimer = 0;
-        // Engine idle shake
         bike.phase = 'idle';
         sfxBikeBrake();
         sfxBikeIdle();
@@ -418,10 +413,10 @@ export function updateIntro(g: GameData, dt: number) {
       break;
     }
     case 'bikeStop': {
-      // Organic Perlin-like idle vibration (multi-sine, not random)
-      const tS = g.elapsed;
-      const vibeX = Math.sin(tS * 12) * 0.3 + Math.sin(tS * 19) * 0.15 + Math.sin(tS * 31) * 0.08;
-      const vibeY = Math.sin(tS * 14) * 0.2 + Math.sin(tS * 23) * 0.1;
+      // Idle vibration — same as delivery bike
+      const tS = g.elapsed * 35;
+      const vibeX = Math.sin(tS) * 0.15 + Math.sin(tS * 1.7) * 0.15;
+      const vibeY = Math.sin(tS * 1.3) * 0.2 + Math.cos(tS * 2.1) * 0.1;
       bike.shakeOffset = { x: vibeX, y: vibeY };
       g.cameraFocusX = bike.pos.x;
 
@@ -498,11 +493,14 @@ export function updateIntro(g: GameData, dt: number) {
       // Smooth transition timer for fade between intro char and real player
       g.introTransitionTimer += dt;
       
-      // Bike accelerates and leaves to the right
-      bike.speed += 400 * dt;
+      // Bike accelerates and leaves — same as delivery bike (500 accel)
+      bike.speed += 500 * dt;
       bike.pos.x += bike.speed * dt;
-      bike.wheelAnim += bike.speed * dt * 0.05;
-      bike.shakeOffset = { x: 0, y: 0 };
+      bike.wheelAnim += bike.speed * dt * 0.1;
+      bike.phase = 'leaving';
+      // Engine vibration during movement (same as delivery bike)
+      const tL = g.elapsed * 25;
+      bike.shakeOffset = { x: Math.sin(tL) * 0.1, y: Math.sin(tL * 1.5) * 0.08 };
 
       // Player looks at departing bike (faces right toward bike)
       g.player.facingRight = true;
