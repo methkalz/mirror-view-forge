@@ -3124,7 +3124,7 @@ const SimulatorPanel: React.FC<{ isDesktop: boolean }> = ({ isDesktop }) => {
       <div style={{ flex: 1, borderRadius: 16, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.1)', minHeight: isDesktop ? 0 : 500, position: 'relative' }}>
         <iframe
           ref={iframeRef}
-          src="/"
+          src={`/?sim=${Date.now()}`}
           style={{ width: '100%', height: '100%', border: 'none' }}
           title="Skyfall Simulator"
         />

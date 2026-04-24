@@ -3656,9 +3656,11 @@ export function update(g: GameData, input: InputState, dt: number) {
         // LASER: stationary hover, cycles through telegraph → firing → cooldown
         if (!d.laserPhase) d.laserPhase = 'idle';
         d.bombTimer -= dt;
-        // Gentle hover movement
-        d.pos.x += Math.sin(d.wobble + g.elapsed * 0.8) * 8 * dt;
-        d.pos.y += Math.cos(d.wobble + g.elapsed * 1.1) * 4 * dt;
+        // Only hover gently during idle/cooldown — lock position during telegraph/firing
+        if (d.laserPhase === 'idle' || d.laserPhase === 'cooldown') {
+          d.pos.x += Math.sin(d.wobble + g.elapsed * 0.8) * 8 * dt;
+          d.pos.y += Math.cos(d.wobble + g.elapsed * 1.1) * 4 * dt;
+        }
         if (d.laserPhase === 'idle') {
           if (d.bombTimer <= 0) {
             d.laserPhase = 'telegraph';
