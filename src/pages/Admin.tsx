@@ -995,7 +995,16 @@ const WavesPanel: React.FC<{
                 <div style={{ flex: 1, fontSize: 10, color: 'rgba(148,163,184,0.5)', lineHeight: 1.5 }}>
                   <div>{w.threats.map(t => THREAT_ICONS[t] || t).join(' ')} · {w.duration}s · max:{w.maxConcurrent} · ⏱{w.spawnRate}s</div>
                   <div>{w.droneTypes.length > 0 ? w.droneTypes.map(t => DRONE_ICONS[t] || t).join(' ') : ''} {w.hasBoss ? '👹' : ''} {w.hasChemical ? '☣️' : ''} {w.hasIncendiary ? '🔥' : ''}</div>
-                  {w.warningText && <div style={{ color: 'rgba(239,68,68,0.6)', fontSize: 9 }}>⚠️ {w.warningText}</div>}
+                  {w.warnings && w.warnings.length > 0 ? (
+                    w.warnings.map((entry: any, ei: number) => (
+                      <div key={entry.id || ei} style={{ color: entry.color || 'rgba(239,68,68,0.7)', fontSize: 9, opacity: 0.85 }}>
+                        {entry.type === 'upgrade' ? '⬆️' : '⚠️'} {entry.text}
+                        {entry.soundKey && <span style={{ color: 'rgba(96,165,250,0.6)', marginRight: 4 }}>🔊</span>}
+                      </div>
+                    ))
+                  ) : w.warningText ? (
+                    <div style={{ color: 'rgba(239,68,68,0.6)', fontSize: 9 }}>⚠️ {w.warningText}</div>
+                  ) : null}
                 </div>
                 <button onClick={() => setEditingWave({ ...w })} style={{ ...btnPrimary, padding: '5px 10px', fontSize: 11 }}>تعديل</button>
                 <button onClick={() => onDeleteWave(w.waveNumber)} style={{ ...btnDanger, padding: '5px 8px', fontSize: 11 }}>✕</button>
