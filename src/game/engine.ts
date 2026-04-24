@@ -2663,13 +2663,31 @@ export function update(g: GameData, input: InputState, dt: number) {
   if (g.magnetTimer > 0) g.magnetTimer -= dt;
   if (g.magnetFlashTimer > 0) g.magnetFlashTimer -= dt;
 
-  // === Wave-based warning system ===
+  // === Wave-based warning system (delayed-trigger path, when phaseInDelay > 0) ===
   const recipe = getWaveRecipe(g.waveNumber, g);
-  const warnings = WAVE_WARNINGS[g.waveNumber];
-  if (warnings && g.wavePhase === 'active') {
-    for (const w of warnings) {
+  // Same priority as applyWaveSettings: warnings[] > legacy warningText > WAVE_WARNINGS
+  let pendingWarnings: { id: string; text: string; sub: string; color: string; type: 'warning' | 'upgrade'; soundKey?: string | null }[] | null = null;
+  if (recipe.warnings && recipe.warnings.length > 0) {
+    pendingWarnings = recipe.warnings.map(w => ({
+      id: w.id || `custom_w${g.waveNumber}_${Math.random().toString(36).slice(2, 7)}`,
+      text: w.text, sub: w.sub || '', color: w.color || '#ef4444',
+      type: (w.type === 'upgrade' ? 'upgrade' : 'warning'),
+      soundKey: w.soundKey ?? null,
+    }));
+  } else if (recipe.warningText) {
+    pendingWarnings = [{
+      id: `custom_w${g.waveNumber}`,
+      text: recipe.warningText, sub: '', color: recipe.warningColor || '#ef4444',
+      type: (recipe.warningType as 'warning' | 'upgrade') || 'warning',
+      soundKey: recipe.warningSoundKey ?? null,
+    }];
+  } else {
+    const hc = WAVE_WARNINGS[g.waveNumber];
+    if (hc) pendingWarnings = hc.map(w => ({ ...w, soundKey: null }));
+  }
+  if (pendingWarnings && g.wavePhase === 'active') {
+    for (const w of pendingWarnings) {
       if (g.waveTriggered.has(w.id)) continue;
-      // Check phaseInDelay — trigger after delay seconds into the wave
       const delay = recipe.phaseInDelay || 0;
       if (g.waveElapsed >= delay) {
         if (!g.cinematicWarning && g.pendingWaveEvents.length === 0 && g.elapsed >= g.warningLockUntil) {
