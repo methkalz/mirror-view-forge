@@ -1771,7 +1771,7 @@ function spawnMinePlanter(g: GameData) {
     minesPlanted: 0,
     walkAnim: 0,
   };
-  g.cinematicWarning = { text: '⚠ عسكري يزرع ألغام!', subText: '', color: '#f59e0b', timer: 1.2, duration: 1.2, type: 'warning' };
+  { const dw = getDynamicWarning(g, 'minefield', '⚠ عسكري يزرع ألغام!', '#f59e0b', 1.2); if (dw.enabled) g.cinematicWarning = { text: dw.text, subText: '', color: dw.color, timer: dw.duration, duration: dw.duration, type: 'warning' }; }
   sfxWarningMine();
 }
 
@@ -1854,7 +1854,7 @@ function updateMinePlanter(g: GameData, dt: number) {
 function startVolley(g: GameData) {
   const x = 60 + Math.random() * (g.width - 120);
   g.volleyQueue = { remaining: 5, nextTimer: 0, x };
-  g.cinematicWarning = { text: '⚠ وابل صواريخ!', subText: '', color: '#dc2626', timer: 0.8, duration: 0.8, type: 'warning' };
+  { const dw = getDynamicWarning(g, 'volley', '⚠ وابل صواريخ!', '#dc2626', 0.8); if (dw.enabled) g.cinematicWarning = { text: dw.text, subText: '', color: dw.color, timer: dw.duration, duration: dw.duration, type: 'warning' }; }
   sfxWarningMissile();
 }
 
@@ -1871,7 +1871,7 @@ function startAirRaidFlyby(g: GameData) {
     threatType,
     facingRight: !fromRight,
   };
-  g.cinematicWarning = { text: '⚠ قصف جوي!', subText: '', color: '#dc2626', timer: 1.0, duration: 1.0, type: 'warning' };
+  { const dw = getDynamicWarning(g, 'airstrike_flyby', '⚠ قصف جوي!', '#dc2626', 1.0); if (dw.enabled) g.cinematicWarning = { text: dw.text, subText: '', color: dw.color, timer: dw.duration, duration: dw.duration, type: 'warning' }; }
   sfxWarningBoss();
 }
 
