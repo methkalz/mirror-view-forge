@@ -179,6 +179,7 @@ export function createGame(w: number, h: number): GameData {
     fireSuitEverOffered: false,
     minesweeperEverOffered: false,
     scoreCountdown: null,
+    breakingNews: null,
     waveEvents: [],
     waveEventsFired: [],
     volleyQueue: null,
@@ -1931,6 +1932,24 @@ function startNextWave(g: GameData) {
   g.waveTimer = recipe.duration || 60;
   g.bulletLevel = Math.max(g.bulletLevel, recipe.bulletLevel);
 
+  // ── Breaking News — dramatic cinematic intro for key waves ──
+  const NEWS: Record<number, { text: string; sub: string }> = {
+    2:  { text: 'صواريخ رُصدت في المنطقة', sub: 'طائرة استطلاع معادية تقترب' },
+    4:  { text: 'طائرات تتبع في الأجواء', sub: 'ترقية سلاح جديدة متاحة' },
+    5:  { text: 'طائرات حارقة تقصف المنطقة', sub: 'بدلة إطفاء متاحة للشراء' },
+    6:  { text: 'قائد عسكري يقترب', sub: 'استعد للمواجهة' },
+    7:  { text: 'غاز سام وألغام في المنطقة', sub: 'كمامة وكاشف ألغام متاحان' },
+    12: { text: 'طائرة حربية معادية تقترب', sub: 'جميع القوات في حالة تأهب قصوى' },
+    15: { text: 'سرب ليزر ونيازك فقط', sub: 'موجة خاصة — لا مكان للاختباء' },
+    16: { text: 'الذروة — كل التهديدات دفعة واحدة', sub: 'آخر فرصة للبقاء' },
+  };
+  const newsEntry = NEWS[g.waveNumber];
+  if (newsEntry) {
+    g.breakingNews = { text: newsEntry.text, subText: newsEntry.sub, timer: 3.5, duration: 3.5 };
+    g.wavePhase = 'active';
+    g.slowMoFactor = 0.05;
+  }
+
   // Load mid-wave events for this wave
   g.waveEvents = (recipe.events ?? []).map(e => ({ type: e.type, triggerAt: e.triggerAt, duration: e.duration }));
   g.waveEventsFired = g.waveEvents.map(() => false);
@@ -2469,7 +2488,8 @@ export function hasModalCard(g: GameData): boolean {
     g.wavePhase === 'cards' ||
     !!(g.gasMaskOffer && g.gasMaskOffer.active) ||
     !!(g.fireSuitOffer && g.fireSuitOffer.active) ||
-    !!(g.minesweeperOffer && g.minesweeperOffer.active)
+    !!(g.minesweeperOffer && g.minesweeperOffer.active) ||
+    !!g.breakingNews
   );
 }
 
@@ -2570,6 +2590,17 @@ export function update(g: GameData, input: InputState, dt: number) {
 
   // === Scene Transition ===
   updateSceneTransition(g, dt);
+
+  // === Breaking News overlay ===
+  if (g.breakingNews) {
+    g.breakingNews.timer -= dt;
+    g.slowMoFactor = 0.05;
+    if (g.breakingNews.timer <= 0) {
+      g.breakingNews = null;
+      g.slowMoFactor = 1;
+    }
+    return; // freeze all other logic while news is showing
+  }
 
   // === Mid-wave Events ===
   updateWaveEvents(g, dt);
