@@ -1,13 +1,14 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { GameData, InputState } from '@/game/types';
 import { loadAudioSettings, reloadAudioSettings } from '@/game/audio';
-import { createGame, resetGame, update, updateIntro, updateCardsOnly, hasModalCard } from '@/game/engine';
+import { createGame, resetGame, update, updateIntro, updateCardsOnly, hasModalCard, _debug } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
 import { resumeAudio, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition, sfxAmmoTutorial, stopGameOverVoice } from '@/game/audio';
 import { fetchGameConfig, fetchLeaderboard, fetchDifficultyProfile, fetchWaveConfigs, submitScore, type RemoteGameConfig, type LeaderboardEntry, type DifficultyProfile, type RemoteWaveConfig } from '@/game/config';
 import { fetchBackgroundConfig, fetchScenes, type Scene, type BackgroundPhase } from '@/game/backgroundConfig';
 import { setBackgroundConfig, setBackgroundConfigForScene, setCameraMargin } from '@/game/renderer';
 import { setOnSceneSwap } from '@/game/engine';
+import { attachDebugAPI, getGameSpeed, isGodMode, isInfiniteAmmo, type DebugAPI } from '@/game/debugCommands';
 import { supabase } from '@/integrations/supabase/client';
 import NameEntry from './NameEntry';
 import PrizeEntryCard from './PrizeEntryCard';
@@ -214,6 +215,10 @@ const SkyfallGame: React.FC = () => {
 
     const g = createGame(window.innerWidth, window.innerHeight);
     gameRef.current = g;
+
+    // Expose debug API for simulator tab
+    const dbgApi = attachDebugAPI(g, _debug);
+    (window as any).__SKYFALL_DEBUG__ = dbgApi;
 
     // Apply remote config from ref (not state dependency)
     const cfg = remoteConfigRef.current;

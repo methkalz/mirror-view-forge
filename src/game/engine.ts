@@ -5,6 +5,7 @@ import {
 } from './types';
 import type { DifficultyProfile, RemoteWaveConfig } from './config';
 import { getFromPool, releaseAll } from './pool';
+import { isGodMode as _isGodMode } from './debugCommands';
 import { addTrauma, updateCameraShake, resetTrauma } from './cameraShake';
 import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameOverVoice, sfxGameStart, sfxUpgradeSelect, sfxScoreTick, sfxSlideTransition, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber, playCustomAudio } from './audio';
 
@@ -1325,6 +1326,7 @@ function resolvePendingWaveEvents(g: GameData) {
 
 function damagePlayer(g: GameData, dmg: number, sourcePos: Vec2) {
   const p = g.player;
+  if (_isGodMode()) return; // Debug simulator god mode
   if (p.shielded) {
     p.shielded = false;
     p.shieldTimer = 0;
@@ -2009,6 +2011,15 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
       // Now enter clearing
       g.wavePhase = 'clearing';
       sfxWaveComplete();
+      // Fast-drop all parachuting power-ups so they reach the ground in time
+      const gndY = g.height * GROUND_RATIO;
+      for (const pu of g.powerUps) {
+        if (pu.active && pu.parachuting) {
+          pu.pos.y = gndY - 10;
+          pu.parachuting = false;
+          pu.groundTimer = -3;  // Give extra 3s on ground to be collected
+        }
+      }
       // Force-clear hazards immediately
       for (const h of g.hazards) {
         if (h.active) {
@@ -3146,7 +3157,9 @@ export function update(g: GameData, input: InputState, dt: number) {
   for (const pu of g.powerUps) {
     if (!pu.active) continue;
     if (pu.parachuting) {
-      pu.pos.y += pu.fallSpeed * dt;
+      // Speed up drops in final seconds of wave so players can collect them
+      const speedBoost = g.waveFinale ? 3.0 : 1.0;
+      pu.pos.y += pu.fallSpeed * speedBoost * dt;
       pu.pos.x += g.windOffset * 8 * dt; // Wind
       if (pu.pos.y >= groundY - 10) {
         pu.parachuting = false;
@@ -4325,3 +4338,15 @@ function defeatBoss(g: GameData) {
   pu.bobTimer = 0;
   pu.groundTimer = 0;
 }
+
+
+// ─── Debug API helpers (exposed for simulator tab) ───
+export const _debug = {
+  spawnHazard,
+  spawnDrone,
+  spawnBoss,
+  startNextWave,
+  spawnSwarm,
+  startVolley,
+  spawnMinePlanter,
+};

@@ -21,7 +21,7 @@ import {
 import { playSynthesizedPreview } from '@/game/audio';
 import { WAVE_WARNINGS } from '@/game/engine';
 
-type TabKey = 'analytics' | 'config' | 'branding' | 'backgrounds' | 'waves' | 'leaderboard' | 'prizes' | 'audio';
+type TabKey = 'analytics' | 'config' | 'branding' | 'backgrounds' | 'waves' | 'leaderboard' | 'prizes' | 'audio' | 'simulator';
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'analytics', icon: '📊', label: 'Analytics' },
@@ -30,6 +30,7 @@ const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'backgrounds', icon: '🌅', label: 'Backgrounds' },
   { key: 'waves', icon: '🌊', label: 'Waves' },
   { key: 'audio', icon: '🔊', label: 'Audio' },
+  { key: 'simulator', icon: '🎮', label: 'Simulator' },
   { key: 'leaderboard', icon: '🏆', label: 'Leaders' },
   { key: 'prizes', icon: '🎁', label: 'Prizes' },
 ];
@@ -278,6 +279,7 @@ const Admin: React.FC = () => {
                  tab === 'backgrounds' ? 'Day/night cycle & background images' :
                  tab === 'waves' ? 'Wave configuration & enemy patterns' :
                  tab === 'audio' ? 'Professional audio system management' :
+                 tab === 'simulator' ? 'In-admin game testing & simulation' :
                  'Leaderboard management'}
               </p>
             </div>
@@ -319,6 +321,8 @@ const Admin: React.FC = () => {
             }}
           />
         )}
+
+        {tab === 'simulator' && <SimulatorPanel isDesktop={isDesktop} />}
 
         {tab === 'leaderboard' && (
           <LeaderboardPanel leaders={leaders} onDelete={handleDeleteEntry} onClearAll={handleClearAll} isDesktop={isDesktop} />
@@ -2967,6 +2971,170 @@ const WaveEditor: React.FC<{
         <div style={{ display: 'flex', gap: 12 }}>
           <button onClick={() => onSave(w)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'rgba(59,130,246,0.2)', color: '#60a5fa', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>حفظ</button>
           <button onClick={onCancel} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.04)', color: 'rgba(148,163,184,0.5)', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}>إلغاء</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════
+// SIMULATOR PANEL — In-admin game testing & simulation
+// ═══════════════════════════════════════════════════════════════
+
+const SimulatorPanel: React.FC<{ isDesktop: boolean }> = ({ isDesktop }) => {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [stats, setStats] = useState({ wave: 0, health: 0, ammo: 0, elapsed: 0, phase: '', activeHazards: 0, activeDrones: 0 });
+  const [godMode, setGodMode] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [speed, setSpeed] = useState(1.0);
+
+  const getDebug = () => (iframeRef.current?.contentWindow as any)?.__SKYFALL_DEBUG__;
+
+  // Poll game state for stats display
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const dbg = getDebug();
+      if (dbg) setStats(dbg.getState());
+    }, 500);
+    return () => clearInterval(iv);
+  }, []);
+
+  const cmd = (fn: (dbg: any) => void) => { const dbg = getDebug(); if (dbg) fn(dbg); };
+
+  const THREAT_BTNS = [
+    { type: 'shrapnel', icon: '💥', label: 'شظايا' },
+    { type: 'missile', icon: '🚀', label: 'صاروخ' },
+    { type: 'cluster', icon: '🎯', label: 'متشظي' },
+    { type: 'meteor', icon: '☄️', label: 'نيزك' },
+  ];
+  const DRONE_BTNS = [
+    { tier: 'scout', icon: '🔍', label: 'Scout' },
+    { tier: 'tracker', icon: '📡', label: 'Tracker' },
+    { tier: 'bomber', icon: '💣', label: 'Bomber' },
+    { tier: 'laser', icon: '🔴', label: 'Laser' },
+  ];
+  const EVENT_BTNS = [
+    { type: 'surge', icon: '🔥', label: 'Surge' },
+    { type: 'swarm', icon: '🐝', label: 'Swarm' },
+    { type: 'volley', icon: '🚀', label: 'Volley' },
+    { type: 'minefield', icon: '💣', label: 'Mines' },
+  ];
+
+  const simBtnStyle: React.CSSProperties = {
+    padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
+    background: 'rgba(255,255,255,0.08)', color: '#e2e8f0', fontSize: 12,
+    fontWeight: 600, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 4,
+  };
+  const simBtnActive: React.CSSProperties = { ...simBtnStyle, background: 'rgba(34,197,94,0.3)', color: '#22c55e' };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: isDesktop ? 'row' : 'column', gap: 16, height: isDesktop ? 'calc(100vh - 180px)' : 'auto' }}>
+      {/* Control Panel */}
+      <div style={{ width: isDesktop ? 320 : '100%', flexShrink: 0, overflowY: 'auto', padding: '0 4px' }}>
+        {/* Live Stats */}
+        <div style={{ ...cardStyle, marginBottom: 12, padding: '12px 16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, textAlign: 'center' }}>
+            <div><div style={{ fontSize: 18, fontWeight: 800, color: '#60a5fa' }}>{stats.wave}</div><div style={{ fontSize: 9, color: 'rgba(148,163,184,0.5)' }}>WAVE</div></div>
+            <div><div style={{ fontSize: 18, fontWeight: 800, color: stats.health < 30 ? '#ef4444' : '#22c55e' }}>{stats.health}</div><div style={{ fontSize: 9, color: 'rgba(148,163,184,0.5)' }}>HP</div></div>
+            <div><div style={{ fontSize: 18, fontWeight: 800, color: '#a855f7' }}>{stats.ammo}</div><div style={{ fontSize: 9, color: 'rgba(148,163,184,0.5)' }}>AMMO</div></div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 10, color: 'rgba(148,163,184,0.4)' }}>
+            <span>⏱ {stats.elapsed}s</span>
+            <span>📦 {stats.activeHazards} threats</span>
+            <span>🛩 {stats.activeDrones} drones</span>
+          </div>
+        </div>
+
+        {/* Wave Control */}
+        <div style={{ ...cardStyle, marginBottom: 12 }}>
+          <h4 style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', marginBottom: 10 }}>🎯 التحكم بالموجة</h4>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+            {[1,3,5,7,9,12,15].map(w => (
+              <button key={w} onClick={() => cmd(d => d.jumpToWave(w))} style={simBtnStyle}>W{w}</button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <button onClick={() => { setIsPaused(!isPaused); cmd(d => isPaused ? d.resume() : d.pause()); }}
+              style={isPaused ? simBtnActive : simBtnStyle}>{isPaused ? '▶ استمر' : '⏸ إيقاف'}</button>
+            <button onClick={() => cmd(d => d.jumpToWave(stats.wave))} style={simBtnStyle}>🔄 إعادة</button>
+          </div>
+          <div style={{ marginBottom: 6 }}>
+            <label style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)' }}>⚡ سرعة: {speed.toFixed(1)}x</label>
+            <input type="range" min={0.2} max={3} step={0.1} value={speed}
+              onChange={e => { const v = parseFloat(e.target.value); setSpeed(v); cmd(d => d.setGameSpeed(v)); }}
+              style={{ width: '100%', accentColor: '#60a5fa' }} />
+          </div>
+        </div>
+
+        {/* Spawn Threats */}
+        <div style={{ ...cardStyle, marginBottom: 12 }}>
+          <h4 style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', marginBottom: 8 }}>💥 إنشاء تهديدات</h4>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            {THREAT_BTNS.map(t => (
+              <button key={t.type} onClick={() => cmd(d => d.spawnHazard(t.type))} style={simBtnStyle}>{t.icon} {t.label}</button>
+            ))}
+          </div>
+          <h4 style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 6 }}>🛩 طائرات</h4>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            {DRONE_BTNS.map(d => (
+              <button key={d.tier} onClick={() => cmd(dbg => dbg.spawnDrone(d.tier))} style={simBtnStyle}>{d.icon} {d.label}</button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            <button onClick={() => cmd(d => d.spawnBoss(false))} style={{ ...simBtnStyle, background: 'rgba(220,38,38,0.2)', color: '#f87171' }}>☠ Boss</button>
+            <button onClick={() => cmd(d => d.spawnBoss(true))} style={{ ...simBtnStyle, background: 'rgba(245,158,11,0.2)', color: '#fbbf24' }}>⚔ Mini-Boss</button>
+          </div>
+          <h4 style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 6 }}>⚡ أحداث</h4>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {EVENT_BTNS.map(e => (
+              <button key={e.type} onClick={() => cmd(d => d.triggerEvent(e.type))} style={simBtnStyle}>{e.icon} {e.label}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Player State */}
+        <div style={{ ...cardStyle, marginBottom: 12 }}>
+          <h4 style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', marginBottom: 8 }}>🧑 حالة اللاعب</h4>
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)' }}>❤️ الصحة: {stats.health}</label>
+            <input type="range" min={0} max={100} value={stats.health}
+              onChange={e => cmd(d => d.setHealth(parseInt(e.target.value)))}
+              style={{ width: '100%', accentColor: '#22c55e' }} />
+          </div>
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)' }}>🔫 الذخيرة: {stats.ammo}</label>
+            <input type="range" min={0} max={99} value={stats.ammo}
+              onChange={e => cmd(d => d.setAmmo(parseInt(e.target.value)))}
+              style={{ width: '100%', accentColor: '#a855f7' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            <button onClick={() => { setGodMode(!godMode); cmd(d => d.toggleGodMode(!godMode)); }}
+              style={godMode ? simBtnActive : simBtnStyle}>🛡️ God Mode</button>
+            <button onClick={() => cmd(d => d.setHealth(100))} style={simBtnStyle}>💚 Full HP</button>
+            <button onClick={() => cmd(d => d.setAmmo(99))} style={simBtnStyle}>🔫 Full Ammo</button>
+          </div>
+          <h4 style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 6 }}>🛡 معدات الحماية</h4>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button onClick={() => cmd(d => d.giveProtection('gasmask'))} style={simBtnStyle}>😷 كمامة</button>
+            <button onClick={() => cmd(d => d.giveProtection('firesuit'))} style={simBtnStyle}>🔥 بدلة</button>
+            <button onClick={() => cmd(d => d.giveProtection('minesweeper'))} style={simBtnStyle}>🔍 كاسحة</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Game Canvas — embedded via iframe */}
+      <div style={{ flex: 1, borderRadius: 16, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.1)', minHeight: isDesktop ? 0 : 500, position: 'relative' }}>
+        <iframe
+          ref={iframeRef}
+          src="/"
+          style={{ width: '100%', height: '100%', border: 'none' }}
+          title="Skyfall Simulator"
+        />
+        <div style={{
+          position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.7)',
+          padding: '4px 10px', borderRadius: 6, fontSize: 10, color: '#22c55e', fontWeight: 700,
+        }}>
+          🎮 SIMULATOR MODE
         </div>
       </div>
     </div>
