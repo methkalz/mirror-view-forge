@@ -10,7 +10,9 @@ import {
   fetchAudioConfig, updateAudioEntry, updateAudioCategory, uploadAudioFile, deleteAudioFile, listAudioLibrary,
   addAudioFile, removeAudioFile, fetchAnalytics, createAudioEntry, deleteAudioEntry, updateAudioFileVolume,
   fetchPrizeEntries, deletePrizeEntry, clearPrizeEntries,
+  fetchDynamicWarnings, updateDynamicWarning,
   type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type VolumeMode, type GameAnalytics, type DifficultyProfile, type PrizeEntry,
+  type WaveWarningEntry, type DynamicWarning,
 } from '@/game/config';
 import {
   fetchBackgroundConfig, updateBackgroundPhase, uploadBackgroundImage, deleteBackgroundImage,
@@ -21,7 +23,7 @@ import {
 import { playSynthesizedPreview } from '@/game/audio';
 import { WAVE_WARNINGS } from '@/game/engine';
 
-type TabKey = 'analytics' | 'config' | 'branding' | 'backgrounds' | 'waves' | 'leaderboard' | 'prizes' | 'audio' | 'simulator';
+type TabKey = 'analytics' | 'config' | 'branding' | 'backgrounds' | 'waves' | 'messages' | 'leaderboard' | 'prizes' | 'audio' | 'simulator';
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'analytics', icon: '📊', label: 'Analytics' },
@@ -29,6 +31,7 @@ const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'branding', icon: '🎨', label: 'Brand' },
   { key: 'backgrounds', icon: '🌅', label: 'Backgrounds' },
   { key: 'waves', icon: '🌊', label: 'Waves' },
+  { key: 'messages', icon: '💬', label: 'Messages' },
   { key: 'audio', icon: '🔊', label: 'Audio' },
   { key: 'simulator', icon: '🎮', label: 'Simulator' },
   { key: 'leaderboard', icon: '🏆', label: 'Leaders' },
@@ -278,6 +281,7 @@ const Admin: React.FC = () => {
                  tab === 'branding' ? 'Logo, title & developer branding' :
                  tab === 'backgrounds' ? 'Day/night cycle & background images' :
                  tab === 'waves' ? 'Wave configuration & enemy patterns' :
+                 tab === 'messages' ? 'Dynamic in-game event messages (swarm, airstrike...)' :
                  tab === 'audio' ? 'Professional audio system management' :
                  tab === 'simulator' ? 'In-admin game testing & simulation' :
                  'Leaderboard management'}
@@ -303,6 +307,7 @@ const Admin: React.FC = () => {
 
         {tab === 'waves' && (
           <WavesPanel waves={waves} editingWave={editingWave} setEditingWave={setEditingWave} onSaveWave={handleSaveWave} onDeleteWave={handleDeleteWave} isDesktop={isDesktop}
+            audioEntries={audioEntries}
             diffProfile={diffProfile} onSaveDiffProfile={async (updates) => {
               if (!diffProfile) return;
               setDiffProfile({ ...diffProfile, ...updates });
@@ -323,6 +328,8 @@ const Admin: React.FC = () => {
         )}
 
         {tab === 'simulator' && <SimulatorPanel isDesktop={isDesktop} />}
+
+        {tab === 'messages' && <MessagesPanel audioEntries={audioEntries} isDesktop={isDesktop} />}
 
         {tab === 'leaderboard' && (
           <LeaderboardPanel leaders={leaders} onDelete={handleDeleteEntry} onClearAll={handleClearAll} isDesktop={isDesktop} />
@@ -692,7 +699,8 @@ const WavesPanel: React.FC<{
   onSaveWave: (w: RemoteWaveConfig) => void; onDeleteWave: (n: number) => void; isDesktop: boolean;
   diffProfile: DifficultyProfile | null;
   onSaveDiffProfile: (updates: Partial<DifficultyProfile>) => void;
-}> = ({ waves, editingWave, setEditingWave, onSaveWave, onDeleteWave, isDesktop, diffProfile, onSaveDiffProfile }) => {
+  audioEntries: AudioConfigEntry[];
+}> = ({ waves, editingWave, setEditingWave, onSaveWave, onDeleteWave, isDesktop, diffProfile, onSaveDiffProfile, audioEntries }) => {
   const [showAutoScale, setShowAutoScale] = useState(true);
   const [previewCount, setPreviewCount] = useState(20);
 
@@ -990,7 +998,7 @@ const WavesPanel: React.FC<{
         </div>
       )}
 
-      {editingWave && <WaveEditor wave={editingWave} onSave={onSaveWave} onCancel={() => setEditingWave(null)} />}
+      {editingWave && <WaveEditor wave={editingWave} onSave={onSaveWave} onCancel={() => setEditingWave(null)} audioEntries={audioEntries} />}
     </div>
   );
 };
@@ -2794,8 +2802,11 @@ const WaveEditor: React.FC<{
   wave: RemoteWaveConfig;
   onSave: (w: RemoteWaveConfig) => void;
   onCancel: () => void;
-}> = ({ wave, onSave, onCancel }) => {
+  audioEntries: AudioConfigEntry[];
+}> = ({ wave, onSave, onCancel, audioEntries }) => {
   const [w, setW] = useState(wave);
+
+  const warningSounds = audioEntries.filter(a => a.category === 'warnings');
 
   const toggle = (arr: string[], item: string) =>
     arr.includes(item) ? arr.filter(x => x !== item) : [...arr, item];
@@ -2914,61 +2925,92 @@ const WaveEditor: React.FC<{
           ))}
         </div>
 
-        {/* Warning message section */}
+        {/* Multi-message warnings editor */}
         <div style={{ marginBottom: 16, padding: 14, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <label style={{ ...labelStyle, marginBottom: 10, fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>📢 رسالة الموجة</label>
-          
-          <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>نص الرسالة (اختياري)</label>
-            <input type="text" value={w.warningText || ''} placeholder="مثال: تحذير: موجة صعبة!"
-              onChange={e => setW({ ...w, warningText: e.target.value || null })} style={inputStyle} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <label style={{ ...labelStyle, marginBottom: 0, fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>📢 رسائل الموجة ({(w.warnings || []).length})</label>
+            <button onClick={() => {
+              const newEntry: WaveWarningEntry = {
+                id: `w${w.waveNumber}_${Date.now()}`,
+                text: '',
+                color: '#ef4444',
+                type: 'warning',
+                soundKey: null,
+              };
+              setW({ ...w, warnings: [...(w.warnings || []), newEntry] });
+            }} style={{ ...btnPrimary, padding: '4px 10px', fontSize: 11 }}>+ رسالة</button>
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-            <div>
-              <label style={labelStyle}>النوع</label>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={() => setW({ ...w, warningType: 'warning' })} style={chipStyle(w.warningType === 'warning')}>⚠️ تحذير</button>
-                <button onClick={() => setW({ ...w, warningType: 'upgrade' })} style={chipStyle(w.warningType === 'upgrade')}>⬆️ ترقية</button>
+          <p style={{ fontSize: 10, color: 'rgba(148,163,184,0.4)', marginBottom: 10, lineHeight: 1.5 }}>
+            أضف رسالة أو أكثر تظهر للاعب بالتسلسل عند بدء الموجة. تتجاوز الرسائل المدمجة في الكود.
+          </p>
+          {(w.warnings || []).length === 0 && (
+            <p style={{ fontSize: 11, color: 'rgba(148,163,184,0.3)', textAlign: 'center', padding: 12 }}>
+              {WAVE_WARNINGS[w.waveNumber]
+                ? `🔁 ستظهر الرسائل المدمجة (${WAVE_WARNINGS[w.waveNumber].length}) — اضغط "+ رسالة" لتجاوزها.`
+                : 'لا رسائل — اضغط "+ رسالة" لإضافة واحدة.'}
+            </p>
+          )}
+          {(w.warnings || []).map((entry, ei) => (
+            <div key={entry.id || ei} style={{ marginBottom: 10, padding: 10, borderRadius: 10, background: 'rgba(0,0,0,0.2)', border: `1px solid ${entry.color}33` }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: entry.color, minWidth: 18 }}>#{ei + 1}</span>
+                <input type="text" value={entry.text} placeholder="نص الرسالة"
+                  onChange={e => {
+                    const arr = [...(w.warnings || [])];
+                    arr[ei] = { ...arr[ei], text: e.target.value };
+                    setW({ ...w, warnings: arr });
+                  }} style={{ ...inputStyle, flex: 1, fontSize: 12 }} />
+                <button onClick={() => {
+                  const arr = [...(w.warnings || [])];
+                  arr.splice(ei, 1);
+                  setW({ ...w, warnings: arr });
+                }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(239,68,68,0.6)', fontSize: 14, padding: 4 }}>✕</button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.4fr', gap: 8, alignItems: 'end' }}>
+                <div>
+                  <label style={{ ...labelStyle, fontSize: 9 }}>النوع</label>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button onClick={() => {
+                      const arr = [...(w.warnings || [])];
+                      arr[ei] = { ...arr[ei], type: 'warning' };
+                      setW({ ...w, warnings: arr });
+                    }} style={{ ...chipStyle(entry.type === 'warning'), padding: '5px 8px', fontSize: 10 }}>⚠️</button>
+                    <button onClick={() => {
+                      const arr = [...(w.warnings || [])];
+                      arr[ei] = { ...arr[ei], type: 'upgrade' };
+                      setW({ ...w, warnings: arr });
+                    }} style={{ ...chipStyle(entry.type === 'upgrade'), padding: '5px 8px', fontSize: 10 }}>⬆️</button>
+                  </div>
+                </div>
+                <div>
+                  <label style={{ ...labelStyle, fontSize: 9 }}>اللون</label>
+                  <input type="color" value={entry.color}
+                    onChange={e => {
+                      const arr = [...(w.warnings || [])];
+                      arr[ei] = { ...arr[ei], color: e.target.value };
+                      setW({ ...w, warnings: arr });
+                    }}
+                    style={{ width: '100%', height: 32, borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', cursor: 'pointer', padding: 0 }} />
+                </div>
+                <div>
+                  <label style={{ ...labelStyle, fontSize: 9 }}>الصوت</label>
+                  <select value={entry.soundKey || ''}
+                    onChange={e => {
+                      const arr = [...(w.warnings || [])];
+                      arr[ei] = { ...arr[ei], soundKey: e.target.value || null };
+                      setW({ ...w, warnings: arr });
+                    }}
+                    style={{ ...inputStyle, fontSize: 10, padding: '5px 6px', height: 32 }}>
+                    <option value="">— بدون صوت —</option>
+                    {warningSounds.map(s => (
+                      <option key={s.soundKey} value={s.soundKey}>{s.labelAr || s.label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
-            <div>
-              <label style={labelStyle}>اللون</label>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input type="color" value={w.warningColor || '#ef4444'}
-                  onChange={e => setW({ ...w, warningColor: e.target.value })}
-                  style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', cursor: 'pointer', padding: 0 }} />
-                <input type="text" value={w.warningColor || '#ef4444'}
-                  onChange={e => setW({ ...w, warningColor: e.target.value })}
-                  style={{ ...inputStyle, width: 90, fontSize: 11 }} />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label style={labelStyle}>صوت الرسالة (اختياري)</label>
-            <input type="text" value={w.warningSoundKey || ''} placeholder="مفتاح الصوت مثل: warning_alert"
-              onChange={e => setW({ ...w, warningSoundKey: e.target.value || null })} style={inputStyle} />
-            <span style={{ fontSize: 9, color: 'rgba(148,163,184,0.3)', marginTop: 4, display: 'block' }}>
-              أدخل مفتاح الصوت (sound_key) من قسم الأصوات لتشغيله مع الرسالة
-            </span>
-          </div>
+          ))}
         </div>
-
-        {/* Hardcoded warnings for this wave */}
-        {WAVE_WARNINGS[w.waveNumber] && (
-          <div style={{ marginBottom: 16, padding: 12, borderRadius: 10, background: 'rgba(251,191,36,0.05)', border: '1px solid rgba(251,191,36,0.1)' }}>
-            <span style={{ fontSize: 11, color: '#fbbf24', fontWeight: 600 }}>📋 رسائل مدمجة لهذه الموجة:</span>
-            {WAVE_WARNINGS[w.waveNumber].map(ww => (
-              <div key={ww.id} style={{ fontSize: 11, color: ww.color, marginTop: 4 }}>
-                {ww.type === 'upgrade' ? '⬆️' : '⚠️'} {ww.text}
-              </div>
-            ))}
-            <span style={{ fontSize: 9, color: 'rgba(148,163,184,0.3)', marginTop: 6, display: 'block' }}>
-              الرسالة المخصصة أعلاه تأخذ الأولوية على هذه الرسائل المدمجة
-            </span>
-          </div>
-        )}
 
         <div style={{ display: 'flex', gap: 12 }}>
           <button onClick={() => onSave(w)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'rgba(59,130,246,0.2)', color: '#60a5fa', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>حفظ</button>
@@ -3169,3 +3211,128 @@ const SimulatorPanel: React.FC<{ isDesktop: boolean }> = ({ isDesktop }) => {
 };
 
 export default Admin;
+
+// ═══════════════════════════════════════════════════════════════
+// MESSAGES PANEL — Dynamic in-game event warnings
+// ═══════════════════════════════════════════════════════════════
+
+const MessagesPanel: React.FC<{
+  audioEntries: AudioConfigEntry[];
+  isDesktop: boolean;
+}> = ({ audioEntries, isDesktop }) => {
+  const [items, setItems] = useState<DynamicWarning[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [savedKey, setSavedKey] = useState<string | null>(null);
+
+  const warningSounds = audioEntries.filter(a => a.category === 'warnings');
+
+  useEffect(() => {
+    fetchDynamicWarnings().then(rows => {
+      setItems(rows);
+      setLoading(false);
+    });
+  }, []);
+
+  const updateField = (eventKey: string, patch: Partial<DynamicWarning>) => {
+    setItems(prev => prev.map(it => it.eventKey === eventKey ? { ...it, ...patch } : it));
+  };
+
+  const saveItem = async (item: DynamicWarning) => {
+    setSavingKey(item.eventKey);
+    const ok = await updateDynamicWarning(item.eventKey, {
+      text: item.text,
+      color: item.color,
+      soundKey: item.soundKey,
+      enabled: item.enabled,
+      duration: item.duration,
+    });
+    setSavingKey(null);
+    if (ok) {
+      setSavedKey(item.eventKey);
+      setTimeout(() => setSavedKey(prev => prev === item.eventKey ? null : prev), 1500);
+    }
+  };
+
+  if (loading) {
+    return <div style={{ padding: 20, color: 'rgba(148,163,184,0.5)', textAlign: 'center' }}>جاري التحميل...</div>;
+  }
+
+  return (
+    <div>
+      <div style={{ ...cardStyle, marginBottom: 14 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 6, color: '#f1f5f9' }}>💬 الرسائل الديناميكية</h3>
+        <p style={{ fontSize: 11, color: 'rgba(148,163,184,0.5)', lineHeight: 1.6, margin: 0 }}>
+          هذه الرسائل تظهر للاعب أثناء أحداث اللعبة (سرب طائرات، قصف جوي، إلخ). كل تغيير يطبَّق فوراً على اللعبة الحية.
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(2, 1fr)' : '1fr', gap: 12 }}>
+        {items.map(item => {
+          const isSaving = savingKey === item.eventKey;
+          const isSaved = savedKey === item.eventKey;
+          return (
+            <div key={item.eventKey} style={{
+              padding: 14, borderRadius: 12,
+              background: 'rgba(255,255,255,0.03)',
+              border: `1px solid ${item.enabled ? item.color + '33' : 'rgba(148,163,184,0.1)'}`,
+              opacity: item.enabled ? 1 : 0.5,
+              transition: 'all 0.2s',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>{item.labelAr || item.eventKey}</div>
+                  <div style={{ fontSize: 9, color: 'rgba(148,163,184,0.4)', fontFamily: 'monospace', marginTop: 2 }}>{item.eventKey}</div>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 10, color: 'rgba(148,163,184,0.6)' }}>
+                  <input type="checkbox" checked={item.enabled}
+                    onChange={e => updateField(item.eventKey, { enabled: e.target.checked })}
+                    style={{ accentColor: '#22c55e' }} />
+                  مفعّل
+                </label>
+              </div>
+
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)', display: 'block', marginBottom: 4 }}>النص</label>
+                <input type="text" value={item.text}
+                  onChange={e => updateField(item.eventKey, { text: e.target.value })}
+                  style={{ ...inputStyle, fontSize: 12, color: item.color }} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, marginBottom: 10 }}>
+                <div>
+                  <label style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)', display: 'block', marginBottom: 4 }}>اللون</label>
+                  <input type="color" value={item.color}
+                    onChange={e => updateField(item.eventKey, { color: e.target.value })}
+                    style={{ width: '100%', height: 36, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', cursor: 'pointer', padding: 0 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)', display: 'block', marginBottom: 4 }}>الصوت</label>
+                  <select value={item.soundKey || ''}
+                    onChange={e => updateField(item.eventKey, { soundKey: e.target.value || null })}
+                    style={{ ...inputStyle, fontSize: 11, padding: '6px 8px', height: 36 }}>
+                    <option value="">— بدون صوت —</option>
+                    {warningSounds.map(s => (
+                      <option key={s.soundKey} value={s.soundKey}>{s.labelAr || s.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <button onClick={() => saveItem(item)} disabled={isSaving}
+                style={{
+                  width: '100%', padding: '8px', borderRadius: 8, border: 'none',
+                  background: isSaved ? 'rgba(34,197,94,0.2)' : 'rgba(59,130,246,0.15)',
+                  color: isSaved ? '#22c55e' : '#60a5fa',
+                  fontWeight: 700, cursor: isSaving ? 'wait' : 'pointer', fontSize: 12,
+                  transition: 'all 0.2s',
+                }}>
+                {isSaving ? '...جاري الحفظ' : isSaved ? '✓ تم الحفظ' : '💾 حفظ التغييرات'}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
