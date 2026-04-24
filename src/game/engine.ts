@@ -312,6 +312,7 @@ export function resetGame(g: GameData) {
   g.waveEvents = [];
   g.waveEventsFired = [];
   g.volleyQueue = null;
+  g.airRaidFlyby = null;
   g.surgeFlashTimer = 0;
   // Wave system reset
   g.waveNumber = 1;
@@ -1877,7 +1878,7 @@ function updateWaveEvents(g: GameData, dt: number) {
       // minesweeper offer card has time to appear and be purchased.
       if (!g.minePlanter && !g.minePlanterScheduled) {
         g.minePlanterScheduled = true;
-        g.minePlanterArrivalTime = g.waveElapsed + 5;
+        g.minePlanterArrivalTime = g.waveElapsed + 10;
       }
     } else if (e.type === 'airstrike_flyby') {
       if (!g.airRaidFlyby) startAirRaidFlyby(g);
@@ -2028,7 +2029,7 @@ function startNextWave(g: GameData) {
   if (hasMinefield) {
     // Show offer a few seconds before the planter arrives, queued after any
     // gas/fire offers so protection cards never overlap visually.
-    const extraDelay = (needsGas || needsFire) ? 4.0 : 2.5;
+    const extraDelay = (needsGas || needsFire) ? 1.5 : 2.5;
     g.minesweeperOfferDelay = extraDelay;
     // Planter scheduling is handled entirely by updateWaveEvents — we do NOT
     // pre-schedule here so the event handler's delay is authoritative.
@@ -2073,9 +2074,10 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
           d.vel.y = -d.speed * 2;
         }
       }
-      // Clean up mine planter soldier
+      // Clean up mine planter soldier + air raid flyby
       if (g.minePlanter) { g.minePlanter.active = false; g.minePlanter = null; }
       g.minePlanterScheduled = false;
+      g.airRaidFlyby = null;
       // Dismiss any active minesweeper offer
       if (g.minesweeperOffer) { g.minesweeperOffer = null; }
     }
@@ -2223,14 +2225,18 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
     }
 
     // ── Minesweeper offer (dynamic 1% price, fires before the planter arrives) ──
+    // Only count down when other offers are CLOSED so they don't overlap.
+    // The delay stays positive until both gasMask and fireSuit are resolved.
     if (g.minesweeperOfferDelay > 0 && !g.minesweeperOffer) {
-      g.minesweeperOfferDelay -= dt;
-      if (g.minesweeperOfferDelay <= 0 && !g.gasMaskOffer && !g.fireSuitOffer) {
-        g.minesweeperOfferDelay = 0;
-        const cost = Math.max(10, Math.ceil(g.score * 0.01));
-        g.minesweeperOffer = { active: true, timer: 8, cost };
-        g.slowMoFactor = 0.1;
-        sfxUpgradeAlert();
+      if (!g.gasMaskOffer && !g.fireSuitOffer && g.gasMaskOfferDelay <= 0 && g.fireSuitOfferDelay <= 0 && !g.fireSuitOfferPending) {
+        g.minesweeperOfferDelay -= dt;
+        if (g.minesweeperOfferDelay <= 0) {
+          g.minesweeperOfferDelay = 0;
+          const cost = Math.max(10, Math.ceil(g.score * 0.01));
+          g.minesweeperOffer = { active: true, timer: 8, cost };
+          g.slowMoFactor = 0.1;
+          sfxUpgradeAlert();
+        }
       }
     }
 
