@@ -2802,8 +2802,11 @@ const WaveEditor: React.FC<{
   wave: RemoteWaveConfig;
   onSave: (w: RemoteWaveConfig) => void;
   onCancel: () => void;
-}> = ({ wave, onSave, onCancel }) => {
+  audioEntries: AudioConfigEntry[];
+}> = ({ wave, onSave, onCancel, audioEntries }) => {
   const [w, setW] = useState(wave);
+
+  const warningSounds = audioEntries.filter(a => a.category === 'warnings');
 
   const toggle = (arr: string[], item: string) =>
     arr.includes(item) ? arr.filter(x => x !== item) : [...arr, item];
