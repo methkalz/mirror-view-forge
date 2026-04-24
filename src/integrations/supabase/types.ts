@@ -243,6 +243,39 @@ export type Database = {
         }
         Relationships: []
       }
+      dynamic_warnings: {
+        Row: {
+          color: string
+          duration: number
+          enabled: boolean
+          event_key: string
+          label_ar: string
+          sound_key: string | null
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          duration?: number
+          enabled?: boolean
+          event_key: string
+          label_ar?: string
+          sound_key?: string | null
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          duration?: number
+          enabled?: boolean
+          event_key?: string
+          label_ar?: string
+          sound_key?: string | null
+          text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       game_config: {
         Row: {
           base_speed: number
@@ -465,6 +498,7 @@ export type Database = {
           warning_sound_key: string | null
           warning_text: string | null
           warning_type: string | null
+          warnings: Json
           wave_number: number
         }
         Insert: {
@@ -487,6 +521,7 @@ export type Database = {
           warning_sound_key?: string | null
           warning_text?: string | null
           warning_type?: string | null
+          warnings?: Json
           wave_number: number
         }
         Update: {
@@ -509,6 +544,7 @@ export type Database = {
           warning_sound_key?: string | null
           warning_text?: string | null
           warning_type?: string | null
+          warnings?: Json
           wave_number?: number
         }
         Relationships: []
