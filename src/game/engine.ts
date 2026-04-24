@@ -601,6 +601,8 @@ interface WaveRecipe {
   warningColor?: string;
   warningType?: string;
   warningSoundKey?: string | null;
+  /** Multi-warning per-wave list (admin-controlled, takes precedence over WAVE_WARNINGS). */
+  warnings?: import('./config').WaveWarningEntry[];
   events?: import('./types').WaveEventSpec[];
 }
 
