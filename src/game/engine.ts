@@ -7,7 +7,7 @@ import type { DifficultyProfile, RemoteWaveConfig } from './config';
 import { getFromPool, releaseAll } from './pool';
 import { isGodMode as _isGodMode } from './debugCommands';
 import { addTrauma, updateCameraShake, resetTrauma } from './cameraShake';
-import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameOverVoice, sfxGameStart, sfxUpgradeSelect, sfxScoreTick, sfxSlideTransition, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber, playCustomAudio } from './audio';
+import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameOverVoice, sfxGameStart, sfxUpgradeSelect, sfxScoreTick, sfxSlideTransition, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber, sfxWarningMine, sfxLaserCharge, sfxLaserFire, playCustomAudio } from './audio';
 
 let onSceneSwap: ((sceneIndex: number) => void) | null = null;
 export function setOnSceneSwap(cb: ((sceneIndex: number) => void) | null) { onSceneSwap = cb; }
@@ -767,13 +767,25 @@ function remoteToRecipe(r: RemoteWaveConfig): WaveRecipe {
 }
 
 function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
-  // 1. Check remote overrides
+  // Themed template — events, protection flags, wave-specific flavor.
+  // Always consulted as a fallback for themed aspects that overrides/profile miss.
+  const themed = getHardcodedThemedTemplate(wave);
+
+  // 1. Check remote overrides (admin-set per-wave in DB)
   if (g?.remoteWaveOverrides) {
     const override = g.remoteWaveOverrides.find(r => r.waveNumber === wave);
-    if (override) return remoteToRecipe(override);
+    if (override) {
+      const recipe = remoteToRecipe(override);
+      // Layer themed events + protection flags when override doesn't set them
+      if (!recipe.events || recipe.events.length === 0) recipe.events = themed.events ?? [];
+      if (themed.hasIncendiary && !recipe.hasIncendiary) recipe.hasIncendiary = true;
+      if (themed.hasChemical && !recipe.hasChemical) recipe.hasChemical = true;
+      if (themed.hasBoss && !recipe.hasBoss) recipe.hasBoss = true;
+      return recipe;
+    }
   }
 
-  // 2. Check difficulty profile for auto-generation
+  // 2. Check difficulty profile for auto-generation (themed aspects already layered inside)
   if (g?.difficultyProfile) {
     return generateWaveFromProfile(wave, g.difficultyProfile);
   }
@@ -805,7 +817,7 @@ function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
   // W12 — BOSS
   if (wave === 12) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 12, hasBoss: true, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
   // W13+: pull themed aspects and layer numeric curve
-  const themed = getHardcodedThemedTemplate(wave);
+  const lateThemed = getHardcodedThemedTemplate(wave);
   const extra = wave - 12;
   // Smoother numeric curve — W13 eases off from W12 peak, rebuilds to W16
   // Mapping per wave offset: 13=ease, 14=rebuild, 15=theme (low numbers), 16=peak
@@ -821,20 +833,20 @@ function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
     si = Math.max(0.6, 0.9 - e2 * 0.02);
   }
   return {
-    threats: themed.threats ?? ['shrapnel', 'missile', 'cluster', 'meteor'],
+    threats: lateThemed.threats ?? ['shrapnel', 'missile', 'cluster', 'meteor'],
     maxConcurrent: mc,
     spawnInterval: si,
     droneInterval: Math.max(8, 12 - extra * 0.3),
-    droneTiers: themed.droneTiers ?? (['scout', 'tracker', 'bomber', 'laser'] as DroneTier[]),
+    droneTiers: lateThemed.droneTiers ?? (['scout', 'tracker', 'bomber', 'laser'] as DroneTier[]),
     clusterSplits: Math.min(6, 5 + Math.floor(extra / 3)),
     bulletLevel: 4,
     phaseInDelay: 0,
-    hasBoss: themed.hasBoss ?? (extra % 4 === 0),
-    hasChemical: themed.hasChemical !== undefined ? themed.hasChemical : true,
-    hasIncendiary: themed.hasIncendiary !== undefined ? themed.hasIncendiary : true,
-    duration: themed.duration ?? D,
-    surgeMultiplier: themed.surgeMultiplier ?? S,
-    events: themed.events ?? [],
+    hasBoss: lateThemed.hasBoss ?? (extra % 4 === 0),
+    hasChemical: lateThemed.hasChemical !== undefined ? lateThemed.hasChemical : true,
+    hasIncendiary: lateThemed.hasIncendiary !== undefined ? lateThemed.hasIncendiary : true,
+    duration: lateThemed.duration ?? D,
+    surgeMultiplier: lateThemed.surgeMultiplier ?? S,
+    events: lateThemed.events ?? [],
   };
 }
 
@@ -974,7 +986,7 @@ function spawnHazard(g: GameData, type: HazardType) {
       h.targetPos = { x: tx, y: groundY };
       h.speed = 0;
       h.size = 10;
-      h.damage = 25;
+      h.damage = 12;
       h.warningDuration = 0;
       h.warningTimer = 0;
       h.falling = true;  // bypass warning → update loop
@@ -1236,15 +1248,16 @@ function queueWaveEvent(
   if (event.soundKey && playCustomAudio(event.soundKey)) {
     // Custom sound played successfully
   } else if (event.type === 'warning') {
-    // Play threat-specific warning sound based on event id
     const id = event.id;
     if (id.includes('shrapnel')) sfxWarningShrapnel();
-    else if (id.includes('missile')) sfxWarningMissile();
+    else if (id.includes('missile') || id.includes('volley')) sfxWarningMissile();
     else if (id.includes('cluster')) sfxWarningCluster();
-    else if (id.includes('drone') || id.includes('tracker') || id.includes('chemical') || id.includes('incendiary')) sfxWarningDrone();
-    else if (id.includes('boss') || id.includes('minibos')) sfxWarningBoss();
+    else if (id.includes('drone') || id.includes('tracker') || id.includes('chemical') || id.includes('incendiary') || id.includes('laser')) sfxWarningDrone();
+    else if (id.includes('boss') || id.includes('minibos') || id.includes('surge') || id.includes('peak')) sfxWarningBoss();
     else if (id.includes('bomber')) sfxWarningBomber();
+    else if (id.includes('mine')) sfxWarningMine();
     else if (id.includes('gas') || id.includes('fire') || id.includes('extinguisher')) sfxWarningHazard();
+    else if (id.includes('calm') || id.includes('recover') || id.includes('bullet')) sfxUpgradeAlert();
     else sfxWarningAlert();
   } else if (event.type === 'upgrade') sfxUpgradeAlert();
 }
@@ -1708,6 +1721,7 @@ function spawnSwarm(g: GameData, count: number) {
   }
   addTrauma(0.35);
   g.cinematicWarning = { text: '⚠ سرب طائرات!', subText: '', color: '#ef4444', timer: 1.0, duration: 1.0, type: 'warning' };
+  sfxWarningDrone();
 }
 
 /** Drops 5 mines across the ground at evenly-spaced positions. */
@@ -1740,7 +1754,7 @@ function spawnMinePlanter(g: GameData) {
     walkAnim: 0,
   };
   g.cinematicWarning = { text: '⚠ عسكري يزرع ألغام!', subText: '', color: '#f59e0b', timer: 1.2, duration: 1.2, type: 'warning' };
-  sfxWarningAlert();
+  sfxWarningMine();
 }
 
 /** Plants a single mine at a specific ground X. */
@@ -1823,6 +1837,7 @@ function startVolley(g: GameData) {
   const x = 60 + Math.random() * (g.width - 120);
   g.volleyQueue = { remaining: 5, nextTimer: 0, x };
   g.cinematicWarning = { text: '⚠ وابل صواريخ!', subText: '', color: '#dc2626', timer: 0.8, duration: 0.8, type: 'warning' };
+  sfxWarningMissile();
 }
 
 /** Drives the scheduled wave events forward, firing them when the elapsed time matches. */
@@ -1929,17 +1944,19 @@ function startNextWave(g: GameData) {
   if (recipe.hasIncendiary) g.incendiaryTimer = Math.max(14, 14 + Math.random() * 6);
   if (recipe.hasChemical) g.chemicalTimer = Math.max(14, 14 + Math.random() * 8);
 
-  // Queue wave warnings — recipe custom warnings take priority over hardcoded
-  if (recipe.warningText) {
+  // Queue wave warnings — admin custom warning REPLACES hardcoded ones
+  const hasAdminWarning = !!recipe.warningText;
+  if (hasAdminWarning) {
     const customId = `custom_w${g.waveNumber}`;
     if (!g.waveTriggered.has(customId)) {
       const delay = recipe.phaseInDelay || 0;
       if (delay <= 0) {
-        queueWaveEvent(g, { id: customId, text: recipe.warningText, sub: '', color: recipe.warningColor || '#ef4444', type: (recipe.warningType as 'warning' | 'upgrade') || 'warning', duration: 2.0, soundKey: recipe.warningSoundKey });
+        queueWaveEvent(g, { id: customId, text: recipe.warningText!, sub: '', color: recipe.warningColor || '#ef4444', type: (recipe.warningType as 'warning' | 'upgrade') || 'warning', duration: 2.0, soundKey: recipe.warningSoundKey });
       }
     }
   }
-  const warnings = WAVE_WARNINGS[g.waveNumber];
+  // Show hardcoded warnings ONLY if admin hasn't set a custom one
+  const warnings = !hasAdminWarning ? WAVE_WARNINGS[g.waveNumber] : undefined;
   if (warnings) {
     for (const w of warnings) {
       if (!g.waveTriggered.has(w.id)) {
@@ -2844,10 +2861,14 @@ export function update(g: GameData, input: InputState, dt: number) {
         }
       } else if (h.mineState === 'armed') {
         const dp = dist(h.pos, p.pos);
-        const DEFUSE_RANGE = 45;
-        const TRIGGER_RANGE = 60;
+        const DEFUSE_RANGE = 35;       // sweeper defuse proximity
+        const STEP_ON_RANGE = 15;      // direct contact — player steps on mine
         const hasSweeper = p.minesweeperTimer > 0;
-        if (hasSweeper && dp < DEFUSE_RANGE + p.size) {
+        // Step on mine (direct contact) — detonates regardless of sweeper
+        if (dp < STEP_ON_RANGE + p.size && !p.isDashing) {
+          h.mineState = 'triggered';
+          h.mineTimer = 0.15;
+        } else if (hasSweeper && dp < DEFUSE_RANGE + p.size) {
           // Player is defusing — progress fills over 3 seconds
           h.mineDefuseProgress = (h.mineDefuseProgress ?? 0) + dt;
           if ((h.mineDefuseProgress ?? 0) >= 3.0) {
@@ -2862,11 +2883,6 @@ export function update(g: GameData, input: InputState, dt: number) {
         } else {
           // Out of defuse range — reset progress
           if ((h.mineDefuseProgress ?? 0) > 0) h.mineDefuseProgress = 0;
-          // Normal trigger check (only if player has no sweeper or is out of defuse range)
-          if (!hasSweeper && dp < TRIGGER_RANGE + p.size) {
-            h.mineState = 'triggered';
-            h.mineTimer = 0.5;
-          }
         }
         if ((h.mineLife ?? 0) <= 0) {
           h.active = false;
@@ -3646,17 +3662,18 @@ export function update(g: GameData, input: InputState, dt: number) {
         if (d.laserPhase === 'idle') {
           if (d.bombTimer <= 0) {
             d.laserPhase = 'telegraph';
-            d.laserTargetX = Math.max(40, Math.min(g.width - 40, p.pos.x));
+            d.laserTargetX = d.pos.x;
             d.bombTimer = 1.5;
-            sfxWarning();
+            sfxLaserCharge();
           }
         } else if (d.laserPhase === 'telegraph') {
           if (d.bombTimer <= 0) {
             d.laserPhase = 'firing';
             d.bombTimer = 0.5;
             addTrauma(0.2);
+            sfxLaserFire();
             // Deal laser damage ONCE at the moment of firing (not every frame)
-            const targetX = d.laserTargetX ?? d.pos.x;
+            const targetX = d.pos.x;
             const playerInBeam = Math.abs(p.pos.x - targetX) < 18 + p.size;
             if (playerInBeam) {
               damagePlayer(g, 25, { x: targetX, y: p.pos.y });

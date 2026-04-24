@@ -547,6 +547,46 @@ export function sfxWarningBomber() {
   setTimeout(() => playTone(500, 0.08, 'square', 0.1 * v), 300);
 }
 
+export function sfxWarningMine() {
+  if (!isSoundEnabled('warningMine')) return;
+  if (playCustomAudio('warningMine')) return;
+  const v = getSoundVolume('warningMine', 1);
+  // Metallic clicking — rapid high-freq ticks like mine arming
+  playTone(1800, 0.04, 'square', 0.12 * v);
+  setTimeout(() => playTone(2200, 0.04, 'square', 0.1 * v), 80);
+  setTimeout(() => playTone(1600, 0.04, 'square', 0.12 * v), 160);
+  setTimeout(() => playTone(2400, 0.06, 'square', 0.08 * v), 250);
+  setTimeout(() => playTone(1000, 0.15, 'sawtooth', 0.1 * v), 340);
+}
+
+export function sfxLaserCharge() {
+  if (!isSoundEnabled('laserCharge')) return;
+  if (playCustomAudio('laserCharge')) return;
+  const v = getSoundVolume('laserCharge', 1);
+  // Rising electronic charge-up whine
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(200, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(2000, ctx.currentTime + 0.8);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.08 * v, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.15 * v, ctx.currentTime + 0.6);
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.0);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 1.0);
+}
+
+export function sfxLaserFire() {
+  if (!isSoundEnabled('laserFire')) return;
+  if (playCustomAudio('laserFire')) return;
+  const v = getSoundVolume('laserFire', 1);
+  playTone(150, 0.4, 'sawtooth', 0.2 * v);
+  playNoise(0.3, 0.15 * v, { type: 'highpass', freq: 3000 });
+}
+
 export function sfxSlideTransition() {
   if (!isSoundEnabled('slideTransition')) return;
   if (playCustomAudio('slideTransition')) return;
