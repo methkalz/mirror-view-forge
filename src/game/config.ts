@@ -21,6 +21,15 @@ export interface RemoteGameConfig {
   sceneChangeInterval: number;
 }
 
+export interface WaveWarningEntry {
+  id: string;
+  text: string;
+  sub?: string;
+  color: string;
+  type: 'warning' | 'upgrade';
+  soundKey?: string | null;
+}
+
 export interface RemoteWaveConfig {
   waveNumber: number;
   duration: number;
@@ -40,7 +49,19 @@ export interface RemoteWaveConfig {
   warningColor: string;
   warningType: string;
   warningSoundKey: string | null;
+  /** Multiple per-wave admin warnings. If non-empty, replaces hardcoded WAVE_WARNINGS. */
+  warnings: WaveWarningEntry[];
   events: { type: string; triggerAt: number; duration: number }[];
+}
+
+export interface DynamicWarning {
+  eventKey: string;
+  text: string;
+  color: string;
+  soundKey: string | null;
+  enabled: boolean;
+  duration: number;
+  labelAr: string;
 }
 
 export interface DifficultyProfile {
