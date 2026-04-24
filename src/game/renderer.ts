@@ -6942,14 +6942,11 @@ function renderMotorcycle(
 
   // ── Spring-driven suspension (front fork compresses on braking) ──
   const suspFromEngine = bike.suspCompress ?? 0;
-  const isBrakingNow = bike.phase === 'idle' || bike.phase === 'slowing' || bike.speed < 50;
+  const isBrakingNow = bike.phase === 'idle' || bike.speed < 50;
   // The engine already runs a critically-damped spring; fall back to a
   // static value if the bike somehow isn't physics-enabled.
   const suspCompress = suspFromEngine !== 0 ? suspFromEngine : (isBrakingNow ? -1.5 : 0);
-  // Rear reacts oppositely during departure (squat) — more compression
-  // on the rear, less on the front.
-  const isLeaving = bike.phase === 'leaving';
-  const rearSuspCompress = isLeaving ? suspCompress * 1.4 : suspCompress * 0.4;
+  const rearSuspCompress = suspCompress * 0.4; // rear reacts less
 
   // Apply visual body lean (pitch) — front lifts on squat, drops on dive
   const lean = bike.leanAngle ?? 0;
@@ -7063,8 +7060,8 @@ function renderMotorcycle(
 
   // ── Physics-Based Dust with Skid on Braking ──
   if (Math.abs(bike.speed) > 30) {
-    const isDecelerating = (bike.phase === 'entering' || bike.phase === 'slowing') && bike.speed < 250;
-    const dustCount = Math.min(12, Math.floor(Math.abs(bike.speed) / 30) + (isDecelerating ? 5 : 0));
+    const isDecelerating = bike.phase === 'entering' && bike.speed < 200;
+    const dustCount = Math.min(10, Math.floor(Math.abs(bike.speed) / 35) + (isDecelerating ? 3 : 0));
     for (let i = 0; i < dustCount; i++) {
       const seed = (g.elapsed * 3 + i * 1.7) % 2;
       const friction = Math.pow(0.93, seed * 15);
@@ -7085,44 +7082,6 @@ function renderMotorcycle(
       ctx.ellipse(0, 0, dustSize * 1.3, dustSize * 0.7, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
-    }
-  }
-
-  // ── Skid marks on hard braking (rubber on asphalt) ──
-  if (isBrakingNow && bike.phase === 'slowing') {
-    ctx.save();
-    // Dark rubber marks behind the rear wheel
-    const skidAlpha = Math.min(0.18, Math.abs(bike.speed) * 0.001);
-    const skidGrad = ctx.createLinearGradient(rearWX - 35, rearWY + wheelR, rearWX, rearWY + wheelR);
-    skidGrad.addColorStop(0, `rgba(30,28,25,0)`);
-    skidGrad.addColorStop(0.3, `rgba(30,28,25,${skidAlpha})`);
-    skidGrad.addColorStop(0.8, `rgba(20,18,15,${skidAlpha * 1.3})`);
-    skidGrad.addColorStop(1, `rgba(20,18,15,${skidAlpha * 0.4})`);
-    ctx.fillStyle = skidGrad;
-    ctx.fillRect(rearWX - 35, rearWY + wheelR - 0.8, 36, 1.6);
-    // Front tire light mark
-    const fSkidAlpha = skidAlpha * 0.6;
-    ctx.fillStyle = `rgba(25,22,20,${fSkidAlpha})`;
-    ctx.fillRect(frontWX - 20, frontWY + wheelR - 0.5, 21, 1.0);
-    ctx.restore();
-  }
-
-  // ── Departure tire spin: rear wheel kicks up pebbles/dust on launch ──
-  if (isLeaving && bike.speed > 50 && bike.speed < 350) {
-    const launchIntensity = Math.min(1, (bike.speed - 50) / 200);
-    const pebbleCount = Math.floor(3 + launchIntensity * 4);
-    for (let i = 0; i < pebbleCount; i++) {
-      const seed = (g.elapsed * 5 + i * 2.3) % 1.5;
-      if (seed > 1.2) continue; // sparse
-      const age = seed / 1.2;
-      const px = rearWX - 3 - age * 14 * (1 + i * 0.3);
-      const py = rearWY + wheelR - 1 - Math.sin(age * Math.PI) * (3 + i * 1.5);
-      const pSize = (0.8 + i * 0.3) * (1 - age * 0.5);
-      const pAlpha = (1 - age) * 0.5 * launchIntensity;
-      ctx.fillStyle = `rgba(160,140,110,${pAlpha})`;
-      ctx.beginPath();
-      ctx.arc(px, py, pSize, 0, Math.PI * 2);
-      ctx.fill();
     }
   }
 

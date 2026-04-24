@@ -369,18 +369,13 @@ export function updateIntro(g: GameData, dt: number) {
   const bike = g.introBike;
   if (!bike) return;
 
-  // Cinematic smooth camera zoom — critically damped so it eases in
-  // without overshoot and never jumps on the first frame.
+  // Cinematic easeOutExpo camera zoom
   const zoomDiff = g.cameraZoomTarget - g.cameraZoom;
-  const zoomSpeed = 3.0; // higher = faster settle
-  const easeOutZoom = 1 - Math.exp(-zoomSpeed * dt);
+  const easeOutZoom = 1 - Math.pow(0.005, dt * 2.5);
   g.cameraZoom += zoomDiff * easeOutZoom;
 
-  // Update wheel animation — the factor converts linear speed (px/s) to
-  // angular velocity. wheelR=8 at scale 2.4 → effective radius ~19px.
-  // One full rotation = 2*PI*19 ≈ 119px of travel. Factor = 1/19 ≈ 0.052.
-  // We use 0.053 so high-speed spokes read as a blur rather than aliased.
-  bike.wheelAnim += bike.speed * dt * 0.053;
+  // Update wheel animation
+  bike.wheelAnim += bike.speed * dt * 0.05;
 
   // Suspension + lean physics for intro bike too
   updateBikePhysics(bike, dt);
@@ -391,29 +386,16 @@ export function updateIntro(g: GameData, dt: number) {
     case 'bikeEnter': {
       // Play bike engine sound at start
       if (g.introTimer < dt * 2) sfxBikeEngine();
-      // Bike enters from left with a wide, smooth deceleration using a
-      // quintic ease-out curve. The wider decel zone (280px) prevents the
-      // jarring snap of the old 140px zone, and the quintic ramp holds
-      // high speed longer before a progressive dive — much more cinematic.
+      // Bike enters from left with a long, smooth deceleration using a
+      // cubic ease-out curve. Much more natural than linear speed falloff.
       const distToCenter = centerX - bike.pos.x;
-      const decelZone = 280;
-      if (distToCenter < decelZone && distToCenter > 0) {
-        const t = 1 - distToCenter / decelZone; // 0 at edge, 1 at center
-        // Quintic ease-out: fast through most of the zone, then a long
-        // progressive tail that smoothly converges to near-zero.
-        const ease = 1 - Math.pow(1 - t, 5);
-        // Smoothly approach 0 instead of a hard floor — the last few px
-        // are handled by the overshoot clamp below.
-        bike.speed = 480 * (1 - ease);
-      }
-      // Clamp minimum speed so the bike doesn't stall before reaching center
-      if (distToCenter > 0 && distToCenter < 20) {
-        bike.speed = Math.max(bike.speed, 18);
-      }
-      // Switch bike.phase to 'slowing' when braking so updateBikePhysics
-      // can apply the nose-dive suspension target.
-      if (distToCenter < decelZone * 0.4 && bike.phase !== 'slowing') {
-        bike.phase = 'slowing';
+      const decelZone = 140;
+      if (distToCenter < decelZone) {
+        // Cubic ease-out: preserves high speed until the last third then
+        // dives smoothly to ~25 as the bike nears its stop point.
+        const t = 1 - Math.max(0, distToCenter) / decelZone; // 0..1
+        const ease = 1 - Math.pow(1 - t, 3);
+        bike.speed = 480 * (1 - ease) + 22;
       }
       bike.pos.x += bike.speed * dt;
       // Player rides with bike
@@ -425,11 +407,6 @@ export function updateIntro(g: GameData, dt: number) {
       if (bike.pos.x >= centerX) {
         bike.pos.x = centerX;
         g.player.pos.x = centerX;
-        // Apply a strong suspension impulse to simulate the brake stop
-        // bounce — the spring will then oscillate and settle naturally.
-        if (bike.suspVelocity !== undefined) {
-          bike.suspVelocity = -18; // sharp downward impulse (nose dives)
-        }
         bike.speed = 0;
         g.introPhase = 'bikeStop';
         g.introTimer = 0;
@@ -450,17 +427,15 @@ export function updateIntro(g: GameData, dt: number) {
 
       // Camera shake on brake impact — stronger, exponential decay
       if (g.introTimer < dt * 2) {
-        g.screenShake = { x: (Math.random() - 0.5) * 6, y: (Math.random() - 0.5) * 3 };
-      } else if (g.introTimer < 0.35) {
-        const decay = Math.pow(0.82, (g.introTimer / dt));
+        g.screenShake = { x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 2 };
+      } else if (g.introTimer < 0.2) {
+        const decay = Math.pow(0.85, (g.introTimer / dt));
         g.screenShake = { x: g.screenShake.x * decay, y: g.screenShake.y * decay };
       } else {
         g.screenShake = { x: 0, y: 0 };
       }
 
-      // Longer idle pause (1.8s) — gives the bike time to settle its
-      // suspension bounce and lets the player register the stop.
-      if (g.introTimer > 1.8) {
+      if (g.introTimer > 1.2) {
         g.introPhase = 'playerDismount';
         g.introTimer = 0;
         g.introPlayerOffset = 0;
@@ -522,25 +497,12 @@ export function updateIntro(g: GameData, dt: number) {
       if (g.introTimer < dt * 2) sfxBikeDepart();
       // Smooth transition timer for fade between intro char and real player
       g.introTransitionTimer += dt;
-
-      // Torque-curve acceleration: initial burst of torque (wheelie zone)
-      // then tapers as the bike reaches higher speeds — feels like a
-      // real engine rather than a constant push.
-      const departT = g.introTimer;
-      // Phase 1 (0-0.3s): clutch dump — explosive initial torque
-      // Phase 2 (0.3s+): tapering as RPM climbs
-      const torque = departT < 0.3
-        ? 700 + (1 - departT / 0.3) * 200  // 900 → 700
-        : 400 + 200 * Math.exp(-(departT - 0.3) * 1.5); // 600 → ~400
-      bike.speed += torque * dt;
+      
+      // Bike accelerates and leaves to the right
+      bike.speed += 400 * dt;
       bike.pos.x += bike.speed * dt;
       bike.wheelAnim += bike.speed * dt * 0.05;
-      // Subtle engine vibration during acceleration
-      const tL = g.elapsed * 30;
-      bike.shakeOffset = {
-        x: Math.sin(tL) * 0.2 * Math.min(1, departT * 3),
-        y: Math.sin(tL * 1.4) * 0.15 * Math.min(1, departT * 3),
-      };
+      bike.shakeOffset = { x: 0, y: 0 };
 
       // Player looks at departing bike (faces right toward bike)
       g.player.facingRight = true;
@@ -1657,17 +1619,11 @@ function updateBikePhysics(bike: DeliveryBike, dt: number) {
   // Target suspension compression: nose-dive on braking, squat on acceleration
   // Positive accelX (toward positive X) pushes weight rearward → front lifts.
   // Braking (accelX opposite to speed) pushes weight forward → front dips.
-  //
-  // 'slowing' covers both the delivery bike AND the intro bike (which now
-  // switches to 'slowing' during its decel zone approach).
   const isBraking = bike.phase === 'slowing' || (bike.phase === 'idle' && Math.abs(bike.speed) < 50);
-  // Departure squat is proportional to acceleration — stronger initial
-  // torque produces a deeper rear squat (weight transfer to rear wheel).
-  const departSquat = bike.phase === 'leaving' ? Math.min(1.8, Math.abs(accelX) * 0.0004 + 0.4) : 0;
   const targetCompress = isBraking
     ? -2.4 // nose dives
     : bike.phase === 'leaving'
-      ? departSquat // rear squats on launch, proportional to torque
+      ? 0.6 // rear squats slightly on launch
       : 0;
 
   // Critically damped spring: F = -k*x - c*v
@@ -1679,14 +1635,11 @@ function updateBikePhysics(bike: DeliveryBike, dt: number) {
   bike.suspCompress += bike.suspVelocity * dt;
 
   // Body lean: derive from horizontal acceleration relative to speed direction
-  // Clamp so it's purely visual and never feels floaty. Wider range than
-  // before (-0.12..0.10) so the braking nose-dive and departure wheelie
-  // are clearly visible.
+  // Clamp so it's purely visual and never feels floaty.
   const signedAccel = accelX * (bike.facingRight ? 1 : -1);
-  const targetLean = Math.max(-0.12, Math.min(0.10, -signedAccel * 0.00025));
-  // Smooth toward target so lean animates naturally — slightly faster
-  // response (12/s) for punchier weight transfer feel.
-  bike.leanAngle += (targetLean - bike.leanAngle) * Math.min(1, dt * 12);
+  const targetLean = Math.max(-0.08, Math.min(0.06, -signedAccel * 0.00018));
+  // Smooth toward target so lean animates naturally
+  bike.leanAngle += (targetLean - bike.leanAngle) * Math.min(1, dt * 8);
 
   // Engine RPM phase advances faster as the bike moves harder
   const rpmRate = 18 + Math.min(28, Math.abs(bike.speed) * 0.15);
