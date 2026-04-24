@@ -281,6 +281,7 @@ const Admin: React.FC = () => {
                  tab === 'branding' ? 'Logo, title & developer branding' :
                  tab === 'backgrounds' ? 'Day/night cycle & background images' :
                  tab === 'waves' ? 'Wave configuration & enemy patterns' :
+                 tab === 'messages' ? 'Dynamic in-game event messages (swarm, airstrike...)' :
                  tab === 'audio' ? 'Professional audio system management' :
                  tab === 'simulator' ? 'In-admin game testing & simulation' :
                  'Leaderboard management'}
