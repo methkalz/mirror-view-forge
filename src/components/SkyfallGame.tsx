@@ -4,7 +4,7 @@ import { loadAudioSettings, reloadAudioSettings } from '@/game/audio';
 import { createGame, resetGame, update, updateIntro, updateCardsOnly, hasModalCard, _debug } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
 import { resumeAudio, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition, sfxAmmoTutorial, stopGameOverVoice } from '@/game/audio';
-import { fetchGameConfig, fetchLeaderboard, fetchDifficultyProfile, fetchWaveConfigs, submitScore, type RemoteGameConfig, type LeaderboardEntry, type DifficultyProfile, type RemoteWaveConfig } from '@/game/config';
+import { fetchGameConfig, fetchLeaderboard, fetchDifficultyProfile, fetchWaveConfigs, fetchDynamicWarnings, submitScore, type RemoteGameConfig, type LeaderboardEntry, type DifficultyProfile, type RemoteWaveConfig, type DynamicWarning } from '@/game/config';
 import { fetchBackgroundConfig, fetchScenes, type Scene, type BackgroundPhase } from '@/game/backgroundConfig';
 import { setBackgroundConfig, setBackgroundConfigForScene, setCameraMargin } from '@/game/renderer';
 import { setOnSceneSwap } from '@/game/engine';
@@ -53,6 +53,7 @@ const SkyfallGame: React.FC = () => {
   const remoteConfigRef = useRef<RemoteGameConfig | null>(null);
   const difficultyProfileRef = useRef<DifficultyProfile | null>(null);
   const waveOverridesRef = useRef<RemoteWaveConfig[]>([]);
+  const dynamicWarningsRef = useRef<Record<string, DynamicWarning>>({});
   const scoreSubmittedRef = useRef(false);
   const tutorialShownRef = useRef(false);
   const [ammoArrowVisible, setAmmoArrowVisible] = useState(false);
@@ -95,9 +96,10 @@ const SkyfallGame: React.FC = () => {
         const dpPromise = fetchDifficultyProfile();
         const wcPromise = fetchWaveConfigs();
         const scenesPromise = fetchScenes();
+        const dwPromise = fetchDynamicWarnings();
         setLoadProgress(15);
 
-        const [cfg, lb, bgPhases, dp, wc, scenes] = await Promise.all([cfgPromise, lbPromise, bgPromise, dpPromise, wcPromise, scenesPromise]);
+        const [cfg, lb, bgPhases, dp, wc, scenes, dw] = await Promise.all([cfgPromise, lbPromise, bgPromise, dpPromise, wcPromise, scenesPromise, dwPromise]);
         if (!mounted) return;
         setLoadProgress(40);
 
@@ -107,6 +109,7 @@ const SkyfallGame: React.FC = () => {
         setLeaderboard(lb);
         difficultyProfileRef.current = dp;
         waveOverridesRef.current = wc;
+        dynamicWarningsRef.current = Object.fromEntries(dw.map(d => [d.eventKey, d]));
         
         // Store scenes + phases for multi-scene support
         scenesRef.current = scenes;
@@ -239,6 +242,7 @@ const SkyfallGame: React.FC = () => {
     // Apply difficulty profile and wave overrides
     g.difficultyProfile = difficultyProfileRef.current;
     g.remoteWaveOverrides = waveOverridesRef.current;
+    g.dynamicWarnings = dynamicWarningsRef.current;
 
     // Inject scene data for multi-scene transitions
     g.scenes = scenesRef.current;
