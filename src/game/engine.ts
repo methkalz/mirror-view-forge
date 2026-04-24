@@ -312,6 +312,7 @@ export function resetGame(g: GameData) {
   g.waveEvents = [];
   g.waveEventsFired = [];
   g.volleyQueue = null;
+  g.airRaidFlyby = null;
   g.surgeFlashTimer = 0;
   // Wave system reset
   g.waveNumber = 1;
@@ -2073,9 +2074,10 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
           d.vel.y = -d.speed * 2;
         }
       }
-      // Clean up mine planter soldier
+      // Clean up mine planter soldier + air raid flyby
       if (g.minePlanter) { g.minePlanter.active = false; g.minePlanter = null; }
       g.minePlanterScheduled = false;
+      g.airRaidFlyby = null;
       // Dismiss any active minesweeper offer
       if (g.minesweeperOffer) { g.minesweeperOffer = null; }
     }
