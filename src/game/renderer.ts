@@ -6963,10 +6963,11 @@ function renderMotorcycle(
   if (bike.phase === 'idle' || bike.phase === 'leaving' || bike.phase === 'entering') {
     const isLeaving = bike.phase === 'leaving';
     const isIdle = bike.phase === 'idle';
-    const puffCount = isLeaving ? 16 : isIdle ? 11 : 13;
-    const lifeSpan = isLeaving ? 3.2 : 2.8; // seconds per puff
-    // Emission rate (puffs per second)
-    const emitRate = isLeaving ? 6 : 4.5;
+    const isEntering = bike.phase === 'entering';
+    // Entering: minimal smoke (bike cruising). Idle: rhythmic puffs. Leaving: heavy.
+    const puffCount = isLeaving ? 14 : isIdle ? 10 : 7;
+    const lifeSpan = isLeaving ? 3.0 : 2.6;
+    const emitRate = isLeaving ? 5.5 : isIdle ? 4 : 3;
 
     // Deterministic noise helper (cheap 2-freq hash)
     const curl = (t: number, seed: number) =>
@@ -6984,14 +6985,16 @@ function renderMotorcycle(
       // Drift from the exhaust tip (-28, -5). Backward velocity + rise.
       const seed = i * 1.71;
       const frict = 1 - Math.pow(1 - ageRatio, 2); // decelerates over time
-      const backwardSpeed = isLeaving ? 18 : 7;
+      // Smoke drifts backward relative to bike — stronger during leaving
+      // to give the impression of being left behind as the bike accelerates.
+      const backwardSpeed = isLeaving ? 32 : isIdle ? 6 : 10;
       // Smoke rises (buoyancy) — accelerates upward over age
       const rise = ageRatio * ageRatio * 14 + ageRatio * 4;
       // Curl-noise horizontal drift
       const curlX = curl(g.elapsed + seed, seed) * 3.5;
       const curlY = curl(g.elapsed + seed + 100, seed * 1.5) * 2.2;
-      // Wind (slow constant drift)
-      const windX = (isLeaving ? -2 : -0.6);
+      // Wind drift — more pronounced when bike is moving away fast
+      const windX = isLeaving ? -4 : isEntering ? -1.5 : -0.6;
 
       const sx = -28 - (backwardSpeed * rawAge * frict) + curlX + windX * rawAge;
       const sy = -5 - rise + curlY;

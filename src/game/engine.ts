@@ -395,7 +395,7 @@ export function updateIntro(g: GameData, dt: number) {
         // dives smoothly to ~25 as the bike nears its stop point.
         const t = 1 - Math.max(0, distToCenter) / decelZone; // 0..1
         const ease = 1 - Math.pow(1 - t, 3);
-        bike.speed = 480 * (1 - ease) + 22;
+        bike.speed = 480 * (1 - ease) + 12;
       }
       bike.pos.x += bike.speed * dt;
       // Player rides with bike
