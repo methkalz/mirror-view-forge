@@ -3050,10 +3050,32 @@ const SimulatorPanel: React.FC<{ isDesktop: boolean }> = ({ isDesktop }) => {
         {/* Wave Control */}
         <div style={{ ...cardStyle, marginBottom: 12 }}>
           <h4 style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', marginBottom: 10 }}>🎯 التحكم بالموجة</h4>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-            {[1,3,5,7,9,12,15].map(w => (
+          {/* Quick-jump buttons for common waves */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+            {[1,2,3,5,7,9,12,15,16].map(w => (
               <button key={w} onClick={() => cmd(d => d.jumpToWave(w))} style={simBtnStyle}>W{w}</button>
             ))}
+          </div>
+          {/* Custom wave jump — any number */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10, alignItems: 'center' }}>
+            <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)' }}>أو اختر موجة:</span>
+            <input
+              type="number"
+              min={1}
+              max={99}
+              defaultValue={1}
+              id="sim-custom-wave"
+              style={{ width: 60, padding: '6px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)',
+                background: 'rgba(0,0,0,0.3)', color: '#e2e8f0', fontSize: 12, textAlign: 'center' }}
+            />
+            <button
+              onClick={() => {
+                const el = document.getElementById('sim-custom-wave') as HTMLInputElement;
+                const n = parseInt(el?.value || '1');
+                if (n >= 1 && n <= 99) cmd(d => d.jumpToWave(n));
+              }}
+              style={{ ...simBtnStyle, background: 'rgba(96,165,250,0.25)', color: '#60a5fa' }}
+            >⏩ قفز</button>
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             <button onClick={() => { setIsPaused(!isPaused); cmd(d => isPaused ? d.resume() : d.pause()); }}
