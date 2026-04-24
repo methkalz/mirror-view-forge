@@ -1963,26 +1963,41 @@ function startNextWave(g: GameData) {
   if (recipe.hasIncendiary) g.incendiaryTimer = Math.max(14, 14 + Math.random() * 6);
   if (recipe.hasChemical) g.chemicalTimer = Math.max(14, 14 + Math.random() * 8);
 
-  // Queue wave warnings — admin custom warning REPLACES hardcoded ones
-  const hasAdminWarning = !!recipe.warningText;
-  if (hasAdminWarning) {
-    const customId = `custom_w${g.waveNumber}`;
-    if (!g.waveTriggered.has(customId)) {
-      const delay = recipe.phaseInDelay || 0;
-      if (delay <= 0) {
-        queueWaveEvent(g, { id: customId, text: recipe.warningText!, sub: '', color: recipe.warningColor || '#ef4444', type: (recipe.warningType as 'warning' | 'upgrade') || 'warning', duration: 2.0, soundKey: recipe.warningSoundKey });
+  // Queue wave warnings — priority:
+  //   1) recipe.warnings[] (admin multi-message, NEW system)
+  //   2) recipe.warningText (legacy single admin override)
+  //   3) WAVE_WARNINGS hardcoded (fallback)
+  const adminWarningsList = (recipe.warnings && recipe.warnings.length > 0) ? recipe.warnings : null;
+  const hasLegacyAdminWarning = !adminWarningsList && !!recipe.warningText;
+  const delay = recipe.phaseInDelay || 0;
+
+  if (adminWarningsList) {
+    if (delay <= 0) {
+      for (const w of adminWarningsList) {
+        const id = w.id || `custom_w${g.waveNumber}_${Math.random().toString(36).slice(2, 7)}`;
+        if (!g.waveTriggered.has(id)) {
+          queueWaveEvent(g, {
+            id,
+            text: w.text,
+            sub: w.sub || '',
+            color: w.color || '#ef4444',
+            type: (w.type === 'upgrade' ? 'upgrade' : 'warning'),
+            duration: 2.0,
+            soundKey: w.soundKey ?? null,
+          });
+        }
       }
     }
-  }
-  // Show hardcoded warnings ONLY if admin hasn't set a custom one
-  const warnings = !hasAdminWarning ? WAVE_WARNINGS[g.waveNumber] : undefined;
-  if (warnings) {
-    for (const w of warnings) {
-      if (!g.waveTriggered.has(w.id)) {
-        const delay = recipe.phaseInDelay || 0;
-        if (delay > 0) {
-          // Will be triggered later by wave elapsed check
-        } else {
+  } else if (hasLegacyAdminWarning) {
+    const customId = `custom_w${g.waveNumber}`;
+    if (!g.waveTriggered.has(customId) && delay <= 0) {
+      queueWaveEvent(g, { id: customId, text: recipe.warningText!, sub: '', color: recipe.warningColor || '#ef4444', type: (recipe.warningType as 'warning' | 'upgrade') || 'warning', duration: 2.0, soundKey: recipe.warningSoundKey });
+    }
+  } else {
+    const warnings = WAVE_WARNINGS[g.waveNumber];
+    if (warnings) {
+      for (const w of warnings) {
+        if (!g.waveTriggered.has(w.id) && delay <= 0) {
           queueWaveEvent(g, { ...w, duration: 2.0 });
         }
       }
