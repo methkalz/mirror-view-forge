@@ -47,8 +47,9 @@ const SkyfallGame: React.FC = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [gameOverData, setGameOverData] = useState<{ score: number; rank: number | null; waves: number } | null>(null);
   const [remoteConfig, setRemoteConfig] = useState<RemoteGameConfig | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadProgress, setLoadProgress] = useState(0);
+  // Skip loading screen entirely in simulator mode to avoid race conditions
+  const [isLoading, setIsLoading] = useState(!isSimulatorMode);
+  const [loadProgress, setLoadProgress] = useState(isSimulatorMode ? 100 : 0);
   const remoteConfigRef = useRef<RemoteGameConfig | null>(null);
   const difficultyProfileRef = useRef<DifficultyProfile | null>(null);
   const waveOverridesRef = useRef<RemoteWaveConfig[]>([]);
@@ -632,25 +633,26 @@ const SkyfallGame: React.FC = () => {
 
   const hasAmmo = playerAmmo > 0;
 
-  // Simulator mode — auto-start game once loaded
+  // Simulator mode — auto-start game ONCE when game is created
+  const simAutoStartedRef = useRef(false);
   useEffect(() => {
-    if (!isSimulatorMode) return;
-    // Auto-dismiss loading screen
-    if (isLoading && loadProgress >= 100) {
-      setIsLoading(false);
-      return;
-    }
-    if (isLoading) return;
-    // Wait one frame for canvas to mount
-    requestAnimationFrame(() => {
+    if (!isSimulatorMode || simAutoStartedRef.current || isLoading) return;
+    let attempts = 0;
+    const tryStart = () => {
       const g = gameRef.current;
       if (g && g.state === 'start') {
+        simAutoStartedRef.current = true;
         resumeAudio();
         g.tutorialPage = 3;
+        tutorialShownRef.current = true;
         resetGame(g);
+      } else if (attempts++ < 30) {
+        // Game not yet created — retry next frame (canvas mount race)
+        requestAnimationFrame(tryStart);
       }
-    });
-  }, [isLoading, isSimulatorMode, loadProgress]);
+    };
+    requestAnimationFrame(tryStart);
+  }, [isSimulatorMode, isLoading]);
 
   // Loading screen
   if (isLoading) {
