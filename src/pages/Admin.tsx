@@ -307,6 +307,7 @@ const Admin: React.FC = () => {
 
         {tab === 'waves' && (
           <WavesPanel waves={waves} editingWave={editingWave} setEditingWave={setEditingWave} onSaveWave={handleSaveWave} onDeleteWave={handleDeleteWave} isDesktop={isDesktop}
+            audioEntries={audioEntries}
             diffProfile={diffProfile} onSaveDiffProfile={async (updates) => {
               if (!diffProfile) return;
               setDiffProfile({ ...diffProfile, ...updates });
