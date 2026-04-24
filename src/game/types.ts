@@ -408,6 +408,8 @@ export interface GameData {
   // Remote wave data
   difficultyProfile: import('@/game/config').DifficultyProfile | null;
   remoteWaveOverrides: import('@/game/config').RemoteWaveConfig[];
+  /** Admin-managed dynamic event warnings (swarm/volley/airstrike/minefield). */
+  dynamicWarnings: Record<string, import('@/game/config').DynamicWarning>;
   // Intro system
   introPhase: IntroPhase;
   introTimer: number;
