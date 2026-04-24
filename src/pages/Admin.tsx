@@ -328,6 +328,8 @@ const Admin: React.FC = () => {
 
         {tab === 'simulator' && <SimulatorPanel isDesktop={isDesktop} />}
 
+        {tab === 'messages' && <MessagesPanel audioEntries={audioEntries} isDesktop={isDesktop} />}
+
         {tab === 'leaderboard' && (
           <LeaderboardPanel leaders={leaders} onDelete={handleDeleteEntry} onClearAll={handleClearAll} isDesktop={isDesktop} />
         )}
