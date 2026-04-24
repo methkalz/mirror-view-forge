@@ -416,7 +416,7 @@ const SkyfallGame: React.FC = () => {
         resumeAudio();
         scoreSubmittedRef.current = false;
         setGameOverData(null);
-        Promise.all([fetchGameConfig(), fetchDifficultyProfile(), fetchWaveConfigs()]).then(([cfg, dp, wc]) => {
+        Promise.all([fetchGameConfig(), fetchDifficultyProfile(), fetchWaveConfigs(), fetchDynamicWarnings()]).then(([cfg, dp, wc, dw]) => {
           remoteConfigRef.current = cfg;
           setCameraMargin(cfg.cameraMargin);
           if (cfg) {
@@ -426,6 +426,8 @@ const SkyfallGame: React.FC = () => {
           }
           g.difficultyProfile = dp;
           g.remoteWaveOverrides = wc;
+          dynamicWarningsRef.current = Object.fromEntries(dw.map(d => [d.eventKey, d]));
+          g.dynamicWarnings = dynamicWarningsRef.current;
           difficultyProfileRef.current = dp;
           waveOverridesRef.current = wc;
           g.scenes = scenesRef.current;
@@ -474,7 +476,7 @@ const SkyfallGame: React.FC = () => {
         resumeAudio();
         scoreSubmittedRef.current = false;
         setGameOverData(null);
-        Promise.all([fetchGameConfig(), fetchDifficultyProfile(), fetchWaveConfigs()]).then(([cfg, dp, wc]) => {
+        Promise.all([fetchGameConfig(), fetchDifficultyProfile(), fetchWaveConfigs(), fetchDynamicWarnings()]).then(([cfg, dp, wc, dw]) => {
           remoteConfigRef.current = cfg;
           setCameraMargin(cfg.cameraMargin);
           if (cfg) {
@@ -484,6 +486,8 @@ const SkyfallGame: React.FC = () => {
           }
           g.difficultyProfile = dp;
           g.remoteWaveOverrides = wc;
+          dynamicWarningsRef.current = Object.fromEntries(dw.map(d => [d.eventKey, d]));
+          g.dynamicWarnings = dynamicWarningsRef.current;
           difficultyProfileRef.current = dp;
           waveOverridesRef.current = wc;
           g.scenes = scenesRef.current;
