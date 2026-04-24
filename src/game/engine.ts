@@ -762,6 +762,7 @@ function remoteToRecipe(r: RemoteWaveConfig): WaveRecipe {
     warningColor: r.warningColor,
     warningType: r.warningType,
     warningSoundKey: r.warningSoundKey,
+    warnings: r.warnings,
     events: (r.events ?? []).map(e => ({
       type: e.type as import('./types').WaveEventType,
       triggerAt: e.triggerAt,
