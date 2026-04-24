@@ -9245,49 +9245,74 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
       // ═══ BREAKING NEWS — خبر عاجل ═══
       const w = g.width;
       const h = g.height;
+      const t = g.elapsed;
 
       // Full dark overlay
-      ctx.globalAlpha = textAlpha * 0.82;
+      ctx.globalAlpha = textAlpha * 0.85;
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, w, h);
       ctx.globalAlpha = textAlpha;
 
-      // Responsive sizing
+      // Responsive sizing — larger text
       const isMobile = w < 500;
-      const pad = isMobile ? 16 : 32;
-      const line1Size = Math.min(isMobile ? 17 : 22, w * 0.045);
-      const line2Size = Math.min(isMobile ? 15 : 19, w * 0.038);
-      const lineGap = line1Size * 1.4;
-      const bannerH = lineGap + line2Size + pad * 2;
+      const pad = isMobile ? 20 : 40;
+      const line1Size = Math.min(isMobile ? 22 : 30, w * 0.06);
+      const line2Size = Math.min(isMobile ? 18 : 24, w * 0.048);
+      const lineGap = line1Size * 1.5;
+      const bannerH = lineGap + line2Size + pad * 2 + 8;
       const bannerY = h * 0.46 - bannerH / 2;
+
+      // Slide-in animation: banner slides from left
+      const slideProgress = Math.min(1, elapsed / 0.6);
+      const slideEase = 1 - Math.pow(1 - slideProgress, 3); // ease-out cubic
+      const slideX = (1 - slideEase) * (-w);
+
+      ctx.save();
+      ctx.translate(slideX, 0);
 
       // Banner gradient — red to darker red
       const bannerGrad = ctx.createLinearGradient(0, bannerY, 0, bannerY + bannerH);
-      bannerGrad.addColorStop(0, '#c41a1a');
-      bannerGrad.addColorStop(0.5, '#a01010');
-      bannerGrad.addColorStop(1, '#7a0a0a');
+      bannerGrad.addColorStop(0, '#cc1c1c');
+      bannerGrad.addColorStop(0.4, '#a81212');
+      bannerGrad.addColorStop(1, '#6e0808');
       ctx.fillStyle = bannerGrad;
       ctx.fillRect(0, bannerY, w, bannerH);
 
-      // Thin white lines top + bottom
-      ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      ctx.fillRect(0, bannerY, w, 1.5);
-      ctx.fillRect(0, bannerY + bannerH - 1.5, w, 1.5);
+      // White accent lines top + bottom
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.fillRect(0, bannerY, w, 2);
+      ctx.fillRect(0, bannerY + bannerH - 2, w, 2);
 
-      // Line 1: "خبر عاجل:"
+      // Pulsing glow edge
+      const glowPulse = 0.15 + Math.sin(t * 4) * 0.1;
+      ctx.fillStyle = `rgba(255,80,80,${glowPulse})`;
+      ctx.fillRect(0, bannerY - 4, w, 4);
+      ctx.fillRect(0, bannerY + bannerH, w, 4);
+
+      // Line 1: "خبر عاجل:" — bold, bigger
       ctx.fillStyle = '#ffffff';
       ctx.font = `bold ${Math.round(line1Size)}px Tajawal, Arial, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.direction = 'rtl';
+      // Text shadow for depth
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetY = 2;
       ctx.fillText('خبر عاجل:', w / 2, bannerY + pad);
 
-      // Line 2: the message
+      // Line 2: the message — slightly smaller
       ctx.font = `${Math.round(line2Size)}px Tajawal, Arial, sans-serif`;
+      ctx.shadowBlur = 4;
       ctx.fillText('المعاصر تدعو مواطنيها الى مغادرة كفرمندا فوراً', w / 2, bannerY + pad + lineGap);
 
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
       ctx.direction = 'ltr';
       ctx.textBaseline = 'alphabetic';
+
+      ctx.restore(); // undo slide transform
     } else {
       // Standard wave announce
       ctx.globalAlpha = textAlpha * 0.7;
