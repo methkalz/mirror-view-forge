@@ -10,7 +10,9 @@ import {
   fetchAudioConfig, updateAudioEntry, updateAudioCategory, uploadAudioFile, deleteAudioFile, listAudioLibrary,
   addAudioFile, removeAudioFile, fetchAnalytics, createAudioEntry, deleteAudioEntry, updateAudioFileVolume,
   fetchPrizeEntries, deletePrizeEntry, clearPrizeEntries,
+  fetchDynamicWarnings, updateDynamicWarning,
   type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type VolumeMode, type GameAnalytics, type DifficultyProfile, type PrizeEntry,
+  type WaveWarningEntry, type DynamicWarning,
 } from '@/game/config';
 import {
   fetchBackgroundConfig, updateBackgroundPhase, uploadBackgroundImage, deleteBackgroundImage,
