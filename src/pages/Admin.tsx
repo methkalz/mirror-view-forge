@@ -937,7 +937,20 @@ const WavesPanel: React.FC<{
                         <td style={{ padding: '6px', textAlign: 'right', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {(() => {
                             const override = waves.find(w => w.waveNumber === p.wave);
+                            // أولوية ١: مصفوفة الرسائل الجديدة (warnings) — نعرض أول رسالة + عدّاد إن وُجد أكثر من واحدة
+                            if (override?.warnings && override.warnings.length > 0) {
+                              const first = override.warnings[0];
+                              const more = override.warnings.length - 1;
+                              return (
+                                <span style={{ color: first.color || '#ef4444', fontSize: 10 }} title={override.warnings.map((x: any) => x.text).join(' • ')}>
+                                  {first.type === 'upgrade' ? '⬆️' : '⚠️'} {first.text}
+                                  {more > 0 && <span style={{ color: 'rgba(148,163,184,0.6)', marginRight: 4 }}> +{more}</span>}
+                                </span>
+                              );
+                            }
+                            // أولوية ٢: النص العام القديم (warningText)
                             if (override?.warningText) return <span style={{ color: override.warningColor || '#ef4444', fontSize: 10 }}>{override.warningType === 'upgrade' ? '⬆️' : '⚠️'} {override.warningText}</span>;
+                            // أولوية ٣: الرسائل المضمّنة في الكود (fallback)
                             const hw = WAVE_WARNINGS[p.wave];
                             if (hw && hw.length > 0) return <span style={{ color: hw[0].color, fontSize: 10 }}>{hw[0].type === 'upgrade' ? '⬆️' : '⚠️'} {hw[0].text}</span>;
                             return <span style={{ color: 'rgba(148,163,184,0.2)' }}>—</span>;
@@ -982,7 +995,16 @@ const WavesPanel: React.FC<{
                 <div style={{ flex: 1, fontSize: 10, color: 'rgba(148,163,184,0.5)', lineHeight: 1.5 }}>
                   <div>{w.threats.map(t => THREAT_ICONS[t] || t).join(' ')} · {w.duration}s · max:{w.maxConcurrent} · ⏱{w.spawnRate}s</div>
                   <div>{w.droneTypes.length > 0 ? w.droneTypes.map(t => DRONE_ICONS[t] || t).join(' ') : ''} {w.hasBoss ? '👹' : ''} {w.hasChemical ? '☣️' : ''} {w.hasIncendiary ? '🔥' : ''}</div>
-                  {w.warningText && <div style={{ color: 'rgba(239,68,68,0.6)', fontSize: 9 }}>⚠️ {w.warningText}</div>}
+                  {w.warnings && w.warnings.length > 0 ? (
+                    w.warnings.map((entry: any, ei: number) => (
+                      <div key={entry.id || ei} style={{ color: entry.color || 'rgba(239,68,68,0.7)', fontSize: 9, opacity: 0.85 }}>
+                        {entry.type === 'upgrade' ? '⬆️' : '⚠️'} {entry.text}
+                        {entry.soundKey && <span style={{ color: 'rgba(96,165,250,0.6)', marginRight: 4 }}>🔊</span>}
+                      </div>
+                    ))
+                  ) : w.warningText ? (
+                    <div style={{ color: 'rgba(239,68,68,0.6)', fontSize: 9 }}>⚠️ {w.warningText}</div>
+                  ) : null}
                 </div>
                 <button onClick={() => setEditingWave({ ...w })} style={{ ...btnPrimary, padding: '5px 10px', fontSize: 11 }}>تعديل</button>
                 <button onClick={() => onDeleteWave(w.waveNumber)} style={{ ...btnDanger, padding: '5px 8px', fontSize: 11 }}>✕</button>
