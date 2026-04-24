@@ -3333,7 +3333,7 @@ const MessagesPanel: React.FC<{
                   <select value={item.soundKey || ''}
                     onChange={e => updateField(item.eventKey, { soundKey: e.target.value || null })}
                     style={{ ...inputStyle, fontSize: 11, padding: '6px 8px', height: 36 }}>
-                    <option value="">— بدون صوت —</option>
+                    <option value="">🔄 تلقائي (حسب نوع التهديد)</option>
                     {warningSounds.map(s => (
                       <option key={s.soundKey} value={s.soundKey}>{s.labelAr || s.label}</option>
                     ))}
