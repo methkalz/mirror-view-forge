@@ -182,6 +182,7 @@ export function createGame(w: number, h: number): GameData {
     waveEvents: [],
     waveEventsFired: [],
     volleyQueue: null,
+    airRaidFlyby: null,
     surgeFlashTimer: 0,
     currentSceneIndex: 0,
     sceneChangeWaveInterval: 6,
@@ -623,16 +624,16 @@ function getHardcodedThemedTemplate(wave: number): Partial<WaveRecipe> {
   if (wave === 9) return wrap([{ type: 'calm', triggerAt: 0, duration: 60 }]);
   if (wave === 10) return wrap([
     { type: 'volley', triggerAt: 20, duration: 3 },
-    { type: 'swarm', triggerAt: 40, duration: 8 },
+    { type: 'airstrike_flyby', triggerAt: 35, duration: 1 },
   ], { hasChemical: true, hasIncendiary: true });
   if (wave === 11) return wrap([
     { type: 'minefield', triggerAt: 25, duration: 1 },
-    { type: 'surge', triggerAt: 48, duration: 12 },
+    { type: 'airstrike_flyby', triggerAt: 42, duration: 1 },
   ], { hasChemical: true, hasIncendiary: true });
   if (wave === 12) return wrap([], { hasBoss: true, hasChemical: true, hasIncendiary: true });
   // Smoother post-12 curve, themed W15, peak at W16
   if (wave === 13) return wrap([{ type: 'calm', triggerAt: 0, duration: 30 }]);
-  if (wave === 14) return wrap([{ type: 'swarm', triggerAt: 30, duration: 8 }], { hasIncendiary: true });
+  if (wave === 14) return wrap([{ type: 'swarm', triggerAt: 25, duration: 8 }, { type: 'airstrike_flyby', triggerAt: 42, duration: 1 }], { hasIncendiary: true });
   // W15: laser + meteor only — a standout themed wave
   if (wave === 15) return wrap([], {
     threats: ['meteor'],
@@ -1840,6 +1841,23 @@ function startVolley(g: GameData) {
   sfxWarningMissile();
 }
 
+/** Starts an air raid flyby — a plane crosses the screen dropping hazards. */
+function startAirRaidFlyby(g: GameData) {
+  const fromRight = Math.random() < 0.5;
+  const types: HazardType[] = ['shrapnel', 'missile', 'cluster'];
+  const threatType = types[Math.floor(Math.random() * types.length)];
+  g.airRaidFlyby = {
+    pos: { x: fromRight ? g.width + 60 : -60, y: g.height * 0.1 + Math.random() * g.height * 0.08 },
+    speed: 200 + Math.random() * 100,
+    dropTimer: 0,
+    dropsLeft: 6 + Math.floor(Math.random() * 4),
+    threatType,
+    facingRight: !fromRight,
+  };
+  g.cinematicWarning = { text: '⚠ قصف جوي!', subText: '', color: '#dc2626', timer: 1.0, duration: 1.0, type: 'warning' };
+  sfxWarningBoss();
+}
+
 /** Drives the scheduled wave events forward, firing them when the elapsed time matches. */
 function updateWaveEvents(g: GameData, dt: number) {
   // Only active during the playable wave phase
@@ -1861,6 +1879,8 @@ function updateWaveEvents(g: GameData, dt: number) {
         g.minePlanterScheduled = true;
         g.minePlanterArrivalTime = g.waveElapsed + 5;
       }
+    } else if (e.type === 'airstrike_flyby') {
+      if (!g.airRaidFlyby) startAirRaidFlyby(g);
     } else if (e.type === 'surge') {
       g.surgeFlashTimer = 1.0;
     }
@@ -1897,13 +1917,15 @@ function updateWaveEvents(g: GameData, dt: number) {
     }
   }
 
-  // Delayed mine planter arrival — give player time to buy minesweeper
+  if (g.surgeFlashTimer > 0) g.surgeFlashTimer = Math.max(0, g.surgeFlashTimer - dt);
+}
+
+/** Checks delayed mine planter arrival — runs independently of wave phase. */
+function checkMinePlanterArrival(g: GameData) {
   if (g.minePlanterScheduled && !g.minePlanter && g.waveElapsed >= g.minePlanterArrivalTime) {
     g.minePlanterScheduled = false;
     spawnMinePlanter(g);
   }
-
-  if (g.surgeFlashTimer > 0) g.surgeFlashTimer = Math.max(0, g.surgeFlashTimer - dt);
 }
 
 function startNextWave(g: GameData) {
@@ -1974,12 +1996,10 @@ function startNextWave(g: GameData) {
   // If both threats are present in the wave, the gas mask offer is shown
   // first and the fire suit offer waits in a pending state until the
   // previous card closes (purchased, refused or timed out).
-  // Offers are shown whenever the wave has the matching threat — even if the
-  // player still has protection from a prior wave. This guarantees the player
-  // always SEES a card before drones arrive. Already-protected players get
-  // the "renewal" flavor (card closes quickly if refused).
-  const needsGas = !!recipe.hasChemical;
-  const needsFire = !!recipe.hasIncendiary;
+  // Offer shown only if player doesn't have active protection. This prevents
+  // annoying repeated offers when protection carries over from the previous wave.
+  const needsGas = !!recipe.hasChemical && g.player.gasMaskTimer <= 0;
+  const needsFire = !!recipe.hasIncendiary && g.player.fireSuitTimer <= 0;
 
   if (needsGas) {
     g.gasMaskOfferDelay = 2.5;
@@ -2203,18 +2223,14 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
     }
 
     // ── Minesweeper offer (dynamic 1% price, fires before the planter arrives) ──
-    if (g.minesweeperOfferDelay > 0) {
-      // Don't start countdown while another offer card is open
-      if (!g.gasMaskOffer && !g.fireSuitOffer) {
-        g.minesweeperOfferDelay -= dt;
-        if (g.minesweeperOfferDelay <= 0) {
-          g.minesweeperOfferDelay = 0;
-          // 1% of current score, min 10
-          const cost = Math.max(10, Math.ceil(g.score * 0.01));
-          g.minesweeperOffer = { active: true, timer: 8, cost };
-          g.slowMoFactor = 0.1;
-          sfxUpgradeAlert();
-        }
+    if (g.minesweeperOfferDelay > 0 && !g.minesweeperOffer) {
+      g.minesweeperOfferDelay -= dt;
+      if (g.minesweeperOfferDelay <= 0 && !g.gasMaskOffer && !g.fireSuitOffer) {
+        g.minesweeperOfferDelay = 0;
+        const cost = Math.max(10, Math.ceil(g.score * 0.01));
+        g.minesweeperOffer = { active: true, timer: 8, cost };
+        g.slowMoFactor = 0.1;
+        sfxUpgradeAlert();
       }
     }
 
@@ -2577,7 +2593,24 @@ export function update(g: GameData, input: InputState, dt: number) {
   updateWaveEvents(g, dt);
 
   // === Mine Planter Soldier ===
+  checkMinePlanterArrival(g);
   updateMinePlanter(g, dt);
+
+  // === Air Raid Flyby ===
+  if (g.airRaidFlyby) {
+    const ar = g.airRaidFlyby;
+    const dir = ar.facingRight ? 1 : -1;
+    ar.pos.x += dir * ar.speed * dt;
+    ar.dropTimer -= dt;
+    if (ar.dropTimer <= 0 && ar.dropsLeft > 0) {
+      ar.dropTimer = 0.35;
+      ar.dropsLeft--;
+      spawnHazard(g, ar.threatType);
+    }
+    if (ar.pos.x < -80 || ar.pos.x > g.width + 80) {
+      g.airRaidFlyby = null;
+    }
+  }
 
   // === Wave Phase System ===
   updateWaveSystem(g, input, dt);
@@ -4370,4 +4403,5 @@ export const _debug = {
   spawnSwarm,
   startVolley,
   spawnMinePlanter,
+  startAirRaidFlyby,
 };
