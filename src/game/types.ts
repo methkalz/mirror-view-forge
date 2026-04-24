@@ -8,7 +8,7 @@ export type IntroPhase = 'bikeEnter' | 'bikeStop' | 'playerDismount' | 'bikeLeav
 
 export type HazardType = 'shrapnel' | 'missile' | 'cluster' | 'meteor' | 'mine';
 
-export type WaveEventType = 'surge' | 'calm' | 'swarm' | 'volley' | 'minefield';
+export type WaveEventType = 'surge' | 'calm' | 'swarm' | 'volley' | 'minefield' | 'airstrike_flyby';
 
 export interface WaveEventSpec {
   type: WaveEventType;
@@ -460,6 +460,7 @@ export interface GameData {
   waveEvents: WaveEventSpec[];
   waveEventsFired: boolean[];
   volleyQueue: { remaining: number; nextTimer: number; x: number } | null;
+  airRaidFlyby: { pos: Vec2; speed: number; dropTimer: number; dropsLeft: number; threatType: HazardType; facingRight: boolean } | null;
   surgeFlashTimer: number;
 
   // Multi-scene system

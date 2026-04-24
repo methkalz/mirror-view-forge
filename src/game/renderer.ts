@@ -8312,6 +8312,98 @@ function renderDeliveryBike(ctx: CanvasRenderingContext2D, g: GameData) {
   renderMotorcycle(ctx, bike, g, false, false, 0);
 }
 
+function renderAirRaidFlyby(ctx: CanvasRenderingContext2D, g: GameData) {
+  const ar = g.airRaidFlyby;
+  if (!ar) return;
+  const dir = ar.facingRight ? 1 : -1;
+  ctx.save();
+  ctx.translate(ar.pos.x, ar.pos.y);
+  ctx.scale(dir, 1);
+
+  // Shadow on ground
+  const gndY = g.height * 0.78 - ar.pos.y;
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.beginPath();
+  ctx.ellipse(0, gndY, 35, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Fuselage
+  const bGrad = ctx.createLinearGradient(0, -12, 0, 12);
+  bGrad.addColorStop(0, '#5a5a60');
+  bGrad.addColorStop(0.5, '#3a3a40');
+  bGrad.addColorStop(1, '#2a2a30');
+  ctx.fillStyle = bGrad;
+  ctx.beginPath();
+  ctx.moveTo(40, 0);
+  ctx.lineTo(28, -8);
+  ctx.lineTo(-30, -6);
+  ctx.lineTo(-40, -3);
+  ctx.lineTo(-40, 3);
+  ctx.lineTo(-30, 6);
+  ctx.lineTo(28, 8);
+  ctx.closePath();
+  ctx.fill();
+
+  // Wings
+  ctx.fillStyle = '#4a4a50';
+  ctx.beginPath();
+  ctx.moveTo(10, -6);
+  ctx.lineTo(-5, -28);
+  ctx.lineTo(-15, -28);
+  ctx.lineTo(-10, -6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(10, 6);
+  ctx.lineTo(-5, 28);
+  ctx.lineTo(-15, 28);
+  ctx.lineTo(-10, 6);
+  ctx.closePath();
+  ctx.fill();
+
+  // Tail fins
+  ctx.fillStyle = '#3a3a40';
+  ctx.beginPath();
+  ctx.moveTo(-30, -4);
+  ctx.lineTo(-38, -16);
+  ctx.lineTo(-42, -14);
+  ctx.lineTo(-36, -4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-30, 4);
+  ctx.lineTo(-38, 16);
+  ctx.lineTo(-42, 14);
+  ctx.lineTo(-36, 4);
+  ctx.closePath();
+  ctx.fill();
+
+  // Engine exhaust
+  const t = performance.now() * 0.003;
+  const flicker = 0.5 + Math.sin(t * 12) * 0.3;
+  ctx.fillStyle = `rgba(255,120,40,${flicker * 0.7})`;
+  ctx.beginPath();
+  ctx.moveTo(-40, -2);
+  ctx.lineTo(-52 - Math.sin(t * 8) * 4, 0);
+  ctx.lineTo(-40, 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Cockpit
+  ctx.fillStyle = 'rgba(100,180,255,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(30, -1, 6, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Red star marking
+  ctx.fillStyle = '#cc2222';
+  ctx.beginPath();
+  ctx.arc(5, -1, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
 function renderMinePlanter(ctx: CanvasRenderingContext2D, g: GameData) {
   const m = g.minePlanter;
   if (!m || !m.active) return;
@@ -8850,6 +8942,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
   renderFirePools(ctx, g);
   renderDeliveryBike(ctx, g);
   renderMinePlanter(ctx, g);
+  renderAirRaidFlyby(ctx, g);
   renderIntroBike(ctx, g);
   renderGasClouds(ctx, g);
   renderDrones(ctx, g);
