@@ -7,7 +7,7 @@ import type { DifficultyProfile, RemoteWaveConfig } from './config';
 import { getFromPool, releaseAll } from './pool';
 import { isGodMode as _isGodMode } from './debugCommands';
 import { addTrauma, updateCameraShake, resetTrauma } from './cameraShake';
-import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameOverVoice, sfxGameStart, sfxUpgradeSelect, sfxScoreTick, sfxSlideTransition, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber, sfxWarningMine, sfxLaserCharge, sfxLaserFire, playCustomAudio } from './audio';
+import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameOverVoice, sfxGameStart, sfxUpgradeSelect, sfxScoreTick, sfxSlideTransition, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber, sfxWarningMine, sfxLaserCharge, sfxLaserFire, sfxBreakingNews, playCustomAudio } from './audio';
 
 let onSceneSwap: ((sceneIndex: number) => void) | null = null;
 export function setOnSceneSwap(cb: ((sceneIndex: number) => void) | null) { onSceneSwap = cb; }
@@ -2367,6 +2367,7 @@ function updateWaveSystem(g: GameData, input: InputState, dt: number) {
         g.wavePhase = 'announce';
         // After wave 1: longer pause for breaking news
         g.waveAnnounceTimer = g.waveNumber === 1 ? 5.0 : 3.0;
+        if (g.waveNumber === 1) sfxBreakingNews();
       }
     }
   } else if (g.wavePhase === 'announce') {

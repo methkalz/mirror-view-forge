@@ -547,6 +547,21 @@ export function sfxWarningBomber() {
   setTimeout(() => playTone(500, 0.08, 'square', 0.1 * v), 300);
 }
 
+export function sfxBreakingNews() {
+  if (!isSoundEnabled('breakingNews')) return;
+  if (playCustomAudio('breakingNews')) return;
+  const v = getSoundVolume('breakingNews', 1);
+  // Urgent news jingle — three ascending tones + dramatic low hit
+  playTone(440, 0.12, 'sine', 0.15 * v);
+  setTimeout(() => playTone(554, 0.12, 'sine', 0.15 * v), 130);
+  setTimeout(() => playTone(659, 0.18, 'sine', 0.18 * v), 260);
+  setTimeout(() => {
+    playTone(220, 0.4, 'sawtooth', 0.12 * v);
+    playTone(110, 0.5, 'sine', 0.1 * v);
+    playNoise(0.2, 0.06 * v, { type: 'lowpass', freq: 400 });
+  }, 450);
+}
+
 export function sfxWarningMine() {
   if (!isSoundEnabled('warningMine')) return;
   if (playCustomAudio('warningMine')) return;
