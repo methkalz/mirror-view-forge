@@ -937,7 +937,20 @@ const WavesPanel: React.FC<{
                         <td style={{ padding: '6px', textAlign: 'right', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {(() => {
                             const override = waves.find(w => w.waveNumber === p.wave);
+                            // أولوية ١: مصفوفة الرسائل الجديدة (warnings) — نعرض أول رسالة + عدّاد إن وُجد أكثر من واحدة
+                            if (override?.warnings && override.warnings.length > 0) {
+                              const first = override.warnings[0];
+                              const more = override.warnings.length - 1;
+                              return (
+                                <span style={{ color: first.color || '#ef4444', fontSize: 10 }} title={override.warnings.map((x: any) => x.text).join(' • ')}>
+                                  {first.type === 'upgrade' ? '⬆️' : '⚠️'} {first.text}
+                                  {more > 0 && <span style={{ color: 'rgba(148,163,184,0.6)', marginRight: 4 }}> +{more}</span>}
+                                </span>
+                              );
+                            }
+                            // أولوية ٢: النص العام القديم (warningText)
                             if (override?.warningText) return <span style={{ color: override.warningColor || '#ef4444', fontSize: 10 }}>{override.warningType === 'upgrade' ? '⬆️' : '⚠️'} {override.warningText}</span>;
+                            // أولوية ٣: الرسائل المضمّنة في الكود (fallback)
                             const hw = WAVE_WARNINGS[p.wave];
                             if (hw && hw.length > 0) return <span style={{ color: hw[0].color, fontSize: 10 }}>{hw[0].type === 'upgrade' ? '⬆️' : '⚠️'} {hw[0].text}</span>;
                             return <span style={{ color: 'rgba(148,163,184,0.2)' }}>—</span>;
