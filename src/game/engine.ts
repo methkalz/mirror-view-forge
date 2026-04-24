@@ -7,7 +7,7 @@ import type { DifficultyProfile, RemoteWaveConfig } from './config';
 import { getFromPool, releaseAll } from './pool';
 import { isGodMode as _isGodMode } from './debugCommands';
 import { addTrauma, updateCameraShake, resetTrauma } from './cameraShake';
-import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameOverVoice, sfxGameStart, sfxUpgradeSelect, sfxScoreTick, sfxSlideTransition, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber, playCustomAudio } from './audio';
+import { sfxExplosion, sfxImpactLight, sfxImpactHeavy, sfxPickup, sfxDamage, sfxDash, sfxInterceptor, sfxFootstep, sfxWarning, sfxSlowmo, sfxMagnet, sfxAirstrike, sfxBossSiren, sfxBossExplosion, sfxThunder, sfxShoot1, sfxShoot2, sfxShoot3, sfxCombo, sfxCloseCall, sfxBikeEngine, sfxBikeBrake, sfxBikeIdle, sfxBikeDepart, sfxWarningAlert, sfxUpgradeAlert, sfxWaveComplete, sfxLevelUp, sfxGameOver, sfxGameOverVoice, sfxGameStart, sfxUpgradeSelect, sfxScoreTick, sfxSlideTransition, startPeriodicAmbient, stopPeriodicAmbient, sfxWarningShrapnel, sfxWarningMissile, sfxWarningCluster, sfxWarningDrone, sfxWarningBoss, sfxWarningHazard, sfxWarningBomber, sfxWarningMine, sfxLaserCharge, sfxLaserFire, playCustomAudio } from './audio';
 
 let onSceneSwap: ((sceneIndex: number) => void) | null = null;
 export function setOnSceneSwap(cb: ((sceneIndex: number) => void) | null) { onSceneSwap = cb; }
@@ -1248,15 +1248,16 @@ function queueWaveEvent(
   if (event.soundKey && playCustomAudio(event.soundKey)) {
     // Custom sound played successfully
   } else if (event.type === 'warning') {
-    // Play threat-specific warning sound based on event id
     const id = event.id;
     if (id.includes('shrapnel')) sfxWarningShrapnel();
-    else if (id.includes('missile')) sfxWarningMissile();
+    else if (id.includes('missile') || id.includes('volley')) sfxWarningMissile();
     else if (id.includes('cluster')) sfxWarningCluster();
-    else if (id.includes('drone') || id.includes('tracker') || id.includes('chemical') || id.includes('incendiary')) sfxWarningDrone();
-    else if (id.includes('boss') || id.includes('minibos')) sfxWarningBoss();
+    else if (id.includes('drone') || id.includes('tracker') || id.includes('chemical') || id.includes('incendiary') || id.includes('laser')) sfxWarningDrone();
+    else if (id.includes('boss') || id.includes('minibos') || id.includes('surge') || id.includes('peak')) sfxWarningBoss();
     else if (id.includes('bomber')) sfxWarningBomber();
+    else if (id.includes('mine')) sfxWarningMine();
     else if (id.includes('gas') || id.includes('fire') || id.includes('extinguisher')) sfxWarningHazard();
+    else if (id.includes('calm') || id.includes('recover') || id.includes('bullet')) sfxUpgradeAlert();
     else sfxWarningAlert();
   } else if (event.type === 'upgrade') sfxUpgradeAlert();
 }
@@ -1720,6 +1721,7 @@ function spawnSwarm(g: GameData, count: number) {
   }
   addTrauma(0.35);
   g.cinematicWarning = { text: '⚠ سرب طائرات!', subText: '', color: '#ef4444', timer: 1.0, duration: 1.0, type: 'warning' };
+  sfxWarningDrone();
 }
 
 /** Drops 5 mines across the ground at evenly-spaced positions. */
@@ -1752,7 +1754,7 @@ function spawnMinePlanter(g: GameData) {
     walkAnim: 0,
   };
   g.cinematicWarning = { text: '⚠ عسكري يزرع ألغام!', subText: '', color: '#f59e0b', timer: 1.2, duration: 1.2, type: 'warning' };
-  sfxWarningAlert();
+  sfxWarningMine();
 }
 
 /** Plants a single mine at a specific ground X. */
@@ -1835,6 +1837,7 @@ function startVolley(g: GameData) {
   const x = 60 + Math.random() * (g.width - 120);
   g.volleyQueue = { remaining: 5, nextTimer: 0, x };
   g.cinematicWarning = { text: '⚠ وابل صواريخ!', subText: '', color: '#dc2626', timer: 0.8, duration: 0.8, type: 'warning' };
+  sfxWarningMissile();
 }
 
 /** Drives the scheduled wave events forward, firing them when the elapsed time matches. */
@@ -1941,17 +1944,19 @@ function startNextWave(g: GameData) {
   if (recipe.hasIncendiary) g.incendiaryTimer = Math.max(14, 14 + Math.random() * 6);
   if (recipe.hasChemical) g.chemicalTimer = Math.max(14, 14 + Math.random() * 8);
 
-  // Queue wave warnings — recipe custom warnings take priority over hardcoded
-  if (recipe.warningText) {
+  // Queue wave warnings — admin custom warning REPLACES hardcoded ones
+  const hasAdminWarning = !!recipe.warningText;
+  if (hasAdminWarning) {
     const customId = `custom_w${g.waveNumber}`;
     if (!g.waveTriggered.has(customId)) {
       const delay = recipe.phaseInDelay || 0;
       if (delay <= 0) {
-        queueWaveEvent(g, { id: customId, text: recipe.warningText, sub: '', color: recipe.warningColor || '#ef4444', type: (recipe.warningType as 'warning' | 'upgrade') || 'warning', duration: 2.0, soundKey: recipe.warningSoundKey });
+        queueWaveEvent(g, { id: customId, text: recipe.warningText!, sub: '', color: recipe.warningColor || '#ef4444', type: (recipe.warningType as 'warning' | 'upgrade') || 'warning', duration: 2.0, soundKey: recipe.warningSoundKey });
       }
     }
   }
-  const warnings = WAVE_WARNINGS[g.waveNumber];
+  // Show hardcoded warnings ONLY if admin hasn't set a custom one
+  const warnings = !hasAdminWarning ? WAVE_WARNINGS[g.waveNumber] : undefined;
   if (warnings) {
     for (const w of warnings) {
       if (!g.waveTriggered.has(w.id)) {
@@ -3659,13 +3664,14 @@ export function update(g: GameData, input: InputState, dt: number) {
             d.laserPhase = 'telegraph';
             d.laserTargetX = d.pos.x;
             d.bombTimer = 1.5;
-            sfxWarning();
+            sfxLaserCharge();
           }
         } else if (d.laserPhase === 'telegraph') {
           if (d.bombTimer <= 0) {
             d.laserPhase = 'firing';
             d.bombTimer = 0.5;
             addTrauma(0.2);
+            sfxLaserFire();
             // Deal laser damage ONCE at the moment of firing (not every frame)
             const targetX = d.pos.x;
             const playerInBeam = Math.abs(p.pos.x - targetX) < 18 + p.size;
