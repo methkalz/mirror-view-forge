@@ -40,8 +40,10 @@ const SkyfallGame: React.FC = () => {
   const pauseRef = useRef(false);
 
   // LiveOps state — always show name entry on mount (different player may use same device)
-  const [playerName, setPlayerName] = useState(() => localStorage.getItem('skyfall_name') || '');
-  const [showNameEntry, setShowNameEntry] = useState(true);
+  // EXCEPT when loaded inside the admin Simulator iframe (?sim=... query param)
+  const isSimulatorMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('sim');
+  const [playerName, setPlayerName] = useState(() => isSimulatorMode ? 'SIM' : (localStorage.getItem('skyfall_name') || ''));
+  const [showNameEntry, setShowNameEntry] = useState(!isSimulatorMode);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [gameOverData, setGameOverData] = useState<{ score: number; rank: number | null; waves: number } | null>(null);
   const [remoteConfig, setRemoteConfig] = useState<RemoteGameConfig | null>(null);
@@ -219,6 +221,11 @@ const SkyfallGame: React.FC = () => {
     // Expose debug API for simulator tab
     const dbgApi = attachDebugAPI(g, _debug);
     (window as any).__SKYFALL_DEBUG__ = dbgApi;
+
+    // Simulator mode — skip tutorial, jump straight to gameplay
+    if (isSimulatorMode) {
+      g.tutorialPage = 3; // mark tutorial as complete
+    }
 
     // Apply remote config from ref (not state dependency)
     const cfg = remoteConfigRef.current;
@@ -623,6 +630,17 @@ const SkyfallGame: React.FC = () => {
   };
 
   const hasAmmo = playerAmmo > 0;
+
+  // Simulator mode — auto-start game once loaded
+  useEffect(() => {
+    if (!isSimulatorMode || isLoading) return;
+    const g = gameRef.current;
+    if (g && g.state === 'start') {
+      resumeAudio();
+      g.tutorialPage = 3;
+      resetGame(g);
+    }
+  }, [isLoading, isSimulatorMode]);
 
   // Loading screen
   if (isLoading) {
