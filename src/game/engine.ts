@@ -617,7 +617,6 @@ function getHardcodedThemedTemplate(wave: number): Partial<WaveRecipe> {
   if (wave === 5) return wrap([{ type: 'swarm', triggerAt: 30, duration: 8 }], { hasIncendiary: true });
   if (wave === 6) return wrap([], { hasIncendiary: true });
   if (wave === 7) return wrap([
-    { type: 'minefield', triggerAt: 15, duration: 1 },
     { type: 'volley', triggerAt: 30, duration: 3 },
     { type: 'surge', triggerAt: 45, duration: 15 },
   ], { hasChemical: true, hasIncendiary: true });
@@ -628,8 +627,8 @@ function getHardcodedThemedTemplate(wave: number): Partial<WaveRecipe> {
     { type: 'airstrike_flyby', triggerAt: 35, duration: 1 },
   ], { hasChemical: true, hasIncendiary: true });
   if (wave === 11) return wrap([
-    { type: 'minefield', triggerAt: 25, duration: 1 },
     { type: 'airstrike_flyby', triggerAt: 42, duration: 1 },
+    { type: 'surge', triggerAt: 48, duration: 12 },
   ], { hasChemical: true, hasIncendiary: true });
   if (wave === 12) return wrap([], { hasBoss: true, hasChemical: true, hasIncendiary: true });
   // Smoother post-12 curve, themed W15, peak at W16
@@ -650,7 +649,7 @@ function getHardcodedThemedTemplate(wave: number): Partial<WaveRecipe> {
   const extra = wave - 16;
   if (extra > 0) {
     const mod = extra % 3;
-    if (mod === 0) return wrap([{ type: 'minefield', triggerAt: 15, duration: 1 }, { type: 'surge', triggerAt: 40, duration: 15 }]);
+    if (mod === 0) return wrap([{ type: 'airstrike_flyby', triggerAt: 15, duration: 1 }, { type: 'surge', triggerAt: 40, duration: 15 }]);
     if (mod === 1) return wrap([{ type: 'volley', triggerAt: 20, duration: 3 }, { type: 'swarm', triggerAt: 35, duration: 8 }]);
     return wrap([{ type: 'surge', triggerAt: 30, duration: 20 }]);
   }
@@ -806,16 +805,16 @@ function getWaveRecipe(wave: number, g?: GameData): WaveRecipe {
   if (wave === 5) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 6, spawnInterval: 1.6, droneInterval: 18, droneTiers: ['scout', 'tracker'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 12, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'swarm', triggerAt: 30, duration: 8 }] };
   // W6 — Mini-Boss wave (meteor debut)
   if (wave === 6) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 7, spawnInterval: 1.5, droneInterval: 18, droneTiers: ['scout', 'tracker'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 0, hasIncendiary: true, duration: D, surgeMultiplier: S };
-  // W7 — Chemical Rain with volley + late surge + minefield debut
-  if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 7, spawnInterval: 1.4, droneInterval: 16, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'minefield', triggerAt: 15, duration: 1 }, { type: 'volley', triggerAt: 30, duration: 3 }, { type: 'surge', triggerAt: 45, duration: 15 }] };
+  // W7 — Chemical Rain with volley + late surge
+  if (wave === 7) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 7, spawnInterval: 1.4, droneInterval: 16, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 3, bulletLevel: 3, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'volley', triggerAt: 30, duration: 3 }, { type: 'surge', triggerAt: 45, duration: 15 }] };
   // W8 — Surge wave: laser debuts, entire wave is a surge
   if (wave === 8) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 8, spawnInterval: 1.2, droneInterval: 14, droneTiers: ['scout', 'tracker', 'bomber', 'laser'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 6, hasChemical: true, hasIncendiary: true, duration: 45, surgeMultiplier: 1.3, events: [{ type: 'surge', triggerAt: 0, duration: 45 }] };
   // W9 — Calm: the entire wave is a calm
   if (wave === 9) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 5, spawnInterval: 1.8, droneInterval: 22, droneTiers: ['scout'], clusterSplits: 3, bulletLevel: 4, phaseInDelay: 0, duration: D, surgeMultiplier: S, events: [{ type: 'calm', triggerAt: 0, duration: 60 }] };
   // W10 — Combined: volley + swarm during wave
   if (wave === 10) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 9, spawnInterval: 1.1, droneInterval: 13, droneTiers: ['scout', 'tracker', 'bomber', 'laser'], clusterSplits: 4, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'volley', triggerAt: 20, duration: 3 }, { type: 'swarm', triggerAt: 40, duration: 8 }] };
-  // W11 — Pre-Boss: extra bombers + minefield, tense
-  if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 11, droneTiers: ['scout', 'tracker', 'bomber', 'laser'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'minefield', triggerAt: 25, duration: 1 }, { type: 'surge', triggerAt: 48, duration: 12 }] };
+  // W11 — Pre-Boss: extra bombers + airstrike, tense
+  if (wave === 11) return { threats: ['shrapnel', 'missile', 'cluster', 'meteor'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 11, droneTiers: ['scout', 'tracker', 'bomber', 'laser'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 10, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S, events: [{ type: 'airstrike_flyby', triggerAt: 30, duration: 1 }, { type: 'surge', triggerAt: 48, duration: 12 }] };
   // W12 — BOSS
   if (wave === 12) return { threats: ['shrapnel', 'missile', 'cluster'], maxConcurrent: 10, spawnInterval: 1.0, droneInterval: 12, droneTiers: ['scout', 'tracker', 'bomber'], clusterSplits: 5, bulletLevel: 4, phaseInDelay: 12, hasBoss: true, hasChemical: true, hasIncendiary: true, duration: D, surgeMultiplier: S };
   // W13+: pull themed aspects and layer numeric curve
@@ -873,7 +872,6 @@ export const WAVE_WARNINGS: Record<number, { id: string; text: string; sub: stri
     { id: 'w7_gasmask', text: 'إمدادات: كمامة غاز!', sub: '', color: '#16a34a', type: 'upgrade' },
     { id: 'w7_chemical', text: 'تحذير: طائرات كيميائية!', sub: '', color: '#15803d', type: 'warning' },
     { id: 'w7_bomber', text: 'تحذير: قاذفات قنابل!', sub: '', color: '#ef4444', type: 'warning' },
-    { id: 'w7_minefield', text: 'تحذير: ألغام أرضية قادمة!', sub: '', color: '#fbbf24', type: 'warning' },
   ],
   8: [
     { id: 'w8_surge', text: '⚠ موجة عاصفة!', sub: '', color: '#dc2626', type: 'warning' },
@@ -883,7 +881,6 @@ export const WAVE_WARNINGS: Record<number, { id: string; text: string; sub: stri
   10: [{ id: 'w10_combined', text: 'تحذير: جميع التهديدات!', sub: '', color: '#991b1b', type: 'warning' }],
   11: [
     { id: 'w11_preboss', text: '⚠ قاذفات إضافية قادمة!', sub: '', color: '#dc2626', type: 'warning' },
-    { id: 'w11_minefield', text: 'تحذير: ألغام أرضية قادمة!', sub: '', color: '#fbbf24', type: 'warning' },
   ],
   12: [
     { id: 'w12_boss', text: 'تحذير: طائرة حربية!', sub: '', color: '#dc2626', type: 'warning' },
@@ -1874,12 +1871,7 @@ function updateWaveEvents(g: GameData, dt: number) {
     } else if (e.type === 'volley') {
       startVolley(g);
     } else if (e.type === 'minefield') {
-      // Delay soldier arrival by 5s after the event trigger so the
-      // minesweeper offer card has time to appear and be purchased.
-      if (!g.minePlanter && !g.minePlanterScheduled) {
-        g.minePlanterScheduled = true;
-        g.minePlanterArrivalTime = g.waveElapsed + 10;
-      }
+      // DISABLED: mines feature turned off. No-op to ignore stale events.
     } else if (e.type === 'airstrike_flyby') {
       if (!g.airRaidFlyby) startAirRaidFlyby(g);
     } else if (e.type === 'surge') {
@@ -2022,10 +2014,10 @@ function startNextWave(g: GameData) {
     g.fireSuitDropScheduled = false;
   }
 
-  // ── Minesweeper offer — shown whenever the wave has a minefield event,
-  //    even if the player already owns the sweeper (so they always see the
-  //    price-renewal card before the planter arrives). ──
-  const hasMinefield = !!recipe.events?.some(e => e.type === 'minefield');
+  // ── Minesweeper offer — DISABLED: mines feature is currently turned off.
+  //    Setting hasMinefield = false ensures no minesweeper card appears even
+  //    if a stale minefield event somehow exists in the recipe. ──
+  const hasMinefield = false;
   if (hasMinefield) {
     // Show offer a few seconds before the planter arrives, queued after any
     // gas/fire offers so protection cards never overlap visually.
