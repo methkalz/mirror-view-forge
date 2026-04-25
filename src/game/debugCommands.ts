@@ -52,18 +52,6 @@ export function attachDebugAPI(g: GameData, helpers: {
     spawnBoss(mini = false) {
       if (!g.boss) helpers.spawnBoss(g, true, mini);
     },
-    triggerEvent(type: WaveEventType) {
-      if (type === 'swarm') helpers.spawnSwarm(g, 5);
-      else if (type === 'volley') helpers.startVolley(g);
-      else if (type === 'minefield') helpers.spawnMinePlanter(g);
-      else if (type === 'airstrike_flyby') helpers.startAirRaidFlyby(g);
-      else if (type === 'surge') {
-        // Temporarily boost spawn rate for the rest of the wave
-        const prev = g.spawnIntervalCurrent ?? g.spawnTimer;
-        g.spawnTimer = Math.max(0.4, prev * 0.4);
-      }
-    },
-  return {
     jumpToWave(wave: number) {
       g.waveNumber = wave - 1;
       g.hazards.forEach(h => h.active = false);
@@ -82,6 +70,12 @@ export function attachDebugAPI(g: GameData, helpers: {
       if (type === 'swarm') helpers.spawnSwarm(g, 5);
       else if (type === 'volley') helpers.startVolley(g);
       else if (type === 'minefield') helpers.spawnMinePlanter(g);
+      else if (type === 'airstrike_flyby') helpers.startAirRaidFlyby(g);
+      else if (type === 'surge') {
+        // Temporarily boost spawn rate for the rest of the wave
+        const prev = (g as any).spawnIntervalCurrent ?? g.spawnTimer;
+        g.spawnTimer = Math.max(0.4, prev * 0.4);
+      }
     },
     setHealth(hp: number) { g.player.health = Math.max(0, Math.min(200, hp)); },
     setAmmo(ammo: number) { g.player.ammo = Math.max(0, Math.min(99, ammo)); },
