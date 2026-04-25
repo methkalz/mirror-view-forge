@@ -3049,10 +3049,25 @@ const WaveEditor: React.FC<{
 
 const SimulatorPanel: React.FC<{ isDesktop: boolean }> = ({ isDesktop }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  // CRITICAL: iframe src must be STABLE across renders. Computing
+  // `Date.now()` inline in JSX causes React to re-mount the iframe on
+  // every state update (every 500ms via setStats), creating an infinite
+  // reload loop where the intro/bike never finishes playing.
+  const iframeSrcRef = useRef<string>(`/?sim=${Date.now()}`);
+  const [reloadKey, setReloadKey] = useState(0);
   const [stats, setStats] = useState({ wave: 0, health: 0, ammo: 0, elapsed: 0, phase: '', activeHazards: 0, activeDrones: 0 });
   const [godMode, setGodMode] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [speed, setSpeed] = useState(1.0);
+
+  const reloadSimulator = () => {
+    iframeSrcRef.current = `/?sim=${Date.now()}`;
+    setReloadKey(k => k + 1);
+    // Reset local control state on reload
+    setGodMode(false);
+    setIsPaused(false);
+    setSpeed(1.0);
+  };
 
   const getDebug = () => (iframeRef.current?.contentWindow as any)?.__SKYFALL_DEBUG__;
 
