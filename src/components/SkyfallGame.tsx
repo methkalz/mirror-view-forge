@@ -47,9 +47,10 @@ const SkyfallGame: React.FC = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [gameOverData, setGameOverData] = useState<{ score: number; rank: number | null; waves: number } | null>(null);
   const [remoteConfig, setRemoteConfig] = useState<RemoteGameConfig | null>(null);
-  // Skip loading screen entirely in simulator mode to avoid race conditions
-  const [isLoading, setIsLoading] = useState(!isSimulatorMode);
-  const [loadProgress, setLoadProgress] = useState(isSimulatorMode ? 100 : 0);
+  // Always show loader until remote config + audio are ready (prevents race
+  // conditions in simulator where canvas mounts before waves/audio arrive).
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(0);
   const remoteConfigRef = useRef<RemoteGameConfig | null>(null);
   const difficultyProfileRef = useRef<DifficultyProfile | null>(null);
   const waveOverridesRef = useRef<RemoteWaveConfig[]>([]);
