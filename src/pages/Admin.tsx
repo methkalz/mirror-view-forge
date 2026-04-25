@@ -3173,10 +3173,12 @@ const SimulatorPanel: React.FC<{ isDesktop: boolean }> = ({ isDesktop }) => {
               style={{ ...simBtnStyle, background: 'rgba(96,165,250,0.25)', color: '#60a5fa' }}
             >⏩ قفز</button>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
             <button onClick={() => { setIsPaused(!isPaused); cmd(d => isPaused ? d.resume() : d.pause()); }}
               style={isPaused ? simBtnActive : simBtnStyle}>{isPaused ? '▶ استمر' : '⏸ إيقاف'}</button>
-            <button onClick={() => cmd(d => d.jumpToWave(stats.wave))} style={simBtnStyle}>🔄 إعادة</button>
+            <button onClick={() => cmd(d => d.jumpToWave(stats.wave))} style={simBtnStyle}>🔄 إعادة الموجة</button>
+            <button onClick={reloadSimulator}
+              style={{ ...simBtnStyle, background: 'rgba(168,85,247,0.2)', color: '#c084fc' }}>♻ إعادة تشغيل السيم</button>
           </div>
           <div style={{ marginBottom: 6 }}>
             <label style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)' }}>⚡ سرعة: {speed.toFixed(1)}x</label>
