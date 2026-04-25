@@ -3049,10 +3049,25 @@ const WaveEditor: React.FC<{
 
 const SimulatorPanel: React.FC<{ isDesktop: boolean }> = ({ isDesktop }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  // CRITICAL: iframe src must be STABLE across renders. Computing
+  // `Date.now()` inline in JSX causes React to re-mount the iframe on
+  // every state update (every 500ms via setStats), creating an infinite
+  // reload loop where the intro/bike never finishes playing.
+  const iframeSrcRef = useRef<string>(`/?sim=${Date.now()}`);
+  const [reloadKey, setReloadKey] = useState(0);
   const [stats, setStats] = useState({ wave: 0, health: 0, ammo: 0, elapsed: 0, phase: '', activeHazards: 0, activeDrones: 0 });
   const [godMode, setGodMode] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [speed, setSpeed] = useState(1.0);
+
+  const reloadSimulator = () => {
+    iframeSrcRef.current = `/?sim=${Date.now()}`;
+    setReloadKey(k => k + 1);
+    // Reset local control state on reload
+    setGodMode(false);
+    setIsPaused(false);
+    setSpeed(1.0);
+  };
 
   const getDebug = () => (iframeRef.current?.contentWindow as any)?.__SKYFALL_DEBUG__;
 
@@ -3158,10 +3173,12 @@ const SimulatorPanel: React.FC<{ isDesktop: boolean }> = ({ isDesktop }) => {
               style={{ ...simBtnStyle, background: 'rgba(96,165,250,0.25)', color: '#60a5fa' }}
             >⏩ قفز</button>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
             <button onClick={() => { setIsPaused(!isPaused); cmd(d => isPaused ? d.resume() : d.pause()); }}
               style={isPaused ? simBtnActive : simBtnStyle}>{isPaused ? '▶ استمر' : '⏸ إيقاف'}</button>
-            <button onClick={() => cmd(d => d.jumpToWave(stats.wave))} style={simBtnStyle}>🔄 إعادة</button>
+            <button onClick={() => cmd(d => d.jumpToWave(stats.wave))} style={simBtnStyle}>🔄 إعادة الموجة</button>
+            <button onClick={reloadSimulator}
+              style={{ ...simBtnStyle, background: 'rgba(168,85,247,0.2)', color: '#c084fc' }}>♻ إعادة تشغيل السيم</button>
           </div>
           <div style={{ marginBottom: 6 }}>
             <label style={{ fontSize: 10, color: 'rgba(148,163,184,0.5)' }}>⚡ سرعة: {speed.toFixed(1)}x</label>
@@ -3227,11 +3244,14 @@ const SimulatorPanel: React.FC<{ isDesktop: boolean }> = ({ isDesktop }) => {
         </div>
       </div>
 
-      {/* Game Canvas — embedded via iframe */}
+      {/* Game Canvas — embedded via iframe. src is STABLE (useRef) so
+          state updates don't trigger remount. Use reloadKey on the `key`
+          prop only when manual reload is requested. */}
       <div style={{ flex: 1, borderRadius: 16, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.1)', minHeight: isDesktop ? 0 : 500, position: 'relative' }}>
         <iframe
+          key={reloadKey}
           ref={iframeRef}
-          src={`/?sim=${Date.now()}`}
+          src={iframeSrcRef.current}
           style={{ width: '100%', height: '100%', border: 'none' }}
           title="Skyfall Simulator"
         />
