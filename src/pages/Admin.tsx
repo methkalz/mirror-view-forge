@@ -3244,11 +3244,14 @@ const SimulatorPanel: React.FC<{ isDesktop: boolean }> = ({ isDesktop }) => {
         </div>
       </div>
 
-      {/* Game Canvas — embedded via iframe */}
+      {/* Game Canvas — embedded via iframe. src is STABLE (useRef) so
+          state updates don't trigger remount. Use reloadKey on the `key`
+          prop only when manual reload is requested. */}
       <div style={{ flex: 1, borderRadius: 16, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.1)', minHeight: isDesktop ? 0 : 500, position: 'relative' }}>
         <iframe
+          key={reloadKey}
           ref={iframeRef}
-          src={`/?sim=${Date.now()}`}
+          src={iframeSrcRef.current}
           style={{ width: '100%', height: '100%', border: 'none' }}
           title="Skyfall Simulator"
         />
