@@ -3056,16 +3056,30 @@ const SimulatorPanel: React.FC<{ isDesktop: boolean }> = ({ isDesktop }) => {
 
   const getDebug = () => (iframeRef.current?.contentWindow as any)?.__SKYFALL_DEBUG__;
 
-  // Poll game state for stats display
+  // Poll game state for stats display — guarded so iframe reload/cross-origin
+  // hiccups never crash the Admin UI.
   useEffect(() => {
     const iv = setInterval(() => {
-      const dbg = getDebug();
-      if (dbg) setStats(dbg.getState());
+      try {
+        const dbg = getDebug();
+        if (dbg && typeof dbg.getState === 'function') {
+          setStats(dbg.getState());
+        }
+      } catch (err) {
+        // iframe not ready yet — ignore until next tick
+      }
     }, 500);
     return () => clearInterval(iv);
   }, []);
 
-  const cmd = (fn: (dbg: any) => void) => { const dbg = getDebug(); if (dbg) fn(dbg); };
+  const cmd = (fn: (dbg: any) => void) => {
+    try {
+      const dbg = getDebug();
+      if (dbg) fn(dbg);
+    } catch (err) {
+      console.warn('[Simulator] command failed:', err);
+    }
+  };
 
   const THREAT_BTNS = [
     { type: 'shrapnel', icon: '💥', label: 'شظايا' },
