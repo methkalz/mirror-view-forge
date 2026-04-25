@@ -52,20 +52,6 @@ export function attachDebugAPI(g: GameData, helpers: {
     spawnBoss(mini = false) {
       if (!g.boss) helpers.spawnBoss(g, true, mini);
     },
-    jumpToWave(wave: number) {
-      g.waveNumber = wave - 1;
-      g.hazards.forEach(h => h.active = false);
-      g.drones.forEach(d => d.active = false);
-      g.activeHazardCount = 0;
-      g.boss = null;
-      g.minePlanter = null;
-      helpers.startNextWave(g);
-    },
-    spawnHazard(type: HazardType) { helpers.spawnHazard(g, type); },
-    spawnDrone(tier: DroneTier) { helpers.spawnDrone(g, tier); },
-    spawnBoss(mini = false) {
-      if (!g.boss) helpers.spawnBoss(g, true, mini);
-    },
     triggerEvent(type: WaveEventType) {
       if (type === 'swarm') helpers.spawnSwarm(g, 5);
       else if (type === 'volley') helpers.startVolley(g);
