@@ -1,25 +1,29 @@
-# ✅ خطة نقل الرسائل للوحة التحكم — مكتملة
+# إصلاح السيميلاتور المعطّل — 3 إصلاحات متكاملة
 
-## ✓ المرحلة 1-3: قاعدة البيانات
-- إضافة عمود `warnings` JSONB إلى `wave_configs`
-- إنشاء جدول `dynamic_warnings` مع 4 أحداث (swarm, minefield, volley, airstrike_flyby)
-- زرع جميع رسائل WAVE_WARNINGS (16 موجة) في DB
-- W1: ربط `breakingNews`، W5: تحويل لـ `upgrade` أخضر
+## 1️⃣ إصلاح Race Condition في تحميل البيانات
+**`src/components/SkyfallGame.tsx`**
+- جعل `isLoading = true` افتراضياً حتى في وضع السيم (إزالة الاستثناء الحالي)
+- ضمان `setIsLoading(false)` داخل `finally` بعد اكتمال `loadAll()` (تحميل remoteConfig + dynamicWarnings + waveOverrides + audio)
+- بهذا يضمن `simAutoStartedRef` effect أن كل البيانات جاهزة قبل `resetGame(g)` ولن يبدأ المحرك بمصفوفات فارغة
 
-## ✓ المرحلة 4: المحرك
-- `engine.ts`: قراءة `recipe.warnings[]` أولاً ثم fallback لـ WAVE_WARNINGS
-- الرسائل الديناميكية تُقرأ من `g.dynamicWarnings`
-- `SkyfallGame.tsx`: تحميل + Realtime sync
+## 2️⃣ دعم كامل لكل أحداث السيميلاتور
+**`src/game/debugCommands.ts`**
+- إضافة `startAirRaidFlyby` إلى نوع `helpers`
+- توسيع `triggerEvent` ليعالج:
+  - `'airstrike_flyby'` → `helpers.startAirRaidFlyby(g)`
+  - `'surge'` → `helpers.startNextWave(g)` مع رفع `surge_multiplier`
 
-## ✓ المرحلة 5: محرر الرسائل المتعددة (WaveEditor)
-- استبدال الحقل المفرد بقائمة `warnings[]` قابلة للإضافة/الحذف
-- لكل رسالة: نص، نوع (تحذير/ترقية)، لون، dropdown صوت من فئة `warnings`
+**`src/components/SkyfallGame.tsx`**
+- تمرير `startAirRaidFlyby` ضمن helpers في `attachDebugAPI(g, _debug)`
 
-## ✓ المرحلة 6: تبويب "Messages" 
-- تبويب جديد `💬 Messages` في `/admin`
-- بطاقات لكل صف من `dynamic_warnings`
-- تعديل: نص، لون، صوت، تفعيل + زر حفظ فردي
+## 3️⃣ تحصين دفاعي ضد الانهيارات
+**`src/pages/Admin.tsx`**
+- لف `dbg.getState()` في polling بـ `try/catch` لتجنب توقف الـ stats
+- إضافة فحص null على `dbg` قبل الاستخدام في كل أزرار السيميلاتور
+- إضافة `displayName` لـ `SimulatorPanel` لإزالة تحذيرات `forwardRef`
 
-## 🛡️ الضمانات
-- توافق عكسي: WAVE_WARNINGS يبقى كـ fallback إن كانت `warnings[]` فارغة
-- Realtime: تغييرات اللوحة تطبَّق فوراً على اللاعبين الأحياء
+## ✅ النتيجة المتوقعة
+- iframe السيم يفتح، يعرض GameLoader لثوانٍ، ثم تبدأ اللعبة تلقائياً
+- **كل** الأزرار تعمل: قفز موجات، تهديدات، Bosses، Drones، Air Raid (المُعطل سابقاً)، Surge، Swarm، Volley، Minefield
+- إحصائيات HP/Ammo/Wave/Phase تتحدث كل 500ms بدون توقف
+- صفر تحذيرات `forwardRef` في console
