@@ -15,12 +15,16 @@
  */
 
 import type { GameData } from './types';
+import { isReducedMotion } from './settings';
 
 // Tuning
 const TRAUMA_DECAY_PER_SEC = 1.5; // 1 second of full trauma decays to zero
 const MAX_SHAKE_X = 14; // px
 const MAX_SHAKE_Y = 10; // px
 const MAX_ROTATION = 0.03; // radians — small so feel but not disorienting
+// When the player enables Reduce Motion, damp shake toward calm so it stays
+// legible for vestibular sensitivity without killing all feedback.
+const REDUCED_MOTION_SHAKE = 0.3;
 
 // Internal trauma state, kept outside GameData to avoid tight coupling
 // (the engine reads/writes via functions).
@@ -67,8 +71,9 @@ export function updateCameraShake(g: GameData, dt: number) {
   // Advance internal time for noise lookups
   noiseSeed += dt * 35; // frequency of oscillation
 
-  g.screenShake.x = MAX_SHAKE_X * amount * noise(noiseSeed + 1);
-  g.screenShake.y = MAX_SHAKE_Y * amount * noise(noiseSeed + 7);
+  const rm = isReducedMotion() ? REDUCED_MOTION_SHAKE : 1;
+  g.screenShake.x = MAX_SHAKE_X * amount * noise(noiseSeed + 1) * rm;
+  g.screenShake.y = MAX_SHAKE_Y * amount * noise(noiseSeed + 7) * rm;
 
   // Decay
   trauma = Math.max(0, trauma - TRAUMA_DECAY_PER_SEC * dt);
@@ -78,5 +83,6 @@ export function updateCameraShake(g: GameData, dt: number) {
 export function getShakeRotation(): number {
   if (trauma <= 0) return 0;
   const amount = trauma * trauma;
-  return MAX_ROTATION * amount * noise(noiseSeed + 13);
+  const rm = isReducedMotion() ? REDUCED_MOTION_SHAKE : 1;
+  return MAX_ROTATION * amount * noise(noiseSeed + 13) * rm;
 }

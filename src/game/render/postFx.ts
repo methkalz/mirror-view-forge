@@ -15,6 +15,7 @@
  */
 
 import type { GameData } from '../types';
+import { isReducedMotion } from '../settings';
 
 // ─── Offscreen buffers (cached across frames) ────────────────────────
 let bloomBuffer: HTMLCanvasElement | null = null;
@@ -112,8 +113,15 @@ export function renderVignette(ctx: CanvasRenderingContext2D, g: GameData) {
 export function renderDamageFlash(ctx: CanvasRenderingContext2D, g: GameData) {
   if (g.damageFlash <= 0) return;
 
-  ctx.fillStyle = `rgba(200, 30, 30, ${g.damageFlash * 0.4})`;
+  // Reduce Motion: soften the full-screen red flash and skip the chromatic
+  // aberration entirely (photosensitivity — WCAG 2.3.1).
+  const reduced = isReducedMotion();
+  const flashScale = reduced ? 0.5 : 1;
+
+  ctx.fillStyle = `rgba(200, 30, 30, ${g.damageFlash * 0.4 * flashScale})`;
   ctx.fillRect(0, 0, g.width, g.height);
+
+  if (reduced) return;
 
   const abStr = Math.min(3, g.damageFlash * 6);
   if (abStr > 0.5) {
