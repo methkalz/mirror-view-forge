@@ -315,6 +315,15 @@ export function resumeAudio() {
   startAmbient();
 }
 
+/** Suspend all audio — used when the page is hidden so sound doesn't keep
+ *  playing after the player switches apps, and to save battery. resumeAudio()
+ *  restores it on return. */
+export function suspendAudio() {
+  if (audioCtx && audioCtx.state === 'running') {
+    audioCtx.suspend().catch(() => { /* ignore */ });
+  }
+}
+
 function playTone(freq: number, duration: number, type: OscillatorType = 'square', vol = 0.12) {
   const ctx = getCtx();
   const osc = ctx.createOscillator();

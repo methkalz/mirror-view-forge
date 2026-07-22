@@ -3,7 +3,7 @@ import { GameData, InputState } from '@/game/types';
 import { loadAudioSettings, reloadAudioSettings } from '@/game/audio';
 import { createGame, resetGame, update, updateIntro, updateCardsOnly, hasModalCard, _debug } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
-import { resumeAudio, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition, sfxAmmoTutorial, stopGameOverVoice } from '@/game/audio';
+import { resumeAudio, suspendAudio, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition, sfxAmmoTutorial, stopGameOverVoice } from '@/game/audio';
 import { fetchGameConfig, fetchLeaderboard, fetchDifficultyProfile, fetchWaveConfigs, fetchDynamicWarnings, submitScore, type RemoteGameConfig, type LeaderboardEntry, type DifficultyProfile, type RemoteWaveConfig, type DynamicWarning } from '@/game/config';
 import { fetchBackgroundConfig, fetchScenes, type Scene, type BackgroundPhase } from '@/game/backgroundConfig';
 import { setBackgroundConfig, setBackgroundConfigForScene, setCameraMargin } from '@/game/renderer';
@@ -244,6 +244,24 @@ const SkyfallGame: React.FC = () => {
       window.removeEventListener('resize', onResize);
       window.removeEventListener('orientationchange', onResize);
     };
+  }, []);
+
+  // Page-lifecycle handling: when the tab is hidden (app switch, screen lock,
+  // incoming call) suspend audio so it doesn't keep playing, and release any
+  // held movement keys so a button whose pointer was cancelled doesn't stay
+  // stuck. rAF is already throttled while hidden and dt is clamped, so no
+  // fast-forward happens on return; we just re-arm audio.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.hidden) {
+        inputRef.current.keys.clear();
+        suspendAudio();
+      } else {
+        resumeAudio();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
   }, []);
 
   // Responsive geometry for the four on-screen buttons. Movement (‹ ›) is
@@ -943,6 +961,7 @@ const SkyfallGame: React.FC = () => {
             onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); if (controlTutorial < 0) handleButtonDown('left'); }}
             onPointerUp={() => handleButtonUp('left')}
             onPointerLeave={() => handleButtonUp('left')}
+            onPointerCancel={() => handleButtonUp('left')}
             style={{
               position: 'absolute', left: controls.leftX, bottom: 'calc(95px + env(safe-area-inset-bottom, 0px))', width: controls.btnW, height: 56,
               borderRadius: 16, border: '1px solid rgba(255,255,255,0.12)',
@@ -961,6 +980,7 @@ const SkyfallGame: React.FC = () => {
             onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); if (controlTutorial < 0) handleButtonDown('right'); }}
             onPointerUp={() => handleButtonUp('right')}
             onPointerLeave={() => handleButtonUp('right')}
+            onPointerCancel={() => handleButtonUp('right')}
             style={{
               position: 'absolute', left: controls.rightX, bottom: 'calc(95px + env(safe-area-inset-bottom, 0px))', width: controls.btnW, height: 56,
               borderRadius: 16, border: '1px solid rgba(255,255,255,0.12)',
