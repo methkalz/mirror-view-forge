@@ -195,10 +195,12 @@ export function playCustomAudio(key: string): boolean {
   const src = ctx.createBufferSource();
   src.buffer = buffer;
   const gain = ctx.createGain();
-  // Apply volume based on volumeMode
+  // Apply volume based on volumeMode, then scale by the user's master/category
+  // volume (categoryGain folds in master × sfx|music). Previously custom
+  // Supabase samples ignored the user's volume sliders and mute entirely.
   const finalVolume = s.volumeMode === 'individual' ? file.volume : s.volume;
-  gain.gain.value = finalVolume;
-  src.connect(gain).connect(ctx.destination);
+  gain.gain.value = finalVolume * categoryGain(key);
+  src.connect(gain).connect(masterOut());
   src.start();
 
   // Track active source
@@ -280,6 +282,32 @@ function getCtx(): AudioContext {
   return audioCtx;
 }
 
+// Single master bus with a limiter. Every voice routes through this instead of
+// connecting straight to ctx.destination, so a wave of stacked explosions can't
+// sum past 0 dBFS and hard-clip on phone speakers. The threshold sits below the
+// summed level of many simultaneous SFX but above any single quiet sound, so
+// normal playback is unchanged and only overload is tamed.
+let masterBus: DynamicsCompressorNode | null = null;
+function masterOut(): AudioNode {
+  const ctx = getCtx();
+  if (!masterBus) {
+    // Feature-detect: fall back to the raw output where no compressor exists
+    // (e.g. the jsdom AudioContext stub used in unit tests).
+    if (typeof ctx.createDynamicsCompressor !== 'function') {
+      return ctx.destination;
+    }
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -10;
+    comp.knee.value = 20;
+    comp.ratio.value = 12;
+    comp.attack.value = 0.003;
+    comp.release.value = 0.25;
+    comp.connect(masterOut());
+    masterBus = comp;
+  }
+  return masterBus;
+}
+
 export function resumeAudio() {
   unmuteIOS();
   if (audioCtx?.state === 'suspended') audioCtx.resume();
@@ -295,7 +323,7 @@ function playTone(freq: number, duration: number, type: OscillatorType = 'square
   osc.frequency.value = freq;
   gain.gain.setValueAtTime(vol, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-  osc.connect(gain).connect(ctx.destination);
+  osc.connect(gain).connect(masterOut());
   osc.start();
   osc.stop(ctx.currentTime + duration);
 }
@@ -316,9 +344,9 @@ function playNoise(duration: number, vol = 0.08, filter?: { type: BiquadFilterTy
     const bq = ctx.createBiquadFilter();
     bq.type = filter.type;
     bq.frequency.value = filter.freq;
-    src.connect(bq).connect(gain).connect(ctx.destination);
+    src.connect(bq).connect(gain).connect(masterOut());
   } else {
-    src.connect(gain).connect(ctx.destination);
+    src.connect(gain).connect(masterOut());
   }
   src.start();
 }
@@ -337,7 +365,7 @@ function startAmbient() {
     ambientNode.loop = true;
     const gain = ctx.createGain();
     gain.gain.value = getSoundVolume('ambient', 0.5);
-    ambientNode.connect(gain).connect(ctx.destination);
+    ambientNode.connect(gain).connect(masterOut());
     ambientNode.start();
     ambientGainNode = gain;
     return;
@@ -362,7 +390,7 @@ function startAmbient() {
   const bq = ctx.createBiquadFilter();
   bq.type = 'lowpass';
   bq.frequency.value = 400;
-  ambientNode.connect(bq).connect(gain).connect(ctx.destination);
+  ambientNode.connect(bq).connect(gain).connect(masterOut());
   ambientNode.start();
   ambientGainNode = gain;
 }
@@ -474,7 +502,7 @@ export function sfxWarningMissile() {
   osc.frequency.linearRampToValueAtTime(200, ctx.currentTime + 0.6);
   gain.gain.setValueAtTime(0.15 * v, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
-  osc.connect(gain).connect(ctx.destination);
+  osc.connect(gain).connect(masterOut());
   osc.start();
   osc.stop(ctx.currentTime + 0.7);
 }
@@ -501,7 +529,7 @@ export function sfxWarningDrone() {
   osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.6);
   gain.gain.setValueAtTime(0.12 * v, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
-  osc.connect(gain).connect(ctx.destination);
+  osc.connect(gain).connect(masterOut());
   osc.start();
   osc.stop(ctx.currentTime + 0.7);
 }
@@ -522,7 +550,7 @@ export function sfxWarningBoss() {
   const bq = ctx.createBiquadFilter();
   bq.type = 'lowpass';
   bq.frequency.value = 400;
-  osc.connect(bq).connect(gain).connect(ctx.destination);
+  osc.connect(bq).connect(gain).connect(masterOut());
   osc.start();
   osc.stop(ctx.currentTime + 1.0);
   playNoise(0.6, 0.1 * v, { type: 'lowpass', freq: 200 });
@@ -589,7 +617,7 @@ export function sfxLaserCharge() {
   gain.gain.linearRampToValueAtTime(0.15 * v, ctx.currentTime + 0.6);
   gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.0);
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(masterOut());
   osc.start(ctx.currentTime);
   osc.stop(ctx.currentTime + 1.0);
 }
@@ -623,7 +651,7 @@ export function sfxSlideTransition() {
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0.08 * v, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-  src.connect(bq).connect(gain).connect(ctx.destination);
+  src.connect(bq).connect(gain).connect(masterOut());
   src.start();
   // Subtle tonal accent
   playTone(600, 0.06, 'sine', 0.03 * v);
@@ -680,7 +708,7 @@ export function sfxBossSiren() {
   osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 1.5);
   gain.gain.setValueAtTime(0.2 * v, ctx.currentTime);
   gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 2);
-  osc.connect(gain).connect(ctx.destination);
+  osc.connect(gain).connect(masterOut());
   osc.start();
   osc.stop(ctx.currentTime + 2);
 }
@@ -776,7 +804,7 @@ export function sfxBikeEngine() {
   const bq = ctx.createBiquadFilter();
   bq.type = 'lowpass';
   bq.frequency.value = 300;
-  osc.connect(bq).connect(gain).connect(ctx.destination);
+  osc.connect(bq).connect(gain).connect(masterOut());
   osc.start();
   osc.stop(ctx.currentTime + 1.2);
   // Add rumble
@@ -798,7 +826,7 @@ export function sfxBikeBrake() {
   const bq = ctx.createBiquadFilter();
   bq.type = 'lowpass';
   bq.frequency.value = 250;
-  osc.connect(bq).connect(gain).connect(ctx.destination);
+  osc.connect(bq).connect(gain).connect(masterOut());
   osc.start();
   osc.stop(ctx.currentTime + 0.6);
   // Tire screech
@@ -819,7 +847,7 @@ export function sfxBikeIdle() {
   const bq = ctx.createBiquadFilter();
   bq.type = 'lowpass';
   bq.frequency.value = 200;
-  osc.connect(bq).connect(gain).connect(ctx.destination);
+  osc.connect(bq).connect(gain).connect(masterOut());
   osc.start();
   osc.stop(ctx.currentTime + 2);
 }
@@ -841,7 +869,7 @@ export function sfxBikeDepart() {
   const bq = ctx.createBiquadFilter();
   bq.type = 'lowpass';
   bq.frequency.value = 400;
-  osc.connect(bq).connect(gain).connect(ctx.destination);
+  osc.connect(bq).connect(gain).connect(masterOut());
   osc.start();
   osc.stop(ctx.currentTime + 2);
   playNoise(1.5, 0.05 * v, { type: 'lowpass', freq: 200 });
@@ -1025,7 +1053,7 @@ export function sfxWindGust() {
   const bq = ctx.createBiquadFilter();
   bq.type = 'bandpass';
   bq.frequency.value = 600;
-  src.connect(bq).connect(gain).connect(ctx.destination);
+  src.connect(bq).connect(gain).connect(masterOut());
   src.start();
 }
 
@@ -1043,7 +1071,7 @@ export function sfxDistantSiren() {
   gain.gain.setValueAtTime(0.001, ctx.currentTime);
   gain.gain.linearRampToValueAtTime(0.015 * v, ctx.currentTime + 0.5);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
-  osc.connect(gain).connect(ctx.destination);
+  osc.connect(gain).connect(masterOut());
   osc.start();
   osc.stop(ctx.currentTime + 2);
 }
@@ -1084,9 +1112,9 @@ export function playSynthesizedPreview(key: string) {
     footstep: () => { playNoise(0.04, 0.02, { type: 'lowpass', freq: 600 }); },
     warning: () => { playTone(800, 0.08, 'sine', 0.03); setTimeout(() => playTone(1000, 0.06, 'sine', 0.02), 80); },
     warningShrapnel: () => { playTone(1200, 0.06, 'square', 0.04); setTimeout(() => playTone(900, 0.06, 'square', 0.03), 70); },
-    warningMissile: () => { const c = getCtx(); const o = c.createOscillator(); const g = c.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(200, c.currentTime); o.frequency.linearRampToValueAtTime(500, c.currentTime + 0.3); o.frequency.linearRampToValueAtTime(200, c.currentTime + 0.6); g.gain.setValueAtTime(0.05, c.currentTime); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.7); o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + 0.7); },
+    warningMissile: () => { const c = getCtx(); const o = c.createOscillator(); const g = c.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(200, c.currentTime); o.frequency.linearRampToValueAtTime(500, c.currentTime + 0.3); o.frequency.linearRampToValueAtTime(200, c.currentTime + 0.6); g.gain.setValueAtTime(0.05, c.currentTime); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.7); o.connect(g).connect(masterOut()); o.start(); o.stop(c.currentTime + 0.7); },
     warningCluster: () => { for (let i = 0; i < 4; i++) setTimeout(() => playTone(700 + i * 100, 0.04, 'square', 0.04), i * 60); },
-    warningDrone: () => { const c = getCtx(); const o = c.createOscillator(); const g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(400, c.currentTime); o.frequency.exponentialRampToValueAtTime(1600, c.currentTime + 0.3); o.frequency.exponentialRampToValueAtTime(400, c.currentTime + 0.6); g.gain.setValueAtTime(0.04, c.currentTime); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.7); o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + 0.7); },
+    warningDrone: () => { const c = getCtx(); const o = c.createOscillator(); const g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(400, c.currentTime); o.frequency.exponentialRampToValueAtTime(1600, c.currentTime + 0.3); o.frequency.exponentialRampToValueAtTime(400, c.currentTime + 0.6); g.gain.setValueAtTime(0.04, c.currentTime); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.7); o.connect(g).connect(masterOut()); o.start(); o.stop(c.currentTime + 0.7); },
     warningBoss: () => { playTone(100, 1.0, 'sawtooth', 0.08); playNoise(0.6, 0.04, { type: 'lowpass', freq: 200 }); },
     warningHazard: () => { playTone(300, 0.1, 'triangle', 0.04); setTimeout(() => playTone(350, 0.08, 'triangle', 0.03), 100); },
     warningBomber: () => { playTone(80, 0.3, 'sawtooth', 0.05); playNoise(0.2, 0.04, { type: 'lowpass', freq: 300 }); setTimeout(() => playTone(600, 0.08, 'square', 0.04), 200); },
@@ -1094,7 +1122,7 @@ export function playSynthesizedPreview(key: string) {
     magnet: () => { playTone(400, 0.15, 'sawtooth', 0.06); setTimeout(() => playTone(500, 0.12, 'sawtooth', 0.05), 60); },
     airstrike: () => { playTone(1200, 0.1, 'sine', 0.08); setTimeout(() => playTone(800, 0.15, 'sine', 0.06), 100); },
     thunder: () => { playNoise(0.8, 0.15, { type: 'lowpass', freq: 200 }); playTone(30, 0.6, 'sine', 0.1); },
-    bossSiren: () => { const c = getCtx(); const o = c.createOscillator(); const g = c.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(400, c.currentTime); o.frequency.linearRampToValueAtTime(800, c.currentTime + 0.5); o.frequency.linearRampToValueAtTime(400, c.currentTime + 1.0); g.gain.setValueAtTime(0.08, c.currentTime); g.gain.linearRampToValueAtTime(0.001, c.currentTime + 2); o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + 2); },
+    bossSiren: () => { const c = getCtx(); const o = c.createOscillator(); const g = c.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(400, c.currentTime); o.frequency.linearRampToValueAtTime(800, c.currentTime + 0.5); o.frequency.linearRampToValueAtTime(400, c.currentTime + 1.0); g.gain.setValueAtTime(0.08, c.currentTime); g.gain.linearRampToValueAtTime(0.001, c.currentTime + 2); o.connect(g).connect(masterOut()); o.start(); o.stop(c.currentTime + 2); },
     bossExplosion: () => { playTone(30, 0.8, 'sawtooth', 0.15); playTone(50, 0.6, 'sine', 0.12); playNoise(0.8, 0.15, { type: 'lowpass', freq: 500 }); },
     shoot1: () => { playNoise(0.08, 0.15, { type: 'highpass', freq: 3000 }); playTone(150, 0.1, 'sine', 0.12); },
     shoot2: () => { playNoise(0.09, 0.18, { type: 'highpass', freq: 2800 }); playTone(120, 0.12, 'sine', 0.14); },
@@ -1114,7 +1142,7 @@ export function playSynthesizedPreview(key: string) {
     upgradeSelect: () => { playTone(800, 0.06, 'sine', 0.06); setTimeout(() => playTone(1000, 0.08, 'sine', 0.07), 50); },
     distantExplosion: () => { playNoise(0.4, 0.03, { type: 'lowpass', freq: 150 }); playTone(25, 0.5, 'sine', 0.02); },
     windGust: () => { playNoise(0.5, 0.04, { type: 'bandpass', freq: 600 }); },
-    distantSiren: () => { const c = getCtx(); const o = c.createOscillator(); const g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(300, c.currentTime); o.frequency.linearRampToValueAtTime(500, c.currentTime + 1); o.frequency.linearRampToValueAtTime(300, c.currentTime + 2); g.gain.setValueAtTime(0.001, c.currentTime); g.gain.linearRampToValueAtTime(0.015, c.currentTime + 0.5); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 2); o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + 2); },
+    distantSiren: () => { const c = getCtx(); const o = c.createOscillator(); const g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(300, c.currentTime); o.frequency.linearRampToValueAtTime(500, c.currentTime + 1); o.frequency.linearRampToValueAtTime(300, c.currentTime + 2); g.gain.setValueAtTime(0.001, c.currentTime); g.gain.linearRampToValueAtTime(0.015, c.currentTime + 0.5); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 2); o.connect(g).connect(masterOut()); o.start(); o.stop(c.currentTime + 2); },
     buttonClick: () => { playTone(800, 0.03, 'sine', 0.04); },
     scoreSubmit: () => { playTone(600, 0.08, 'sine', 0.06); setTimeout(() => playTone(800, 0.06, 'sine', 0.05), 60); },
   };
@@ -1159,7 +1187,7 @@ export async function startMenuMusic(): Promise<boolean> {
     menuMusicNode.loop = true;
     menuMusicGain = ctx.createGain();
     menuMusicGain.gain.value = getSoundVolume('menuMusic', 0.4);
-    menuMusicNode.connect(menuMusicGain).connect(ctx.destination);
+    menuMusicNode.connect(menuMusicGain).connect(masterOut());
     menuMusicNode.start();
     return true;
   }
@@ -1186,7 +1214,7 @@ export async function startMenuMusic(): Promise<boolean> {
   menuMusicNode.loop = true;
   menuMusicGain = ctx.createGain();
   menuMusicGain.gain.value = getSoundVolume('menuMusic', 0.3);
-  menuMusicNode.connect(menuMusicGain).connect(ctx.destination);
+  menuMusicNode.connect(menuMusicGain).connect(masterOut());
   menuMusicNode.start();
   return true;
   } catch (e) {
