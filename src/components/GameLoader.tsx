@@ -308,6 +308,7 @@ const GameLoader: React.FC<GameLoaderProps> = ({ onLoaded, progress, autoStart =
           0% { opacity: 0; transform: translateY(12px); }
           100% { opacity: 1; transform: translateY(0); }
         }
+        @keyframes ringPulse {
           0%, 100% { transform: scale(1); opacity: 0.6; }
           50% { transform: scale(1.3); opacity: 1; }
         }

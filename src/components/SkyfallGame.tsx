@@ -73,7 +73,14 @@ const SkyfallGame: React.FC = () => {
   // Settings drawer — reachable only between rounds (start screen / game over)
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Sync user settings → graphics quality
+  // Device-pixel-ratio cap driven by the quality preset. Read by resize() in
+  // the game-loop effect. 'high' keeps the original min(dpr, 2); lower presets
+  // render at a smaller backing store (CSS-upscaled) to cut fill-rate on weak
+  // devices. Initialised from the saved quality so the first resize is correct.
+  const dprCapFor = (q: 'low' | 'medium' | 'high') => (q === 'low' ? 1 : q === 'medium' ? 1.5 : 2);
+  const dprCapRef = useRef(dprCapFor(getSettings().quality));
+
+  // Sync user settings → graphics quality (bloom + render resolution)
   useEffect(() => {
     const applyQuality = (s: ReturnType<typeof getSettings>) => {
       if (s.quality === 'low') {
@@ -82,6 +89,12 @@ const SkyfallGame: React.FC = () => {
         setBloomQuality({ enabled: true, intensity: 0.3 });
       } else {
         setBloomQuality({ enabled: true, intensity: 0.45 });
+      }
+      // Apply the resolution cap and re-run the canvas resize immediately.
+      const nextCap = dprCapFor(s.quality);
+      if (nextCap !== dprCapRef.current) {
+        dprCapRef.current = nextCap;
+        window.dispatchEvent(new Event('resize'));
       }
     };
     applyQuality(getSettings());
@@ -331,7 +344,7 @@ const SkyfallGame: React.FC = () => {
     });
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, dprCapRef.current);
       const w = window.innerWidth;
       const h = window.innerHeight;
       canvas.width = w * dpr;
