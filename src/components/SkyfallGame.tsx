@@ -8,7 +8,7 @@ import { fetchGameConfig, fetchLeaderboard, fetchDifficultyProfile, fetchWaveCon
 import { fetchBackgroundConfig, fetchScenes, type Scene, type BackgroundPhase } from '@/game/backgroundConfig';
 import { setBackgroundConfig, setBackgroundConfigForScene, setCameraMargin } from '@/game/renderer';
 import { setOnSceneSwap } from '@/game/engine';
-import { attachDebugAPI, getGameSpeed, isGodMode, isInfiniteAmmo, type DebugAPI } from '@/game/debugCommands';
+import { attachDebugAPI, getGameSpeed, isGodMode, isInfiniteAmmo, wasCheatUsed, type DebugAPI } from '@/game/debugCommands';
 import { supabase } from '@/integrations/supabase/client';
 import NameEntry from './NameEntry';
 import PrizeEntryCard from './PrizeEntryCard';
@@ -236,9 +236,14 @@ const SkyfallGame: React.FC = () => {
     const g = createGame(window.innerWidth, window.innerHeight);
     gameRef.current = g;
 
-    // Expose debug API for simulator tab
-    const dbgApi = attachDebugAPI(g, _debug);
-    (window as any).__SKYFALL_DEBUG__ = dbgApi;
+    // Expose debug API for the admin simulator tab (and local dev) ONLY.
+    // In a public production build this must NOT be reachable, otherwise any
+    // player could open devtools and call toggleGodMode()/setHealth()/etc.
+    // and submit the resulting score to the real leaderboard.
+    if (import.meta.env.DEV || isSimulatorMode) {
+      const dbgApi = attachDebugAPI(g, _debug);
+      (window as any).__SKYFALL_DEBUG__ = dbgApi;
+    }
 
     // Simulator mode — skip tutorial, jump straight to gameplay
     if (isSimulatorMode) {
@@ -344,9 +349,15 @@ const SkyfallGame: React.FC = () => {
           renderGameOver(ctx, w, h, g.score, g.highScore, g.stats,
             leaderboard, playerName, gameOverData?.rank ?? null, g.waveNumber);
           
-          // Submit score once
+          // Submit score once. Skip entirely if any debug cheat was enabled
+          // during the run (god mode / infinite ammo / altered game speed) so
+          // cheated runs never reach the real leaderboard or prize flow.
           if (!scoreSubmittedRef.current) {
             scoreSubmittedRef.current = true;
+            if (wasCheatUsed()) {
+              // Cheated run: show a neutral game-over screen, no submission.
+              setGameOverData({ score: g.score, rank: null, waves: g.waveNumber });
+            } else {
             submitScore(playerName, g.score, g.waveNumber, g.levelNumber, {
               timeSurvived: g.stats.timeSurvived,
               dronesDestroyed: g.stats.dronesDestroyed,
@@ -362,6 +373,7 @@ const SkyfallGame: React.FC = () => {
                 setShowPrizeCard(true);
               }
             });
+            }
           }
         }
 

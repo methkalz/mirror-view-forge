@@ -21,11 +21,16 @@ let godMode = false;
 let infiniteAmmo = false;
 let gameSpeed = 1.0;
 let paused = false;
+// Latches true the moment any run-altering cheat is enabled. Never reset, so a
+// player cannot cheat then restart to obtain a "clean" submittable run. In a
+// production build the debug API is never attached, so this stays false.
+let cheatUsed = false;
 
 export function isGodMode(): boolean { return godMode; }
 export function isInfiniteAmmo(): boolean { return infiniteAmmo; }
 export function getGameSpeed(): number { return paused ? 0 : gameSpeed; }
 export function isPaused(): boolean { return paused; }
+export function wasCheatUsed(): boolean { return cheatUsed; }
 
 export function attachDebugAPI(g: GameData, helpers: {
   spawnHazard: (g: GameData, type: HazardType) => void;
@@ -65,14 +70,14 @@ export function attachDebugAPI(g: GameData, helpers: {
     },
     setHealth(hp: number) { g.player.health = Math.max(0, Math.min(200, hp)); },
     setAmmo(ammo: number) { g.player.ammo = Math.max(0, Math.min(99, ammo)); },
-    toggleGodMode(on: boolean) { godMode = on; },
-    toggleInfiniteAmmo(on: boolean) { infiniteAmmo = on; },
+    toggleGodMode(on: boolean) { godMode = on; if (on) cheatUsed = true; },
+    toggleInfiniteAmmo(on: boolean) { infiniteAmmo = on; if (on) cheatUsed = true; },
     giveProtection(item) {
       if (item === 'gasmask') { g.player.gasMaskTimer = 60; g.player.gasMaskDonTimer = 0.6; g.gasMaskOwned = true; }
       else if (item === 'firesuit') { g.player.fireSuitTimer = 60; g.player.fireSuitDonTimer = 0.6; g.fireSuitOwned = true; }
       else if (item === 'minesweeper') { g.player.minesweeperTimer = 60; g.player.minesweeperDonTimer = 0.6; g.minesweeperOwned = true; }
     },
-    setGameSpeed(m: number) { gameSpeed = Math.max(0.1, Math.min(4, m)); },
+    setGameSpeed(m: number) { gameSpeed = Math.max(0.1, Math.min(4, m)); if (gameSpeed !== 1) cheatUsed = true; },
     pause() { paused = true; },
     resume() { paused = false; },
     getState() {
