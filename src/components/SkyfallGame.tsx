@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { GameData, InputState } from '@/game/types';
 import { loadAudioSettings, reloadAudioSettings } from '@/game/audio';
 import { createGame, resetGame, update, updateIntro, updateCardsOnly, hasModalCard, _debug } from '@/game/engine';
@@ -38,6 +38,11 @@ const SkyfallGame: React.FC = () => {
   const [controlTutorial, setControlTutorial] = useState<number>(-1); // -1=inactive, 0-3=step
   const [currentTutorialPage, setCurrentTutorialPage] = useState(0);
   const pauseRef = useRef(false);
+  // Tracked viewport width so the touch controls can lay out responsively.
+  // Kept in React state (not just the canvas resize handler) because the HUD
+  // buttons are DOM elements that must reflow on orientation / address-bar
+  // changes. setState with an identical number is a no-op, so this stays cheap.
+  const [viewportW, setViewportW] = useState<number>(() => typeof window !== 'undefined' ? window.innerWidth : 375);
 
   // LiveOps state — always show name entry on mount (different player may use same device)
   // EXCEPT when loaded inside the admin Simulator iframe (?sim=... query param)
@@ -228,6 +233,34 @@ const SkyfallGame: React.FC = () => {
     localStorage.setItem('skyfall_name', name);
     setShowNameEntry(false);
   }, []);
+
+  // Keep the touch-control layout in sync with the viewport width.
+  useEffect(() => {
+    const onResize = () => setViewportW(window.innerWidth);
+    onResize();
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+    };
+  }, []);
+
+  // Responsive geometry for the four on-screen buttons. Movement (‹ ›) is
+  // anchored to the left edge and the actions (fire + roll) to the right edge,
+  // with widths clamped so the two groups never overlap — even on 320px-class
+  // phones where the old hard-coded left:220 / right:16 layout collided.
+  const controls = useMemo(() => {
+    const vw = viewportW;
+    const edge = 14, rEdge = 16, gap = 8;
+    const btnW = Math.round(Math.min(72, Math.max(56, vw * 0.19)));
+    const rollW = Math.round(Math.min(80, Math.max(56, vw * 0.21)));
+    const leftX = edge;
+    const rightX = edge + btnW + gap;
+    const rollLeft = Math.round(vw - rEdge - rollW);
+    const fireLeft = Math.round(vw - rEdge - rollW - gap - btnW);
+    return { btnW, rollW, leftX, rightX, fireLeft, rollLeft, height: 56 };
+  }, [viewportW]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -832,7 +865,7 @@ const SkyfallGame: React.FC = () => {
              id="btn-fire"
              onPointerDown={(e) => { e.preventDefault(); if (hasAmmo && controlTutorial < 0) { e.stopPropagation(); handleButtonDown('shoot'); } }}
              style={{
-               position: 'absolute', left: 220, bottom: 'calc(95px + env(safe-area-inset-bottom, 0px))', width: 72, height: 56,
+               position: 'absolute', left: controls.fireLeft, bottom: 'calc(95px + env(safe-area-inset-bottom, 0px))', width: controls.btnW, height: 56,
               borderRadius: 16,
               border: hasAmmo ? '1.5px solid rgba(220,38,38,0.5)' : '1.5px solid rgba(100,100,100,0.3)',
               background: hasAmmo ? 'rgba(220,38,38,0.12)' : 'rgba(80,80,80,0.06)',
@@ -911,7 +944,7 @@ const SkyfallGame: React.FC = () => {
             onPointerUp={() => handleButtonUp('left')}
             onPointerLeave={() => handleButtonUp('left')}
             style={{
-              position: 'absolute', left: 14, bottom: 'calc(95px + env(safe-area-inset-bottom, 0px))', width: 72, height: 56,
+              position: 'absolute', left: controls.leftX, bottom: 'calc(95px + env(safe-area-inset-bottom, 0px))', width: controls.btnW, height: 56,
               borderRadius: 16, border: '1px solid rgba(255,255,255,0.12)',
               background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)',
               fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -929,7 +962,7 @@ const SkyfallGame: React.FC = () => {
             onPointerUp={() => handleButtonUp('right')}
             onPointerLeave={() => handleButtonUp('right')}
             style={{
-              position: 'absolute', left: 136, bottom: 'calc(95px + env(safe-area-inset-bottom, 0px))', width: 72, height: 56,
+              position: 'absolute', left: controls.rightX, bottom: 'calc(95px + env(safe-area-inset-bottom, 0px))', width: controls.btnW, height: 56,
               borderRadius: 16, border: '1px solid rgba(255,255,255,0.12)',
               background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)',
               fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -945,7 +978,7 @@ const SkyfallGame: React.FC = () => {
             id="btn-roll"
             onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); if (controlTutorial < 0) handleButtonDown('roll'); }}
             style={{
-              position: 'absolute', right: 16, bottom: 'calc(95px + env(safe-area-inset-bottom, 0px))', width: 80, height: 56,
+              position: 'absolute', left: controls.rollLeft, bottom: 'calc(95px + env(safe-area-inset-bottom, 0px))', width: controls.rollW, height: 56,
               borderRadius: 16, border: '1px solid rgba(251,191,36,0.25)',
               background: 'rgba(251,191,36,0.06)', color: 'rgba(251,191,36,0.65)',
               fontSize: 11, fontFamily: "'SF Pro', system-ui, -apple-system, sans-serif",
@@ -965,7 +998,7 @@ const SkyfallGame: React.FC = () => {
       {ammoArrowVisible && showButtons && (
         <div style={{
           position: 'absolute',
-          left: 220 + 36, // center of FIRE button (left + width/2)
+          left: controls.fireLeft + controls.btnW / 2, // center of FIRE button
           bottom: 'calc(95px + env(safe-area-inset-bottom, 0px) + 60px)', // above FIRE button
           transform: 'translateX(-50%)',
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
@@ -1005,14 +1038,13 @@ const SkyfallGame: React.FC = () => {
       {controlTutorial >= 0 && (() => {
         // Button positions matching the actual button styles
         const btnPositions = [
-          { left: 14, width: 72, height: 56, label: 'btn-left' },    // 0: left
-          { left: 136, width: 72, height: 56, label: 'btn-right' },  // 1: right
-          { left: 220, width: 72, height: 56, label: 'btn-fire' },   // 2: fire
-          { right: 16, width: 80, height: 56, label: 'btn-roll' },   // 3: roll
+          { left: controls.leftX, width: controls.btnW, height: controls.height, label: 'btn-left' },    // 0: left
+          { left: controls.rightX, width: controls.btnW, height: controls.height, label: 'btn-right' },  // 1: right
+          { left: controls.fireLeft, width: controls.btnW, height: controls.height, label: 'btn-fire' }, // 2: fire
+          { left: controls.rollLeft, width: controls.rollW, height: controls.height, label: 'btn-roll' }, // 3: roll
         ];
         const cur = btnPositions[controlTutorial];
-        const spotX = 'left' in cur ? cur.left : undefined;
-        const spotRight = 'right' in cur ? cur.right : undefined;
+        const spotX = cur.left; // all buttons are laid out from the left edge
         const spotW = cur.width + 20; // padding around button
         const spotH = cur.height + 20;
         const bottomBase = 95; // matches button bottom
@@ -1114,8 +1146,7 @@ const SkyfallGame: React.FC = () => {
             {/* Spotlight cutout — transparent hole with massive box-shadow */}
             <div style={{
               position: 'absolute',
-              ...(spotX !== undefined ? { left: spotX - 10 } : {}),
-              ...(spotRight !== undefined ? { right: spotRight - 10 } : {}),
+              left: spotX - 10,
               bottom: `calc(${bottomBase - 10}px + env(safe-area-inset-bottom, 0px))`,
               width: spotW,
               height: spotH,
@@ -1130,8 +1161,7 @@ const SkyfallGame: React.FC = () => {
             {/* Pulse ring around spotlight */}
             <div style={{
               position: 'absolute',
-              ...(spotX !== undefined ? { left: spotX - 16 } : {}),
-              ...(spotRight !== undefined ? { right: spotRight - 16 } : {}),
+              left: spotX - 16,
               bottom: `calc(${bottomBase - 16}px + env(safe-area-inset-bottom, 0px))`,
               width: spotW + 12,
               height: spotH + 12,
@@ -1145,8 +1175,7 @@ const SkyfallGame: React.FC = () => {
             {/* Connecting golden line from card to button */}
             <div style={{
               position: 'absolute',
-              ...(spotX !== undefined ? { left: spotX + cur.width / 2 } : {}),
-              ...(spotRight !== undefined ? { right: spotRight + cur.width / 2 } : {}),
+              left: spotX + cur.width / 2,
               bottom: `calc(${bottomBase + cur.height + 14}px + env(safe-area-inset-bottom, 0px))`,
               width: 2,
               height: 60,
