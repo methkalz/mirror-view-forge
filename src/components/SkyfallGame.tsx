@@ -4,7 +4,7 @@ import { loadAudioSettings, reloadAudioSettings } from '@/game/audio';
 import { createGame, resetGame, update, updateIntro, updateCardsOnly, hasModalCard, _debug } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
 import { resumeAudio, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition, sfxAmmoTutorial, stopGameOverVoice } from '@/game/audio';
-import { fetchGameConfig, fetchLeaderboard, fetchDifficultyProfile, fetchWaveConfigs, submitScore, type RemoteGameConfig, type LeaderboardEntry, type DifficultyProfile, type RemoteWaveConfig } from '@/game/config';
+import { fetchGameConfig, fetchLeaderboard, fetchDifficultyProfile, fetchWaveConfigs, submitScore, startGameRun, type RemoteGameConfig, type LeaderboardEntry, type DifficultyProfile, type RemoteWaveConfig } from '@/game/config';
 import { fetchBackgroundConfig, fetchScenes, type Scene, type BackgroundPhase } from '@/game/backgroundConfig';
 import { setBackgroundConfig, setBackgroundConfigForScene, setCameraMargin } from '@/game/renderer';
 import { setOnSceneSwap } from '@/game/engine';
@@ -54,6 +54,8 @@ const SkyfallGame: React.FC = () => {
   const difficultyProfileRef = useRef<DifficultyProfile | null>(null);
   const waveOverridesRef = useRef<RemoteWaveConfig[]>([]);
   const scoreSubmittedRef = useRef(false);
+  // Server-timed run id — lets the server validate the final score
+  const runIdRef = useRef<string | null>(null);
   const tutorialShownRef = useRef(false);
   const [ammoArrowVisible, setAmmoArrowVisible] = useState(false);
   const ammoTutorialShownRef = useRef(false);
@@ -327,15 +329,21 @@ const SkyfallGame: React.FC = () => {
             leaderboard, playerName, gameOverData?.rank ?? null, g.waveNumber);
           
           // Submit score once
+          // Simulator runs never reach the real leaderboard
+          if (!scoreSubmittedRef.current && isSimulatorMode) {
+            scoreSubmittedRef.current = true;
+          }
           if (!scoreSubmittedRef.current) {
             scoreSubmittedRef.current = true;
+            const runId = runIdRef.current;
+            runIdRef.current = null;
             submitScore(playerName, g.score, g.waveNumber, g.levelNumber, {
               timeSurvived: g.stats.timeSurvived,
               dronesDestroyed: g.stats.dronesDestroyed,
               powerUpsCollected: g.stats.powerUpsCollected,
               closeCalls: g.stats.closeCalls,
               bossesDefeated: g.stats.bossesDefeated,
-            }).then(({ rank }) => {
+            }, runId).then(({ rank }) => {
               setGameOverData({ score: g.score, rank, waves: g.waveNumber });
               fetchLeaderboard().then(setLeaderboard);
               // Show prize-entry card if player landed in top 10
@@ -430,6 +438,8 @@ const SkyfallGame: React.FC = () => {
           g.currentSceneIndex = 0;
           g.sceneTransition = null;
           resetGame(g);
+          runIdRef.current = null;
+          if (!isSimulatorMode) startGameRun().then(id => { runIdRef.current = id; });
           // Reset background to first scene
           const scenes = scenesRef.current;
           const allPhases = allBgPhasesRef.current;
@@ -489,6 +499,8 @@ const SkyfallGame: React.FC = () => {
           g.sceneTransition = null;
           g.tutorialPage = 3;
           resetGame(g);
+          runIdRef.current = null;
+          if (!isSimulatorMode) startGameRun().then(id => { runIdRef.current = id; });
           // Reset background to first scene
           const scenes = scenesRef.current;
           const allPhases = allBgPhasesRef.current;

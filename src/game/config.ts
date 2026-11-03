@@ -270,7 +270,60 @@ export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
   }
 }
 
+/**
+ * Starts a server-timed game run. The returned id must be passed to
+ * submitScore so the server can check the result is plausible for the
+ * real time that passed. Returns null if the server function is missing
+ * (security migration not applied yet) or the network failed.
+ */
+export async function startGameRun(): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.rpc('start_game_run');
+    if (error || !data) return null;
+    return data as string;
+  } catch {
+    return null;
+  }
+}
+
+/** PostgREST code for "function not found" — the migration isn't applied yet. */
+const RPC_MISSING = 'PGRST202';
+
 export async function submitScore(
+  playerName: string,
+  score: number,
+  wavesReached: number,
+  levelReached: number,
+  stats?: { timeSurvived?: number; dronesDestroyed?: number; powerUpsCollected?: number; closeCalls?: number; bossesDefeated?: number },
+  runId?: string | null,
+): Promise<{ rank: number | null }> {
+  // Preferred path: server validates the run and records it.
+  if (runId) {
+    try {
+      const { data, error } = await supabase.rpc('submit_run_score', {
+        p_run_id: runId,
+        p_player_name: playerName.slice(0, 20),
+        p_score: Math.round(score),
+        p_waves: wavesReached,
+        p_level: levelReached,
+        p_duration: Math.round(stats?.timeSurvived ?? 0),
+        p_drones: stats?.dronesDestroyed ?? 0,
+        p_powerups: stats?.powerUpsCollected ?? 0,
+        p_close_calls: stats?.closeCalls ?? 0,
+        p_bosses: stats?.bossesDefeated ?? 0,
+      });
+      if (!error) return { rank: (data as number | null) ?? null };
+      if (error.code !== RPC_MISSING) return { rank: null };
+      // Function missing → fall through to the legacy direct insert
+    } catch {
+      return { rank: null };
+    }
+  }
+  return legacySubmitScore(playerName, score, wavesReached, levelReached, stats);
+}
+
+/** Direct insert — only works until the security migration is applied. */
+async function legacySubmitScore(
   playerName: string,
   score: number,
   wavesReached: number,

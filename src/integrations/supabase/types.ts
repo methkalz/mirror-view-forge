@@ -334,6 +334,45 @@ export type Database = {
         }
         Relationships: []
       }
+      game_texts: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      scenes: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       leaderboard: {
         Row: {
           created_at: string
@@ -429,6 +468,7 @@ export type Database = {
           warning_sound_key: string | null
           warning_text: string | null
           warning_type: string | null
+          events: Json
           wave_number: number
         }
         Insert: {
@@ -450,6 +490,7 @@ export type Database = {
           warning_sound_key?: string | null
           warning_text?: string | null
           warning_type?: string | null
+          events?: Json
           wave_number: number
         }
         Update: {
@@ -471,6 +512,7 @@ export type Database = {
           warning_sound_key?: string | null
           warning_text?: string | null
           warning_type?: string | null
+          events?: Json
           wave_number?: number
         }
         Relationships: []
@@ -480,6 +522,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      start_game_run: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      submit_run_score: {
+        Args: {
+          p_run_id: string
+          p_player_name: string
+          p_score: number
+          p_waves: number
+          p_level: number
+          p_duration: number
+          p_drones?: number
+          p_powerups?: number
+          p_close_calls?: number
+          p_bosses?: number
+        }
+        Returns: number | null
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
