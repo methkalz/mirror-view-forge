@@ -3,6 +3,7 @@ import bgFallbackUrl from '../assets/bg-skyfall.jpeg';
 import type { BackgroundPhase, DisplayMode } from './backgroundConfig';
 import { applyBloom, renderVignette, renderDamageFlash } from './render/postFx';
 import { beginFrameLights, emitLight, renderLights } from './render/lighting';
+import { t as txt } from './texts';
 
 function isAnyWaveEventActive(g: GameData, type: string): boolean {
   if (!g.waveEvents || g.waveEvents.length === 0) return false;
@@ -5413,12 +5414,12 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.direction = 'rtl';
-    ctx.fillText('كمامة غاز', cx, cardY + 120);
+    ctx.fillText(txt('offer.gas.title'), cx, cardY + 120);
 
     // Hint text
     ctx.fillStyle = 'rgba(200, 255, 200, 0.8)';
     ctx.font = '13px Tajawal, sans-serif';
-    ctx.fillText('احمِ نفسك من الغاز!', cx, cardY + 148);
+    ctx.fillText(txt('offer.gas.desc'), cx, cardY + 148);
 
     // Cost — first offer is free
     drawOfferPrice(ctx, cx, cardY + 185, g.gasMaskOffer.cost, !g.gasMaskEverOffered);
@@ -5427,7 +5428,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     const pressPulse = 0.5 + Math.sin(g.elapsed * 4) * 0.3;
     ctx.fillStyle = `rgba(74, 222, 128, ${pressPulse})`;
     ctx.font = 'bold 13px Tajawal, sans-serif';
-    ctx.fillText('اضغط البطاقة للشراء', cx, cardY + 218);
+    ctx.fillText(txt('offer.buyHint'), cx, cardY + 218);
 
     // Timer bar at bottom
     const timerRatio = g.gasMaskOffer.timer / offerDuration;
@@ -5456,7 +5457,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.font = 'bold 13px Tajawal, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('بدّيش أشتري', refuseX + refuseW / 2, refuseY + refuseH / 2);
+    ctx.fillText(txt('offer.refuse'), refuseX + refuseW / 2, refuseY + refuseH / 2);
     ctx.textBaseline = 'alphabetic';
     ctx.direction = 'ltr';
 
@@ -5527,11 +5528,11 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.direction = 'rtl';
-    ctx.fillText('بدلة نار', cx, cardY + 120);
+    ctx.fillText(txt('offer.fire.title'), cx, cardY + 120);
 
     ctx.fillStyle = 'rgba(255, 220, 180, 0.85)';
     ctx.font = '13px Tajawal, sans-serif';
-    ctx.fillText('احمِ نفسك من النيران!', cx, cardY + 148);
+    ctx.fillText(txt('offer.fire.desc'), cx, cardY + 148);
 
     ctx.fillStyle = '#fbbf24';
     ctx.font = 'bold 22px Tajawal, sans-serif';
@@ -5540,7 +5541,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     const pressPulse = 0.5 + Math.sin(g.elapsed * 4) * 0.3;
     ctx.fillStyle = `rgba(251, 146, 60, ${pressPulse})`;
     ctx.font = 'bold 13px Tajawal, sans-serif';
-    ctx.fillText('اضغط البطاقة للشراء', cx, cardY + 218);
+    ctx.fillText(txt('offer.buyHint'), cx, cardY + 218);
 
     const timerRatio = g.fireSuitOffer.timer / offerDuration;
     ctx.fillStyle = 'rgba(251, 146, 60, 0.2)';
@@ -5566,7 +5567,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.font = 'bold 13px Tajawal, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('بدّيش أشتري', refuseX + refuseW / 2, refuseY + refuseH / 2);
+    ctx.fillText(txt('offer.refuse'), refuseX + refuseW / 2, refuseY + refuseH / 2);
     ctx.textBaseline = 'alphabetic';
     ctx.direction = 'ltr';
 
@@ -5656,11 +5657,11 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.direction = 'rtl';
-    ctx.fillText('كاشف ألغام', cx, cardY + 120);
+    ctx.fillText(txt('offer.mine.title'), cx, cardY + 120);
 
     ctx.fillStyle = 'rgba(255, 232, 170, 0.85)';
     ctx.font = '13px Tajawal, sans-serif';
-    ctx.fillText('اقترب من اللغم لتفكيكه!', cx, cardY + 148);
+    ctx.fillText(txt('offer.mine.desc'), cx, cardY + 148);
 
     ctx.fillStyle = '#fbbf24';
     ctx.font = 'bold 22px Tajawal, sans-serif';
@@ -5669,7 +5670,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     const pressPulse = 0.5 + Math.sin(g.elapsed * 4) * 0.3;
     ctx.fillStyle = `rgba(251, 191, 36, ${pressPulse})`;
     ctx.font = 'bold 13px Tajawal, sans-serif';
-    ctx.fillText('اضغط البطاقة للشراء', cx, cardY + 218);
+    ctx.fillText(txt('offer.buyHint'), cx, cardY + 218);
 
     const timerRatio = g.minesweeperOffer.timer / offerDuration;
     ctx.fillStyle = 'rgba(251, 191, 36, 0.2)';
@@ -5694,7 +5695,7 @@ function renderHUD(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.font = 'bold 13px Tajawal, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('بدّيش أشتري', refuseX + refuseW / 2, refuseY + refuseH / 2);
+    ctx.fillText(txt('offer.refuse'), refuseX + refuseW / 2, refuseY + refuseH / 2);
     ctx.textBaseline = 'alphabetic';
     ctx.direction = 'ltr';
 
@@ -5722,10 +5723,10 @@ function drawOfferPrice(ctx: CanvasRenderingContext2D, cx: number, baselineY: nu
     // Free label
     ctx.fillStyle = '#22c55e';
     ctx.font = 'bold 22px Tajawal, sans-serif';
-    ctx.fillText('🎁 مجاناً', cx, baselineY + 6);
+    ctx.fillText(txt('offer.free'), cx, baselineY + 6);
     ctx.fillStyle = 'rgba(34,197,94,0.9)';
     ctx.font = 'bold 11px Tajawal, sans-serif';
-    ctx.fillText('أول مرة علينا', cx, baselineY + 22);
+    ctx.fillText(txt('offer.freeSub'), cx, baselineY + 22);
   } else {
     ctx.fillStyle = '#fbbf24';
     ctx.font = 'bold 22px Tajawal, sans-serif';
@@ -5796,7 +5797,7 @@ function renderBoss(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.fillStyle = `rgba(245,158,11,${pulse})`;
     ctx.font = 'bold 11px Tajawal, monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('⚠ قائد معركة', 0, -s * 0.65);
+    ctx.fillText(txt('boss.miniLabel'), 0, -s * 0.65);
     ctx.restore();
   }
 
@@ -8713,7 +8714,7 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
   ctx.shadowColor = 'rgba(251,191,36,0.3)';
   ctx.shadowBlur = 8;
   ctx.direction = 'rtl';
-  ctx.fillText('اختر ترقية', g.width / 2, g.height * 0.20);
+  ctx.fillText(txt('cards.title'), g.width / 2, g.height * 0.20);
   ctx.direction = 'ltr';
   ctx.shadowBlur = 0;
   ctx.restore();
@@ -8816,7 +8817,7 @@ function renderUpgradeCards(ctx: CanvasRenderingContext2D, g: GameData) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.direction = 'rtl';
-    ctx.fillText(card.nameAr, cx + cardW / 2, cy + 115);
+    ctx.fillText(txt(`upgrade.${card.id}`, undefined, card.nameAr), cx + cardW / 2, cy + 115);
     ctx.direction = 'ltr';
 
     ctx.restore();
@@ -9395,12 +9396,12 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.shadowColor = 'rgba(0,0,0,0.5)';
       ctx.shadowBlur = 6;
       ctx.shadowOffsetY = 2;
-      ctx.fillText('خبر عاجل:', w / 2, bannerY + pad);
+      ctx.fillText(txt('news.title'), w / 2, bannerY + pad);
 
       // Line 2: the message — slightly smaller
       ctx.font = `${Math.round(line2Size)}px Tajawal, Arial, sans-serif`;
       ctx.shadowBlur = 4;
-      ctx.fillText('المعاصر تدعو مواطنيها الى مغادرة كفرمندا فوراً', w / 2, bannerY + pad + lineGap);
+      ctx.fillText(txt('news.body'), w / 2, bannerY + pad + lineGap);
 
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
@@ -9441,7 +9442,7 @@ export function render(ctx: CanvasRenderingContext2D, g: GameData) {
       ctx.font = 'bold 28px Tajawal, Arial, sans-serif';
       ctx.shadowColor = 'rgba(251,191,36,0.6)';
       ctx.shadowBlur = 16;
-      ctx.fillText(`بداية الموجة ${nextWave}`, g.width / 2, g.height * 0.48);
+      ctx.fillText(txt('wave.start', { n: nextWave }), g.width / 2, g.height * 0.48);
       ctx.direction = 'ltr';
     }
 
@@ -10343,16 +10344,16 @@ export function renderGameOver(
   // Black stroke for contrast
   ctx.strokeStyle = 'rgba(0,0,0,0.9)';
   ctx.lineWidth = 4;
-  ctx.strokeText('العالم منتهاش', w / 2 + shakeX, titleY);
+  ctx.strokeText(txt('gameover.title'), w / 2 + shakeX, titleY);
   // Outer glow
   ctx.shadowColor = 'rgba(255,200,50,0.2)';
   ctx.shadowBlur = 30;
   ctx.fillStyle = titleGrad;
-  ctx.fillText('العالم منتهاش', w / 2 + shakeX, titleY);
+  ctx.fillText(txt('gameover.title'), w / 2 + shakeX, titleY);
   // Inner glow
   ctx.shadowColor = 'rgba(255,200,50,0.5)';
   ctx.shadowBlur = 12;
-  ctx.fillText('العالم منتهاش', w / 2 + shakeX, titleY);
+  ctx.fillText(txt('gameover.title'), w / 2 + shakeX, titleY);
   ctx.shadowBlur = 0;
   ctx.shadowColor = 'transparent';
   ctx.restore();
@@ -10422,7 +10423,7 @@ export function renderGameOver(
       ctx.font = `bold 15px ${font}`;
       ctx.shadowColor = '#fbbf24';
       ctx.shadowBlur = 14;
-      ctx.fillText('★ رقم قياسي جديد ★', w / 2, hsY);
+      ctx.fillText(txt('gameover.newRecord'), w / 2, hsY);
       ctx.shadowBlur = 0;
       ctx.shadowColor = 'transparent';
     } else {

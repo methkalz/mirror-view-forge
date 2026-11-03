@@ -35,6 +35,7 @@ export function attachDebugAPI(g: GameData, helpers: {
   spawnSwarm: (g: GameData, count: number) => void;
   startVolley: (g: GameData) => void;
   spawnMinePlanter: (g: GameData) => void;
+  startAirRaidFlyby: (g: GameData) => void;
 }): DebugAPI {
   return {
     jumpToWave(wave: number) {
@@ -54,6 +55,7 @@ export function attachDebugAPI(g: GameData, helpers: {
     triggerEvent(type: WaveEventType) {
       if (type === 'swarm') helpers.spawnSwarm(g, 5);
       else if (type === 'volley') helpers.startVolley(g);
+      else if (type === 'airstrike_flyby') helpers.startAirRaidFlyby(g);
       else if (type === 'minefield') helpers.spawnMinePlanter(g);
     },
     setHealth(hp: number) { g.player.health = Math.max(0, Math.min(200, hp)); },

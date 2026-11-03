@@ -79,7 +79,7 @@ export async function createBackgroundPhase(phase: string, sceneId?: string): Pr
   // Get max sort_order
   const { data: existing } = await supabase.from('background_config').select('sort_order').order('sort_order', { ascending: false }).limit(1);
   const nextOrder = (existing?.[0]?.sort_order ?? -1) + 1;
-  const insertPayload: Record<string, unknown> = {
+  const insertPayload: { phase: string; transition_start: number; transition_end: number; sort_order: number; scene_id?: string } = {
     phase,
     transition_start: nextOrder * 120,
     transition_end: nextOrder * 120 + 90,

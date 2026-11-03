@@ -4,10 +4,11 @@ import { loadAudioSettings, reloadAudioSettings } from '@/game/audio';
 import { createGame, resetGame, update, updateIntro, updateCardsOnly, hasModalCard, _debug } from '@/game/engine';
 import { render, renderStartScreen, renderGameOver } from '@/game/renderer';
 import { resumeAudio, stopMenuMusic, cancelMenuMusicStart, sfxSlideTransition, sfxAmmoTutorial, stopGameOverVoice } from '@/game/audio';
-import { fetchGameConfig, fetchLeaderboard, fetchDifficultyProfile, fetchWaveConfigs, submitScore, startGameRun, type RemoteGameConfig, type LeaderboardEntry, type DifficultyProfile, type RemoteWaveConfig } from '@/game/config';
+import { fetchGameConfig, fetchLeaderboard, fetchDifficultyProfile, fetchWaveConfigs, submitScore, startGameRun, fetchGameTexts, type RemoteGameConfig, type LeaderboardEntry, type DifficultyProfile, type RemoteWaveConfig } from '@/game/config';
 import { fetchBackgroundConfig, fetchScenes, type Scene, type BackgroundPhase } from '@/game/backgroundConfig';
 import { setBackgroundConfig, setBackgroundConfigForScene, setCameraMargin } from '@/game/renderer';
 import { setOnSceneSwap } from '@/game/engine';
+import { setTextOverrides } from '@/game/texts';
 import { attachDebugAPI, getGameSpeed, isGodMode, isInfiniteAmmo, type DebugAPI } from '@/game/debugCommands';
 import { supabase } from '@/integrations/supabase/client';
 import NameEntry from './NameEntry';
@@ -99,7 +100,9 @@ const SkyfallGame: React.FC = () => {
         const scenesPromise = fetchScenes();
         setLoadProgress(15);
 
-        const [cfg, lb, bgPhases, dp, wc, scenes] = await Promise.all([cfgPromise, lbPromise, bgPromise, dpPromise, wcPromise, scenesPromise]);
+        const textsPromise = fetchGameTexts();
+        const [cfg, lb, bgPhases, dp, wc, scenes, texts] = await Promise.all([cfgPromise, lbPromise, bgPromise, dpPromise, wcPromise, scenesPromise, textsPromise]);
+        setTextOverrides(texts);
         if (!mounted) return;
         setLoadProgress(40);
 
@@ -174,6 +177,14 @@ const SkyfallGame: React.FC = () => {
       })
       .subscribe();
 
+    // Realtime subscription for editable texts — admin edits apply live
+    const textsChannel = supabase
+      .channel('game-texts-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_texts' }, () => {
+        fetchGameTexts().then(setTextOverrides);
+      })
+      .subscribe();
+
     // Realtime subscription for wave config changes — admin edits apply live
     const waveChannel = supabase
       .channel('wave-config-changes')
@@ -205,6 +216,7 @@ const SkyfallGame: React.FC = () => {
       supabase.removeChannel(audioChannel);
       supabase.removeChannel(waveChannel);
       supabase.removeChannel(diffChannel);
+      supabase.removeChannel(textsChannel);
     };
   }, []);
 

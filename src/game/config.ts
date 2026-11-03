@@ -160,7 +160,7 @@ export async function fetchWaveConfigs(): Promise<RemoteWaveConfig[]> {
   }
 }
 
-const DEFAULT_DIFFICULTY: DifficultyProfile = {
+export const DEFAULT_DIFFICULTY: DifficultyProfile = {
   id: '',
   baseMaxConcurrent: 3,
   maxConcurrentCap: 15,
@@ -813,5 +813,34 @@ export async function clearPrizeEntries(): Promise<boolean> {
     .from('prize_entries' as any)
     .delete()
     .neq('id', '00000000-0000-0000-0000-000000000000');
+  return !error;
+}
+
+// ─── Editable in-game texts (game_texts table) ────────────────────────────
+
+/** Loads every text override as { key: value }. Empty map on any failure. */
+export async function fetchGameTexts(): Promise<Record<string, string>> {
+  try {
+    const { data, error } = await supabase.from('game_texts').select('key, value');
+    if (error || !data) return {};
+    const map: Record<string, string> = {};
+    for (const row of data) map[row.key] = row.value;
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+/** Saves one text override (admin only — enforced by RLS). */
+export async function saveGameText(key: string, value: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('game_texts')
+    .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  return !error;
+}
+
+/** Removes an override so the key goes back to its built-in default. */
+export async function resetGameText(key: string): Promise<boolean> {
+  const { error } = await supabase.from('game_texts').delete().eq('key', key);
   return !error;
 }

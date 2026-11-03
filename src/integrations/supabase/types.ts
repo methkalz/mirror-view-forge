@@ -116,6 +116,7 @@ export type Database = {
           overlay_opacity: number | null
           overlay_top: string | null
           phase: string
+          scene_id: string | null
           sort_order: number | null
           transition_end: number
           transition_start: number
@@ -133,6 +134,7 @@ export type Database = {
           overlay_opacity?: number | null
           overlay_top?: string | null
           phase: string
+          scene_id?: string | null
           sort_order?: number | null
           transition_end?: number
           transition_start?: number
@@ -150,6 +152,7 @@ export type Database = {
           overlay_opacity?: number | null
           overlay_top?: string | null
           phase?: string
+          scene_id?: string | null
           sort_order?: number | null
           transition_end?: number
           transition_start?: number

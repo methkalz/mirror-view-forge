@@ -10,6 +10,7 @@ import {
   fetchAudioConfig, updateAudioEntry, updateAudioCategory, uploadAudioFile, deleteAudioFile, listAudioLibrary,
   addAudioFile, removeAudioFile, fetchAnalytics, createAudioEntry, deleteAudioEntry, updateAudioFileVolume,
   fetchPrizeEntries, deletePrizeEntry, clearPrizeEntries,
+  fetchGameTexts, saveGameText, resetGameText,
   type RemoteGameConfig, type RemoteWaveConfig, type LeaderboardEntry, type AudioConfigEntry, type AudioFileEntry, type PlayMode, type VolumeMode, type GameAnalytics, type DifficultyProfile, type PrizeEntry,
 } from '@/game/config';
 import {
@@ -20,8 +21,10 @@ import {
 } from '@/game/backgroundConfig';
 import { playSynthesizedPreview } from '@/game/audio';
 import { WAVE_WARNINGS } from '@/game/engine';
+import { resolveWave } from '@/game/waveDefinitions';
+import { TEXT_DEFAULTS } from '@/game/texts';
 
-type TabKey = 'analytics' | 'config' | 'branding' | 'backgrounds' | 'waves' | 'leaderboard' | 'prizes' | 'audio' | 'simulator';
+type TabKey = 'analytics' | 'config' | 'branding' | 'backgrounds' | 'waves' | 'leaderboard' | 'prizes' | 'audio' | 'texts' | 'simulator';
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'analytics', icon: '📊', label: 'Analytics' },
@@ -30,6 +33,7 @@ const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'backgrounds', icon: '🌅', label: 'Backgrounds' },
   { key: 'waves', icon: '🌊', label: 'Waves' },
   { key: 'audio', icon: '🔊', label: 'Audio' },
+  { key: 'texts', icon: '📝', label: 'Texts' },
   { key: 'simulator', icon: '🎮', label: 'Simulator' },
   { key: 'leaderboard', icon: '🏆', label: 'Leaders' },
   { key: 'prizes', icon: '🎁', label: 'Prizes' },
@@ -279,6 +283,7 @@ const Admin: React.FC = () => {
                  tab === 'backgrounds' ? 'Day/night cycle & background images' :
                  tab === 'waves' ? 'Wave configuration & enemy patterns' :
                  tab === 'audio' ? 'Professional audio system management' :
+                 tab === 'texts' ? 'Every in-game message, editable live' :
                  tab === 'simulator' ? 'In-admin game testing & simulation' :
                  'Leaderboard management'}
               </p>
@@ -322,6 +327,7 @@ const Admin: React.FC = () => {
           />
         )}
 
+        {tab === 'texts' && <TextsPanel />}
         {tab === 'simulator' && <SimulatorPanel isDesktop={isDesktop} />}
 
         {tab === 'leaderboard' && (
@@ -558,44 +564,35 @@ const PrizesPanel: React.FC<{
   );
 };
 
-// Helper: generate preview of auto-scaled waves
-function generatePreviewWaves(profile: DifficultyProfile, count: number = 20) {
-  const previews: { wave: number; threats: string[]; maxConcurrent: number; spawnInterval: number; droneTiers: string[]; clusterSplits: number; bulletLevel: number; hasBoss: boolean; hasChemical: boolean; hasIncendiary: boolean; duration: number; droneInterval: number }[] = [];
+// Helper: preview of what the game will actually play. Uses the SAME
+// resolver as the engine (waveDefinitions.resolveWave), so every number,
+// flag and event shown here is exactly what players get.
+function generatePreviewWaves(profile: DifficultyProfile | null, overrides: RemoteWaveConfig[], count: number = 20) {
+  const previews = [];
   for (let w = 1; w <= count; w++) {
-    const threats: string[] = [];
-    for (const [type, unlockWave] of Object.entries(profile.threatsUnlock)) {
-      if (w >= unlockWave) threats.push(type);
-    }
-    if (threats.length === 0) threats.push('shrapnel');
-    const droneTiers: string[] = [];
-    for (const [type, unlockWave] of Object.entries(profile.dronesUnlock)) {
-      if (w >= unlockWave) droneTiers.push(type);
-    }
-    const maxConcurrent = Math.min(profile.maxConcurrentCap, Math.round(profile.baseMaxConcurrent + profile.concurrentGrowth * (w - 1)));
-    const spawnInterval = Math.max(profile.minSpawnInterval, +(profile.baseSpawnInterval - profile.spawnIntervalDecay * (w - 1)).toFixed(2));
-    const clusterUnlock = profile.threatsUnlock['cluster'] || 999;
-    let clusterSplits = 0;
-    if (w >= clusterUnlock) clusterSplits = Math.min(profile.clusterSplitsCap, Math.round(profile.clusterSplitsBase + profile.clusterSplitsGrowth * (w - clusterUnlock)));
-    let bulletLevel = 1;
-    for (const [level, unlockWave] of Object.entries(profile.bulletLevelWaves)) {
-      if (w >= unlockWave) bulletLevel = Math.max(bulletLevel, parseInt(level));
-    }
-    const hasBoss = w >= profile.bossStartWave && ((w - profile.bossStartWave) % profile.bossEveryNWaves === 0);
-    const hasChemical = w >= (profile.dronesUnlock['chemical'] || 999);
-    const hasIncendiary = w >= (profile.dronesUnlock['incendiary'] || 999);
-    // Drone interval
-    let droneInterval = 0;
-    if (droneTiers.length > 0) {
-      const firstDroneWave = Math.min(...Object.values(profile.dronesUnlock));
-      const wavesSinceDrones = w - firstDroneWave;
-      droneInterval = Math.max(profile.droneIntervalMin, +(profile.droneIntervalBase * Math.pow(profile.droneIntervalDecay, wavesSinceDrones)).toFixed(1));
-    }
-    previews.push({ wave: w, threats, maxConcurrent, spawnInterval, droneTiers, clusterSplits, bulletLevel, hasBoss, hasChemical, hasIncendiary, duration: profile.waveDuration, droneInterval });
+    const r = resolveWave(w, profile, overrides);
+    previews.push({
+      wave: w,
+      threats: r.threats as string[],
+      maxConcurrent: r.maxConcurrent,
+      spawnInterval: +r.spawnInterval.toFixed(2),
+      droneTiers: r.droneTiers as string[],
+      clusterSplits: r.clusterSplits,
+      bulletLevel: r.bulletLevel,
+      hasBoss: r.hasBoss,
+      hasChemical: r.hasChemical,
+      hasIncendiary: r.hasIncendiary,
+      duration: r.duration,
+      droneInterval: +r.droneInterval.toFixed(1),
+      phaseInDelay: r.phaseInDelay,
+      events: r.events,
+    });
   }
   return previews;
 }
 
 const THREAT_ICONS: Record<string, string> = { shrapnel: '💥', missile: '🚀', cluster: '🎯', meteor: '☄️' };
+const EVENT_ICONS: Record<string, string> = { surge: '🌪️', calm: '🌿', swarm: '🐝', volley: '🎆', airstrike_flyby: '✈️', minefield: '💣' };
 const DRONE_ICONS: Record<string, string> = { scout: '🔍', tracker: '📡', bomber: '💣', chemical: '☣️', incendiary: '🔥', cargo: '📦', laser: '🔴' };
 
 // Difficulty curve presets — one-click overhauls of the whole profile.
@@ -696,28 +693,8 @@ const WavesPanel: React.FC<{
   const [showAutoScale, setShowAutoScale] = useState(true);
   const [previewCount, setPreviewCount] = useState(20);
 
-  const rawPreviews = diffProfile ? generatePreviewWaves(diffProfile, previewCount) : [];
+  const previews = generatePreviewWaves(diffProfile, waves, previewCount);
   const overrideNums = new Set(waves.map(w => w.waveNumber));
-
-  // Merge actual override values into preview rows
-  const previews = rawPreviews.map(p => {
-    const override = waves.find(w => w.waveNumber === p.wave);
-    if (!override) return p;
-    return {
-      ...p,
-      duration: override.duration,
-      threats: override.threats,
-      maxConcurrent: override.maxConcurrent,
-      spawnInterval: override.spawnRate,
-      droneTiers: override.droneTypes,
-      clusterSplits: override.clusterSplits,
-      bulletLevel: override.bulletLevel,
-      hasBoss: override.hasBoss,
-      hasChemical: override.hasChemical,
-      hasIncendiary: override.hasIncendiary,
-      droneInterval: override.droneInterval,
-    };
-  });
 
   // Create override from preview row
   const createOverrideFromPreview = (p: typeof previews[0]) => {
@@ -735,8 +712,9 @@ const WavesPanel: React.FC<{
         droneTypes: p.droneTiers,
         clusterSplits: p.clusterSplits,
         bulletLevel: p.bulletLevel,
-        phaseInDelay: 0,
+        phaseInDelay: p.phaseInDelay,
         droneInterval: p.droneInterval,
+        events: p.events,
         hasBoss: p.hasBoss,
         hasChemical: p.hasChemical,
         hasIncendiary: p.hasIncendiary,
@@ -889,6 +867,7 @@ const WavesPanel: React.FC<{
                     <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>شظايا</th>
                     <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>سلاح</th>
                      <th style={{ padding: '8px 6px', textAlign: 'center', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>بوس</th>
+                     <th style={{ padding: '8px 6px', textAlign: 'right', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>أحداث</th>
                      <th style={{ padding: '8px 6px', textAlign: 'right', color: 'rgba(148,163,184,0.5)', fontWeight: 600 }}>رسالة</th>
                   </tr>
                 </thead>
@@ -918,12 +897,18 @@ const WavesPanel: React.FC<{
                         <td style={{ padding: '6px', textAlign: 'center', color: p.spawnInterval <= 1 ? '#f87171' : '#e2e8f0' }}>{p.spawnInterval}s</td>
                         <td style={{ padding: '6px', textAlign: 'center', color: '#94a3b8' }}>{p.duration}s</td>
                         <td style={{ padding: '6px', textAlign: 'right' }}>
-                          {p.droneTiers.length === 0 ? <span style={{ color: 'rgba(148,163,184,0.2)' }}>—</span> :
+                          {p.droneTiers.length === 0 && !p.hasChemical && !p.hasIncendiary ? <span style={{ color: 'rgba(148,163,184,0.2)' }}>—</span> :
                             p.droneTiers.map(t => <span key={t} title={t} style={{ marginLeft: 2 }}>{DRONE_ICONS[t] || t}</span>)}
+                          {p.hasIncendiary && <span title="طائرات حارقة + بطاقة بدلة النار" style={{ marginLeft: 2 }}>🔥</span>}
+                          {p.hasChemical && <span title="طائرات كيميائية + بطاقة الكمامة" style={{ marginLeft: 2 }}>☣️</span>}
                         </td>
                         <td style={{ padding: '6px', textAlign: 'center', color: p.clusterSplits >= 5 ? '#f87171' : '#e2e8f0' }}>{p.clusterSplits || '—'}</td>
                         <td style={{ padding: '6px', textAlign: 'center' }}>{'⭐'.repeat(p.bulletLevel)}</td>
                         <td style={{ padding: '6px', textAlign: 'center' }}>{p.hasBoss ? '👹' : ''}</td>
+                        <td style={{ padding: '6px', textAlign: 'right', fontSize: 10, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                          {p.events.length === 0 ? <span style={{ color: 'rgba(148,163,184,0.2)' }}>—</span> :
+                            p.events.map((e, i) => <span key={i} title={`${e.type} @${e.triggerAt}s`} style={{ marginLeft: 4 }}>{EVENT_ICONS[e.type] || e.type}<sub>{e.triggerAt}</sub></span>)}
+                        </td>
                         <td style={{ padding: '6px', textAlign: 'right', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {(() => {
                             const override = waves.find(w => w.waveNumber === p.wave);
@@ -951,13 +936,13 @@ const WavesPanel: React.FC<{
               waveNumber: waves.length > 0 ? Math.max(...waves.map(w => w.waveNumber)) + 1 : 1,
               duration: diffProfile?.waveDuration || 60, threats: ['shrapnel'], maxConcurrent: 5, spawnRate: 3.5, surgeMultiplier: 1.0, droneTypes: [],
               clusterSplits: 0, bulletLevel: 1, phaseInDelay: 0, droneInterval: 0,
-              hasBoss: false, hasChemical: false, hasIncendiary: false,
+              hasBoss: false, hasChemical: false, hasIncendiary: false, events: [],
               warningText: null, warningColor: '#ef4444', warningType: 'warning', warningSoundKey: null,
             })} style={btnPrimary}>+ إضافة موجة</button>
           </div>
 
           <p style={{ fontSize: 11, color: 'rgba(148,163,184,0.4)', marginBottom: 16, lineHeight: 1.6 }}>
-            الموجات المخصصة تأخذ الأولوية على التوليد التلقائي. إذا لم تُعرّف موجة يدوياً، يستخدم النظام إعدادات التصاعد التلقائي.
+            تعديلاتك هنا تُدمج فوق إعدادات الموجة الأساسية. أحداث الموجة ومحفّزاتها (مثل ظهور البوس) تبقى كما هي إلا إذا أضفت أحداثاً بنفسك، ورسالتك المخصصة تظهر قبل تحذيرات الموجة. لتعديل نص أي تحذير استخدم تبويب النصوص.
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: 8 }}>
@@ -3160,6 +3145,118 @@ const SimulatorPanel: React.FC<{ isDesktop: boolean }> = ({ isDesktop }) => {
           🎮 SIMULATOR MODE
         </div>
       </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════
+// TEXTS PANEL — every in-game message, editable live
+// ═══════════════════════════════════════════════════════════════
+
+const TextsPanel: React.FC = () => {
+  const [saved, setSaved] = useState<Record<string, string>>({});
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [status, setStatus] = useState<{ key: string; ok: boolean } | null>(null);
+
+  useEffect(() => {
+    fetchGameTexts().then(map => { setSaved(map); setLoading(false); });
+  }, []);
+
+  const groups = React.useMemo(() => {
+    const q = query.trim();
+    const out: Record<string, string[]> = {};
+    for (const [key, def] of Object.entries(TEXT_DEFAULTS)) {
+      const current = saved[key] ?? def.value;
+      if (q && !def.label.includes(q) && !current.includes(q) && !key.includes(q) && !def.group.includes(q)) continue;
+      (out[def.group] ||= []).push(key);
+    }
+    return out;
+  }, [query, saved]);
+
+  const save = async (key: string) => {
+    const value = (drafts[key] ?? '').trim();
+    if (!value) return;
+    setBusyKey(key);
+    const ok = await saveGameText(key, value);
+    setBusyKey(null);
+    setStatus({ key, ok });
+    if (ok) {
+      setSaved(prev => ({ ...prev, [key]: value }));
+      setDrafts(prev => { const n = { ...prev }; delete n[key]; return n; });
+    }
+  };
+
+  const reset = async (key: string) => {
+    setBusyKey(key);
+    const ok = await resetGameText(key);
+    setBusyKey(null);
+    setStatus({ key, ok });
+    if (ok) {
+      setSaved(prev => { const n = { ...prev }; delete n[key]; return n; });
+      setDrafts(prev => { const n = { ...prev }; delete n[key]; return n; });
+    }
+  };
+
+  if (loading) return <div style={cardStyle}>جارٍ التحميل…</div>;
+
+  const customCount = Object.keys(saved).filter(k => k in TEXT_DEFAULTS).length;
+
+  return (
+    <div dir="rtl">
+      <div style={{ ...cardStyle, padding: '16px 20px' }}>
+        <p style={{ fontSize: 12, color: 'rgba(148,163,184,0.7)', lineHeight: 1.7, margin: '0 0 12px' }}>
+          كل رسالة تظهر خلال اللعب موجودة هنا. أي تعديل تحفظه يظهر في اللعبة فوراً دون إعادة تحميل.
+          «استعادة الأصلي» يعيد النص الافتراضي. في إعلان الموجة يُستبدل <code>{'{n}'}</code> برقم الموجة.
+        </p>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="ابحث عن رسالة…" style={{ ...inputStyle, flex: 1 }} />
+          <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.6)', whiteSpace: 'nowrap' }}>{customCount} معدّلة</span>
+        </div>
+      </div>
+
+      {Object.entries(groups).map(([group, keys]) => (
+        <div key={group} style={cardStyle}>
+          <h4 style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', margin: '0 0 14px' }}>{group}</h4>
+          {keys.map(key => {
+            const def = TEXT_DEFAULTS[key];
+            const isCustom = key in saved;
+            const current = saved[key] ?? def.value;
+            const draft = drafts[key];
+            const dirty = draft !== undefined && draft.trim() !== current && draft.trim() !== '';
+            return (
+              <div key={key} style={{ marginBottom: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                  <label style={{ ...labelStyle, marginBottom: 0 }}>
+                    {def.label} {isCustom && <span style={{ color: '#fbbf24', fontSize: 10 }}>● معدّل</span>}
+                  </label>
+                  <span style={{ fontSize: 9, color: 'rgba(148,163,184,0.35)', direction: 'ltr' }}>{key}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    value={draft ?? current}
+                    onChange={e => setDrafts(prev => ({ ...prev, [key]: e.target.value }))}
+                    style={{ ...inputStyle, flex: 1, borderColor: dirty ? 'rgba(251,191,36,0.5)' : 'rgba(255,255,255,0.1)' }}
+                  />
+                  <button disabled={!dirty || busyKey === key} onClick={() => save(key)}
+                    style={{ ...btnPrimary, opacity: dirty ? 1 : 0.35, cursor: dirty ? 'pointer' : 'default' }}>حفظ</button>
+                  {isCustom && (
+                    <button disabled={busyKey === key} onClick={() => reset(key)} style={btnDanger} title={def.value}>استعادة الأصلي</button>
+                  )}
+                </div>
+                {isCustom && <div style={{ fontSize: 10, color: 'rgba(148,163,184,0.4)', marginTop: 3 }}>الأصلي: {def.value}</div>}
+                {status?.key === key && (
+                  <div style={{ fontSize: 10, marginTop: 3, color: status.ok ? '#22c55e' : '#f87171' }}>
+                    {status.ok ? '✓ تم الحفظ' : '✗ فشل الحفظ — تأكد من تطبيق migration النصوص وأنك مسجّل كآدمن'}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 };
